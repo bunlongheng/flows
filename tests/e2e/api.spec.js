@@ -3,12 +3,12 @@ import { signSession } from "../../lib/auth-session.js";
 
 // End-to-end against a PRODUCTION build (npm run build && npm run start), the
 // same handlers Vercel runs. Proves the public contract + the auth policy.
-const SECRET = process.env.SYSTEM_DESIGNS_API_SECRET || "e2e-secret";
+const SECRET = process.env.FLOWS_API_SECRET || "e2e-secret";
 const OWNER_COOKIE = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
 
 const VALID_BODY = {
   title: "E2E Uber System Design",
-  type: "system-design",
+  type: "flows",
   nodes: [
     { id: "user", position: { x: 40, y: 200 } },
     { id: "apigw", position: { x: 260, y: 200 } },
@@ -30,16 +30,16 @@ test("GET /api/health -> 200 ok:true", async ({ request }) => {
   expect(body.checks.database).toBe(true);
 });
 
-test("POST /api/ai/system-designs with a BAD token -> 401 (no row created)", async ({ request }) => {
-  const res = await request.post("/api/ai/system-designs", {
+test("POST /api/ai/flows with a BAD token -> 401 (no row created)", async ({ request }) => {
+  const res = await request.post("/api/ai/flows", {
     headers: { Authorization: "Bearer not-the-real-token" },
     data: VALID_BODY,
   });
   expect(res.status()).toBe(401);
 });
 
-test("POST /api/ai/system-designs with a bad body -> 400 + sample_request", async ({ request }) => {
-  const res = await request.post("/api/ai/system-designs", {
+test("POST /api/ai/flows with a bad body -> 400 + sample_request", async ({ request }) => {
+  const res = await request.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: { title: "no nodes" },
   });
@@ -57,7 +57,7 @@ test("POST /api/ai/generate with a VALID public Bearer -> 401 (admin-only)", asy
 });
 
 test("public round-trip: create -> 201 {url} -> GET renders -> DELETE", async ({ request }) => {
-  const create = await request.post("/api/ai/system-designs", {
+  const create = await request.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: VALID_BODY,
   });
@@ -68,26 +68,26 @@ test("public round-trip: create -> 201 {url} -> GET renders -> DELETE", async ({
 
   // New diagrams are private by default; publish it so the unauthenticated read
   // below can see it (mirrors the owner flipping a diagram public).
-  const pub = await request.patch(`/api/system-designs/${id}`, {
+  const pub = await request.patch(`/api/flows/${id}`, {
     headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" },
     data: { is_public: true },
   });
   expect(pub.status()).toBe(200);
 
-  const got = await request.get(`/api/system-designs/${id}`);
+  const got = await request.get(`/api/flows/${id}`);
   expect(got.status()).toBe(200);
   const design = await got.json();
   expect(design.title).toBe(VALID_BODY.title);
   expect(design.nodes.length).toBe(VALID_BODY.nodes.length);
 
   // Clean up the test artifact (owner-session-gated DELETE).
-  const del = await request.delete(`/api/system-designs/${id}`, {
+  const del = await request.delete(`/api/flows/${id}`, {
     headers: { Cookie: OWNER_COOKIE },
   });
   expect(del.status()).toBe(200);
   expect((await del.json()).deleted).toBe(true);
   // Delete is soft - purge so the suite does not leave a row in trash each run.
-  await request.delete(`/api/system-designs/${id}?purge=1`, {
+  await request.delete(`/api/flows/${id}?purge=1`, {
     headers: { Cookie: OWNER_COOKIE },
   });
 });

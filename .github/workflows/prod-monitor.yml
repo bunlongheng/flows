@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      BASE_URL: https://system-design-bheng.vercel.app
+      BASE_URL: https://flows-bheng.vercel.app
     steps:
       - name: Health endpoint is 200 + ok:true (API secret + owner + DB)
         run: |
@@ -42,8 +42,8 @@ jobs:
           # Bearer gate rejects unauthorized callers. The bad token guarantees it
           # NEVER creates a row (no artifact spam).
           code=$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' \
-            -X POST "$BASE_URL/api/ai/system-designs" \
+            -X POST "$BASE_URL/api/ai/flows" \
             -H "Authorization: Bearer monitor-not-a-real-token" \
             -H "Content-Type: application/json" \
             -d '{"title":"monitor","nodes":[{"id":"user","position":{"x":0,"y":0}}]}')
-          [ "$code" = "401" ] || { echo "::error::/api/ai/system-designs did not 401 a bad token (got $code) - route down or auth broken"; exit 1; }
+          [ "$code" = "401" ] || { echo "::error::/api/ai/flows did not 401 a bad token (got $code) - route down or auth broken"; exit 1; }

@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "system-design": {
+    "flows": {
       "command": "node",
       "args": ["mcp/server.mjs"]
     }

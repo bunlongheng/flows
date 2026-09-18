@@ -8,7 +8,7 @@ import { signSession } from "../../lib/auth-session.js";
 // This is the spec that guards the whole chain - publish, the copied URL, the
 // card image, and the meta tags a crawler reads. If any link in it breaks, the
 // thing the user sees is a dead link or a generic grey card.
-const SECRET = process.env.SYSTEM_DESIGNS_API_SECRET || "e2e-secret";
+const SECRET = process.env.FLOWS_API_SECRET || "e2e-secret";
 const OWNER_COOKIE = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
 
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -23,7 +23,7 @@ const meta = (html, key) => {
 
 const DESIGN = {
   title: "E2E Share Flow",
-  type: "system-design",
+  type: "flows",
   nodes: [
     { id: "user", position: { x: 40, y: 200 } },
     { id: "apigw", position: { x: 300, y: 200 } },
@@ -43,20 +43,20 @@ test("Share on a private diagram publishes it, previews the card, and hands out 
   baseURL,
 }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: DESIGN,
   });
   expect(create.status()).toBe(201);
   const id = (await create.json()).url.split("/?id=")[1];
-  const row = await (await api.get(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
+  const row = await (await api.get(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
   const slug = row.slug;
 
   try {
     // Created private: a stranger cannot read it, and it previews as the generic
     // site card. That is the state the owner starts from.
     expect(row.is_public).toBe(false);
-    expect((await api.get(`/api/system-designs/${id}`)).status()).toBe(404);
+    expect((await api.get(`/api/flows/${id}`)).status()).toBe(404);
 
     await context.addCookies([{ name: "sd_session", value: OWNER_COOKIE.split("=")[1], url: baseURL }]);
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -66,10 +66,10 @@ test("Share on a private diagram publishes it, previews the card, and hands out 
     // Open the share panel and hit Link, which is what publishes.
     await page.locator('button:has-text("Share")').first().click();
     await page.locator('button:has-text("Link")').first().click();
-    await expect.poll(async () => (await api.get(`/api/system-designs/${id}`)).status(), { timeout: 10000 }).toBe(200);
+    await expect.poll(async () => (await api.get(`/api/flows/${id}`)).status(), { timeout: 10000 }).toBe(200);
 
     // 1. It is now readable by someone with no session at all.
-    const pub = await (await api.get(`/api/system-designs/${id}`)).json();
+    const pub = await (await api.get(`/api/flows/${id}`)).json();
     expect(pub.is_public).toBe(true);
 
     // 2. The clipboard holds the readable ?name= link on the public origin -
@@ -122,8 +122,8 @@ test("Share on a private diagram publishes it, previews the card, and hands out 
     expect(buf.length).toBeGreaterThan(20000);
     expect(buf.length).not.toBe((await generic).length); // not the fallback
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } });
-    await api.delete(`/api/system-designs/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
   }
 });
@@ -138,31 +138,31 @@ test("a PUBLISHED non-demo design resolves by slug - sharing must not break its 
   baseURL,
 }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: { ...DESIGN, title: "E2E Published Not A Demo" },
   });
   const id = (await create.json()).url.split("/?id=")[1];
-  const { slug } = await (await api.get(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
+  const { slug } = await (await api.get(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
 
   try {
-    await api.patch(`/api/system-designs/${id}`, {
+    await api.patch(`/api/flows/${id}`, {
       headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" },
       data: { is_public: true },
     });
 
     // It is public, and it is NOT on the curated demo roster...
-    const demos = await (await api.get("/api/system-designs/public")).json();
+    const demos = await (await api.get("/api/flows/public")).json();
     expect(demos.some((d) => d.slug === slug)).toBe(false);
     // ...but it IS still in the owner's own list. It used to be excluded there too
     // (that list filtered on is_public = false), so publishing made a design
     // vanish from My Diagrams AND break its own share link. Both halves of that
     // are fixed; this asserts the half that keeps it visible to its owner.
-    const mine = await (await api.get("/api/system-designs", { headers: { Cookie: OWNER_COOKIE } })).json();
+    const mine = await (await api.get("/api/flows", { headers: { Cookie: OWNER_COOKIE } })).json();
     expect(mine.some((d) => d.slug === slug)).toBe(true);
 
     // It must STILL resolve by slug, for a stranger with no session.
-    const bySlug = await api.get(`/api/system-designs/${slug}`);
+    const bySlug = await api.get(`/api/flows/${slug}`);
     expect(bySlug.status()).toBe(200);
     expect((await bySlug.json()).id).toBe(id);
 
@@ -172,29 +172,29 @@ test("a PUBLISHED non-demo design resolves by slug - sharing must not break its 
     expect(await page.locator(".react-flow__node-awsNode").count()).toBe(DESIGN.nodes.length);
     await expect(page.locator("text=Design not found")).toHaveCount(0);
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } });
-    await api.delete(`/api/system-designs/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
   }
 });
 
 test("a slug for a PRIVATE design stays hidden from a stranger", async ({ baseURL }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: { ...DESIGN, title: "E2E Private By Slug" },
   });
   const id = (await create.json()).url.split("/?id=")[1];
-  const { slug } = await (await api.get(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
+  const { slug } = await (await api.get(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
   try {
     // Never published - a slug must not become a way around the privacy check.
-    expect((await api.get(`/api/system-designs/${slug}`)).status()).toBe(404);
-    expect((await api.get(`/api/system-designs/${slug}`, { headers: { Cookie: OWNER_COOKIE } })).status()).toBe(200);
+    expect((await api.get(`/api/flows/${slug}`)).status()).toBe(404);
+    expect((await api.get(`/api/flows/${slug}`, { headers: { Cookie: OWNER_COOKIE } })).status()).toBe(200);
     // And a slug cannot be used to mutate anything.
-    expect((await api.delete(`/api/system-designs/${slug}`, { headers: { Cookie: OWNER_COOKIE } })).status()).toBe(400);
+    expect((await api.delete(`/api/flows/${slug}`, { headers: { Cookie: OWNER_COOKIE } })).status()).toBe(400);
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } });
-    await api.delete(`/api/system-designs/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
   }
 });
@@ -204,7 +204,7 @@ test("a slug for a PRIVATE design stays hidden from a stranger", async ({ baseUR
 // that correction has to survive a reload or it is worthless.
 test("a step badge slides ALONG its edge, persists, and double-click resets it", async ({ page, context, baseURL }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: { ...DESIGN, title: "E2E Badge Drag" },
   });
@@ -278,8 +278,8 @@ test("a step badge slides ALONG its edge, persists, and double-click resets it",
     await open();
     expect(dist(await at(), before)).toBeLessThan(10);
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } });
-    await api.delete(`/api/system-designs/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
   }
 });
@@ -288,7 +288,7 @@ test("a step badge slides ALONG its edge, persists, and double-click resets it",
 // a node pans the canvas instead of moving it.
 test("a visitor cannot move a node on /demo and gets no edit, share or export controls", async ({ browser, baseURL }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: {
       title: "Locked demo check", is_public: true,
@@ -298,7 +298,7 @@ test("a visitor cannot move a node on /demo and gets no edit, share or export co
   });
   const id = (await create.json()).url.split("/?id=")[1];
   try {
-    const row = await (await api.get(`/api/system-designs/${id}`)).json();
+    const row = await (await api.get(`/api/flows/${id}`)).json();
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } }); // no owner cookie
     const page = await ctx.newPage();
     await page.goto(`/demo?name=${row.slug}`);
@@ -322,7 +322,7 @@ test("a visitor cannot move a node on /demo and gets no edit, share or export co
     await expect(page.locator('header button:has-text("Steps")')).toHaveCount(1);
     await ctx.close();
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
   }
 });
 
@@ -330,7 +330,7 @@ test("a visitor cannot move a node on /demo and gets no edit, share or export co
 // whole screen, and the badge opens it on demand.
 test("the info card starts folded on a phone and the badge opens it", async ({ browser, baseURL }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: {
       title: "Info card fold check", is_public: true,
@@ -343,7 +343,7 @@ test("the info card starts folded on a phone and the badge opens it", async ({ b
   expect(create.status()).toBe(201);
   const id = (await create.json()).url.split("/?id=")[1];
   try {
-    const row = await (await api.get(`/api/system-designs/${id}`)).json();
+    const row = await (await api.get(`/api/flows/${id}`)).json();
     expect(row.pattern).toContain("Read-heavy");
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();
@@ -369,7 +369,7 @@ test("the info card starts folded on a phone and the badge opens it", async ({ b
     await expect(page.locator(".sd-info-badge")).toHaveCount(1);
     await ctx.close();
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
   }
 });
 
@@ -377,14 +377,14 @@ test("the info card starts folded on a phone and the badge opens it", async ({ b
 // are finger-sized, and the app mark lines up with the content below it.
 test("phone header: matched tiles, finger-sized targets, aligned app logo", async ({ browser, baseURL }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     // "Bitly" is in the brand map, so the title carries a brand tile.
     data: { title: "Bitly", is_public: true, nodes: [{ id: "user" }, { id: "apigw" }], edges: [{ source: "user", target: "apigw" }] },
   });
   const id = (await create.json()).url.split("/?id=")[1];
   try {
-    const row = await (await api.get(`/api/system-designs/${id}`)).json();
+    const row = await (await api.get(`/api/flows/${id}`)).json();
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();
 
@@ -426,7 +426,7 @@ test("phone header: matched tiles, finger-sized targets, aligned app logo", asyn
     expect(Math.round(logo.x)).toBe(Math.round(mainPadLeft));
     await ctx.close();
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
   }
 });
 
@@ -435,7 +435,7 @@ test("phone header: matched tiles, finger-sized targets, aligned app logo", asyn
 // It builds its own diagram: a fresh CI database has none of the curated demos.
 test("phone keeps Fit reachable and never hides a button out of reach", async ({ browser, baseURL }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: {
       title: "Phone fit button check", is_public: true,
@@ -446,7 +446,7 @@ test("phone keeps Fit reachable and never hides a button out of reach", async ({
   expect(create.status()).toBe(201);
   const id = (await create.json()).url.split("/?id=")[1];
   try {
-    const row = await (await api.get(`/api/system-designs/${id}`)).json();
+    const row = await (await api.get(`/api/flows/${id}`)).json();
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();
     await page.goto(`/demo?name=${row.slug}`);
@@ -469,6 +469,6 @@ test("phone keeps Fit reachable and never hides a button out of reach", async ({
     expect(Math.abs((await scale()) - fitted)).toBeLessThan(0.05);
     await ctx.close();
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
   }
 });

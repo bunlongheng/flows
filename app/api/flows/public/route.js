@@ -1,6 +1,6 @@
-import handler from "../../../lib/handlers/list-system-designs.js";
-import { withErrors } from "../../../lib/wrap.js";
-import { toRoute } from "../../../lib/next-adapter.js";
+import handler from "../../../../lib/handlers/list-public-flows.js";
+import { withErrors } from "../../../../lib/wrap.js";
+import { toRoute } from "../../../../lib/next-adapter.js";
 
 // Node runtime: these handlers use pg and, for the card, a native rasteriser.
 export const runtime = "nodejs";

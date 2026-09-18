@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Mock the DB so the create handler's payload caps can be tested without a
-// real Postgres, following the create-system-design.test.js pattern.
+// real Postgres, following the create-flows.test.js pattern.
 const query = vi.fn();
 vi.mock("../../lib/db.js", () => ({ default: { query: (...a) => query(...a) } }));
 
-const { default: createSystemDesign } = await import("../../lib/handlers/create-system-design.js");
+const { default: createFlow } = await import("../../lib/handlers/create-flow.js");
 
 function mockRes() {
   return {
@@ -23,23 +23,23 @@ function mockRes() {
 }
 
 const SECRET = "test-secret-abc123";
-const good = (body) => ({ method: "POST", headers: { host: "system-design-bheng.vercel.app", authorization: `Bearer ${SECRET}` }, body });
+const good = (body) => ({ method: "POST", headers: { host: "flows-bheng.vercel.app", authorization: `Bearer ${SECRET}` }, body });
 
-describe("POST /api/ai/system-designs payload caps", () => {
-  const orig = { s: process.env.SYSTEM_DESIGNS_API_SECRET, o: process.env.OWNER_USER_ID };
+describe("POST /api/ai/flows payload caps", () => {
+  const orig = { s: process.env.FLOWS_API_SECRET, o: process.env.OWNER_USER_ID };
   beforeEach(() => {
-    process.env.SYSTEM_DESIGNS_API_SECRET = SECRET;
+    process.env.FLOWS_API_SECRET = SECRET;
     process.env.OWNER_USER_ID = "731ace87-64e5-44db-bf2a-82265f06f4d9";
     query.mockReset();
   });
   afterEach(() => {
-    process.env.SYSTEM_DESIGNS_API_SECRET = orig.s;
+    process.env.FLOWS_API_SECRET = orig.s;
     process.env.OWNER_USER_ID = orig.o;
   });
 
   it("400s when title is longer than 200 characters", async () => {
     const res = mockRes();
-    await createSystemDesign(
+    await createFlow(
       good({
         title: "x".repeat(201),
         nodes: [{ id: "user", position: { x: 0, y: 0 } }],
@@ -54,7 +54,7 @@ describe("POST /api/ai/system-designs payload caps", () => {
   it("400s when nodes array length is greater than 100", async () => {
     const res = mockRes();
     const nodes = Array.from({ length: 101 }, () => ({ id: "user", position: { x: 0, y: 0 } }));
-    await createSystemDesign(good({ title: "Too many nodes", nodes, edges: [] }), res);
+    await createFlow(good({ title: "Too many nodes", nodes, edges: [] }), res);
     expect(res.statusCode).toBe(400);
     expect(query).not.toHaveBeenCalled();
   });
@@ -63,7 +63,7 @@ describe("POST /api/ai/system-designs payload caps", () => {
     const res = mockRes();
     const nodes = [{ id: "user", position: { x: 0, y: 0 } }];
     const edges = Array.from({ length: 301 }, () => ({ source: "user", target: "user" }));
-    await createSystemDesign(good({ title: "Too many edges", nodes, edges }), res);
+    await createFlow(good({ title: "Too many edges", nodes, edges }), res);
     expect(res.statusCode).toBe(400);
     expect(query).not.toHaveBeenCalled();
   });

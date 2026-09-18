@@ -116,7 +116,7 @@ const defaultNodes = diagramData.nodes.map(n => ({ ...n, type: 'awsNode', data: 
 // Where a shared link has to point. Sharing from localhost (or a Vercel preview)
 // must still hand someone a URL that opens for them, so the origin is pinned to
 // prod unless we are already served from a real host. Mirrors the diagrams app.
-const PROD_ORIGIN = 'https://system-design-bheng.vercel.app'
+const PROD_ORIGIN = 'https://flows-bheng.vercel.app'
 const publicOrigin = () => {
   if (typeof window === 'undefined') return PROD_ORIGIN
   const { origin, hostname } = window.location
@@ -235,7 +235,7 @@ export default function App() {
     // Showcase view = the public /demo route OR the owner's "Demos" tab -> the 12
     // curated public designs. Otherwise the owner's personal (non-demo) diagrams.
     const showcase = isDemo || galleryTab === 'demos'
-    return fetch(showcase ? '/api/system-designs/public' : '/api/system-designs')
+    return fetch(showcase ? '/api/flows/public' : '/api/flows')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then(rows => {
         const mapped = rows.map(rowToDiagram)
@@ -267,7 +267,7 @@ export default function App() {
   }
 
   function deleteDiagram(id, { thenBack = false } = {}) {
-    fetch(`/api/system-designs/${id}`, { method: 'DELETE' }).then(res => {
+    fetch(`/api/flows/${id}`, { method: 'DELETE' }).then(res => {
       if (!res.ok) { showToastMsg('Delete failed'); return }
       // Deleting the diagram you are looking at has to leave the canvas too,
       // or you are staring at something that no longer exists.
@@ -350,7 +350,7 @@ export default function App() {
         const payload = data.edges.map((e, i) => ({
           id: e.id || `e${i}`, ...(typeof e.labelT === 'number' ? { labelT: e.labelT } : {}),
         }))
-        fetch(`/api/system-designs/${a.id}`, {
+        fetch(`/api/flows/${a.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ edges: payload }),
@@ -371,7 +371,7 @@ export default function App() {
     setActiveDiagram(a => (a ? { ...a, data: { ...a.data, nodes: patch(a.data.nodes) } } : a))
     if (!activeId) return
     setDiagrams(ds => ds.map(d => (d.id !== activeId ? d : { ...d, data: { ...d.data, nodes: patch(d.data.nodes) } })))
-    fetch(`/api/system-designs/${activeId}`, {
+    fetch(`/api/flows/${activeId}`, {
       method: 'PATCH', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ notes: [{ id: nodeId, note }] }),
@@ -467,7 +467,7 @@ export default function App() {
       }))
     if (!payload.length) return
     setSaveState('saving')
-    fetch(`/api/system-designs/${diagramId}`, {
+    fetch(`/api/flows/${diagramId}`, {
       method: 'PATCH', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nodes: payload }),
@@ -649,7 +649,7 @@ export default function App() {
     const id = new URLSearchParams(window.location.search).get('id')
     if (!id) return
     setLoadingId(true)
-    fetch(`/api/system-designs/${id}`)
+    fetch(`/api/flows/${id}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then(d => {
         openDiagram(rowToDiagram(d))
@@ -677,7 +677,7 @@ export default function App() {
     // endpoints instead, which silently could not see a PUBLISHED non-demo
     // design: the owner list returns only private rows and the public list only
     // the curated demos, so sharing a diagram broke its own link.
-    fetch(`/api/system-designs/${encodeURIComponent(name)}`)
+    fetch(`/api/flows/${encodeURIComponent(name)}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then(row => {
         openDiagram(rowToDiagram(row))
@@ -708,7 +708,7 @@ export default function App() {
     const savingId = activeDiagram.id
     viewSaveTimer.current = setTimeout(() => {
       const view_state = { panels: panelKey ? panelKey.split(',') : [], badge: badgeMode }
-      fetch(`/api/system-designs/${savingId}`, {
+      fetch(`/api/flows/${savingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ view_state }),
@@ -909,7 +909,7 @@ export default function App() {
   async function ensureShareable() {
     if (!canAI || !activeDiagram?.id || activeDiagram.is_public) return
     try {
-      const r = await fetch(`/api/system-designs/${activeDiagram.id}`, {
+      const r = await fetch(`/api/flows/${activeDiagram.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_public: true }),
@@ -928,7 +928,7 @@ export default function App() {
     if (!canAI || !activeDiagram?.id) return
     const next = activeDiagram.is_public === false
     try {
-      const r = await fetch(`/api/system-designs/${activeDiagram.id}`, {
+      const r = await fetch(`/api/flows/${activeDiagram.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_public: next }),
@@ -955,7 +955,7 @@ export default function App() {
     await ensureShareable()
     const url = shareUrl
     if (navigator.share) {
-      navigator.share({ title: activeDiagram?.title || 'System Design', url }).catch(() => {})
+      navigator.share({ title: activeDiagram?.title || 'Flows', url }).catch(() => {})
     } else {
       navigator.clipboard.writeText(url).then(() => {
         setCopiedShare(true); setTimeout(() => setCopiedShare(false), 1500)

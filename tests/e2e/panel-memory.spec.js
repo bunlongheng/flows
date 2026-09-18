@@ -8,14 +8,14 @@ import { signSession } from "../../lib/auth-session.js";
 // view_state goes stale the moment a panel is toggled. Reopening from the stale
 // row reset the panels - and the reset was then SAVED, destroying the real state,
 // so the next reload lost it too. The reload-only spec could never have caught it.
-const SECRET = process.env.SYSTEM_DESIGNS_API_SECRET || "e2e-secret";
+const SECRET = process.env.FLOWS_API_SECRET || "e2e-secret";
 const OWNER_COOKIE = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
 
 test.use({ viewport: { width: 1500, height: 950 } });
 
 const DESIGN = {
   title: "E2E Panel Memory",
-  type: "system-design",
+  type: "flows",
   nodes: [{ id: "user" }, { id: "apigw" }, { id: "lambda" }],
   edges: [
     { source: "user", target: "apigw", label: "one" },
@@ -25,7 +25,7 @@ const DESIGN = {
 
 test("Steps survives back-to-gallery and reopen, and off stays off", async ({ page, context, baseURL }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: DESIGN,
   });
@@ -72,8 +72,8 @@ test("Steps survives back-to-gallery and reopen, and off stays off", async ({ pa
     await page.waitForSelector(".react-flow__node", { timeout: 20000 });
     await expect.poll(() => on("Steps"), { timeout: 10000 }).toBe(false);
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } });
-    await api.delete(`/api/system-designs/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
   }
 });
@@ -83,18 +83,18 @@ test("Steps survives back-to-gallery and reopen, and off stays off", async ({ pa
 // looked used to slide out over the canvas on their phone.
 test("a visitor on a shared link gets no panels, even if the owner left share + steps open", async ({ browser, baseURL }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: { ...DESIGN, title: `${DESIGN.title} visitor`, is_public: true },
   });
   const id = (await create.json()).url.split("/?id=")[1];
   try {
-    const saved = await api.patch(`/api/system-designs/${id}`, {
+    const saved = await api.patch(`/api/flows/${id}`, {
       headers: { cookie: OWNER_COOKIE },
       data: { view_state: { panels: ["share", "steps"], badge: "dark" } },
     });
     expect(saved.ok()).toBe(true);
-    const row = await (await api.get(`/api/system-designs/${id}`)).json();
+    const row = await (await api.get(`/api/flows/${id}`)).json();
 
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } }); // no cookie: a recipient on a phone
     const page = await ctx.newPage();
@@ -105,6 +105,6 @@ test("a visitor on a shared link gets no panels, even if the owner left share + 
     expect((await page.locator('button:has-text("Steps")').first().evaluate((e) => e.className))).not.toContain("is-on");
     await ctx.close();
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
   }
 });

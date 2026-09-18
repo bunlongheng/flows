@@ -5,7 +5,7 @@ import { signSession } from "../../lib/auth-session.js";
 // while dragging paints the yellow guide AND that the node actually lands on the
 // neighbour's line when released (the release is the part that silently breaks
 // if the snap is applied to the node instead of to the position change).
-const SECRET = process.env.SYSTEM_DESIGNS_API_SECRET || "e2e-secret";
+const SECRET = process.env.FLOWS_API_SECRET || "e2e-secret";
 const OWNER_COOKIE = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
 
 // A roomy viewport keeps the drag away from the canvas edges, where React Flow
@@ -14,7 +14,7 @@ test.use({ viewport: { width: 1440, height: 900 } });
 
 const DESIGN = {
   title: "E2E Snap Align",
-  type: "system-design",
+  type: "flows",
   nodes: [
     { id: "user", position: { x: 100, y: 100 } },
     { id: "lambda", position: { x: 500, y: 420 } },
@@ -30,14 +30,14 @@ const flowY = async locator => {
 
 test("Cmd + drag snaps a node onto its neighbour's line and shows a yellow guide", async ({ page, context, baseURL }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: DESIGN,
   });
   expect(create.status()).toBe(201);
   const { url } = await create.json();
   const id = url.split("/?id=")[1];
-  await api.patch(`/api/system-designs/${id}`, {
+  await api.patch(`/api/flows/${id}`, {
     headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" },
     data: { is_public: true },
   });
@@ -88,7 +88,7 @@ test("Cmd + drag snaps a node onto its neighbour's line and shows a yellow guide
     expect(await flowY(moving)).toBe(anchorY);
     await expect(page.locator(".sd-snap-guide")).toHaveCount(0);
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
   }
 });

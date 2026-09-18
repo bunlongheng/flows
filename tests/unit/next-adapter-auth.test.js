@@ -13,14 +13,14 @@ afterEach(() => { for (const k of Object.keys(ENV)) process.env[k] = saved[k]; }
 
 describe("toRoute + auth handlers (writeHead)", () => {
   it("GET /api/auth/login answers 302 to Google with a state cookie", async () => {
-    const res = await toRoute(authLogin)(new Request("https://system-design-bheng.vercel.app/api/auth/login"), {});
+    const res = await toRoute(authLogin)(new Request("https://flows-bheng.vercel.app/api/auth/login"), {});
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toContain("accounts.google.com");
     expect(res.headers.get("set-cookie")).toContain("sd_oauth_state=");
   });
 
   it("GET /api/auth/callback with a bad state answers 302 to ?auth=error, never 500", async () => {
-    const res = await toRoute(authCallback)(new Request("https://system-design-bheng.vercel.app/api/auth/callback?code=x&state=nope"), {});
+    const res = await toRoute(authCallback)(new Request("https://flows-bheng.vercel.app/api/auth/callback?code=x&state=nope"), {});
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toContain("auth=error");
   });

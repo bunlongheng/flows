@@ -21,7 +21,7 @@ export async function designMetadata(searchParams, path) {
   let rows = [];
   try {
     ({ rows } = await db.query(
-      `SELECT title, slug, description, pattern FROM system_designs WHERE ${name ? "slug = $1" : "id = $1::uuid"} AND is_public = true AND deleted_at IS NULL LIMIT 1`,
+      `SELECT title, slug, description, pattern FROM flows WHERE ${name ? "slug = $1" : "id = $1::uuid"} AND is_public = true AND deleted_at IS NULL LIMIT 1`,
       [name || id],
     ));
   } catch {
@@ -35,7 +35,7 @@ export async function designMetadata(searchParams, path) {
   const url = `${path}?name=${encodeURIComponent(row.slug)}`;
   const image = `/api/og?name=${encodeURIComponent(row.slug)}`;
   return {
-    title: `${row.title} · System Design`,
+    title: `${row.title} · Flows`,
     description,
     openGraph: { type: "article", title: row.title, description, url, images: [{ url: image, width: 1200, height: 630 }] },
     twitter: { card: "summary_large_image", title: row.title, description, images: [image] },

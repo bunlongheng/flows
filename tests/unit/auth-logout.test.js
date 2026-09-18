@@ -21,7 +21,7 @@ function mockRes() {
 }
 
 function req() {
-  return { method: "POST", headers: { host: "system-design-bheng.vercel.app" } };
+  return { method: "POST", headers: { host: "flows-bheng.vercel.app" } };
 }
 
 describe("POST /api/auth/logout", () => {

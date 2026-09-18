@@ -2,15 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { bearerOk, authorizeOwner, ownerId } from "../../lib/auth-owner.js";
 
 const SECRET = "test-secret-abc123";
-const prodReq = (auth) => ({ headers: { host: "system-design-bheng.vercel.app", authorization: auth } });
+const prodReq = (auth) => ({ headers: { host: "flows-bheng.vercel.app", authorization: auth } });
 
 describe("bearerOk (constant-time Bearer check)", () => {
-  const orig = process.env.SYSTEM_DESIGNS_API_SECRET;
+  const orig = process.env.FLOWS_API_SECRET;
   beforeEach(() => {
-    process.env.SYSTEM_DESIGNS_API_SECRET = SECRET;
+    process.env.FLOWS_API_SECRET = SECRET;
   });
   afterEach(() => {
-    process.env.SYSTEM_DESIGNS_API_SECRET = orig;
+    process.env.FLOWS_API_SECRET = orig;
   });
 
   it("accepts the correct Bearer secret", () => {
@@ -32,20 +32,20 @@ describe("bearerOk (constant-time Bearer check)", () => {
   });
 
   it("returns false when no secret is configured", () => {
-    delete process.env.SYSTEM_DESIGNS_API_SECRET;
+    delete process.env.FLOWS_API_SECRET;
     expect(bearerOk(prodReq(`Bearer ${SECRET}`))).toBe(false);
   });
 });
 
 describe("authorizeOwner", () => {
-  const orig = { s: process.env.SYSTEM_DESIGNS_API_SECRET, e: process.env.NODE_ENV, l: process.env.LOCAL_DEV };
+  const orig = { s: process.env.FLOWS_API_SECRET, e: process.env.NODE_ENV, l: process.env.LOCAL_DEV };
   beforeEach(() => {
-    process.env.SYSTEM_DESIGNS_API_SECRET = SECRET;
+    process.env.FLOWS_API_SECRET = SECRET;
     delete process.env.NODE_ENV;
     delete process.env.LOCAL_DEV;
   });
   afterEach(() => {
-    process.env.SYSTEM_DESIGNS_API_SECRET = orig.s;
+    process.env.FLOWS_API_SECRET = orig.s;
     process.env.NODE_ENV = orig.e;
     process.env.LOCAL_DEV = orig.l;
   });

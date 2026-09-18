@@ -1,4 +1,4 @@
-import handler from "../../../../lib/handlers/create-system-design.js";
+import handler from "../../../../lib/handlers/create-flow.js";
 import { withErrors } from "../../../../lib/wrap.js";
 import { toRoute } from "../../../../lib/next-adapter.js";
 

@@ -6,7 +6,7 @@ import { signSession } from "../../lib/auth-session.js";
 // (allowBearer:false) - that is what lets the signed-in owner use AI generate in
 // prod - while a non-owner session must be rejected.
 const prodReq = (cookie) => ({
-  headers: { host: "system-design-bheng.vercel.app", cookie },
+  headers: { host: "flows-bheng.vercel.app", cookie },
 });
 
 describe("authorizeOwner via Google owner session", () => {

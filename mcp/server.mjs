@@ -1,18 +1,18 @@
 #!/usr/bin/env node
-// ─── system-design MCP server ────────────────────────────────────────────────
-// Exposes the System Design app to any MCP-capable agent (Claude Code, Claude
+// ─── flows MCP server ────────────────────────────────────────────────
+// Exposes the Flows app to any MCP-capable agent (Claude Code, Claude
 // Desktop, etc.) so it can discover, read, create, update, and delete the same
 // diagrams the web app renders. Talks straight to the shared Postgres via the
 // app's own lib/ layer, so anything created here shows up in the app instantly.
 //
 // Env (from the repo .env): DATABASE_URL, OWNER_USER_ID. Optional:
-// SYSTEM_DESIGNS_APP_URL (default prod) for the shareable links it returns.
+// FLOWS_APP_URL (default prod) for the shareable links it returns.
 import './load-env.mjs' // MUST be first - loads .env before lib/db.js opens the pool
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 import db from '../lib/db.js'
-import { uniqueSystemDesignSlug } from '../lib/slugs.js'
+import { uniqueFlowSlug } from '../lib/slugs.js'
 import { titleBase, MIN_BASE_LEN } from '../lib/title-base.js'
 import { arrangeNew } from '../lib/arrange.js'
 import { ownerId } from '../lib/auth-owner.js'
@@ -21,7 +21,7 @@ import { resolveNodeIcons } from '../lib/resolve-icon.js'
 import { cleanNote } from '../src/note.js'
 import { validateDesign, okColor } from '../lib/validate-design.js'
 
-const APP_URL = process.env.SYSTEM_DESIGNS_APP_URL || 'https://system-design-bheng.vercel.app'
+const APP_URL = process.env.FLOWS_APP_URL || 'https://flows-bheng.vercel.app'
 const urlFor = id => `${APP_URL}/?id=${id}`
 // The link to hand to people. It opens for anyone and unfurls with the diagram
 // itself (Slack, iMessage) - as long as the design is public.
@@ -122,7 +122,7 @@ async function similarRecent(userId, title, excludeId) {
   const base = titleBase(title)
   if (base.length < MIN_BASE_LEN) return null // too generic to accuse anything
   const { rows } = await db.query(
-    `SELECT id, title, created_at FROM system_designs
+    `SELECT id, title, created_at FROM flows
      WHERE user_id = $1 AND id <> $2 AND deleted_at IS NULL
        AND created_at > now() - interval '7 days'
      ORDER BY created_at DESC LIMIT 40`,
@@ -135,20 +135,20 @@ async function similarRecent(userId, title, excludeId) {
   return { id: hit.id, title: hit.title, age }
 }
 
-const server = new McpServer({ name: 'system-design', version: '1.0.0' })
+const server = new McpServer({ name: 'flows', version: '1.0.0' })
 
 // ── Discover: how many diagrams, and their shape ────────────────────────────
 server.registerTool(
-  'list_system_designs',
+  'list_flows',
   {
-    title: 'List system designs',
-    description: "List all of the owner's saved system-design diagrams (newest first) with their id, title, node/edge counts, and shareable URL.",
+    title: 'List flows',
+    description: "List all of the owner's saved flows diagrams (newest first) with their id, title, node/edge counts, and shareable URL.",
     inputSchema: {},
   },
   async () => {
     try {
       const { rows } = await db.query(
-        'SELECT id, title, slug, nodes, edges, created_at FROM system_designs WHERE user_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 200',
+        'SELECT id, title, slug, nodes, edges, created_at FROM flows WHERE user_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 200',
         [owner()],
       )
       return ok({
@@ -165,15 +165,15 @@ server.registerTool(
 
 // ── Read one diagram in full ────────────────────────────────────────────────
 server.registerTool(
-  'get_system_design',
+  'get_flow',
   {
-    title: 'Get system design',
+    title: 'Get flow',
     description: 'Fetch one diagram by id, returning its full title, nodes, and edges (the exact structure the app renders).',
-    inputSchema: { id: z.string().describe('The diagram id (uuid) from list_system_designs') },
+    inputSchema: { id: z.string().describe('The diagram id (uuid) from list_flows') },
   },
   async ({ id }) => {
     try {
-      const { rows } = await db.query('SELECT id, title, slug, nodes, edges, created_at FROM system_designs WHERE id = $1 AND deleted_at IS NULL', [id])
+      const { rows } = await db.query('SELECT id, title, slug, nodes, edges, created_at FROM flows WHERE id = $1 AND deleted_at IS NULL', [id])
       if (!rows.length) return fail(`No diagram with id ${id}`)
       return ok({ ...rows[0], url: urlFor(id) })
     } catch (e) { return fail(`get failed: ${e.message}`) }
@@ -182,9 +182,9 @@ server.registerTool(
 
 // ── Create ──────────────────────────────────────────────────────────────────
 server.registerTool(
-  'create_system_design',
+  'create_flow',
   {
-    title: 'Create system design',
+    title: 'Create flow',
     description: "Create a new diagram. Provide a title, nodes, and edges connecting node ids. Each node is EITHER a known catalog service (call list_services), OR a bring-your-own node with a custom `icon` (a remote https logo URL, a data:image URI, or a /path) plus a `label`. Remote https icons are fetched and inlined once so the diagram stays self-contained. Positions are optional (the app auto-layouts). Returns the new id and URL.",
     inputSchema: {
       title: z.string().describe('Descriptive title, e.g. "URL Shortener - Tier 1"'),
@@ -215,15 +215,15 @@ server.registerTool(
       const { nodes: iconNodes, failed } = await resolveNodeIcons(nodes)
       if (failed.length) return fail(`Could not fetch the remote icon for node(s): ${failed.join(', ')}. Use an https image URL that returns image/* under 24KB (no redirects), or inline a data:image URI.`)
       const o = owner()
-      const slug = await uniqueSystemDesignSlug(o, title)
+      const slug = await uniqueFlowSlug(o, title)
       const storedEdges = toStoredEdges(edges)
       const enforced = enforceStartLeft(toStoredNodes(iconNodes), storedEdges)
       // Born arranged: a new diagram gets the same layout the Arrange button
       // produces, so it never lands on the canvas crammed.
       const storedNodes = arrangeNew(enforced.nodes, storedEdges)
       const { rows } = await db.query(
-        'INSERT INTO system_designs (user_id, title, slug, nodes, edges, type, tags, is_public, pattern, description) VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6,$7::text[],$8,$9,$10) RETURNING id',
-        [o, title.trim(), slug, JSON.stringify(storedNodes), JSON.stringify(storedEdges), 'system-design', ['MCP'], isPublic, pattern?.trim() || null, description?.trim() || null],
+        'INSERT INTO flows (user_id, title, slug, nodes, edges, type, tags, is_public, pattern, description) VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6,$7::text[],$8,$9,$10) RETURNING id',
+        [o, title.trim(), slug, JSON.stringify(storedNodes), JSON.stringify(storedEdges), 'flow', ['MCP'], isPublic, pattern?.trim() || null, description?.trim() || null],
       )
       const id = rows[0].id
 
@@ -237,13 +237,13 @@ server.registerTool(
         url: urlFor(id),
         share_url: shareUrlFor(slug),
         visibility: isPublic ? 'public' : 'private',
-        ...(isPublic ? {} : { share_note: 'Private: recipients get a 404 and Slack shows the generic site card. Call update_system_design with public: true before sending the link.' }),
+        ...(isPublic ? {} : { share_note: 'Private: recipients get a 404 and Slack shows the generic site card. Call update_flow with public: true before sending the link.' }),
         ...(enforced.warning ? { layout: enforced.warning } : {}),
         ...(near ? {
           warning:
             `A diagram named "${near.title}" (id ${near.id}) was created ${near.age} and looks like the same thing ` +
-            `under a different version suffix. If this was meant to be a revision, call update_system_design on ` +
-            `${near.id} and then delete_system_design on ${id} - do not keep making v2, v2.1, v2.2.`,
+            `under a different version suffix. If this was meant to be a revision, call update_flow on ` +
+            `${near.id} and then delete_flow on ${id} - do not keep making v2, v2.1, v2.2.`,
           probably_update: near.id,
         } : {}),
       })
@@ -253,13 +253,13 @@ server.registerTool(
 
 // ── Update (modify title / nodes / edges) ───────────────────────────────────
 server.registerTool(
-  'update_system_design',
+  'update_flow',
   {
-    title: 'Update system design',
+    title: 'Update flow',
     description:
       'Modify an existing diagram by id, at any age. Any of title, nodes, or edges you provide replaces that field; ' +
       'omitted fields are left unchanged. ALWAYS prefer this over creating a "v2" of a diagram that already exists - ' +
-      'call list_system_designs to find the id. Backfilling or correcting old diagrams is exactly what this is for.',
+      'call list_flows to find the id. Backfilling or correcting old diagrams is exactly what this is for.',
     inputSchema: {
       id: z.string().describe('The diagram id to update'),
       reason: z.string().optional().describe('Optional note on why, e.g. "backfill: correct the Integry decommission date". Recorded on the row as a trail; never required.'),
@@ -268,7 +268,7 @@ server.registerTool(
         id: z.string(), x: z.number().optional(), y: z.number().optional(),
         icon: z.string().optional().describe('Bring-your-own logo: https URL, data:image URI, or /path'),
         label: z.string().optional(), sub: z.string().optional(), color: z.string().optional(),
-        note: z.string().max(400).optional().describe('Plain-text note under the node; see create_system_design. Omit to leave a node without one.'),
+        note: z.string().max(400).optional().describe('Plain-text note under the node; see create_flow. Omit to leave a node without one.'),
       })).optional(),
       edges: z.array(z.object({ source: z.string(), target: z.string(), label: z.string().optional() })).optional(),
       public: z.boolean().optional().describe('true publishes (anyone with the link can open it, real preview card); false makes it private again. Omit to leave visibility alone.'),
@@ -298,7 +298,7 @@ server.registerTool(
       }
 
       const { rows } = await db.query(
-        `UPDATE system_designs SET
+        `UPDATE flows SET
            title = COALESCE($2, title),
            nodes = COALESCE($3::jsonb, nodes),
            edges = COALESCE($4::jsonb, edges),
@@ -327,12 +327,12 @@ server.registerTool(
 // gallery and shared link, but it is kept. Cleaning up a batch of duplicates is
 // therefore always reversible, which is the whole point of doing it in bulk.
 server.registerTool(
-  'delete_system_design',
+  'delete_flow',
   {
-    title: 'Delete system design',
+    title: 'Delete flow',
     description:
       'Move a diagram to trash by id. This is a soft delete - it disappears from the gallery, the demo list and any ' +
-      'shared link, but the row is kept and restore_system_design can bring it back. Safe for cleaning up duplicates.',
+      'shared link, but the row is kept and restore_flow can bring it back. Safe for cleaning up duplicates.',
     inputSchema: {
       id: z.string().describe('The diagram id to move to trash'),
       reason: z.string().optional().describe('Why it is being removed, e.g. "duplicate of v2.2". Recorded on the row.'),
@@ -341,27 +341,27 @@ server.registerTool(
   async ({ id, reason }) => {
     try {
       const { rows } = await db.query(
-        `UPDATE system_designs SET deleted_at = now(), update_reason = COALESCE($3, update_reason)
+        `UPDATE flows SET deleted_at = now(), update_reason = COALESCE($3, update_reason)
          WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL RETURNING id, title`,
         [id, owner(), reason?.trim() ?? null],
       )
       if (!rows.length) return fail(`No owned, un-trashed diagram with id ${id}`)
-      return ok({ trashed: id, title: rows[0].title, recoverable: true, restore_with: 'restore_system_design' })
+      return ok({ trashed: id, title: rows[0].title, recoverable: true, restore_with: 'restore_flow' })
     } catch (e) { return fail(`delete failed: ${e.message}`) }
   },
 )
 
 server.registerTool(
-  'restore_system_design',
+  'restore_flow',
   {
-    title: 'Restore system design',
+    title: 'Restore flow',
     description: 'Bring a trashed diagram back by id. Call list_trash to see what is in there.',
     inputSchema: { id: z.string().describe('The diagram id to restore from trash') },
   },
   async ({ id }) => {
     try {
       const { rows } = await db.query(
-        'UPDATE system_designs SET deleted_at = NULL WHERE id = $1 AND user_id = $2 AND deleted_at IS NOT NULL RETURNING id, title',
+        'UPDATE flows SET deleted_at = NULL WHERE id = $1 AND user_id = $2 AND deleted_at IS NOT NULL RETURNING id, title',
         [id, owner()],
       )
       if (!rows.length) return fail(`No trashed diagram with id ${id}`)
@@ -371,21 +371,21 @@ server.registerTool(
 )
 
 server.registerTool(
-  'purge_system_design',
+  'purge_flow',
   {
-    title: 'Purge system design (permanent)',
+    title: 'Purge flow (permanent)',
     description:
       'PERMANENTLY delete a diagram that is already in trash. This cannot be undone. A live diagram must be moved to ' +
-      'trash with delete_system_design first, so destroying anything always takes two deliberate steps.',
+      'trash with delete_flow first, so destroying anything always takes two deliberate steps.',
     inputSchema: { id: z.string().describe('The id of a TRASHED diagram to destroy permanently') },
   },
   async ({ id }) => {
     try {
       const { rowCount } = await db.query(
-        'DELETE FROM system_designs WHERE id = $1 AND user_id = $2 AND deleted_at IS NOT NULL',
+        'DELETE FROM flows WHERE id = $1 AND user_id = $2 AND deleted_at IS NOT NULL',
         [id, owner()],
       )
-      if (!rowCount) return fail(`No TRASHED diagram with id ${id} - call delete_system_design first, or list_trash to check`)
+      if (!rowCount) return fail(`No TRASHED diagram with id ${id} - call delete_flow first, or list_trash to check`)
       return ok({ purged: id, permanent: true })
     } catch (e) { return fail(`purge failed: ${e.message}`) }
   },
@@ -394,8 +394,8 @@ server.registerTool(
 server.registerTool(
   'list_trash',
   {
-    title: 'List trashed system designs',
-    description: "Everything the owner has moved to trash, newest first, with the id restore_system_design needs.",
+    title: 'List trashed flows',
+    description: "Everything the owner has moved to trash, newest first, with the id restore_flow needs.",
     inputSchema: {},
   },
   async () => {
@@ -403,7 +403,7 @@ server.registerTool(
       const { rows } = await db.query(
         `SELECT id, title, slug, deleted_at, update_reason,
                 jsonb_array_length(nodes) AS nodes, jsonb_array_length(edges) AS edges
-         FROM system_designs WHERE user_id = $1 AND deleted_at IS NOT NULL
+         FROM flows WHERE user_id = $1 AND deleted_at IS NOT NULL
          ORDER BY deleted_at DESC LIMIT 200`,
         [owner()],
       )
@@ -459,4 +459,4 @@ server.registerTool(
 const transport = new StdioServerTransport()
 await server.connect(transport)
 // stderr only - stdout is the MCP transport channel.
-console.error('system-design MCP server running on stdio')
+console.error('flows MCP server running on stdio')

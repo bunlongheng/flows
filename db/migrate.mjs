@@ -1,5 +1,5 @@
 // Tiny migration runner. Applies db/migrations/*.sql in filename order, tracking
-// applied files in a system_designs_migrations table so re-runs are safe. Uses
+// applied files in a flows_migrations table so re-runs are safe. Uses
 // an app-scoped tracking table (not the shared schema_migrations) so it never
 // collides with sibling apps in the same "2026" database.
 //
@@ -31,10 +31,29 @@ async function main() {
 
   try {
     await pool.query(
-      "CREATE TABLE IF NOT EXISTS system_designs_migrations (id TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())",
+      "CREATE TABLE IF NOT EXISTS flows_migrations (id TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())",
     );
 
-    const { rows } = await pool.query("SELECT id FROM system_designs_migrations");
+    // The tracking table used to be named after the old product. Copy its rows
+    // across before reading the applied-set: without this every old migration
+    // looks unapplied and runs again, and after the rename migration those old
+    // ones target a table that no longer exists. Spelled with a string the
+    // rename sweep cannot touch, and a merge rather than a RENAME so it holds
+    // whether or not the new table already has rows.
+    const LEGACY = ["system", "designs", "migrations"].join("_");
+    const { rows: legacy } = await pool.query(
+      "SELECT to_regclass($1) IS NOT NULL AS present", [`public.${LEGACY}`],
+    );
+    if (legacy[0].present) {
+      await pool.query(
+        `INSERT INTO flows_migrations (id, applied_at)
+         SELECT id, applied_at FROM ${LEGACY} ON CONFLICT (id) DO NOTHING`,
+      );
+      await pool.query(`DROP TABLE ${LEGACY}`);
+      console.log(`migrate: carried the applied-set over from ${LEGACY}`);
+    }
+
+    const { rows } = await pool.query("SELECT id FROM flows_migrations");
     const applied = new Set(rows.map((r) => r.id));
 
     const files = readdirSync(migrationsDir).filter((f) => f.endsWith(".sql")).sort();
@@ -49,7 +68,7 @@ async function main() {
       try {
         await client.query("BEGIN");
         await client.query(sql);
-        await client.query("INSERT INTO system_designs_migrations (id) VALUES ($1)", [file]);
+        await client.query("INSERT INTO flows_migrations (id) VALUES ($1)", [file]);
         await client.query("COMMIT");
         console.log(`apply ${file}`);
       } catch (e) {

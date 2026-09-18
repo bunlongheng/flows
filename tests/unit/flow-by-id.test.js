@@ -2,11 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { signSession } from "../../lib/auth-session.js";
 
 // Mock the DB so the by-id handler's validation + auth can be tested without a
-// real Postgres, following the create-system-design.test.js pattern.
+// real Postgres, following the create-flows.test.js pattern.
 const query = vi.fn();
 vi.mock("../../lib/db.js", () => ({ default: { query: (...a) => query(...a) } }));
 
-const { default: systemDesignById } = await import("../../lib/handlers/system-design-by-id.js");
+const { default: flowById } = await import("../../lib/handlers/flow-by-id.js");
 
 function mockRes() {
   return {
@@ -37,20 +37,20 @@ function req(method, id, auth, cookie, extraQuery = {}) {
   return {
     method,
     query: { id, ...extraQuery },
-    headers: { host: "system-design-bheng.vercel.app", authorization: auth, cookie },
+    headers: { host: "flows-bheng.vercel.app", authorization: auth, cookie },
   };
 }
 
-describe("/api/system-designs/:id", () => {
+describe("/api/flows/:id", () => {
   const orig = {
-    s: process.env.SYSTEM_DESIGNS_API_SECRET,
+    s: process.env.FLOWS_API_SECRET,
     o: process.env.OWNER_USER_ID,
     e: process.env.NODE_ENV,
     a: process.env.AUTH_SECRET,
     oe: process.env.OWNER_EMAIL,
   };
   beforeEach(() => {
-    process.env.SYSTEM_DESIGNS_API_SECRET = SECRET;
+    process.env.FLOWS_API_SECRET = SECRET;
     process.env.OWNER_USER_ID = "731ace87-64e5-44db-bf2a-82265f06f4d9";
     process.env.NODE_ENV = "production";
     process.env.AUTH_SECRET = "test-auth-secret";
@@ -58,7 +58,7 @@ describe("/api/system-designs/:id", () => {
     query.mockReset();
   });
   afterEach(() => {
-    process.env.SYSTEM_DESIGNS_API_SECRET = orig.s;
+    process.env.FLOWS_API_SECRET = orig.s;
     process.env.OWNER_USER_ID = orig.o;
     process.env.NODE_ENV = orig.e;
     process.env.AUTH_SECRET = orig.a;
@@ -69,7 +69,7 @@ describe("/api/system-designs/:id", () => {
     const row = { id: ID, title: "Netflix", nodes: [], edges: [] };
     query.mockResolvedValueOnce({ rows: [row] });
     const res = mockRes();
-    await systemDesignById(req("GET", ID), res);
+    await flowById(req("GET", ID), res);
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual(row);
   });
@@ -77,7 +77,7 @@ describe("/api/system-designs/:id", () => {
   it("GET returns 404 for a valid uuid that does not exist", async () => {
     query.mockResolvedValueOnce({ rows: [] });
     const res = mockRes();
-    await systemDesignById(req("GET", ID), res);
+    await flowById(req("GET", ID), res);
     expect(res.statusCode).toBe(404);
   });
 
@@ -87,7 +87,7 @@ describe("/api/system-designs/:id", () => {
   it("GET a slug looks the design up by slug, not by id", async () => {
     query.mockResolvedValueOnce({ rows: [{ id: ID, slug: "my-design", is_public: true }] });
     const res = mockRes();
-    await systemDesignById(req("GET", "my-design"), res);
+    await flowById(req("GET", "my-design"), res);
     expect(res.statusCode).toBe(200);
     const [sql, params] = query.mock.calls[0];
     expect(sql).toMatch(/WHERE slug = \$1/);
@@ -96,7 +96,7 @@ describe("/api/system-designs/:id", () => {
 
   it("GET a malformed slug returns 400 and never queries the db", async () => {
     const res = mockRes();
-    await systemDesignById(req("GET", "not a slug!"), res);
+    await flowById(req("GET", "not a slug!"), res);
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({ error: "Invalid id" });
     expect(query).not.toHaveBeenCalled();
@@ -106,7 +106,7 @@ describe("/api/system-designs/:id", () => {
   // when a design is renamed, so it is not a safe thing to delete or overwrite by.
   it("DELETE by slug returns 400 and never queries the db", async () => {
     const res = mockRes();
-    await systemDesignById(req("DELETE", "my-design", `Bearer ${SECRET}`), res);
+    await flowById(req("DELETE", "my-design", `Bearer ${SECRET}`), res);
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({ error: "Invalid id" });
     expect(query).not.toHaveBeenCalled();
@@ -118,7 +118,7 @@ describe("/api/system-designs/:id", () => {
     const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
     const r = req("PATCH", ID, undefined, cookie);
     r.body = { view_state: { panels: ["details", "steps"], badge: "silver" } };
-    await systemDesignById(r, res);
+    await flowById(r, res);
     expect(res.statusCode).toBe(200);
     // Order is normalised to the canonical list, and both survive.
     expect(res.body.view_state).toEqual({ panels: ["steps", "details"], badge: "silver" });
@@ -130,7 +130,7 @@ describe("/api/system-designs/:id", () => {
     const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
     const r = req("PATCH", ID, undefined, cookie);
     r.body = { view_state: { panels: ["steps", "evil", 1], badge: "neon" } };
-    await systemDesignById(r, res);
+    await flowById(r, res);
     expect(res.body.view_state).toEqual({ panels: ["steps"], badge: null });
   });
 
@@ -148,7 +148,7 @@ describe("/api/system-designs/:id", () => {
     const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
     // A stale client sends the OLD inline icon back alongside the new position.
     r.body = { nodes: [{ id: "integry", position: { x: 500, y: 250 }, icon: "data:image/png;base64,STALE", color: "#000000" }] };
-    await systemDesignById(r, res);
+    await flowById(r, res);
 
     const written = JSON.parse(query.mock.calls[1][1][0]);
     expect(written[0].position).toEqual({ x: 500, y: 250 }); // the move lands
@@ -163,7 +163,7 @@ describe("/api/system-designs/:id", () => {
     const res = mockRes();
     const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
     r.body = { nodes: [{ id: "brand-new", position: { x: 9, y: 9 }, icon: "/brand/x.png", label: "New" }] };
-    await systemDesignById(r, res);
+    await flowById(r, res);
     const written = JSON.parse(query.mock.calls[1][1][0]);
     const added = written.find((n) => n.id === "brand-new");
     expect(added).toEqual({ id: "brand-new", position: { x: 9, y: 9 }, icon: "/brand/x.png", label: "New" });
@@ -187,7 +187,7 @@ describe("/api/system-designs/:id", () => {
       { id: "ubs", note: "" },
       { id: "ghost", note: "no such node" },
     ] };
-    await systemDesignById(r, res);
+    await flowById(r, res);
     expect(res.statusCode).toBe(200);
     expect(res.body.noted).toBe(2);
     const written = JSON.parse(query.mock.calls[1][1][0]);
@@ -204,13 +204,13 @@ describe("/api/system-designs/:id", () => {
     const res = mockRes();
     const anon = req("PATCH", ID);
     anon.body = { notes: [{ id: "tray", note: "x" }] };
-    await systemDesignById(anon, res);
+    await flowById(anon, res);
     expect(res.statusCode).toBe(401);
 
     const res2 = mockRes();
     const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
     r.body = { notes: [] };
-    await systemDesignById(r, res2);
+    await flowById(r, res2);
     expect(res2.statusCode).toBe(400);
   });
 
@@ -221,7 +221,7 @@ describe("/api/system-designs/:id", () => {
     const res = mockRes();
     const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
     r.body = { nodes: [{ id: "tray", position: { x: 50, y: 50 } }] };
-    await systemDesignById(r, res);
+    await flowById(r, res);
     const written = JSON.parse(query.mock.calls[1][1][0]);
     expect(written[0]).toEqual({ id: "tray", position: { x: 50, y: 50 }, note: "stays" });
   });
@@ -239,7 +239,7 @@ describe("/api/system-designs/:id", () => {
     const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
     // e1 gets a position; e2's is reset; the caller sends no label or endpoints.
     r.body = { edges: [{ id: "e1", labelT: 0.123456 }, { id: "e2" }] };
-    await systemDesignById(r, res);
+    await flowById(r, res);
     expect(res.statusCode).toBe(200);
 
     const written = JSON.parse(query.mock.calls[1][1][0]);
@@ -257,7 +257,7 @@ describe("/api/system-designs/:id", () => {
     const res = mockRes();
     const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
     r.body = { edges: [{ id: "e1", labelT: 4.2 }, { id: "e2", labelT: "nope" }] };
-    await systemDesignById(r, res);
+    await flowById(r, res);
     const written = JSON.parse(query.mock.calls[1][1][0]);
     expect(written[0].labelT).toBe(0.88);      // clamped short of the node
     expect(written[1].labelT).toBeUndefined();  // rubbish ignored
@@ -271,7 +271,7 @@ describe("/api/system-designs/:id", () => {
     const res = mockRes();
     const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
     r.body = { edges: [{ id: "e1", labelT: 0.5 }] };
-    await systemDesignById(r, res);
+    await flowById(r, res);
     const written = JSON.parse(query.mock.calls[1][1][0]);
     expect(written[0].labelOffset).toBeUndefined();
     expect(written[0].labelT).toBe(0.5);
@@ -281,12 +281,12 @@ describe("/api/system-designs/:id", () => {
     query.mockResolvedValueOnce({ rowCount: 1 });
     const res = mockRes();
     const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
-    await systemDesignById(req("DELETE", ID, undefined, cookie), res);
+    await flowById(req("DELETE", ID, undefined, cookie), res);
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ deleted: true, recoverable: true });
     // The row is updated, never removed.
     const [sql] = query.mock.calls[0];
-    expect(sql).toMatch(/UPDATE system_designs SET deleted_at = now\(\)/);
+    expect(sql).toMatch(/UPDATE flows SET deleted_at = now\(\)/);
     expect(sql).not.toMatch(/DELETE FROM/);
   });
 
@@ -294,39 +294,39 @@ describe("/api/system-designs/:id", () => {
     query.mockResolvedValueOnce({ rowCount: 1 });
     const res = mockRes();
     const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
-    await systemDesignById(req("DELETE", ID, undefined, cookie, { purge: "1" }), res);
+    await flowById(req("DELETE", ID, undefined, cookie, { purge: "1" }), res);
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ purged: true });
     const [sql] = query.mock.calls[0];
-    expect(sql).toMatch(/DELETE FROM system_designs/);
+    expect(sql).toMatch(/DELETE FROM flows/);
     // The guard that makes destroying anything take two deliberate steps.
     expect(sql).toMatch(/deleted_at IS NOT NULL/);
   });
 
   it("DELETE with a valid Bearer header (no owner session) returns 401 and never queries the db", async () => {
     const res = mockRes();
-    await systemDesignById(req("DELETE", ID, `Bearer ${SECRET}`), res);
+    await flowById(req("DELETE", ID, `Bearer ${SECRET}`), res);
     expect(res.statusCode).toBe(401);
     expect(query).not.toHaveBeenCalled();
   });
 
   it("DELETE with no Bearer (and not local) returns 401 and never queries the db", async () => {
     const res = mockRes();
-    await systemDesignById(req("DELETE", ID), res);
+    await flowById(req("DELETE", ID), res);
     expect(res.statusCode).toBe(401);
     expect(query).not.toHaveBeenCalled();
   });
 
   it("DELETE with a bad Bearer (and not local) returns 401 and never queries the db", async () => {
     const res = mockRes();
-    await systemDesignById(req("DELETE", ID, "Bearer wrong-secret-1234"), res);
+    await flowById(req("DELETE", ID, "Bearer wrong-secret-1234"), res);
     expect(res.statusCode).toBe(401);
     expect(query).not.toHaveBeenCalled();
   });
 
   it("PUT on a valid uuid returns 405", async () => {
     const res = mockRes();
-    await systemDesignById(req("PUT", ID), res);
+    await flowById(req("PUT", ID), res);
     expect(res.statusCode).toBe(405);
   });
 });
