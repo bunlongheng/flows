@@ -101,10 +101,10 @@ export default function SignInScreen({ devBypass, loading }) {
       {!loading && (
       <div className="si-card" style={{ position: "relative", width: 380, maxWidth: "calc(100vw - 32px)", background: "rgba(255,255,255,0.86)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderRadius: 22, padding: "40px 36px 32px", boxShadow: "0 24px 70px rgba(30,45,90,0.18), 0 0 0 1px rgba(30,45,90,0.06)", textAlign: "center" }}>
         {/* Real app icon (the brand mark, same as favicon / PWA icon) */}
-        <img src="/icon.png" alt="System Design" width={60} height={60}
+        <img src="/icon.png" alt="Flows" width={60} height={60}
           style={{ display: "block", margin: "0 auto 18px", borderRadius: 16, boxShadow: "0 8px 22px rgba(28,30,33,0.28)" }} />
 
-        <h1 style={{ fontSize: 27, fontWeight: 800, letterSpacing: "-0.03em", color: "#111827", margin: 0 }}>System Design</h1>
+        <h1 style={{ fontSize: 27, fontWeight: 800, letterSpacing: "-0.03em", color: "#111827", margin: 0 }}>Flows</h1>
         <p style={{ fontSize: 13.5, color: "#6b7280", margin: "8px 0 26px", lineHeight: 1.5 }}>
           Sign in to design, save, and share<br />AWS &amp; GCP architecture diagrams.
         </p>

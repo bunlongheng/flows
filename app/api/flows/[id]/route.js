@@ -1,4 +1,4 @@
-import handler from "../../../../lib/handlers/list-public-system-designs.js";
+import handler from "../../../../lib/handlers/flow-by-id.js";
 import { withErrors } from "../../../../lib/wrap.js";
 import { toRoute } from "../../../../lib/next-adapter.js";
 
@@ -9,3 +9,5 @@ export const dynamic = "force-dynamic";
 const route = toRoute(withErrors(handler));
 export const GET = route;
 export const HEAD = route;
+export const PATCH = route;
+export const DELETE = route;

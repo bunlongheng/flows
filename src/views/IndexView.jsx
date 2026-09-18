@@ -107,7 +107,7 @@ export function IndexView({
         <div className="sd-header-inner" style={{ maxWidth: 1600, margin: '0 auto', padding: '0 32px', height: '100%', display: 'flex', alignItems: 'center', gap: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             <img className="sd-app-logo" src="/icon-96.png" width={28} height={28} alt="" style={{ borderRadius: 8 }} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#1c1e21', letterSpacing: '-0.01em' }}>System Design</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#1c1e21', letterSpacing: '-0.01em' }}>Flows</span>
             {isDemo && <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', background: '#eaf2ff', borderRadius: 999, padding: '3px 9px' }}>Demos</span>}
           </div>
 
@@ -176,7 +176,7 @@ export function IndexView({
             {showMenu && (
               <div style={{ position: 'absolute', top: 42, right: 0, width: 210, background: '#ffffff', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.12)', border: '1px solid #e4e6e8', overflow: 'hidden', zIndex: 50 }}>
                 <div style={{ padding: '14px 16px 12px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#1c1e21' }}>{user ? 'Bunlong Heng' : 'System Design'}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#1c1e21' }}>{user ? 'Bunlong Heng' : 'Flows'}</div>
                   <div style={{ fontSize: 11, color: '#8a8d91', marginTop: 3 }}>{user ? user.email : 'Not signed in'}</div>
                 </div>
                 <div style={{ height: 1, background: '#f0f1f3' }} />

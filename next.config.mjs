@@ -12,6 +12,17 @@ export default {
   env: { NEXT_PUBLIC_APP_VERSION: version },
   // resvg is a native module - it must not be bundled into the server chunk.
   serverExternalPackages: ["@resvg/resvg-js", "pg"],
+  // The app was renamed from "system-design" to "flows" and the public API moved
+  // with it. These keep every previously documented URL working. 308 (not 301)
+  // so POST/PATCH/DELETE keep their method and body through the redirect.
+  async redirects() {
+    return [
+      { source: "/api/ai/system-designs", destination: "/api/ai/flows", permanent: true },
+      { source: "/api/ai/system-designs/:path*", destination: "/api/ai/flows/:path*", permanent: true },
+      { source: "/api/system-designs", destination: "/api/flows", permanent: true },
+      { source: "/api/system-designs/:path*", destination: "/api/flows/:path*", permanent: true },
+    ];
+  },
   async headers() {
     return [{
       source: "/:path*",

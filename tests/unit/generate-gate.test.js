@@ -20,7 +20,7 @@ const ENV = { NODE_ENV: "production", AUTH_SECRET: "s".repeat(32), OWNER_EMAIL: 
 const saved = {};
 const req = () => ({
   method: "POST", query: {}, body: { prompt: "a url shortener" },
-  headers: { host: "system-design-bheng.vercel.app", cookie: `sd_session=${signSession({ email: ENV.OWNER_EMAIL })}` },
+  headers: { host: "flows-bheng.vercel.app", cookie: `sd_session=${signSession({ email: ENV.OWNER_EMAIL })}` },
 });
 
 describe("POST /api/ai/generate - logo gate + arrange", () => {

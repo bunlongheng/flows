@@ -1,9 +1,9 @@
 <div align="center">
-  <img src="docs/icon.png" alt="System Design" width="96" height="96" />
-  <h1>System Design</h1>
+  <img src="docs/icon.png" alt="Flows" width="96" height="96" />
+  <h1>Flows</h1>
   <p><em>Interactive AWS/GCP architecture diagrams with a public artifact API and an MCP server</em></p>
-  <p><a href="https://system-design-bheng.vercel.app">Live</a> &middot; <a href="https://github.com/bunlongheng/system-design">Repo</a> &middot; <a href="https://bunlongheng.com/projects?name=system-design">Portfolio</a></p>
-  <img src="docs/social-preview.png" alt="System Design - preview" width="820" />
+  <p><a href="https://flows-bheng.vercel.app">Live</a> &middot; <a href="https://github.com/bunlongheng/flows">Repo</a> &middot; <a href="https://bunlongheng.com/projects?name=flows">Portfolio</a></p>
+  <img src="docs/social-preview.png" alt="Flows - preview" width="820" />
 </div>
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
@@ -12,7 +12,7 @@
 
 ## What it is
 
-A Next.js 16 app that renders interactive AWS and GCP system-design diagrams on a React Flow canvas, with dagre auto-layout, per-node notes, numbered steps, and a share card for every public diagram. Diagrams live in 1 Postgres table and can be created 3 ways: by hand in the browser, through a Bearer-gated render-only HTTP API, or from any MCP agent via the bundled MCP server. AI generation (prompt to diagram) exists but is owner-only.
+A Next.js 16 app that renders interactive AWS and GCP flows diagrams on a React Flow canvas, with dagre auto-layout, per-node notes, numbered steps, and a share card for every public diagram. Diagrams live in 1 Postgres table and can be created 3 ways: by hand in the browser, through a Bearer-gated render-only HTTP API, or from any MCP agent via the bundled MCP server. AI generation (prompt to diagram) exists but is owner-only.
 
 ## Features
 
@@ -24,12 +24,12 @@ A Next.js 16 app that renders interactive AWS and GCP system-design diagrams on 
 - **Sharing + cards** - the Share panel previews the real 1200x630 card, copies the `/demo?name=<slug>` link, and offers PNG (html-to-image), JSON, and code exports plus the Web Share API. Opening Share publishes the diagram.
 - **Public / Private** - a pill on every owned diagram toggles `is_public`. Private diagrams 404 for anyone else and preview as the generic site card.
 - **Gallery** - My Diagrams / Demos tabs, title search, and an All / Work / Personal scope over your own diagrams (matches a `work` or `personal` entry in the row's `tags[]` - nothing in the app writes those tags, they are set on the row). Private cards carry a badge. `/demo` is a curated 12-slug public roster ordered by difficulty.
-- **Trash** - Delete in the app or `DELETE /api/system-designs/:id` is a soft delete (`deleted_at`). Restore and list-trash exist only through MCP; permanent purge is `?purge=1` or the MCP `purge_system_design` tool, and only for a row already in trash.
+- **Trash** - Delete in the app or `DELETE /api/flows/:id` is a soft delete (`deleted_at`). Restore and list-trash exist only through MCP; permanent purge is `?purge=1` or the MCP `purge_flow` tool, and only for a row already in trash.
 - **Paste Mermaid** - paste a `graph LR` / `graph TD` block anywhere on the page and it renders as a diagram. An Import Formats modal copies ready-to-use templates.
 - **Bring your own logo** - a node is either a catalog service key or carries an `icon` (https URL, `data:image/...` URI, or a same-origin image path like `/brand/foo.svg`). Remote icons are fetched once and inlined. 1 validation policy (`lib/validate-design.js`) is shared by the API, the MCP server and AI generate: nodes with no resolvable logo are rejected, `color` must be a 6-digit hex, and the size caps hold everywhere.
 - **AI generate (owner only)** - prompt to diagram via `POST /api/ai/generate`. Gated to the signed-in owner; the public Bearer key is rejected so nobody else can spend Anthropic credits. The model's output passes the same logo gate and is arranged like an API create.
 - **MCP server** - 10 tools for any MCP agent (create, read, update, soft delete, restore, purge, list trash, list services, schema). See [mcp/README.md](./mcp/README.md).
-- **Public API** - `POST /api/ai/system-designs` renders a finished `{ nodes, edges }` structure into a saved diagram and returns its URLs. No model call.
+- **Public API** - `POST /api/ai/flows` renders a finished `{ nodes, edges }` structure into a saved diagram and returns its URLs. No model call.
 - **Security** - per-request CSP nonce in `middleware.js` (no `unsafe-inline`, no `unsafe-eval` in prod), HSTS / X-Frame-Options / nosniff headers in `next.config.mjs`, constant-time Bearer compare, HMAC-signed owner session cookie, per-instance rate limits on every route.
 
 ## Architecture
@@ -42,7 +42,7 @@ flowchart LR
   Adapter["lib/next-adapter.js<br/>Express-style req/res shim"]
   Handlers["lib/handlers/*"]
   OG["lib/render-og.js + resvg<br/>1200x630 PNG card"]
-  DB[("Postgres<br/>system_designs")]
+  DB[("Postgres<br/>flows")]
   MCP["mcp/server.mjs<br/>stdio MCP server, 10 tools"]
   Agent["MCP agent<br/>Claude Code / Desktop"]
   Caller["Script with Bearer secret"]
@@ -66,7 +66,7 @@ The canvas is rendered client-side only (`app/AppClient.jsx` uses `next/dynamic`
 ## Project structure
 
 ```
-system-design/
+flows/
   app/
     layout.jsx              # Static head, manifest, icons, default OG tags
     page.jsx                # "/" - gallery + canvas, generateMetadata
@@ -75,13 +75,13 @@ system-design/
     share-metadata.js       # Per-design OG/Twitter tags for ?name= or ?id=
     api/
       ai/generate/route.js            # POST, owner only, Claude
-      ai/system-designs/route.js      # POST, Bearer, render-only create
+      ai/flows/route.js      # POST, Bearer, render-only create
       auth/{login,callback,me,logout}/route.js
       health/route.js
       og/route.js                     # GET PNG card
-      system-designs/route.js         # GET owner list
-      system-designs/public/route.js  # GET curated demo roster
-      system-designs/[id]/route.js    # GET / PATCH / DELETE
+      flows/route.js         # GET owner list
+      flows/public/route.js  # GET curated demo roster
+      flows/[id]/route.js    # GET / PATCH / DELETE
   lib/
     next-adapter.js         # toRoute(): Request -> (req, res) shim
     wrap.js                 # withErrors()
@@ -102,10 +102,10 @@ system-design/
     fonts/                  # Roboto-Regular.ttf, Roboto-Bold.ttf
     title-base.js           # Version-suffix stripping for duplicate warnings
     handlers/
-      create-system-design.js
-      system-design-by-id.js
-      list-system-designs.js
-      list-public-system-designs.js   # DEMO_SLUGS
+      create-flows.js
+      flows-by-id.js
+      list-flows.js
+      list-public-flows.js   # DEMO_SLUGS
       generate.js
       og-image.js
       health.js
@@ -133,7 +133,7 @@ system-design/
     load-env.mjs            # Loads the repo .env by absolute path
     README.md
   db/
-    migrate.mjs             # Applies db/migrations/*.sql, tracked in system_designs_migrations
+    migrate.mjs             # Applies db/migrations/*.sql, tracked in flows_migrations
     migrations/             # 7 SQL files: table, is_public, description, pattern, difficulty, trash, view_state
   tests/
     unit/                   # 38 Vitest files (handlers, auth, validation, layout, views)
@@ -155,8 +155,8 @@ system-design/
 Requires Node 22 and a Postgres database.
 
 ```bash
-git clone https://github.com/bunlongheng/system-design.git
-cd system-design
+git clone https://github.com/bunlongheng/flows.git
+cd flows
 npm install
 cp .env.example .env    # fill in the variables below
 npm run migrate         # applies db/migrations/*.sql
@@ -186,12 +186,12 @@ Other scripts: `npm run start` (production server on :5174), `npm run mcp` (MCP 
 
 | Variable | Required in prod | Used by |
 |----------|------------------|---------|
-| `SYSTEM_DESIGNS_API_SECRET` | Yes | Bearer for `POST /api/ai/system-designs` and `GET /api/system-designs`. Server-only. |
-| `SYSTEM_DESIGNS_API_SECRET_PARTNER` | No | Second, revocable Bearer accepted everywhere the main one is. |
+| `FLOWS_API_SECRET` | Yes | Bearer for `POST /api/ai/flows` and `GET /api/flows`. Server-only. |
+| `FLOWS_API_SECRET_PARTNER` | No | Second, revocable Bearer accepted everywhere the main one is. |
 | `DATABASE_URL` | Yes | `pg` Pool, migrations, MCP server. |
 | `DATABASE_SSL` | No | `"true"` enables TLS with `rejectUnauthorized: false` (self-signed remote). |
 | `OWNER_USER_ID` | Yes | `user_id` on every row; all reads/writes are scoped to it. |
-| `SYSTEM_DESIGNS_APP_URL` | No | Base for returned `url` / `share_url` / `svg_url` and `metadataBase`. Defaults to the prod URL. |
+| `FLOWS_APP_URL` | No | Base for returned `url` / `share_url` / `svg_url` and `metadataBase`. Defaults to the prod URL. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth for owner sign-in. Redirect URI: `<APP_URL>/api/auth/callback`. |
 | `AUTH_SECRET` | Yes | HMAC key for the `sd_session` cookie (`openssl rand -hex 32`). 7-day sessions. |
 | `OWNER_EMAIL` | Yes | The only Google account that gets a session. |
@@ -205,14 +205,16 @@ Other scripts: `npm run start` (production server on :5174), `npm run mcp` (MCP 
 
 All routes run on the Node runtime, `force-dynamic`. HEAD is accepted wherever GET is. Rate limits are per warm instance, fixed window, and answer `429` with `Retry-After`.
 
+The app was previously called System Design and these routes lived under `/api/system-designs` and `/api/ai/system-designs`. Both still work: they answer `308` to the `/api/flows` equivalent, which preserves the method and body, so an existing `POST` client keeps working without a change.
+
 | Route | Auth | Notes |
 |-------|------|-------|
-| `POST /api/ai/system-designs` | Bearer | Render-only create. 60/min. |
-| `GET /api/system-designs/:idOrSlug` | Public | JSON, or SVG with `?format=svg`. Private rows 404 for non-owners. 180/min. |
-| `GET /api/system-designs/public` | Public | The curated `DEMO_SLUGS` roster (12), public + not deleted, by difficulty. 120/min. |
-| `GET /api/system-designs` | Owner (session, Bearer, or local dev) | Owner's diagrams minus the demo roster, newest first, max 60. 120/min. |
-| `PATCH /api/system-designs/:id` | Owner session only (Bearer rejected) | 1 of 5 body shapes, uuid only. |
-| `DELETE /api/system-designs/:id` | Owner session only (Bearer rejected) | Soft delete; `?purge=1` destroys a trashed row. uuid only. |
+| `POST /api/ai/flows` | Bearer | Render-only create. 60/min. |
+| `GET /api/flows/:idOrSlug` | Public | JSON, or SVG with `?format=svg`. Private rows 404 for non-owners. 180/min. |
+| `GET /api/flows/public` | Public | The curated `DEMO_SLUGS` roster (12), public + not deleted, by difficulty. 120/min. |
+| `GET /api/flows` | Owner (session, Bearer, or local dev) | Owner's diagrams minus the demo roster, newest first, max 60. 120/min. |
+| `PATCH /api/flows/:id` | Owner session only (Bearer rejected) | 1 of 5 body shapes, uuid only. |
+| `DELETE /api/flows/:id` | Owner session only (Bearer rejected) | Soft delete; `?purge=1` destroys a trashed row. uuid only. |
 | `GET /api/og?name=<slug>` or `?id=<uuid>` | Public | 1200x630 PNG for a public design, else `302 /og.png` with `no-store`. 120/min. |
 | `POST /api/ai/generate` | Owner session or local dev only | Prompt (max 2000 chars) to Claude, saved private, tags `["AI"]`. `422` if the model's output fails the logo gate. 10/min. |
 | `GET /api/auth/login` | Public | Redirects to Google (20/min). `GET /api/auth/callback` verifies `OWNER_EMAIL` and sets `sd_session`. |
@@ -222,8 +224,8 @@ All routes run on the Node runtime, `force-dynamic`. HEAD is accepted wherever G
 ### Create
 
 ```bash
-curl -X POST https://system-design-bheng.vercel.app/api/ai/system-designs \
-  -H "Authorization: Bearer $SYSTEM_DESIGNS_API_SECRET" \
+curl -X POST https://flows-bheng.vercel.app/api/ai/flows \
+  -H "Authorization: Bearer $FLOWS_API_SECRET" \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Netflix System Design",
@@ -249,7 +251,7 @@ Body fields:
 | Field | Notes |
 |-------|-------|
 | `title` | Required string, max 200 chars. |
-| `type` | Optional, only `"system-design"` is accepted. |
+| `type` | Optional, only `"flows"` is accepted. |
 | `nodes[]` | Required, 1 to 100. Each `{ id, position?, icon?, label?, sub?, color?, note? }`. `id` is a catalog service key unless `icon` is given. `color` is a 6-digit hex or it is dropped. `note` is plain text, max 400 chars. Positions are optional; missing ones are laid out. |
 | `edges[]` | Optional, max 300. Each `{ id?, source, target, label?, animated? }`. |
 | `pattern` | Optional string, max 200. The one-line "what it tests" shown above the diagram and on the share card. |
@@ -263,7 +265,7 @@ Rules:
 - Remote `https` icons are fetched once (https only, no redirects, `image/*`, max 24KB, 5s, private hosts blocked, raster icons must be at least 96px) and inlined as `data:` URIs. A fetch that fails is `400` with `icon_fetch_failed`.
 - Inline `data:` icons are capped at 24KB.
 - Any `400` carries `error`, `required_fields` (including `nodes[].note` and `is_public`), and a full `sample_request`.
-- A bad or missing Bearer is `401`. `SYSTEM_DESIGNS_API_SECRET_PARTNER`, when set, is accepted as well.
+- A bad or missing Bearer is `401`. `FLOWS_API_SECRET_PARTNER`, when set, is accepted as well.
 - Rows are tagged `["API"]`.
 
 Response `201`:
@@ -271,10 +273,10 @@ Response `201`:
 ```json
 {
   "id": "<uuid>",
-  "url": "https://system-design-bheng.vercel.app/?id=<uuid>",
-  "share_url": "https://system-design-bheng.vercel.app/demo?name=<slug>",
+  "url": "https://flows-bheng.vercel.app/?id=<uuid>",
+  "share_url": "https://flows-bheng.vercel.app/demo?name=<slug>",
   "visibility": "public",
-  "svg_url": "https://system-design-bheng.vercel.app/api/system-designs/<uuid>?format=svg"
+  "svg_url": "https://flows-bheng.vercel.app/api/flows/<uuid>?format=svg"
 }
 ```
 
@@ -282,11 +284,11 @@ A private create adds `share_note` explaining that recipients get a 404 until it
 
 ### Read
 
-`GET /api/system-designs/:idOrSlug` accepts the uuid or the slug. It returns `id, title, slug, nodes, edges, type, tags, is_public, description, pattern, difficulty, view_state, created_at`. A row with `is_public === false` returns `404` unless the request is the owner, so private ids cannot be probed. `?format=svg`, `?svg=1`, or an `Accept: image/svg+xml` header returns a self-contained SVG (`Cache-Control: public, max-age=60`).
+`GET /api/flows/:idOrSlug` accepts the uuid or the slug. It returns `id, title, slug, nodes, edges, type, tags, is_public, description, pattern, difficulty, view_state, created_at`. A row with `is_public === false` returns `404` unless the request is the owner, so private ids cannot be probed. `?format=svg`, `?svg=1`, or an `Accept: image/svg+xml` header returns a self-contained SVG (`Cache-Control: public, max-age=60`).
 
 ### Update (owner session only)
 
-`PATCH /api/system-designs/:id` takes exactly 1 of these bodies:
+`PATCH /api/flows/:id` takes exactly 1 of these bodies:
 
 | Body | Effect |
 |------|--------|
@@ -300,7 +302,7 @@ Anything else is `400`. Trashed rows are `404`.
 
 ### Delete (owner session only)
 
-`DELETE /api/system-designs/:id` stamps `deleted_at` and returns `{ deleted, recoverable: true }`. The row leaves every list and every shared link but stays in the table. `DELETE /api/system-designs/:id?purge=1` permanently removes a row that is already in trash and returns `{ purged }`. There is no HTTP restore; use the MCP `restore_system_design` tool.
+`DELETE /api/flows/:id` stamps `deleted_at` and returns `{ deleted, recoverable: true }`. The row leaves every list and every shared link but stays in the table. `DELETE /api/flows/:id?purge=1` permanently removes a row that is already in trash and returns `{ purged }`. There is no HTTP restore; use the MCP `restore_flow` tool.
 
 ## Sharing
 
@@ -313,7 +315,7 @@ Anything else is `400`. Trashed rows are `404`.
 
 ## MCP
 
-`mcp/server.mjs` is a stdio MCP server that exposes 10 tools (`list_system_designs`, `get_system_design`, `create_system_design`, `update_system_design`, `delete_system_design`, `restore_system_design`, `purge_system_design`, `list_trash`, `list_services`, `get_diagram_schema`). It uses the same `lib/` layer against the same Postgres, so anything an agent creates is in the app immediately, and it applies the same logo gate plus a start-left layout rule. The repo's `.mcp.json` wires it into Claude Code automatically. Parameters, responses, defaults and Claude Desktop wiring are in [mcp/README.md](./mcp/README.md).
+`mcp/server.mjs` is a stdio MCP server that exposes 10 tools (`list_flows`, `get_flow`, `create_flow`, `update_flow`, `delete_flow`, `restore_flow`, `purge_flow`, `list_trash`, `list_services`, `get_diagram_schema`). It uses the same `lib/` layer against the same Postgres, so anything an agent creates is in the app immediately, and it applies the same logo gate plus a start-left layout rule. The repo's `.mcp.json` wires it into Claude Code automatically. Parameters, responses, defaults and Claude Desktop wiring are in [mcp/README.md](./mcp/README.md).
 
 ## Tests + CI
 
@@ -326,7 +328,7 @@ Playwright builds and starts a production `next start` on port 4399 (strict CSP,
 
 `.github/workflows/ci.yml` runs on every PR and push to `main`: Postgres 16 service, Node 22, `npm ci`, throwaway secrets, `npm run lint`, `npm run test:coverage`, `npm run migrate`, Playwright Chromium install, `npm run test:e2e`.
 
-`.github/workflows/prod-monitor.yml` runs every 15 minutes, on every push to `main`, and on demand: asserts `GET /api/health` is `200` with `ok:true`, then POSTs to `/api/ai/system-designs` with a bad token and requires `401` (proves the route is up and gated, never creates a row).
+`.github/workflows/prod-monitor.yml` runs every 15 minutes, on every push to `main`, and on demand: asserts `GET /api/health` is `200` with `ok:true`, then POSTs to `/api/ai/flows` with a bad token and requires `401` (proves the route is up and gated, never creates a row).
 
 ## Deploy
 
@@ -342,5 +344,5 @@ MIT (c) Bunlong Heng - see [LICENSE](./LICENSE).
 ---
 
 <p align="center">
-  <sub>Built by <a href="https://bunlongheng.com">Bunlong Heng</a> &middot; <a href="https://bunlongheng.com/projects/system-design">See it in my portfolio &rarr;</a></sub>
+  <sub>Built by <a href="https://bunlongheng.com">Bunlong Heng</a> &middot; <a href="https://bunlongheng.com/projects/flows">See it in my portfolio &rarr;</a></sub>
 </p>

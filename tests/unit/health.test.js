@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Mock the DB so the health check's readiness probe can be driven without a
-// real Postgres, following the system-design-by-id.test.js pattern.
+// real Postgres, following the flows-by-id.test.js pattern.
 const query = vi.fn();
 vi.mock("../../lib/db.js", () => ({ default: { query: (...a) => query(...a) } }));
 
@@ -24,7 +24,7 @@ function mockRes() {
 
 describe("GET /api/health", () => {
   const orig = {
-    s: process.env.SYSTEM_DESIGNS_API_SECRET,
+    s: process.env.FLOWS_API_SECRET,
     o: process.env.OWNER_USER_ID,
     ci: process.env.GOOGLE_CLIENT_ID,
     cs: process.env.GOOGLE_CLIENT_SECRET,
@@ -33,7 +33,7 @@ describe("GET /api/health", () => {
   };
   beforeEach(() => {
     // All non-DB checks configured so only the DB check drives ok/not-ok.
-    process.env.SYSTEM_DESIGNS_API_SECRET = "test-secret-abc123";
+    process.env.FLOWS_API_SECRET = "test-secret-abc123";
     process.env.OWNER_USER_ID = "731ace87-64e5-44db-bf2a-82265f06f4d9";
     process.env.GOOGLE_CLIENT_ID = "test-client-id";
     process.env.GOOGLE_CLIENT_SECRET = "test-client-secret";
@@ -42,7 +42,7 @@ describe("GET /api/health", () => {
     query.mockReset();
   });
   afterEach(() => {
-    process.env.SYSTEM_DESIGNS_API_SECRET = orig.s;
+    process.env.FLOWS_API_SECRET = orig.s;
     process.env.OWNER_USER_ID = orig.o;
     process.env.GOOGLE_CLIENT_ID = orig.ci;
     process.env.GOOGLE_CLIENT_SECRET = orig.cs;

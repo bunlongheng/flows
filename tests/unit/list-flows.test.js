@@ -2,11 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { signSession } from "../../lib/auth-session.js";
 
 // Mock the DB so the list handler can be tested without a real Postgres,
-// following the create-system-design.test.js pattern.
+// following the create-flows.test.js pattern.
 const query = vi.fn();
 vi.mock("../../lib/db.js", () => ({ default: { query: (...a) => query(...a) } }));
 
-const { default: listSystemDesigns } = await import("../../lib/handlers/list-system-designs.js");
+const { default: listFlows } = await import("../../lib/handlers/list-flows.js");
 
 function mockRes() {
   return {
@@ -29,7 +29,7 @@ function mockRes() {
 
 const OWNER_EMAIL = "owner@example.com";
 
-// Owner-gated (list-system-designs is now behind authorizeOwner): send an
+// Owner-gated (list-flows is now behind authorizeOwner): send an
 // owner session cookie so isLocal's absence doesn't matter under NODE_ENV=test.
 function req(method) {
   return {
@@ -38,7 +38,7 @@ function req(method) {
   };
 }
 
-describe("GET /api/system-designs (list)", () => {
+describe("GET /api/flows (list)", () => {
   const orig = { o: process.env.OWNER_USER_ID, a: process.env.AUTH_SECRET, oe: process.env.OWNER_EMAIL };
   beforeEach(() => {
     process.env.OWNER_USER_ID = "731ace87-64e5-44db-bf2a-82265f06f4d9";
@@ -56,21 +56,21 @@ describe("GET /api/system-designs (list)", () => {
     const rows = [{ id: "11111111-1111-1111-1111-111111111111", title: "X" }];
     query.mockResolvedValueOnce({ rows });
     const res = mockRes();
-    await listSystemDesigns(req("GET"), res);
+    await listFlows(req("GET"), res);
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual(rows);
   });
 
   it("a non-GET method returns 405", async () => {
     const res = mockRes();
-    await listSystemDesigns(req("POST"), res);
+    await listFlows(req("POST"), res);
     expect(res.statusCode).toBe(405);
     expect(query).not.toHaveBeenCalled();
   });
 
   it("returns 401 when there is no owner session", async () => {
     const res = mockRes();
-    await listSystemDesigns({ method: "GET", headers: {} }, res);
+    await listFlows({ method: "GET", headers: {} }, res);
     expect(res.statusCode).toBe(401);
     expect(query).not.toHaveBeenCalled();
   });
@@ -78,7 +78,7 @@ describe("GET /api/system-designs (list)", () => {
   it("returns 500 when OWNER_USER_ID is unset", async () => {
     delete process.env.OWNER_USER_ID;
     const res = mockRes();
-    await listSystemDesigns(req("GET"), res);
+    await listFlows(req("GET"), res);
     expect(res.statusCode).toBe(500);
     expect(query).not.toHaveBeenCalled();
   });

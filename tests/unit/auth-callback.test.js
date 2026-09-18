@@ -35,7 +35,7 @@ function req(query, cookie) {
   return {
     method: "GET",
     query,
-    headers: { host: "system-design-bheng.vercel.app", cookie },
+    headers: { host: "flows-bheng.vercel.app", cookie },
   };
 }
 

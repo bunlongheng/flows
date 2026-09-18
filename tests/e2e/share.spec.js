@@ -7,7 +7,7 @@ import { signSession } from "../../lib/auth-session.js";
 // The spec creates and publishes its OWN design rather than leaning on the demo
 // roster - CI runs against an empty database with only migrations applied, so
 // any seeded row is a local-only assumption.
-const SECRET = process.env.SYSTEM_DESIGNS_API_SECRET || "e2e-secret";
+const SECRET = process.env.FLOWS_API_SECRET || "e2e-secret";
 const OWNER_COOKIE = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
 
 // Next emits `content="x"/>` where the hand-built HTML emitted `content="x" />`.
@@ -21,7 +21,7 @@ const titleTag = (html) => (/<title>([^<]*)<\/title>/.exec(html) || [])[1] || nu
 
 const DESIGN = {
   title: "E2E Share Card",
-  type: "system-design",
+  type: "flows",
   nodes: [
     { id: "user", position: { x: 40, y: 200 } },
     { id: "apigw", position: { x: 260, y: 200 } },
@@ -38,25 +38,25 @@ const DESIGN = {
 // Delete is soft now, so a spec that only DELETEs leaves a row in trash on every
 // run. Purge afterwards so the suite cleans up after itself.
 async function purge(api, id) {
-  await api.delete(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } });
-  await api.delete(`/api/system-designs/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
+  await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+  await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
 }
 
 // Creates the design, publishes it, hands (api, id, slug) to the body, cleans up.
 async function withPublicDesign(baseURL, body) {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: DESIGN,
   });
   expect(create.status()).toBe(201);
   const id = (await create.json()).url.split("/?id=")[1];
   try {
-    await api.patch(`/api/system-designs/${id}`, {
+    await api.patch(`/api/flows/${id}`, {
       headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" },
       data: { is_public: true },
     });
-    const row = await (await api.get(`/api/system-designs/${id}`)).json();
+    const row = await (await api.get(`/api/flows/${id}`)).json();
     expect(row.slug).toBeTruthy();
     await body(api, id, row.slug);
   } finally {
@@ -74,7 +74,7 @@ test("a shared design URL serves its OWN og tags, not the generic site card", as
     // Title comes from the design row, not the static shell.
     expect(meta(html, "og:title")).toBe(DESIGN.title);
     expect(meta(html, "og:type")).toBe("article");
-    expect(titleTag(html)).toBe(`${DESIGN.title} · System Design`);
+    expect(titleTag(html)).toBe(`${DESIGN.title} · Flows`);
 
     // The card points at the per-design renderer, and the canonical url keeps ?name=.
     expect(html).toMatch(new RegExp(`og:image" content="[^"]*/api/og\\?name=${slug}"`));
@@ -103,17 +103,17 @@ test("/api/og renders a real 1200x630 PNG for a public design", async ({ baseURL
 
 test("a PRIVATE design gets no card and no title - an unlisted link stays unlisted", async ({ baseURL }) => {
   const api = await request.newContext({ baseURL, maxRedirects: 0 });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: { ...DESIGN, title: "E2E Private Card" },
   });
   const id = (await create.json()).url.split("/?id=")[1];
   try {
     // Created private by default - never published.
-    const row = await (await api.get(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
+    const row = await (await api.get(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
     const html = await (await api.get(`/?name=${row.slug}`)).text();
     expect(html).not.toContain("E2E Private Card");
-    expect(meta(html, "og:title")).toBe("System Design");
+    expect(meta(html, "og:title")).toBe("Flows");
 
     const og = await api.get(`/api/og?name=${row.slug}`);
     expect(og.status()).toBe(302);
@@ -128,7 +128,7 @@ test("the gallery itself keeps the generic card", async ({ baseURL }) => {
   const api = await request.newContext({ baseURL });
   try {
     const html = await (await api.get("/demo")).text();
-    expect(meta(html, "og:title")).toBe("System Design");
+    expect(meta(html, "og:title")).toBe("Flows");
   } finally {
     await api.dispose();
   }
@@ -149,33 +149,33 @@ test("/api/og falls back to the static card for an unknown slug", async ({ baseU
 // cleanup that removes the wrong diagram is always recoverable.
 test("DELETE moves a design to trash instead of destroying it", async ({ baseURL }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: { ...DESIGN, title: "E2E Trash Round Trip" },
   });
   const id = (await create.json()).url.split("/?id=")[1];
 
   // Public, so its disappearance is observable without auth.
-  await api.patch(`/api/system-designs/${id}`, {
+  await api.patch(`/api/flows/${id}`, {
     headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" },
     data: { is_public: true },
   });
-  expect((await api.get(`/api/system-designs/${id}`)).status()).toBe(200);
+  expect((await api.get(`/api/flows/${id}`)).status()).toBe(200);
 
-  const del = await api.delete(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+  const del = await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
   expect(del.status()).toBe(200);
   expect((await del.json()).deleted).toBe(true);
 
   // Gone from every read path...
-  expect((await api.get(`/api/system-designs/${id}`)).status()).toBe(404);
+  expect((await api.get(`/api/flows/${id}`)).status()).toBe(404);
   const og = await (await request.newContext({ baseURL, maxRedirects: 0 })).get(`/api/og?id=${id}`);
   expect(og.status()).toBe(302);
 
   // ...and deleting it again is a no-op, not a second destruction.
-  expect((await (await api.delete(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json()).deleted).toBe(false);
+  expect((await (await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json()).deleted).toBe(false);
 
   // ...until it is purged, which only works on something already trashed.
-  expect((await (await api.delete(`/api/system-designs/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } })).json()).purged).toBe(true);
-  expect((await (await api.delete(`/api/system-designs/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } })).json()).purged).toBe(false);
+  expect((await (await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } })).json()).purged).toBe(true);
+  expect((await (await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } })).json()).purged).toBe(false);
   await api.dispose();
 });

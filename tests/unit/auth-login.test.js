@@ -30,7 +30,7 @@ function mockRes() {
 }
 
 function req() {
-  return { method: "GET", headers: { host: "system-design-bheng.vercel.app" } };
+  return { method: "GET", headers: { host: "flows-bheng.vercel.app" } };
 }
 
 describe("GET /api/auth/login", () => {

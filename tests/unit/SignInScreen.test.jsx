@@ -10,7 +10,7 @@ afterEach(cleanup)
 describe('SignInScreen', () => {
   it('renders the title, Google button, and the self-drawing architecture graph', () => {
     render(<SignInScreen />)
-    expect(screen.getByText('System Design')).toBeInTheDocument()
+    expect(screen.getByText('Flows')).toBeInTheDocument()
     expect(screen.getByText('Continue with Google')).toBeInTheDocument()
     const nodes = document.querySelectorAll('.si-node')
     expect(nodes.length).toBe(12)

@@ -6,7 +6,7 @@ import App from '../../src/App.jsx'
 
 afterEach(() => { cleanup(); vi.restoreAllMocks() })
 
-// Mock the two mount fetches (/api/auth/me + /api/system-designs) so the
+// Mock the two mount fetches (/api/auth/me + /api/flows) so the
 // sign-in gate can be exercised without a server.
 function mockFetch(map) {
   global.fetch = vi.fn((url) => {
@@ -22,7 +22,7 @@ describe('App sign-in gate', () => {
   it('shows the sign-in screen when signed out', async () => {
     mockFetch({
       '/api/auth/me': { status: 200, json: { authenticated: false } },
-      '/api/system-designs': { status: 401, json: {} },
+      '/api/flows': { status: 401, json: {} },
     })
     render(<App />)
     await waitFor(() => expect(screen.getByText('Continue with Google')).toBeInTheDocument())
@@ -31,7 +31,7 @@ describe('App sign-in gate', () => {
   it('shows the gallery (not the sign-in card) when signed in', async () => {
     mockFetch({
       '/api/auth/me': { status: 200, json: { authenticated: true, email: 'owner@example.com' } },
-      '/api/system-designs': { status: 200, json: [] },
+      '/api/flows': { status: 200, json: [] },
     })
     render(<App />)
     await waitFor(() => expect(screen.getByPlaceholderText('Search...')).toBeInTheDocument())

@@ -18,7 +18,7 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: postgres
-          POSTGRES_DB: system_designs
+          POSTGRES_DB: flows
           # Trust auth: no password, so nothing credential-shaped is committed.
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
@@ -35,10 +35,10 @@ jobs:
       # playwright). The `npm run start` script sets NODE_ENV=production itself
       # for the server process, so the local auth bypass is still gated OFF and
       # the e2e specs exercise the real Bearer/owner gates.
-      DATABASE_URL: postgres://postgres@localhost:5432/system_designs
+      DATABASE_URL: postgres://postgres@localhost:5432/flows
       DATABASE_SSL: "false"
       OWNER_USER_ID: 00000000-0000-0000-0000-000000000001
-      SYSTEM_DESIGNS_APP_URL: https://system-design-bheng.vercel.app
+      FLOWS_APP_URL: https://flows-bheng.vercel.app
       # Non-secret auth config so /api/health reports ok:true (the webServer
       # readiness probe). Google OAuth is never actually called in e2e - the
       # specs exercise unauthenticated/Bearer paths only.
@@ -59,7 +59,7 @@ jobs:
       - name: Generate throwaway e2e secrets
         run: |
           {
-            echo "SYSTEM_DESIGNS_API_SECRET=e2e-$(openssl rand -hex 16)"
+            echo "FLOWS_API_SECRET=e2e-$(openssl rand -hex 16)"
             echo "AUTH_SECRET=e2e-$(openssl rand -hex 16)"
             echo "GOOGLE_CLIENT_SECRET=e2e-$(openssl rand -hex 8)"
           } >> "$GITHUB_ENV"

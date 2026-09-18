@@ -4,14 +4,14 @@ import { signSession } from "../../lib/auth-session.js";
 // Undo/redo for the canvas. Both dragging and Arrange are reversible, Arrange
 // being the click that can wipe a hand-placed layout in one go. The buttons stay
 // out of the toolbar until there is actually something to undo.
-const SECRET = process.env.SYSTEM_DESIGNS_API_SECRET || "e2e-secret";
+const SECRET = process.env.FLOWS_API_SECRET || "e2e-secret";
 const OWNER_COOKIE = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
 const DESIGN = {
   title: "E2E Undo Redo",
-  type: "system-design",
+  type: "flows",
   // Deliberately scattered, so dagre's tidy result is clearly a different layout.
   nodes: [
     { id: "user", position: { x: 80, y: 120 } },
@@ -31,14 +31,14 @@ const at = (page, id) =>
 
 test("undo and redo cover both dragging and Arrange", async ({ page, context, baseURL }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: DESIGN,
   });
   expect(create.status()).toBe(201);
   const { url } = await create.json();
   const id = url.split("/?id=")[1];
-  await api.patch(`/api/system-designs/${id}`, {
+  await api.patch(`/api/flows/${id}`, {
     headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" },
     data: { is_public: true },
   });
@@ -92,7 +92,7 @@ test("undo and redo cover both dragging and Arrange", async ({ page, context, ba
     await undo.click();
     await expect.poll(() => at(page, "dynamo")).toBe(start);
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
   }
 });

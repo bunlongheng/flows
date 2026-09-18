@@ -24,7 +24,7 @@ function mockRes() {
 }
 
 function req(cookie) {
-  return { method: "GET", headers: { host: "system-design-bheng.vercel.app", cookie } };
+  return { method: "GET", headers: { host: "flows-bheng.vercel.app", cookie } };
 }
 
 describe("GET /api/auth/me", () => {

@@ -4,12 +4,12 @@ import { signSession } from "../../lib/auth-session.js";
 // Browser e2e: prove the artifact URL actually RENDERS in the SPA, not just that
 // the API returns JSON. Create a design via the public API, open the returned
 // /?id= URL in a real browser, and assert the React Flow canvas paints its nodes.
-const SECRET = process.env.SYSTEM_DESIGNS_API_SECRET || "e2e-secret";
+const SECRET = process.env.FLOWS_API_SECRET || "e2e-secret";
 const OWNER_COOKIE = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
 
 const DESIGN = {
   title: "E2E Render Check",
-  type: "system-design",
+  type: "flows",
   nodes: [
     { id: "user", position: { x: 40, y: 200 } },
     { id: "cloudfront", position: { x: 260, y: 200 } },
@@ -25,7 +25,7 @@ const DESIGN = {
 
 test("the /?id= URL renders the design in the browser", async ({ page, baseURL }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: DESIGN,
   });
@@ -35,7 +35,7 @@ test("the /?id= URL renders the design in the browser", async ({ page, baseURL }
 
   // New diagrams are private by default; publish it so the browser (no auth) can
   // load and render it.
-  await api.patch(`/api/system-designs/${id}`, {
+  await api.patch(`/api/flows/${id}`, {
     headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" },
     data: { is_public: true },
   });
@@ -49,8 +49,8 @@ test("the /?id= URL renders the design in the browser", async ({ page, baseURL }
     const nodeCount = await page.locator(".react-flow__node-awsNode").count();
     expect(nodeCount).toBe(DESIGN.nodes.length);
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } });
-    await api.delete(`/api/system-designs/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
   }
 });
@@ -59,7 +59,7 @@ test("the /?id= URL renders the design in the browser", async ({ page, baseURL }
 // view now writes, so it has to resolve on a cold load with no gallery state.
 test("the /?name= URL renders the design in the browser", async ({ page, baseURL }) => {
   const api = await request.newContext({ baseURL });
-  const create = await api.post("/api/ai/system-designs", {
+  const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
     data: { ...DESIGN, title: "E2E Name Check" },
   });
@@ -67,7 +67,7 @@ test("the /?name= URL renders the design in the browser", async ({ page, baseURL
   const { url } = await create.json();
   const id = url.split("/?id=")[1];
 
-  const row = await (await api.get(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
+  const row = await (await api.get(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
   expect(row.slug).toBeTruthy();
 
   try {
@@ -79,8 +79,8 @@ test("the /?name= URL renders the design in the browser", async ({ page, baseURL
     // The param survives the load - a shared link stays shareable.
     expect(page.url()).toContain(`name=${row.slug}`);
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { Cookie: OWNER_COOKIE } });
-    await api.delete(`/api/system-designs/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
   }
 });
@@ -95,10 +95,10 @@ test("a phone auto-fits the whole diagram, and re-fits after a rotation", async 
     nodes: ["user", "cloudfront", "apigw", "lambda", "dynamo", "s3", "sqs"].map((id) => ({ id })),
     edges: [["user", "cloudfront"], ["cloudfront", "apigw"], ["apigw", "lambda"], ["lambda", "dynamo"], ["lambda", "s3"], ["lambda", "sqs"]].map(([source, target]) => ({ source, target })),
   };
-  const create = await api.post("/api/ai/system-designs", { headers: { Authorization: `Bearer ${SECRET}` }, data: wide });
+  const create = await api.post("/api/ai/flows", { headers: { Authorization: `Bearer ${SECRET}` }, data: wide });
   const id = (await create.json()).url.split("/?id=")[1];
   try {
-    const row = await (await api.get(`/api/system-designs/${id}`)).json();
+    const row = await (await api.get(`/api/flows/${id}`)).json();
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();
     await page.goto(`/demo?name=${row.slug}`);
@@ -120,6 +120,6 @@ test("a phone auto-fits the whole diagram, and re-fits after a rotation", async 
     expect(await allVisible()).toBe(true);
     await ctx.close();
   } finally {
-    await api.delete(`/api/system-designs/${id}`, { headers: { cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
   }
 });
