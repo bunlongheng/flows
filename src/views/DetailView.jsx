@@ -30,6 +30,7 @@ export function DetailView({
   detailCodeCopied, setDetailCodeCopied,
   nodes, edges, onNodesChange, onNodeDragStop, snapGuides = [],
   exportPng, exportCode, exportJson, copyLink, copiedLink, shareAction, copiedShare, copyCode, copiedCode,
+  copySvg, copiedSvg,
   shareSlug, shareUrl,
   showDocs, setShowDocs, copiedLabel, onCopyFormat,
   showToastMsg,
@@ -617,6 +618,11 @@ export function DetailView({
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
                 onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
               >{copiedCode ? 'Copied!' : 'Copy'}</button>
+              <button onClick={copySvg} title="Copy the flow as SVG, ready to paste"
+                style={{ background: copiedSvg ? '#A9DC76' : '#78DCE8', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit' }}
+                onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
+                onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
+              >{copiedSvg ? 'Copied!' : 'Copy SVG'}</button>
             </div>
           </div>
         )}

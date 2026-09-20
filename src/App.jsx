@@ -166,6 +166,7 @@ export default function App() {
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedShare, setCopiedShare] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
+  const [copiedSvg, setCopiedSvg] = useState(false)
   const [diagrams, setDiagrams] = useState(isDemo ? [] : SEED)
   // Logged-in home has two tabs (top-right button group): 'mine' = my personal
   // (non-demo) diagrams, 'demos' = the 12 curated public demos so the owner can
@@ -888,6 +889,32 @@ export default function App() {
       .catch(() => showToastMsg('PNG export requires html-to-image package'))
   }
 
+  // Copy the flow as SVG source. Nodes here are HTML (service logos, labels), not
+  // SVG shapes, so html-to-image wraps them in a <foreignObject> - which does
+  // render when the markup is later shown through an <img>, and keeps the flow
+  // as vector instead of a raster that gets downscaled by whatever it is pasted
+  // into. Same fitView + no-dot-grid treatment as the PNG export.
+  function copySvg() {
+    const el = document.querySelector('.react-flow')
+    if (!el) return
+    rfInstance.current?.fitView({ padding: 0.15 })
+    return new Promise(r => setTimeout(r, 300))
+      .then(() => import('html-to-image'))
+      .then(({ toSvg }) => toSvg(el, {
+        backgroundColor: '#ffffff',
+        filter: node => !(node.classList && node.classList.contains('react-flow__background')),
+      }))
+      .then(dataUrl => {
+        // toSvg hands back a data: URL. A paste target reads SVG as text, so the
+        // clipboard needs the markup itself, not the wrapper.
+        const markup = decodeURIComponent(dataUrl.slice(dataUrl.indexOf(',') + 1))
+        if (!markup.startsWith('<svg')) throw new Error('unexpected toSvg output')
+        return navigator.clipboard.writeText(markup)
+      })
+      .then(() => { setCopiedSvg(true); setTimeout(() => setCopiedSvg(false), 1500) })
+      .catch(() => showToastMsg('Copy SVG failed'))
+  }
+
   function exportJson() {
     const data = activeDiagram?.data || diagramData
     const a = document.createElement('a')
@@ -1018,6 +1045,7 @@ export default function App() {
       shareSlug={shareSlug} shareUrl={shareUrl}
       onDeleteDiagram={canAI && activeDiagram?.id ? () => deleteDiagram(activeDiagram.id, { thenBack: true }) : undefined}
       exportPng={exportPng} exportCode={exportCode} exportJson={exportJson}
+      copySvg={copySvg} copiedSvg={copiedSvg}
       copyLink={copyLink} copiedLink={copiedLink}
       shareAction={shareAction} copiedShare={copiedShare}
       copyCode={copyCode} copiedCode={copiedCode}
