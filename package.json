@@ -24,6 +24,7 @@
     "@xyflow/react": "^12.10.2",
     "canvas-confetti": "^1.9.4",
     "dotenv": "^17.4.2",
+    "gifenc": "^1.0.3",
     "html-to-image": "^1.11.13",
     "next": "^16.3.4",
     "pg": "^8.20.0",

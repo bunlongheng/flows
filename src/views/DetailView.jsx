@@ -29,7 +29,7 @@ export function DetailView({
   activeDiagram,
   detailCodeCopied, setDetailCodeCopied,
   nodes, edges, onNodesChange, onNodeDragStop, snapGuides = [],
-  exportPng, exportCode, exportJson, copyLink, copiedLink, shareAction, copiedShare, copyCode, copiedCode,
+  exportPng, exportWebp, exportGif, exportCode, exportJson, copyLink, copiedLink, shareAction, copiedShare, copyCode, copiedCode,
   shareSlug, shareUrl,
   showDocs, setShowDocs, copiedLabel, onCopyFormat,
   showToastMsg,
@@ -592,6 +592,16 @@ export function DetailView({
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
                 onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
               >PNG</button>
+              <button onClick={exportWebp} title="Same picture as the PNG, about a third of the size"
+                style={{ background: '#78DCE8', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit' }}
+                onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
+                onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
+              >WebP</button>
+              <button onClick={exportGif} title="Animated - records the flowing dots, autoplays in Slack and GitHub"
+                style={{ background: '#AB9DF2', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit' }}
+                onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
+                onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
+              >GIF</button>
               <button onClick={exportCode}
                 style={{ background: '#FC9867', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit' }}
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}

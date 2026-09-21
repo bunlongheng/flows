@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import * as flowClock from './flowClock'
 import { applyNodeChanges } from '@xyflow/react'
 import diagramData from './data/diagram.json'
 import SignInScreen from './components/SignInScreen'
@@ -888,6 +889,87 @@ export default function App() {
       .catch(() => showToastMsg('PNG export requires html-to-image package'))
   }
 
+  // Shared capture treatment: fit everything, drop the dot grid, white page.
+  // Every raster export goes through this so PNG, WebP and GIF frame identically.
+  function captureSetup() {
+    const el = document.querySelector('.react-flow')
+    if (!el) return null
+    rfInstance.current?.fitView({ padding: 0.15 })
+    return el
+  }
+  const captureOpts = {
+    backgroundColor: '#ffffff',
+    filter: node => !(node.classList && node.classList.contains('react-flow__background')),
+  }
+
+  // WebP is the same picture as the PNG at roughly a third of the bytes, which
+  // matters when a diagram is pasted into a doc or an issue.
+  function exportWebp() {
+    const el = captureSetup()
+    if (!el) return
+    return new Promise(r => setTimeout(r, 300))
+      .then(() => import('html-to-image'))
+      .then(({ toCanvas }) => toCanvas(el, { ...captureOpts, pixelRatio: 2 }))
+      .then(canvas => new Promise(res => canvas.toBlob(res, 'image/webp', 0.92)))
+      .then(blob => {
+        if (!blob) throw new Error('webp unsupported')
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob); a.download = exportFilename('webp'); a.click()
+        URL.revokeObjectURL(a.href)
+      })
+      .catch(() => showToastMsg('WebP export failed'))
+  }
+
+  // An animated GIF of the flowing dots. This is the only export that shows the
+  // diagram MOVING, which is the whole reason to pick GIF over PNG: it autoplays
+  // in Slack, GitHub and Notion, where a video will not.
+  //
+  // The dots are pinned and stepped by hand (see flowClock) so the N frames are
+  // exactly evenly spaced around one period and the loop closes seamlessly.
+  // pixelRatio is 1 and the canvas is capped: a GIF is 256 colours and paletted,
+  // so retina pixels buy nothing but megabytes.
+  async function exportGif() {
+    const el = captureSetup()
+    if (!el) return
+    const FRAMES = 20
+    showToastMsg('Recording GIF...')
+    try {
+      const [{ toCanvas }, { GIFEncoder, quantize, applyPalette }] = await Promise.all([
+        import('html-to-image'), import('gifenc'),
+      ])
+      const clock = flowClock
+      await new Promise(r => setTimeout(r, 300))
+
+      clock.beginCapture()
+      const gif = GIFEncoder()
+      const delay = Math.round(clock.CAPTURE_PERIOD_MS / FRAMES)
+      let w = 0, h = 0
+
+      for (let i = 0; i < FRAMES; i++) {
+        clock.stepCapture(i / FRAMES)
+        // Let React commit the new cx/cy before the DOM is serialised, or the
+        // frame captures the previous position and the dot stutters.
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+        const canvas = await toCanvas(el, { ...captureOpts, pixelRatio: 1 })
+        w = canvas.width; h = canvas.height
+        const data = canvas.getContext('2d').getImageData(0, 0, w, h).data
+        const palette = quantize(data, 256)
+        gif.writeFrame(applyPalette(data, palette), w, h, { palette, delay })
+      }
+      gif.finish()
+      clock.endCapture()
+
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(new Blob([gif.bytes()], { type: 'image/gif' }))
+      a.download = exportFilename('gif'); a.click()
+      URL.revokeObjectURL(a.href)
+      showToastMsg('GIF saved')
+    } catch {
+      flowClock.endCapture()
+      showToastMsg('GIF export failed')
+    }
+  }
+
   function exportJson() {
     const data = activeDiagram?.data || diagramData
     const a = document.createElement('a')
@@ -1017,7 +1099,7 @@ export default function App() {
       canUndo={history.past.length > 0} canRedo={history.future.length > 0} onUndo={undo} onRedo={redo}
       shareSlug={shareSlug} shareUrl={shareUrl}
       onDeleteDiagram={canAI && activeDiagram?.id ? () => deleteDiagram(activeDiagram.id, { thenBack: true }) : undefined}
-      exportPng={exportPng} exportCode={exportCode} exportJson={exportJson}
+      exportPng={exportPng} exportWebp={exportWebp} exportGif={exportGif} exportCode={exportCode} exportJson={exportJson}
       copyLink={copyLink} copiedLink={copiedLink}
       shareAction={shareAction} copiedShare={copiedShare}
       copyCode={copyCode} copiedCode={copiedCode}

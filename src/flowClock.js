@@ -1,0 +1,76 @@
+// One clock for every edge dot on the canvas.
+//
+// Each edge draws a small circle travelling from its source to its target. The
+// obvious implementation is SMIL (<animateMotion>) or a CSS offset-path, and
+// both look right on screen - but html-to-image serialises the DOM's committed
+// attributes, and a declaratively animated element serialises at its t=0 pose.
+// Every frame of a GIF export would come out identical. So the position is held
+// in JS state and written to cx/cy, which snapshots correctly.
+//
+// A rAF loop per edge would mean 20+ loops on a busy diagram, all waking the
+// compositor independently. Instead there is one loop here that every edge
+// subscribes to, and it only runs while something is listening.
+
+const PERIOD_MS = 2600 // one full source -> target trip
+
+const subs = new Set()
+let raf = 0
+let phase = 0 // 0..1, shared by every edge
+
+// While a GIF is being captured the clock is driven by hand instead of by the
+// wall clock. Frame capture takes a variable 100-300ms, so letting real time
+// advance the phase would give unevenly spaced frames and a loop that visibly
+// jumps where it wraps. Pinning it means N frames at exactly i/N of one period,
+// which loops seamlessly no matter how slow the capture was.
+let pinned = null
+
+function emit(p) { for (const fn of subs) fn(p) }
+
+function tick(now) {
+  if (pinned == null) {
+    phase = (now % PERIOD_MS) / PERIOD_MS
+    emit(phase)
+  }
+  raf = subs.size ? requestAnimationFrame(tick) : 0
+}
+
+/** Take the dots off the wall clock so an export can step them frame by frame. */
+export function beginCapture() { pinned = 0 }
+
+/** Put every dot at phase `p` (0..1) and paint it. */
+export function stepCapture(p) { pinned = p; phase = p; emit(p) }
+
+/** Hand the dots back to the wall clock. */
+export function endCapture() { pinned = null }
+
+export const CAPTURE_PERIOD_MS = PERIOD_MS
+
+/** Subscribe to the shared phase. Returns an unsubscribe. */
+export function subscribe(fn) {
+  subs.add(fn)
+  if (!raf) raf = requestAnimationFrame(tick)
+  return () => {
+    subs.delete(fn)
+    if (!subs.size && raf) { cancelAnimationFrame(raf); raf = 0 }
+  }
+}
+
+/** The current phase, for a first paint before the first frame lands. */
+export function currentPhase() { return phase }
+
+/** Honour the OS setting - a travelling dot is exactly the kind of motion it means. */
+export function motionAllowed() {
+  return !(typeof window !== 'undefined'
+    && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+}
+
+/**
+ * Stagger each edge so a diagram does not pulse in lockstep, which reads as a
+ * throb rather than as flow. Derived from the edge id so it is stable across
+ * re-renders and identical between a live canvas and an exported frame.
+ */
+export function offsetFor(id) {
+  let h = 0
+  for (let i = 0; i < String(id).length; i++) h = (h * 31 + String(id).charCodeAt(i)) >>> 0
+  return (h % 1000) / 1000
+}

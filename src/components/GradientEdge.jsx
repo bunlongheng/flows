@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, useInternalNode, useReactFlow, Position } from '@xyflow/react'
+import { subscribe, currentPhase, motionAllowed, offsetFor } from '../flowClock'
 
 // ─── Edge geometry ────────────────────────────────────────────────────────────
 // Edges attach to a face of the box, spread evenly across it and centered: one
@@ -458,6 +459,7 @@ export function GradientEdge({
         </linearGradient>
       </defs>
       <BaseEdge id={id} path={path} markerEnd={markerEnd} style={{ stroke: `url(#${gid})`, strokeWidth: 1.5 }} />
+        <FlowDot edgeId={id} path={path} color={c1} />
       {(label || hasStep) && (
         <EdgeLabelRenderer>
           <div
@@ -476,6 +478,32 @@ export function GradientEdge({
         </EdgeLabelRenderer>
       )}
     </>
+  )
+}
+
+// The travelling dot. It carries the SOURCE service's brand colour, so a reader
+// can tell at a glance which way a connection runs and what it runs from - the
+// Chrome edge leaves Chrome blue. Small and soft on purpose: this diagram is a
+// technical document, and the dot is here to say "direction", not to decorate.
+function FlowDot({ edgeId, path, color }) {
+  const [t, setT] = useState(() => (currentPhase() + offsetFor(edgeId)) % 1)
+
+  useEffect(() => {
+    if (!motionAllowed()) return
+    return subscribe(p => setT((p + offsetFor(edgeId)) % 1))
+  }, [edgeId])
+
+  // Ease in and out of the endpoints so the dot appears to leave the source box
+  // and arrive at the target, rather than popping through both of them.
+  const pt = pointOnPath(path, t)
+  if (!pt) return null
+  const fade = Math.min(1, Math.min(t, 1 - t) / 0.12)
+
+  return (
+    <g className="sd-flow-dot" pointerEvents="none" opacity={fade}>
+      <circle cx={pt.x} cy={pt.y} r={5} fill={color} opacity={0.18} />
+      <circle cx={pt.x} cy={pt.y} r={2.4} fill={color} />
+    </g>
   )
 }
 
