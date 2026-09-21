@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { isPlaying, setPlaying, subscribePlaying } from '../flowClock'
 import { ReactFlow, Background } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import diagramData from '../data/diagram.json'
@@ -64,6 +65,11 @@ export function DetailView({
   // lit only while the canvas actually IS the fitted view, cleared the moment
   // you pan or zoom away from it.
   const [fitted, setFitted] = useState(true)
+  // Mirrored from flowClock so the button reflects the real state even when
+  // something else stops the dots. Still by default - a diagram is usually being
+  // read, not watched.
+  const [playing, setPlayingState] = useState(isPlaying)
+  useEffect(() => subscribePlaying(setPlayingState), [])
   const fitNow = () => {
     rfInstanceRef.current?.fitView({ padding: 0.12, duration: 400 })
     setFitted(true)
@@ -225,6 +231,24 @@ export function DetailView({
               <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
             </svg>
             <span className="sd-btn-label">Fit</span>
+          </button>
+
+          <button className="sd-hide-mobile sd-show-mobile" onClick={() => setPlaying(!playing)}
+            title={playing ? 'Stop the flowing dots' : 'Play the flowing dots'} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
+            background: playing ? '#f1f5f9' : 'transparent', color: playing ? '#1e293b' : '#64748b',
+            cursor: 'pointer', fontSize: 13, fontWeight: playing ? 600 : 400,
+            transition: 'all 0.1s', fontFamily: 'inherit',
+          }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
+            onMouseLeave={e => (e.currentTarget.style.background = playing ? '#f1f5f9' : 'transparent')}
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              {playing ? <><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></>
+                       : <path d="M7 4.5v15l12-7.5z"/>}
+            </svg>
+            <span className="sd-btn-label">{playing ? 'Pause' : 'Play'}</span>
           </button>
 
           <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />

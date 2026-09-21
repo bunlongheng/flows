@@ -27,11 +27,44 @@ let pinned = null
 function emit(p) { for (const fn of subs) fn(p) }
 
 function tick(now) {
-  if (pinned == null) {
+  // Paused: hold the dots where they are and stop asking for frames. A capture
+  // pins the phase itself, so it keeps working with the canvas stopped - the
+  // GIF export does not need the button pressed.
+  if (pinned == null && playing) {
     phase = (now % PERIOD_MS) / PERIOD_MS
     emit(phase)
   }
-  raf = subs.size ? requestAnimationFrame(tick) : 0
+  raf = subs.size && playing ? requestAnimationFrame(tick) : 0
+}
+
+// Play state. The canvas is STILL by default: a diagram is usually being read,
+// not watched, and a dozen dots crawling under the text is a distraction the
+// reader never asked for. Pressing Play releases them.
+let playing = false
+const playSubs = new Set()
+
+/** Whether the dots are currently running. */
+export function isPlaying() { return playing }
+
+/** Start or stop the dots. Notifies anything showing the control. */
+export function setPlaying(next) {
+  if (playing === next) return
+  playing = next
+  for (const fn of playSubs) fn(playing)
+  // Cancel on pause rather than waiting for the next tick to notice. Leaving a
+  // stale frame id behind makes the following play a no-op, because the restart
+  // below is guarded on there being no loop already.
+  if (!playing) {
+    if (raf) { cancelAnimationFrame(raf); raf = 0 }
+  } else if (subs.size && !raf) {
+    raf = requestAnimationFrame(tick)
+  }
+}
+
+/** Subscribe to play/pause, for the button itself. */
+export function subscribePlaying(fn) {
+  playSubs.add(fn)
+  return () => playSubs.delete(fn)
 }
 
 /** Take the dots off the wall clock so an export can step them frame by frame. */
@@ -48,7 +81,7 @@ export const CAPTURE_PERIOD_MS = PERIOD_MS
 /** Subscribe to the shared phase. Returns an unsubscribe. */
 export function subscribe(fn) {
   subs.add(fn)
-  if (!raf) raf = requestAnimationFrame(tick)
+  if (!raf && playing) raf = requestAnimationFrame(tick)
   return () => {
     subs.delete(fn)
     if (!subs.size && raf) { cancelAnimationFrame(raf); raf = 0 }

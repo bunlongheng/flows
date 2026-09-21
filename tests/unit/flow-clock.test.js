@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   subscribe, beginCapture, stepCapture, endCapture,
   offsetFor, motionAllowed, CAPTURE_PERIOD_MS,
+  isPlaying, setPlaying,
 } from "../../src/flowClock.js";
 
 // The clock exists so a GIF export can show motion. html-to-image serialises the
@@ -19,8 +20,8 @@ const raf = () => {
 
 describe("flowClock", () => {
   let clock;
-  beforeEach(() => { clock = raf(); endCapture(); });
-  afterEach(() => { endCapture(); vi.restoreAllMocks(); });
+  beforeEach(() => { clock = raf(); endCapture(); setPlaying(true); });
+  afterEach(() => { endCapture(); setPlaying(false); vi.restoreAllMocks(); });
 
   it("drives every subscriber from one loop", () => {
     const a = vi.fn(), b = vi.fn();
@@ -90,5 +91,33 @@ describe("flowClock", () => {
     globalThis.window = { matchMedia: () => ({ matches: false }) };
     expect(motionAllowed()).toBe(true);
     globalThis.window = prev;
+  });
+
+  // The dots are a reading distraction until someone asks for them, so the canvas
+  // starts still and the Play button is what releases it.
+  it("is still by default and only runs once play is pressed", () => {
+    setPlaying(false);
+    const seen = [];
+    const off = subscribe((p) => seen.push(p));
+    clock.flush(CAPTURE_PERIOD_MS / 2);
+    expect(seen).toEqual([]);
+    expect(isPlaying()).toBe(false);
+
+    setPlaying(true);
+    clock.flush(CAPTURE_PERIOD_MS / 2);
+    expect(seen).toHaveLength(1);
+    off();
+  });
+
+  it("still exports a GIF while paused - capture drives the phase itself", () => {
+    setPlaying(false);
+    const seen = [];
+    const off = subscribe((p) => seen.push(p));
+    beginCapture();
+    stepCapture(0.25);
+    stepCapture(0.5);
+    endCapture();
+    expect(seen).toEqual([0.25, 0.5]);
+    off();
   });
 });
