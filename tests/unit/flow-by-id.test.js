@@ -278,6 +278,8 @@ describe("/api/flows/:id", () => {
   });
 
   it("DELETE is a SOFT delete: stamps deleted_at and says it is recoverable", async () => {
+    // DELETE now checks the lock first, so the soft delete is the SECOND query.
+    query.mockResolvedValueOnce({ rows: [{ locked: false }] });
     query.mockResolvedValueOnce({ rowCount: 1 });
     const res = mockRes();
     const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
@@ -285,19 +287,20 @@ describe("/api/flows/:id", () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ deleted: true, recoverable: true });
     // The row is updated, never removed.
-    const [sql] = query.mock.calls[0];
+    const [sql] = query.mock.calls[1];
     expect(sql).toMatch(/UPDATE flows SET deleted_at = now\(\)/);
     expect(sql).not.toMatch(/DELETE FROM/);
   });
 
   it("DELETE ?purge=1 hard-deletes, and ONLY a row already in trash", async () => {
+    query.mockResolvedValueOnce({ rows: [{ locked: false }] });
     query.mockResolvedValueOnce({ rowCount: 1 });
     const res = mockRes();
     const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
     await flowById(req("DELETE", ID, undefined, cookie, { purge: "1" }), res);
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ purged: true });
-    const [sql] = query.mock.calls[0];
+    const [sql] = query.mock.calls[1];
     expect(sql).toMatch(/DELETE FROM flows/);
     // The guard that makes destroying anything take two deliberate steps.
     expect(sql).toMatch(/deleted_at IS NOT NULL/);
@@ -328,5 +331,40 @@ describe("/api/flows/:id", () => {
     const res = mockRes();
     await flowById(req("PUT", ID), res);
     expect(res.statusCode).toBe(405);
+  });
+
+  // A diagram linked from a README must not disappear because someone tidied the
+  // gallery. The guard lives here, server-side, not only in the button.
+  it("DELETE refuses a locked diagram, and says how to release it", async () => {
+    query.mockResolvedValueOnce({ rows: [{ locked: true }] });
+    const res = mockRes();
+    const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
+    await flowById(req("DELETE", ID, undefined, cookie), res);
+    expect(res.statusCode).toBe(409);
+    expect(res.body.locked).toBe(true);
+    expect(res.body.detail).toMatch(/unlock/i);
+    // Nothing was written - the lock lookup is the only query that ran.
+    expect(query.mock.calls).toHaveLength(1);
+  });
+
+  it("?purge=1 is refused too, so a lock cannot be stepped around", async () => {
+    query.mockResolvedValueOnce({ rows: [{ locked: true }] });
+    const res = mockRes();
+    const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
+    await flowById(req("DELETE", ID, undefined, cookie, { purge: "1" }), res);
+    expect(res.statusCode).toBe(409);
+    expect(query.mock.calls).toHaveLength(1);
+  });
+
+  it("PATCH { locked } flips the flag", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: ID, locked: true }] });
+    const res = mockRes();
+    const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
+    const r = req("PATCH", ID, undefined, cookie);
+    r.body = { locked: true };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ id: ID, locked: true });
+    expect(query.mock.calls[0][0]).toMatch(/SET locked/);
   });
 });

@@ -5,7 +5,7 @@ import '@xyflow/react/dist/style.css'
 import diagramData from '../data/diagram.json'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { nodeTypes } from '../components/AwsNode'
-import { NoteEditContext } from '../components/noteEditContext'
+import { NoteEditContext, ShowNotesContext } from '../components/noteEditContext'
 import { edgeTypes } from '../components/GradientEdge'
 import { Toast } from '../components/Toast'
 import { SnapGuides } from '../components/SnapGuides'
@@ -26,6 +26,7 @@ export function DetailView({
   showDetailsPanel, setShowDetailsPanel,
   steps = [],
   showSteps, setShowSteps,
+  showNotes, setShowNotes,
   badgeMode, setBadgeMode,
   activeDiagram,
   detailCodeCopied, setDetailCodeCopied,
@@ -39,6 +40,9 @@ export function DetailView({
   onArrange,
   canUndo, canRedo, onUndo, onRedo,
   onDeleteDiagram,
+  // Locked diagrams are the ones embedded in a README - Delete stays inert
+  // until the lock comes off.
+  isLocked, onToggleLock,
   // (nodeId, note) => void when the owner is signed in; undefined otherwise,
   // which makes every node note read-only (shared links, /demo).
   onNoteChange,
@@ -336,6 +340,27 @@ export function DetailView({
             <span className="sd-btn-label">Steps</span>
           </button>
 
+          {/* Notes toggle - a caption under every box is a wall of text when you only
+              want the shape of the diagram. */}
+          <button className={showNotes ? "is-on" : ""} onClick={() => setShowNotes(v => !v)}
+            title={showNotes ? 'Hide the note under each node' : 'Show the note under each node'} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
+            background: showNotes ? '#f1f5f9' : 'transparent',
+            color: showNotes ? '#1e293b' : '#64748b',
+            cursor: 'pointer', fontSize: 13, fontWeight: showNotes ? 600 : 400,
+            transition: 'all 0.1s', fontFamily: 'inherit',
+          }}
+            onMouseEnter={e => { if (!showNotes) e.currentTarget.style.background = '#f1f5f9' }}
+            onMouseLeave={e => { if (!showNotes) e.currentTarget.style.background = 'transparent' }}
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>
+              <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
+            </svg>
+            <span className="sd-btn-label">Notes</span>
+          </button>
+
           {/* Kept on a phone: Steps and the badge style are the 2 actions left in
               the bar there, and without a line between them they read as 1 control. */}
           <div className="sd-divider sd-divider-phone" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
@@ -387,15 +412,40 @@ export function DetailView({
               recoverable. Ownership is decided in App: the handler is only
               passed down when you can actually edit, so there is one gate,
               not two. */}
-          {onDeleteDiagram && (
-            <button className="sd-hide-mobile" onClick={() => setConfirmDelete(true)} title="Delete this diagram" style={{
+          {/* Lock. A diagram linked from a README must not vanish because someone
+              tidied the gallery, so the lock makes Delete inert until it is turned
+              off - a second, deliberate action. */}
+          {onToggleLock && (
+            <button className="sd-hide-mobile" onClick={onToggleLock}
+              title={isLocked ? 'Locked - click to unlock, then it can be deleted' : 'Lock this diagram so it cannot be deleted'} style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
-              background: 'transparent', color: '#dc2626',
-              cursor: 'pointer', fontSize: 13, fontWeight: 400,
+              background: isLocked ? '#fef3c7' : 'transparent',
+              color: isLocked ? '#92400e' : '#64748b',
+              cursor: 'pointer', fontSize: 13, fontWeight: isLocked ? 600 : 400,
               transition: 'all 0.1s', fontFamily: 'inherit', flexShrink: 0,
             }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
+              onMouseEnter={e => { if (!isLocked) e.currentTarget.style.background = '#f1f5f9' }}
+              onMouseLeave={e => { if (!isLocked) e.currentTarget.style.background = 'transparent' }}
+            >
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                {isLocked ? <path d="M7 11V7a5 5 0 0 1 10 0v4" /> : <path d="M7 11V7a5 5 0 0 1 9.9-1" />}
+              </svg>
+              <span className="sd-btn-label">{isLocked ? 'Locked' : 'Lock'}</span>
+            </button>
+          )}
+
+          {onDeleteDiagram && (
+            <button className="sd-hide-mobile" onClick={() => !isLocked && setConfirmDelete(true)} disabled={isLocked}
+              title={isLocked ? 'Locked - unlock it before deleting' : 'Delete this diagram'} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
+              background: 'transparent', color: isLocked ? '#cbd5e1' : '#dc2626',
+              cursor: isLocked ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 400,
+              transition: 'all 0.1s', fontFamily: 'inherit', flexShrink: 0,
+            }}
+              onMouseEnter={e => { if (!isLocked) e.currentTarget.style.background = '#fef2f2' }}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -446,6 +496,7 @@ export function DetailView({
 
         {/* Canvas */}
         <div style={{ flex: 1, position: 'relative', background: '#ffffff' }}>
+          <ShowNotesContext.Provider value={showNotes}>
           <NoteEditContext.Provider value={onNoteChange || null}>
           <ReactFlow
             className={`${showSteps ? 'sd-steps-on ' : ''}sd-badge-${badgeMode}`}
@@ -469,6 +520,7 @@ export function DetailView({
             <SnapGuides guides={snapGuides} />
           </ReactFlow>
           </NoteEditContext.Provider>
+          </ShowNotesContext.Provider>
 
           {/* Info card overlay - what it tests + goal, pinned top-left of the canvas.
               Tap it to fold it into a badge so the diagram gets the whole screen. */}

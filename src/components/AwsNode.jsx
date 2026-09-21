@@ -1,7 +1,7 @@
 import { memo, useContext, useRef, useState } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { findService } from '../services'
-import { NoteEditContext } from './noteEditContext'
+import { NoteEditContext, ShowNotesContext } from './noteEditContext'
 import { NOTE_MAX, cleanNote } from '../note'
 
 // ─── Custom Node ──────────────────────────────────────────────────────────────
@@ -30,10 +30,15 @@ const NOTE_BOX = {
 
 function NodeNote({ id, note }) {
   const onNoteChange = useContext(NoteEditContext)
+  const showNotes = useContext(ShowNotesContext)
   const canEdit = typeof onNoteChange === 'function'
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const cancelled = useRef(false)
+  // Hidden means hidden: the owner's "+ note" ghost goes too, or turning notes
+  // off would still leave a row of empty placeholders under the diagram.
+  // Hooks run first - the early return has to come after them.
+  if (!showNotes) return null
   if (!note && !canEdit) return null
 
   const startEdit = e => { e.stopPropagation(); cancelled.current = false; setDraft(note); setEditing(true) }

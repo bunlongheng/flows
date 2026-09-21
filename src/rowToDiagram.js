@@ -6,6 +6,10 @@ export function rowToDiagram(r) {
     slug: r.slug || '',
     view_state: r.view_state || null,
     is_public: r.is_public,
+    // A locked diagram is one a README links to. The flag has to survive this
+    // mapping or the toolbar shows an unlocked padlock over a row the server
+    // will refuse to delete.
+    locked: !!r.locked,
     title: r.title,
     description: r.description || '',
     pattern: r.pattern || '',

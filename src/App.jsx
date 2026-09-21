@@ -168,6 +168,8 @@ export default function App() {
   const [showSharePanel, setShowSharePanel] = useState(false)
   const [showDetailsPanel, setShowDetailsPanel] = useState(false)
   const [showSteps, setShowSteps] = useState(false)
+  // Notes show unless a diagram has been toggled off - see 'notes-off' below.
+  const [showNotes, setShowNotes] = useState(true)
   const [badgeMode, setBadgeMode] = useState('dark') // dark | silver | color | plain
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedShare, setCopiedShare] = useState(false)
@@ -270,6 +272,21 @@ export default function App() {
 
   function signOut() {
     fetch('/api/auth/logout', { method: 'POST' }).then(() => { setUser(null); showToastMsg('Signed out') }).catch(() => showToastMsg('Sign out failed'))
+  }
+
+  // A locked diagram refuses to be deleted, server-side. This only flips the
+  // flag; the guard that matters lives in the DELETE handler.
+  async function toggleLock() {
+    if (!activeDiagram?.id) return
+    const next = !activeDiagram.locked
+    const res = await fetch(`/api/flows/${activeDiagram.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locked: next }),
+    })
+    if (!res.ok) { showToastMsg('Could not change the lock'); return }
+    setActiveDiagram(a => (a ? { ...a, locked: next } : a))
+    showToastMsg(next ? 'Locked - it cannot be deleted' : 'Unlocked')
   }
 
   function deleteDiagram(id, { thenBack = false } = {}) {
@@ -445,6 +462,9 @@ export default function App() {
     setShowSteps(open.includes('steps'))
     setShowDetailsPanel(open.includes('details'))
     setShowDetailCode(open.includes('code'))
+    // Inverted: stored when notes are OFF, so a row that predates the toggle
+    // (and every row a visitor loads) still shows the notes its author wrote.
+    setShowNotes(!open.includes('notes-off'))
   }
   useEffect(() => {
     if (!authChecked) return
@@ -701,6 +721,7 @@ export default function App() {
   const viewSaveTimer = useRef(null)
   const openPanels = [
     showSteps && 'steps', showDetailsPanel && 'details', showDetailCode && 'code',
+    !showNotes && 'notes-off',
   ].filter(Boolean)
   const panelKey = openPanels.join(',')
   useEffect(() => {
@@ -1096,6 +1117,8 @@ export default function App() {
       showDetailsPanel={showDetailsPanel} setShowDetailsPanel={setShowDetailsPanel}
       steps={steps}
       showSteps={showSteps} setShowSteps={setShowSteps}
+      showNotes={showNotes} setShowNotes={setShowNotes}
+      isLocked={!!activeDiagram?.locked} onToggleLock={canAI ? toggleLock : undefined}
       badgeMode={badgeMode} setBadgeMode={setBadgeMode}
       activeDiagram={activeDiagram}
       detailCodeCopied={detailCodeCopied} setDetailCodeCopied={setDetailCodeCopied}
