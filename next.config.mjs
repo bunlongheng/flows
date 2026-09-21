@@ -11,7 +11,7 @@ const { version } = JSON.parse(readFileSync(new URL("./package.json", import.met
 export default {
   env: { NEXT_PUBLIC_APP_VERSION: version },
   // resvg is a native module - it must not be bundled into the server chunk.
-  serverExternalPackages: ["@resvg/resvg-js", "pg"],
+  serverExternalPackages: ["@resvg/resvg-js", "pg", "gifenc"],
   // The app was renamed from "system-design" to "flows" and the public API moved
   // with it. These keep every previously documented URL working. 308 (not 301)
   // so POST/PATCH/DELETE keep their method and body through the redirect.

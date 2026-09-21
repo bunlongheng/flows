@@ -16,7 +16,6 @@ const IS_DEV = process.env.NODE_ENV !== 'production'
 
 // ─── Default data ─────────────────────────────────────────────────────────────
 
-const colorOf = id => findService({ id })?.color || '#6b7280'
 
 // The area a diagram has to fit in, so Arrange can size the layout to the real
 // canvas instead of guessing. Falls back to the window when the canvas is not
@@ -38,7 +37,13 @@ const positionsOf = nds => nds
 // onLabelMove is threaded into every edge's data so a badge can be dragged. It is
 // omitted for the bundled sample and for a read-only viewer, and the edge renders
 // its badge inert in that case.
-function buildEdges(rawEdges, onLabelMove) {
+function buildEdges(rawEdges, onLabelMove, rawNodes) {
+  // The edge takes its colour from the SOURCE node, and a node that brings its
+  // own logo states its colour only in that logo - so the node itself has to be
+  // looked up, not just its id. Passing `{ id }` alone matched generic catalog
+  // entries (`browser`, `cli`, `api`) and painted a Chrome edge pink.
+  const byId = new Map((rawNodes || []).map(n => [n.id, n]))
+  const edgeColor = id => findService(byId.get(id) || { id })?.color || '#6b7280'
   return rawEdges.map((e, i) => ({
     id: e.id || `e${i}`,
     source: e.source,
@@ -47,7 +52,7 @@ function buildEdges(rawEdges, onLabelMove) {
     type: 'gradient',
     animated: true,
     data: {
-      sourceColor: colorOf(e.source), targetColor: colorOf(e.target), step: i + 1,
+      sourceColor: edgeColor(e.source), targetColor: edgeColor(e.target), step: i + 1,
       ...(typeof e.labelT === 'number' ? { labelT: e.labelT } : {}),
       ...(onLabelMove ? { onLabelMove } : {}),
     },
@@ -111,7 +116,7 @@ function buildMarkers(nodes, edges) {
   return { nodes: mNodes, edges: [] }
 }
 
-const defaultEdges = buildEdges(diagramData.edges)
+const defaultEdges = buildEdges(diagramData.edges, undefined, diagramData.nodes)
 const defaultNodes = diagramData.nodes.map(n => ({ ...n, type: 'awsNode', data: { id: n.id } }))
 
 // Where a shared link has to point. Sharing from localhost (or a Vercel preview)
@@ -317,7 +322,7 @@ export default function App() {
       const { parseMermaid } = await import('./parseMermaid')
       const { nodes: n, edges: rawE } = parseMermaid(text)
       if (!n.length) { showToastMsg('Nothing to render - check your syntax'); return null }
-      const e = buildEdges(rawE)
+      const e = buildEdges(rawE, undefined, n)
       setNodes(n)
       setEdges(e)
       pendingFit.current = true
@@ -420,7 +425,7 @@ export default function App() {
     // Carry any custom brand fields (label/icon/color/sub) into node data so a
     // bring-your-own-icon node renders its own logo, not a catalog lookup.
     const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, color: nd.color, sub: nd.sub, note: nd.note }, ...(hasSaved ? { position: nd.position } : {}) }))
-    const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined)
+    const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw)
     setNodes(hasSaved ? n : layoutElements(n, e, { canvas: canvasSize() }))
     setEdges(e)
     setView('detail')

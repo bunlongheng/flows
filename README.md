@@ -205,12 +205,24 @@ Other scripts: `npm run start` (production server on :5174), `npm run mcp` (MCP 
 
 All routes run on the Node runtime, `force-dynamic`. HEAD is accepted wherever GET is. Rate limits are per warm instance, fixed window, and answer `429` with `Retry-After`.
 
+### Animated GIF
+
+`GET /api/flows/:idOrSlug?format=gif` renders the diagram with its dots flowing and returns an `image/gif`. It needs no auth for a public diagram and no browser, so an agent or a README can link one directly:
+
+```markdown
+![Architecture](https://flows-bheng.vercel.app/api/flows/my-diagram?format=gif)
+```
+
+14 frames over one 2.6s loop at 900px by default. `?frames=` (2-30) and `?w=` (200-1600) override that. The response is cached for a CDN (`s-maxage=3600`), because the render is a dozen rasterises and a diagram changes rarely.
+
+This is the server-side twin of the in-app GIF button. The in-app one captures the live canvas through `html-to-image`; this one rasterises the same SVG the `?format=svg` export uses, so it works headless.
+
 The app was previously called System Design and these routes lived under `/api/system-designs` and `/api/ai/system-designs`. Both still work: they answer `308` to the `/api/flows` equivalent, which preserves the method and body, so an existing `POST` client keeps working without a change.
 
 | Route | Auth | Notes |
 |-------|------|-------|
 | `POST /api/ai/flows` | Bearer | Render-only create. 60/min. |
-| `GET /api/flows/:idOrSlug` | Public | JSON, or SVG with `?format=svg`. Private rows 404 for non-owners. 180/min. |
+| `GET /api/flows/:idOrSlug` | Public | JSON, or SVG with `?format=svg`, or an animated GIF with `?format=gif`. Private rows 404 for non-owners. 180/min. |
 | `GET /api/flows/public` | Public | The curated `DEMO_SLUGS` roster (12), public + not deleted, by difficulty. 120/min. |
 | `GET /api/flows` | Owner (session, Bearer, or local dev) | Owner's diagrams minus the demo roster, newest first, max 60. 120/min. |
 | `PATCH /api/flows/:id` | Owner session only (Bearer rejected) | 1 of 5 body shapes, uuid only. |
