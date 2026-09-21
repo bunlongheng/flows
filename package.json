@@ -4,17 +4,18 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 5174",
+    "audit:colors": "node scripts/audit-node-colors.mjs",
     "build": "next build",
-    "start": "next start --port 5174",
-    "migrate": "node db/migrate.mjs",
-    "mcp": "node mcp/server.mjs",
+    "dev": "next dev --port 5174",
+    "gen:icons": "node scripts/gen-icon-manifest.mjs",
     "lint": "eslint .",
+    "mcp": "node mcp/server.mjs",
+    "migrate": "node db/migrate.mjs",
+    "prebuild": "node scripts/gen-icon-manifest.mjs && node scripts/gen-font-data.mjs",
+    "start": "next start --port 5174",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
-    "gen:icons": "node scripts/gen-icon-manifest.mjs",
-    "prebuild": "node scripts/gen-icon-manifest.mjs && node scripts/gen-font-data.mjs"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",

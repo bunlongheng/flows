@@ -44,17 +44,24 @@ export function colorFromIcon(icon) {
   const svg = decode(icon)
   let out = null
   if (svg) {
-    const counts = new Map()
     // Longhand #rrggbb and shorthand #rgb, which several simple-icons use.
+    // Insertion order is kept deliberately: when two colours appear the same
+    // number of times, the one drawn FIRST wins, because an SVG lays down its
+    // main shape before its details. Sorting on count alone left ties to the
+    // Map's iteration order, which picked a shadow over the brand colour on
+    // logos where every colour appears once (Linode drew its darkest green).
+    const counts = new Map()
     for (const m of svg.matchAll(/#([0-9a-fA-F]{6})\b|#([0-9a-fA-F]{3})\b/g)) {
-      let hex = (m[1] || m[2].split('').map(c => c + c).join('')).toLowerCase()
+      const hex = (m[1] || m[2].split('').map(c => c + c).join('')).toLowerCase()
       if (hex === 'ffffff') continue // the canvas behind a logo, never the logo
       counts.set(hex, (counts.get(hex) || 0) + 1)
     }
     if (counts.size) {
-      const all = [...counts.entries()].sort((a, b) => b[1] - a[1])
-      const vivid = all.filter(([h]) => !isNeutral(h))
-      out = '#' + (vivid.length ? vivid[0][0] : all[0][0])
+      const order = [...counts.keys()]
+      const byCountThenFirstSeen = (a, b) =>
+        counts.get(b) - counts.get(a) || order.indexOf(a) - order.indexOf(b)
+      const vivid = order.filter((h) => !isNeutral(h)).sort(byCountThenFirstSeen)
+      out = '#' + (vivid.length ? vivid[0] : order.sort(byCountThenFirstSeen)[0])
     }
   }
   cache.set(icon, out)
