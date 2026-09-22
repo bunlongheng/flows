@@ -408,13 +408,17 @@ test("phone header: matched tiles, finger-sized targets, aligned app logo", asyn
     // The header must not scroll sideways once everything grew.
     expect(await page.locator("header").first().evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
 
-    // Steps and the badge style are 2 separate controls, so a line sits between
-    // them - and only there, with no stray bar left by a hidden neighbour.
-    const bars = await page.locator("header .sd-divider").evaluateAll((els) =>
-      els.map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0).map((r) => r.x));
-    expect(bars).toHaveLength(1);
-    const steps = await box('header button:has-text("Steps")');
-    expect(bars[0]).toBeGreaterThan(steps.x + steps.width - 1);
+    // A divider only earns its place between 2 controls that are both still
+    // there. On a phone most of the bar is hidden, so what must never happen is
+    // a bar left hanging at an end, or 2 of them stacked where the button
+    // between them dropped out.
+    const strays = await page.locator("header .sd-detail-actions > *").evaluateAll((els) => {
+      const shown = els.filter((e) => e.getBoundingClientRect().width > 0);
+      const isBar = (e) => e.classList.contains("sd-divider");
+      return shown.filter((e, i) =>
+        isBar(e) && (i === 0 || i === shown.length - 1 || isBar(shown[i - 1]) || isBar(shown[i + 1]))).length;
+    });
+    expect(strays).toBe(0);
 
     // The gallery app mark shares the 16px gutter with the content below it.
     await page.goto("/demo");
@@ -468,6 +472,51 @@ test("phone keeps Fit reachable and never hides a button out of reach", async ({
     await page.waitForTimeout(700);
     expect(Math.abs((await scale()) - fitted)).toBeLessThan(0.05);
     await ctx.close();
+  } finally {
+    await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
+  }
+});
+
+// The owner's bar is the widest the toolbar ever gets - 13 controls. It used to
+// measure 1109px and scroll sideways on anything narrower: a phone held
+// sideways, an iPad in Split View, a Duo pane. A toolbar that scrolls hides its
+// own buttons, so at every width the bar has to fit, dropping the actions that
+// have another way in rather than running off the edge.
+test("the owner toolbar fits every viewport instead of scrolling sideways", async ({ browser, baseURL }) => {
+  const api = await request.newContext({ baseURL });
+  const create = await api.post("/api/ai/flows", {
+    headers: { Authorization: `Bearer ${SECRET}` },
+    data: {
+      title: "Toolbar width check", is_public: true,
+      nodes: ["user", "apigw", "lambda", "dynamo"].map((id) => ({ id })),
+      edges: [["user", "apigw"], ["apigw", "lambda"], ["lambda", "dynamo"]].map(([source, target]) => ({ source, target })),
+    },
+  });
+  expect(create.status()).toBe(201);
+  const id = (await create.json()).url.split("/?id=")[1];
+  try {
+    // 320 an SE1 or a Slide Over pane, 390 a phone upright, 430 a Pro Max,
+    // 667/844 the same phones turned sideways, 1024 an iPad, 1440 a laptop.
+    for (const width of [320, 375, 390, 430, 667, 844, 1024, 1120, 1440]) {
+      const ctx = await browser.newContext({ viewport: { width, height: width < 500 ? 844 : 500 } });
+      await ctx.addCookies([{ name: "sd_session", value: OWNER_COOKIE.split("=")[1], url: baseURL }]);
+      const page = await ctx.newPage();
+      await page.goto(`/?id=${id}`);
+      await page.waitForSelector(".react-flow__node", { timeout: 20000 });
+      await page.waitForTimeout(400);
+
+      const bar = page.locator("header.sd-detail-header").first();
+      const over = await bar.evaluate((e) => e.scrollWidth - e.clientWidth);
+      expect(over, `header overflows by ${over}px at ${width}px`).toBeLessThanOrEqual(0);
+
+      // Fitting must not mean an empty bar: reading a diagram still takes Fit,
+      // Steps and Notes at every single width.
+      for (const name of ["Fit", "Steps", "Notes"]) {
+        const btn = page.locator(`header button[title*="${name}" i], header button:has-text("${name}")`).first();
+        expect(await btn.evaluate((e) => e.getBoundingClientRect().width > 0), `${name} missing at ${width}px`).toBe(true);
+      }
+      await ctx.close();
+    }
   } finally {
     await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
   }

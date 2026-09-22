@@ -194,13 +194,13 @@ export function DetailView({
         <div style={{ flex: 1 }} />
 
         {/* Action toolbar - floating pill */}
-        <div style={{
+        <div className="sd-detail-actions" style={{
           display: 'flex', alignItems: 'center', gap: 2,
           background: '#ffffff', border: '1px solid #e4e6e8', borderRadius: 14,
           boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '4px 6px',
         }}>
           {/* Code toggle */}
-          {canEdit && <button className="sd-hide-mobile" onClick={() => setShowDetailCode(v => !v)} style={{
+          {canEdit && <button className="sd-hide-mobile sd-hide-tablet" onClick={() => setShowDetailCode(v => !v)} style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
             background: showDetailCode ? '#f1f5f9' : 'transparent',
@@ -217,7 +217,7 @@ export function DetailView({
             <span className="sd-btn-label">Code</span>
           </button>}
 
-          <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
+          <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
 
           {/* Fit button */}
           <button className={`sd-hide-mobile sd-show-mobile${fitted ? ' is-on' : ''}`} onClick={fitNow}
@@ -255,10 +255,10 @@ export function DetailView({
             <span className="sd-btn-label">{playing ? 'Pause' : 'Play'}</span>
           </button>
 
-          <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
+          <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
 
           {/* Auto-arrange: re-lay-out left-to-right, spread out, step-ordered, then fit */}
-          {canEdit && <button className="sd-hide-mobile sd-show-mobile" onClick={() => onArrange && onArrange()} title="Auto-arrange the layout" style={{
+          {canEdit && <button className="sd-hide-mobile sd-show-mobile sd-hide-tablet" onClick={() => onArrange && onArrange()} title="Auto-arrange the layout" style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
             background: 'transparent', color: '#64748b',
@@ -302,7 +302,7 @@ export function DetailView({
           <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
 
           {/* Details (goal + steps) panel toggle */}
-          <button className={`sd-hide-mobile${showDetailsPanel ? ' is-on' : ''}`} onClick={() => setShowDetailsPanel(v => !v)} style={{
+          <button className={`sd-hide-mobile sd-hide-tablet${showDetailsPanel ? ' is-on' : ''}`} onClick={() => setShowDetailsPanel(v => !v)} style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
             background: showDetailsPanel ? '#f1f5f9' : 'transparent',
@@ -319,7 +319,7 @@ export function DetailView({
             <span className="sd-btn-label">Details</span>
           </button>
 
-          <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
+          <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
 
           {/* Steps toggle */}
           <button className={showSteps ? "is-on" : ""} onClick={() => setShowSteps(v => !v)} style={{
@@ -363,10 +363,10 @@ export function DetailView({
 
           {/* Kept on a phone: Steps and the badge style are the 2 actions left in
               the bar there, and without a line between them they read as 1 control. */}
-          <div className="sd-divider sd-divider-phone" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
+          <div className="sd-divider sd-divider-phone sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
 
           {/* Badge style cycle: silver -> color -> dark -> plain */}
-          <button onClick={() => {
+          <button className="sd-hide-tablet" onClick={() => {
             const order = ['silver', 'color', 'dark', 'plain']
             setBadgeMode(m => order[(order.indexOf(m) + 1) % order.length])
           }} style={{
@@ -840,10 +840,29 @@ export function DetailView({
           .sd-detail-header .sd-vis-label { display: none; }
           .sd-detail-header .sd-visibility { padding: 0 8px !important; }
         }
-        /* Small phones (SE and friends): the owner's bar is 1 button wider than
-           the room, and the header hides its overflow, so tighten rather than
-           silently clip something off the right edge. */
-        @media (max-width: 400px) {
+        /* Landscape phone, and a tablet in Split View or Slide Over. The owner's
+           full bar measures 1109px, so anything under that scrolled sideways -
+           the 1 thing a toolbar must never do. Between the phone tier and that
+           width, the 4 actions that have another way in drop out: Code (the
+           share panel carries the same markup), Arrange (desktop tidy), Details
+           (the info card on the canvas says the same thing) and the badge-style
+           cycle. The visibility pill keeps its globe and loses its word. What is
+           left - Fit, Play, Steps, Notes, Share, Lock, Delete - fits on 1 row. */
+        @media (min-width: 641px) and (max-width: 1120px) {
+          .sd-detail-header .sd-hide-tablet { display: none !important; }
+          .sd-detail-header .sd-vis-label { display: none; }
+          .sd-detail-header .sd-visibility { padding: 0 8px !important; }
+        }
+        /* Narrower than that - a phone held sideways, or a third of an iPad -
+           7 labelled buttons still do not fit, so they drop to their icons, the
+           same trade the phone tier already makes. */
+        @media (min-width: 641px) and (max-width: 880px) {
+          .sd-detail-header .sd-btn-label { display: none; }
+        }
+        /* Phones held upright, a Pro Max included: even icon-only the owner's
+           bar is wider than the room, so tighten rather than silently clip
+           something off the right edge. */
+        @media (max-width: 480px) {
           .sd-detail-header { padding: 0 6px !important; gap: 0 !important; }
           .sd-detail-header button { padding: 0 6px !important; min-width: 34px !important; }
           .sd-detail-header .sd-divider-phone { margin: 0 2px !important; }
@@ -852,6 +871,11 @@ export function DetailView({
              row of stray bars. */
           .sd-detail-header .sd-divider { display: none; }
           .sd-detail-header .sd-divider-phone { display: block; height: 22px !important; margin: 0 4px !important; }
+          /* Even icon-only, the bar ran 79px past an SE. The badge-style cycle
+             and Arrange give up their seats: both are tidying, neither is the
+             way to read a diagram, and both are back 1 breakpoint up. */
+          .sd-detail-header .sd-hide-tablet { display: none !important; }
+          .sd-detail-header .sd-show-mobile.sd-hide-tablet { display: none !important; }
           /* Phone targets, 25% up from the desktop sizes so they land under an
              index finger: the Back tile and the brand tile go 36 -> 45, and the
              toolbar actions 30 -> 38 inside their pill. With only 4 marks in the
@@ -866,6 +890,14 @@ export function DetailView({
             min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
             font-size: 13px !important;
           }
+        }
+
+        /* Narrower than an SE2 (an SE1, or an iPad Slide Over pane): the 2 tiles
+           at the start cost 90px between them and only 1 of them does anything.
+           The brand logo steps aside - the title next to it already names the
+           diagram, and the Back tile still has to be tappable. */
+        @media (max-width: 374px) {
+          .sd-detail-header .sd-brand-tile { display: none !important; }
         }
 
         /* Delete is armed: pulse the canvas red from the edges in. */
