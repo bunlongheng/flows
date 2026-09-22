@@ -4,7 +4,7 @@ AWS and GCP architecture diagrams an agent can draw and a README can embed.
 
 Describe a system, get a React Flow canvas back: 118 real services with real logos, laid out for you, with per-node notes and numbered steps you can walk a room through. Every diagram is a row in Postgres, and the same row renders back out as JSON, a self-contained SVG or an animated GIF from a plain URL - so the picture in your docs is the diagram, not a screenshot of one that drifted 3 commits ago. An id that resolves to no logo is rejected at create time, which is why a diagram a model made looks like one a person made.
 
-![The Flows canvas, showing this app's own architecture with per-node notes](docs/screenshots/hero.webp)
+![The Flows canvas: a Twitter fan-out design with numbered steps, per-edge labels and the Steps panel open](docs/screenshots/hero.webp)
 
 [![CI](https://github.com/bunlongheng/flows/actions/workflows/ci.yml/badge.svg)](https://github.com/bunlongheng/flows/actions/workflows/ci.yml)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)
