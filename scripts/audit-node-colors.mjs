@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { colorFromIcon } from "../src/iconColor.js";
 import { findService } from "../src/services.js";
+import { colorFromRaster, bytesOfDataUri } from "./icon-color-raster.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, "..", "public");
@@ -76,9 +77,24 @@ function svgTextOf(icon) {
   return null;
 }
 
-/** What the logo says this node's colour should be, or null when it cannot say. */
-function truthColor(node) {
-  return colorFromIcon(node.icon) || colorFromPath(node.icon) || null;
+/**
+ * What the logo says this node's colour should be, or null when it cannot say.
+ * SVG first, then raster - 92 of 460 nodes carry a PNG or JPEG icon, and an
+ * SVG-only reader called those clean while a yellow Recurly tile sat in a
+ * purple box.
+ */
+async function truthColor(node) {
+  const fromSvg = colorFromIcon(node.icon) || colorFromPath(node.icon);
+  if (fromSvg) return fromSvg;
+  const inline = bytesOfDataUri(node.icon);
+  if (inline) { try { return await colorFromRaster(inline); } catch { return null; } }
+  if (typeof node.icon === "string" && node.icon.startsWith("/")) {
+    const f = path.join(PUBLIC, node.icon.replace(/^\/+/, "").split("?")[0]);
+    if (existsSync(f) && !f.endsWith(".svg")) {
+      try { return await colorFromRaster(readFileSync(f)); } catch { return null; }
+    }
+  }
+  return null;
 }
 
 /** What the app actually draws today. */
@@ -87,6 +103,27 @@ function renderedColor(node) {
 }
 
 const norm = (c) => (typeof c === "string" ? c.trim().toLowerCase() : c);
+
+const rgb = (h) => {
+  const x = String(h).replace("#", "");
+  return [parseInt(x.slice(0, 2), 16), parseInt(x.slice(2, 4), 16), parseInt(x.slice(4, 6), 16)];
+};
+
+/**
+ * Perceptual distance, 0 to ~255. The green channel is weighted heaviest
+ * because the eye is most sensitive to it.
+ *
+ * A stored colour only gets rewritten when the difference is VISIBLE. Auth0 is
+ * stored #EB5424 and its tile samples as #ed5524 - the same orange, and the
+ * stored one is the exact brand hex while the sample is an average of a
+ * bucket. Rewriting those is churn that makes the data slightly less accurate.
+ * Recurly stored purple against a yellow tile is the case worth fixing.
+ */
+function perceptualDistance(a, b) {
+  const [r1, g1, b1] = rgb(a), [r2, g2, b2] = rgb(b);
+  return Math.sqrt(2 * (r1 - r2) ** 2 + 4 * (g1 - g2) ** 2 + 3 * (b1 - b2) ** 2) / 3;
+}
+const VISIBLE = 28;
 
 async function main() {
   const pool = new pg.Pool({
@@ -98,22 +135,28 @@ async function main() {
       "SELECT id, title, slug, nodes FROM flows WHERE deleted_at IS NULL ORDER BY created_at",
     );
 
-    let checked = 0, wrong = 0, fixed = 0, noTruth = 0;
+    let checked = 0, wrong = 0, fixed = 0, noTruth = 0, closeEnough = 0;
     const report = [];
     const ambiguous = [];
 
     for (const row of rows) {
       const nodes = Array.isArray(row.nodes) ? row.nodes : [];
       let touched = false;
-      const next = nodes.map((n) => {
+      const next = await Promise.all(nodes.map(async (n) => {
         checked++;
-        const truth = truthColor(n);
+        const truth = await truthColor(n);
         if (!truth) { noTruth++; return n; }          // catalog key, or a logo with no colour
         const drawn = renderedColor(n);
         if (norm(drawn) === norm(truth)) return n;
+        const dist = perceptualDistance(drawn, truth);
+        if (dist < VISIBLE) { closeEnough++; return n; }
 
         // Only an unambiguous logo overrules a stored colour. See vividCount.
-        const vivids = vividCount(n.icon);
+        // A raster icon is exempt: colorFromRaster already returns the single
+        // dominant tile colour, or null when no colour covers enough of it.
+        const raster = /^data:image\/(png|jpe?g|webp);/i.test(n.icon || "")
+          || (typeof n.icon === "string" && n.icon.startsWith("/") && !n.icon.endsWith(".svg"));
+        const vivids = raster ? 1 : vividCount(n.icon);
         if (vivids !== 1) {
           ambiguous.push({ slug: row.slug, label: n.label || n.id, drawn, truth, vivids });
           return n;
@@ -123,7 +166,7 @@ async function main() {
         if (!FIX) return n;
         touched = true; fixed++;
         return { ...n, color: truth };
-      });
+      }));
       if (touched) {
         await pool.query("UPDATE flows SET nodes = $1::jsonb, updated_at = now() WHERE id = $2",
           [JSON.stringify(next), row.id]);
@@ -131,7 +174,8 @@ async function main() {
     }
 
     console.log(`  diagrams ${rows.length}   nodes ${checked}   logo states a colour for ${checked - noTruth}`);
-    console.log(`  MISMATCHED: ${wrong}${FIX ? `   FIXED: ${fixed}` : ""}`);
+    console.log(`  same to the eye, left as the curated hex: ${closeEnough}`);
+    console.log(`  VISIBLY WRONG: ${wrong}${FIX ? `   FIXED: ${fixed}` : ""}`);
     if (report.length) {
       console.log(`\n  ${"diagram".padEnd(34)} ${"node".padEnd(20)} ${"drawn".padEnd(9)} -> ${"logo".padEnd(9)} stored`);
       for (const r of report.slice(0, 60)) {
