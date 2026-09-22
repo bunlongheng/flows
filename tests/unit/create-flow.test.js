@@ -65,6 +65,21 @@ describe("POST /api/ai/flows (public render-only)", () => {
     expect(res.statusCode).toBe(400);
   });
 
+  // The stored `type` is the singular. The rename briefly made this path write
+  // "flows", which left 3 rows disagreeing with the other 43 and would have
+  // rejected an MCP-shaped call arriving over HTTP - the MCP server has always
+  // written "flow". Both spellings are taken in; only the singular is stored.
+  it.each(["flow", "flows", undefined])("accepts type %s and stores the singular", async (type) => {
+    query.mockResolvedValueOnce({ rows: [] });
+    query.mockResolvedValueOnce({ rows: [{ id: "00000000-0000-0000-0000-0000000000ff" }] });
+    const res = mockRes();
+    const body = { ...VALID_BODY };
+    if (type === undefined) delete body.type; else body.type = type;
+    await createFlow(good(`Bearer ${SECRET}`, body), res);
+    expect(res.statusCode).toBe(201);
+    expect(query.mock.calls[1][1][5]).toBe("flow");
+  });
+
   it("400s for an unsupported type", async () => {
     const res = mockRes();
     await createFlow(good(`Bearer ${SECRET}`, { ...VALID_BODY, type: "sequence" }), res);
