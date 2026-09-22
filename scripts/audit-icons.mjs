@@ -27,12 +27,32 @@ import pg from "pg";
 const FIX = process.argv.includes("--fix");
 const SMALL_RASTER = 4000; // bytes; below this a logo is visibly soft at 46px
 
-/** Group by the first two words of the label, so "Recurly v3 API" and
- *  "Recurly v2 XML API" are one service, but "Tray - Service router" and
- *  "Tray - Marketplace" stay distinct enough to keep their own art. */
-const identity = (n) =>
-  String(n.label || n.id || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
-    .split(" ").slice(0, 2).join(" ");
+/**
+ * The BRAND a node belongs to.
+ *
+ * A label shaped "Brand - what it does" names the brand before the dash, so
+ * "Tray - Service router", "Tray - Marketplace Subscription" and "OLD Tray
+ * Workflow" are all Tray and must share one logo. Taking the first two words
+ * split them into eight separate services, each keeping its own art - which is
+ * exactly the inconsistency this script exists to remove.
+ *
+ * Without a dash, fall back to the first two words so "Recurly v3 API" and
+ * "Recurly v2 XML API" still land together.
+ */
+const KNOWN_BRANDS = ["tray", "recurly", "thryv", "integry", "mbd", "ubs", "cyclr"];
+
+function identity(n) {
+  const raw = String(n.label || n.id || "").toLowerCase();
+  const clean = raw.replace(/[^a-z0-9]+/g, " ").trim();
+  if (!clean) return "";
+  // A known brand anywhere in the label wins - it survives "OLD Tray Workflow"
+  // and "Tray - Marketplace" alike.
+  const brand = KNOWN_BRANDS.find((b) => clean.split(" ").includes(b));
+  if (brand) return brand;
+  const dash = raw.indexOf(" - ");
+  if (dash > 0) return raw.slice(0, dash).replace(/[^a-z0-9]+/g, " ").trim();
+  return clean.split(" ").slice(0, 2).join(" ");
+}
 
 function describe(icon) {
   if (!icon) return { kind: "none", rank: 0, bytes: 0 };
