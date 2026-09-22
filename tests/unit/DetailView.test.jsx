@@ -18,7 +18,7 @@ global.ResizeObserver = global.ResizeObserver || ResizeObserverStub;
 
 const sampleDiagram = {
   id: "d1",
-  title: "IFTTT System Design",
+  title: "IFTTT Automation",
   data: { nodes: [{ id: "user", position: { x: 0, y: 0 } }], edges: [] },
   updatedAt: new Date().toISOString(),
   tags: ["API"],

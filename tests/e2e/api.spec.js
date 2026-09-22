@@ -7,7 +7,7 @@ const SECRET = process.env.FLOWS_API_SECRET || "e2e-secret";
 const OWNER_COOKIE = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
 
 const VALID_BODY = {
-  title: "E2E Uber System Design",
+  title: "E2E Uber Realtime Matching",
   type: "flows",
   nodes: [
     { id: "user", position: { x: 40, y: 200 } },

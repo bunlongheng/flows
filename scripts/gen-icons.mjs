@@ -53,7 +53,7 @@ async function buildOg() {
     </defs>
     <rect width="${W}" height="${H}" fill="url(#g)"/>
     <text x="${W / 2}" y="440" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
-      font-size="64" font-weight="800" letter-spacing="-2" fill="#111827">System Design</text>
+      font-size="64" font-weight="800" letter-spacing="-2" fill="#111827">Flows</text>
     <text x="${W / 2}" y="492" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
       font-size="27" font-weight="500" fill="#6b7280">AWS &amp; GCP architecture diagrams</text>
   </svg>`);

@@ -42,7 +42,7 @@ curl -X POST https://flows-bheng.vercel.app/api/ai/flows \
   -H "Authorization: Bearer $FLOWS_API_SECRET" \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "Netflix System Design",
+    "title": "Netflix Video Streaming",
     "is_public": true,
     "nodes": [
       { "id": "user",       "position": { "x": 40,  "y": 200 } },

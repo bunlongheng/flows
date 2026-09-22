@@ -136,7 +136,7 @@ const publicOrigin = () => {
 // as NOT a saved row: it has no database record, so it must never offer a delete
 // button - clicking one could only ever fail.
 const SEED = [
-  { id: 'ifttt', title: 'IFTTT System Design', data: diagramData, updatedAt: new Date().toISOString(), tags: ['AWS', 'Architecture'], sample: true },
+  { id: 'ifttt', title: 'IFTTT Automation', data: diagramData, updatedAt: new Date().toISOString(), tags: ['AWS', 'Architecture'], sample: true },
 ]
 
 export default function App() {

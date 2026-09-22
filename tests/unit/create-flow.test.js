@@ -27,7 +27,7 @@ const SECRET = "test-secret-abc123";
 const ID = "11111111-1111-1111-1111-111111111111";
 const good = (auth, body) => ({ method: "POST", headers: { host: "flows-bheng.vercel.app", authorization: auth }, body });
 const VALID_BODY = {
-  title: "Netflix System Design",
+  title: "Netflix Video Streaming",
   nodes: [{ id: "user", position: { x: 40, y: 200 } }, { id: "cloudfront", position: { x: 260, y: 200 } }],
   edges: [{ id: "e1", source: "user", target: "cloudfront" }],
 };
@@ -153,7 +153,7 @@ describe("POST /api/ai/flows - visibility and share link", () => {
     expect(query.mock.calls[1][1][7]).toBe(false);
     expect(res.body.visibility).toBe("private");
     expect(res.body.share_note).toMatch(/404/);
-    expect(res.body.share_url).toMatch(/\/demo\?name=netflix-system-design$/);
+    expect(res.body.share_url).toMatch(/\/demo\?name=netflix-video-streaming$/);
   });
 
   it("is_public: true publishes on create", async () => {
