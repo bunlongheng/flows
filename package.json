@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "audit:colors": "node scripts/audit-node-colors.mjs",
+    "audit:icons": "node scripts/audit-icons.mjs",
     "build": "next build",
     "dev": "next dev --port 5174",
     "gen:icons": "node scripts/gen-icon-manifest.mjs",

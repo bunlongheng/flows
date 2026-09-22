@@ -173,9 +173,68 @@ async function main() {
       }
     }
 
+    // ── Pass 2: one icon, one colour, exactly ────────────────────────────
+    // The visible-difference threshold protects an exact brand hex from being
+    // churned, but it also let two nodes of the SAME service keep two similar
+    // oranges - Thryv rendered #f97316 in one diagram and #FE5100 in another,
+    // and one Integry was green while the rest were blue. The owner's rule is
+    // that a given logo always draws the same colour, so after the per-node
+    // check every node sharing an icon is forced onto one value: the colour the
+    // logo states, or failing that the one most nodes already use.
+    const byIcon = new Map();
+    for (const r of rows) {
+      for (const n of r.nodes || []) {
+        if (!n.icon) continue;
+        if (!byIcon.has(n.icon)) byIcon.set(n.icon, []);
+        byIcon.get(n.icon).push(n);
+      }
+    }
+    // MAJORITY wins, not the icon-derived colour. Deriving would undo the
+    // careful part above: Linode's mark samples as its darkest green and PM2's
+    // gradient as purple for a blue brand, and those were deliberately left on
+    // their curated hex. What is actually broken is the ODD ONE OUT - a single
+    // green Integry among blue ones - so the fix is to move the minority onto
+    // what the rest of the group already uses. The icon colour only decides a
+    // genuine tie.
+    const iconColour = new Map();
+    for (const [icon, group] of byIcon) {
+      const tally = new Map();
+      for (const n of group) {
+        const c = renderedColor(n);
+        tally.set(norm(c), { c, n: (tally.get(norm(c))?.n || 0) + 1 });
+      }
+      const ranked = [...tally.values()].sort((a, b) => b.n - a.n);
+      const tied = ranked.length > 1 && ranked[0].n === ranked[1].n;
+      iconColour.set(icon, tied ? ((await truthColor(group[0])) || ranked[0].c) : ranked[0].c);
+    }
+
+    let unified = 0;
+    const unifiedList = [];
+    for (const r of rows) {
+      let touched = false;
+      const next = (r.nodes || []).map((n) => {
+        if (!n.icon) return n;
+        const want = iconColour.get(n.icon);
+        if (!want || norm(renderedColor(n)) === norm(want)) return n;
+        unified++;
+        unifiedList.push({ label: n.label || n.id, from: renderedColor(n), to: want });
+        if (!FIX) return n;
+        touched = true;
+        return { ...n, color: want };
+      });
+      if (touched) {
+        await pool.query("UPDATE flows SET nodes = $1::jsonb, updated_at = now() WHERE id = $2",
+          [JSON.stringify(next), r.id]);
+      }
+    }
+
     console.log(`  diagrams ${rows.length}   nodes ${checked}   logo states a colour for ${checked - noTruth}`);
     console.log(`  same to the eye, left as the curated hex: ${closeEnough}`);
     console.log(`  VISIBLY WRONG: ${wrong}${FIX ? `   FIXED: ${fixed}` : ""}`);
+    console.log(`  SAME ICON, DIFFERENT COLOUR: ${unified}${FIX ? " (unified)" : ""}`);
+    for (const u of unifiedList.slice(0, 12)) {
+      console.log(`    ${String(u.label).slice(0, 26).padEnd(27)} ${u.from} -> ${u.to}`);
+    }
     if (report.length) {
       console.log(`\n  ${"diagram".padEnd(34)} ${"node".padEnd(20)} ${"drawn".padEnd(9)} -> ${"logo".padEnd(9)} stored`);
       for (const r of report.slice(0, 60)) {
