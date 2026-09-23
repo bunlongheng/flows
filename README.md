@@ -57,7 +57,7 @@ Once it is public, the URL is the image - no auth, no browser, animated:
 ```
 
 <a href="https://sequences-bheng.vercel.app/s/6b8d7e1e-2028-4941-8f7d-2c75eaa747ea">
-  <img src="docs/diagrams/create-flow.svg" alt="From POST to animated GIF: an agent posts a diagram, Flows stores it, and the same URL renders it back" width="880">
+  <img src="docs/diagrams/create-flow.svg" alt="Create Flow Diagram: an agent posts a diagram, Flows stores it, and the same URL renders it back" width="880">
 </a>
 
 <sub>Made with [Sequences](https://sequences-bheng.vercel.app).</sub>
