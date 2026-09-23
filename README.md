@@ -17,12 +17,12 @@ Describe a system, get a React Flow canvas back: 118 real services with real log
 
 ## Features
 
-- **Every node is a real service** - 118 in the catalog, 1 canonical logo each. An id that resolves to no logo is rejected at create time, so a diagram never renders a lettered box, and `npm run audit:icons` pins a bring-your-own icon back to the canonical one when a service drifts.
-- **Bring your own logo** - pass an `https` image URL (`image/*`, under 24KB, no redirects) or a `data:` URI plus a label. It is fetched once at create time and inlined, so the stored diagram stays self-contained.
-- **It lays itself out** - omit `x`/`y` and the server runs the layout engine before it stores the row, so an agent that knows nothing about coordinates still gets a readable diagram.
-- **A published diagram is a URL** - JSON, `?format=svg` or `?format=gif`, no auth and no browser. New diagrams are private until you publish them, and a private one answers `404` to everybody but you.
-- **It explains itself** - per-node notes, numbered step badges on the edges, a Details panel that lists those steps in order, Play to send dots flowing along them, and 4 badge styles. The panel you left open and the style you picked are remembered per diagram.
-- **3 ways in** - the browser canvas, a Bearer-gated HTTP API, or 10 MCP tools. Delete is soft: it goes to trash, `restore_flow` brings it back, and purge is a separate, deliberate call.
+- **118 real logos** - a node whose id has no logo is refused, so a diagram never shows a lettered box.
+- **Or bring your own** - an `https` or `data:` icon is fetched once and stored inside the diagram.
+- **It places itself** - leave `x`/`y` out and the server lays the nodes out before it saves them.
+- **A diagram is a URL** - the same row as JSON, SVG or animated GIF. New ones are private until you publish.
+- **It reads like a story** - notes, numbered steps, a Details panel, flowing dots, 4 badge styles.
+- **3 ways in** - the canvas, an HTTP API with a token, or 10 MCP tools. Delete is soft, so you can undo it.
 
 ## Read this before you clone
 
@@ -35,13 +35,9 @@ This is a working app, not a library. It needs 3 things from you, and 1 more if 
 | **A host** | A Next.js server, not a static site | Vercel, or localhost |
 | **Anthropic key** | Plain-English generation only | optional |
 
-## 3 ways to get a diagram
+## For agents
 
-**1. An agent makes it.** 10 MCP tools - `create_flow`, `update_flow`, `list_services` and the rest - so a coding agent, a script or a CI job writes straight into your library.
-
-**2. You draw it.** Drag nodes on a React Flow canvas with snap guides, undo, auto layout, per-node notes and numbered steps. Open the Details panel and the steps read in order, which is what you want on a screen share.
-
-**3. curl it into your docs.** 1 Bearer-authed POST returns a URL. Omit the positions and the layout engine places the nodes for you. Pass `is_public: true` if the link has to work for anybody but you.
+1 Bearer-authed POST returns a URL. Omit the positions and the layout engine places the nodes for you; pass `is_public: true` if the link has to work for anybody but you.
 
 ```bash
 curl -X POST "$APP/api/ai/flows" \
