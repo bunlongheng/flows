@@ -17,12 +17,12 @@ Describe a system, get a React Flow canvas back: 118 real services with real log
 
 ## Features
 
-- **Every node is a real service** - 118 of them, keyed by brand so 2 products of the same vendor never disagree on a logo. An unknown id is rejected, not drawn as a lettered box.
-- **Bring your own logo** - pass an `https` URL or a `data:` URI with a label and it is fetched and inlined once, so the diagram stays self-contained forever.
-- **It lays itself out** - leave `x`/`y` off and the canvas picks the columns and the spacing, which is the look you actually want back from an agent.
-- **The diagram is a URL** - JSON, `?format=svg`, or `?format=gif` for an animated one, all public, no auth and no browser needed.
-- **It explains itself** - per-node notes, numbered steps, Play to walk through them, a Details panel and 4 badge styles, each remembered per diagram.
-- **3 ways in** - the browser canvas, a Bearer-gated HTTP API, or 10 MCP tools for any agent. Delete is a soft delete, with trash, restore and purge.
+- **Every node is a real service** - 118 in the catalog, 1 canonical logo each. An id that resolves to no logo is rejected at create time, so a diagram never renders a lettered box, and `npm run audit:icons` pins a bring-your-own icon back to the canonical one when a service drifts.
+- **Bring your own logo** - pass an `https` image URL (`image/*`, under 24KB, no redirects) or a `data:` URI plus a label. It is fetched once at create time and inlined, so the stored diagram stays self-contained.
+- **It lays itself out** - omit `x`/`y` and the server runs the layout engine before it stores the row, so an agent that knows nothing about coordinates still gets a readable diagram.
+- **A published diagram is a URL** - JSON, `?format=svg` or `?format=gif`, no auth and no browser. New diagrams are private until you publish them, and a private one answers `404` to everybody but you.
+- **It explains itself** - per-node notes, numbered step badges on the edges, a Details panel that lists those steps in order, Play to send dots flowing along them, and 4 badge styles. The panel you left open and the style you picked are remembered per diagram.
+- **3 ways in** - the browser canvas, a Bearer-gated HTTP API, or 10 MCP tools. Delete is soft: it goes to trash, `restore_flow` brings it back, and purge is a separate, deliberate call.
 
 ## Read this before you clone
 
@@ -39,9 +39,9 @@ This is a working app, not a library. It needs 3 things from you, and 1 more if 
 
 **1. An agent makes it.** 10 MCP tools - `create_flow`, `update_flow`, `list_services` and the rest - so a coding agent, a script or a CI job writes straight into your library.
 
-**2. You draw it.** Drag nodes on a React Flow canvas with snap guides, undo, auto layout, per-node notes and numbered steps. Press Play and walk a room through the design 1 step at a time.
+**2. You draw it.** Drag nodes on a React Flow canvas with snap guides, undo, auto layout, per-node notes and numbered steps. Open the Details panel and the steps read in order, which is what you want on a screen share.
 
-**3. curl it into your docs.** 1 Bearer-authed POST returns a URL. Omit the positions and the canvas lays it out left to right for you.
+**3. curl it into your docs.** 1 Bearer-authed POST returns a URL. Omit the positions and the layout engine places the nodes for you. Pass `is_public: true` if the link has to work for anybody but you.
 
 ```bash
 curl -X POST "$APP/api/ai/flows" \
@@ -54,7 +54,7 @@ curl -X POST "$APP/api/ai/flows" \
                 {"source":"lambda","target":"dynamo"}]}'
 ```
 
-Then the URL is the image - no auth, no browser, animated:
+Once it is public, the URL is the image - no auth, no browser, animated:
 
 ```markdown
 ![Architecture]($APP/api/flows/url-shortener-like-bitly?format=gif)
