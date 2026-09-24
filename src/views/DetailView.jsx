@@ -217,7 +217,8 @@ export function DetailView({
             <span className="sd-btn-label">Code</span>
           </button>}
 
-          <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
+          {/* Only the owner has Code to the left of this. */}
+          {canEdit && <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />}
 
           {/* Fit button */}
           <button className={`sd-hide-mobile sd-show-mobile${fitted ? ' is-on' : ''}`} onClick={fitNow}
@@ -255,7 +256,8 @@ export function DetailView({
             <span className="sd-btn-label">{playing ? 'Pause' : 'Play'}</span>
           </button>
 
-          <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
+          {/* Arrange and undo are the owner's; a visitor has no group here to fence. */}
+          {canEdit && <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />}
 
           {/* Auto-arrange: re-lay-out left-to-right, spread out, step-ordered, then fit */}
           {canEdit && <button className="sd-hide-mobile sd-show-mobile sd-hide-tablet" onClick={() => onArrange && onArrange()} title="Auto-arrange the layout" style={{
