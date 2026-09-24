@@ -686,6 +686,9 @@ export default function App() {
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then(d => {
         openDiagram(rowToDiagram(d))
+        // A link opens straight onto the canvas, so the flow plays on its own:
+        // whoever it was shared with should see it move, not hunt for Play.
+        flowClock.setPlaying(true)
         setLoadingId(false)
       })
       .catch(() => {
@@ -714,6 +717,7 @@ export default function App() {
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then(row => {
         openDiagram(rowToDiagram(row))
+        flowClock.setPlaying(true) // same as ?id=: a shared link plays itself
         setLoadingId(false)
       })
       .catch(() => { setLoadError(true); setLoadingId(false) })
