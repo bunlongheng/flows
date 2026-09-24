@@ -248,6 +248,7 @@ export function IndexView({
             {filtered.map(d => (
               <DiagramCard
                 key={d.id}
+                id={d.id}
                 diagram={d.data}
                 title={d.title}
                 updatedAt={d.updatedAt}

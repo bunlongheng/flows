@@ -9,7 +9,7 @@ import { tierFor } from '../difficulty.js'
 
 // isPrivate: owner's gallery only - a small lock so a diagram that is not yet
 // shareable is obvious before its link goes anywhere.
-export function DiagramCard({ diagram, title, updatedAt, showBrand, difficulty, onOpen, onViewCode, onDelete, isPrivate }) {
+export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficulty, onOpen, onViewCode, onDelete, isPrivate }) {
   const brand = showBrand ? brandFor(title) : null
   const tier = tierFor(difficulty)
   const [active, setActive] = useState(false) // hover OR keyboard focus (for the card's own lift)
@@ -38,6 +38,7 @@ export function DiagramCard({ diagram, title, updatedAt, showBrand, difficulty, 
   return (
     <div
       className="dc-card"
+      data-flow-id={id}
       onMouseEnter={() => setActive(true)}
       onMouseLeave={() => setActive(false)}
       onFocus={() => setActive(true)}
