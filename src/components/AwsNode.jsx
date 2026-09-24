@@ -81,7 +81,9 @@ export const AwsNode = memo(function AwsNode({ data }) {
 
   return (
     <div style={{
-      background: `${color}14`, border: `1px solid ${color}`, borderRadius: 0,
+      // Tint blended over solid white: an opaque card hides any edge routed
+      // beneath it, so a line never appears to run through a box.
+      background: `linear-gradient(${color}14, ${color}14), #ffffff`, border: `1px solid ${color}`, borderRadius: 0,
       // A node is a fixed-size card, not a text box. A label or sub carrying a
       // whole sentence used to stretch one card several times wider - and then,
       // once width was capped, several times TALLER - than its neighbours. Both
