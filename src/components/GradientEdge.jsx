@@ -21,6 +21,7 @@ import { subscribe, currentPhase, motionAllowed, offsetFor } from '../flowClock'
 const ALIGN_TOL = 8
 const ALIGN_RATIO = 0.05
 const MAX_GAP = 44 // widest spacing between neighbouring attach points on a face
+const PAIR_GAP = 36 // lane spacing for edges that share the same two boxes
 
 const onAxis = (drift, span) => drift <= ALIGN_TOL || drift <= span * ALIGN_RATIO
 
@@ -314,25 +315,37 @@ export function GradientEdge({
     const n = siblings.length
     const idx = siblings.slice().sort((a, b) => (a.id < b.id ? -1 : 1)).findIndex(e => e.id === id)
     const centered = idx - (n - 1) / 2 // 0-centered rank: -1, 0, +1 ...
-    const dx = tx - sx, dy = ty - sy
-    const L = Math.hypot(dx, dy) || 1
-    // Canonical perpendicular (same vector for both directions) so siblings split
-    // to opposite sides instead of collapsing onto each other.
-    const flip = source < target ? 1 : -1
-    const px = (-dy / L) * flip, py = (dx / L) * flip
-    const mx = (sx + tx) / 2, my = (sy + ty) / 2
-    // Bow each sibling out into a big arc so a request+response reads as a clear
-    // loop, not two cramped near-parallel lines. Bend scales with edge length
-    // (capped) so short and long loops both look round.
-    const bow = centered * Math.min(150, Math.max(70, L * 0.32))
-    const cx = mx + px * bow, cy = my + py * bow
-    path = `M${sx},${sy} Q${cx},${cy} ${tx},${ty}`
-    // Stagger each sibling's label to a DIFFERENT point along its curve so the
-    // labels spread out along the arc instead of stacking on one line.
-    const t = Math.min(0.72, Math.max(0.28, 0.5 + centered * 0.16))
-    const mt = 1 - t
-    labelX = mt * mt * sx + 2 * mt * t * cx + t * t * tx
-    labelYRaw = mt * mt * sy + 2 * mt * t * cy + t * t * ty
+    // Straight lanes, evenly spaced: every sibling leaves from the same spot on
+    // each face (the middle of the pair's slots) and shifts along that face by
+    // its rank. Same shift at both ends, so the lanes are parallel no matter how
+    // many other edges share either face. Bowing them into arcs sent a line
+    // that starts in the left slot curving right, so a request and its response
+    // crossed in an X and the two labels landed on top of each other.
+    if (sourceNode?.measured?.width && targetNode?.measured?.width) {
+      const nodeOf = nid => (nid === source ? sourceNode : nid === target ? targetNode : internalById(nid))
+      const slots = siblings.map(e => ({
+        s: attachPoint(sourceNode, source, targetNode, e.id, allEdges, nodeOf),
+        t: attachPoint(targetNode, target, sourceNode, e.id, allEdges, nodeOf),
+      }))
+      const mean = k => ({
+        x: slots.reduce((a, o) => a + o[k].x, 0) / n,
+        y: slots.reduce((a, o) => a + o[k].y, 0) / n,
+      })
+      const sm = mean('s'), tm = mean('t')
+      const alongY = sSide === Position.Left || sSide === Position.Right // slots run down the face
+      const shift = centered * PAIR_GAP
+      sx = alongY ? sm.x : sm.x + shift; sy = alongY ? sm.y + shift : sm.y
+      tx = alongY ? tm.x : tm.x + shift; ty = alongY ? tm.y + shift : tm.y
+    }
+    path = `M${sx},${sy} L${tx},${ty}`
+    // Stagger each sibling's label to a DIFFERENT point along its line so the
+    // badges sit side by side, not on one row.
+    // Measured in ONE direction for the whole pair: a request and its reply run
+    // opposite ways, and 40% along each from its own start is the same spot.
+    const t0 = Math.min(0.72, Math.max(0.28, 0.5 + centered * 0.16))
+    const t = source < target ? t0 : 1 - t0
+    labelX = sx + (tx - sx) * t
+    labelYRaw = sy + (ty - sy) * t
   } else if (aligned && !blocks(sx, sy, tx, ty, obstacles)) {
     // Lined up AND nothing in the way: straight line, edge to facing edge.
     path = `M${sx},${sy} L${tx},${ty}`
