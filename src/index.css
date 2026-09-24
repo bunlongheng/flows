@@ -26,3 +26,31 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   outline: 2px solid #1c1e21;
   outline-offset: 2px;
 }
+
+/* A deleted diagram scatters into fireflies. The field is pinned over where
+   the card (or the open canvas) was and never takes pointer events, so the
+   page underneath keeps working while the swarm drifts off. See src/fireflies.js. */
+.ff-field { position: fixed; pointer-events: none; z-index: 9999; }
+.ff-field i {
+  position: absolute; display: block; border-radius: 50%;
+  background: #ffe27a;
+  box-shadow: 0 0 6px rgba(255, 210, 90, 0.95), 0 0 14px rgba(255, 190, 60, 0.5);
+  animation-name: ff-rise;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  animation-fill-mode: both;
+}
+/* Rise, wander, and blink out. The 2 dips in opacity are the blink - a
+   firefly that glowed steadily would read as a spark, not an insect. */
+@keyframes ff-rise {
+  0%   { transform: none; opacity: 0; }
+  8%   { opacity: 1; }
+  30%  { opacity: 0.35; }
+  45%  { opacity: 1; }
+  70%  { opacity: 0.4; }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; }
+}
+.ff-field i.ff-green {
+  background: #c7f56b;
+  box-shadow: 0 0 6px rgba(183, 243, 106, 0.95), 0 0 14px rgba(140, 220, 70, 0.45);
+}
+@media (prefers-reduced-motion: reduce) { .ff-field { display: none; } }

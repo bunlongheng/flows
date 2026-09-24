@@ -9,6 +9,7 @@ import { layoutElements } from './layout'
 import { rowToDiagram } from './rowToDiagram'
 import { snapAlign } from './snapAlign'
 import { findService } from './services'
+import { fireflies } from './fireflies'
 
 // Vite exposed import.meta.env.DEV; Next replaces process.env.NODE_ENV at build
 // time, so this compiles to a constant in the client bundle exactly the same way.
@@ -292,9 +293,15 @@ export default function App() {
   function deleteDiagram(id, { thenBack = false } = {}) {
     fetch(`/api/flows/${id}`, { method: 'DELETE' }).then(res => {
       if (!res.ok) { showToastMsg('Delete failed'); return }
+      // Measure the card (or the open canvas) BEFORE React drops it, then let
+      // the fireflies take its place - once it is unmounted there is nothing
+      // to measure and the swarm would land in the top-left corner.
+      fireflies(thenBack ? document.querySelector('.react-flow') : document.querySelector(`[data-flow-id="${id}"]`))
       // Deleting the diagram you are looking at has to leave the canvas too,
       // or you are staring at something that no longer exists.
       if (thenBack) { setView('index'); setActiveDiagram(null) }
+      // Drop the card now so the swarm takes its place, then resync the list.
+      setDiagrams(ds => ds.filter(d => d.id !== id))
       showToastMsg('Deleted')
       loadDiagrams()
     }).catch(() => showToastMsg('Delete failed'))
