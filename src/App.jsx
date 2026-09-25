@@ -432,15 +432,15 @@ export default function App() {
     // `panels` is the set that was open. Rows saved before this shape used a
     // single `panel`, so fold that in rather than dropping their state.
     const open = Array.isArray(v.panels) ? v.panels : v.panel ? [v.panel] : []
-    // Panel memory is the OWNER's. Someone opening a shared link gets the
-    // diagram and nothing on top of it - the panels open when the owner last
-    // looked used to slide out over the canvas on their phone. The share panel
-    // is never restored for anyone: opening it is an action (it publishes).
-    // A cold ?name= load resolves before /api/auth/me answers, so while
-    // ownership is unknown the panels wait and apply once it settles.
+    // A visitor sees the diagram the way the owner left it: Steps and Notes
+    // open only when the owner left them open, and no controls to change
+    // that. Code is the owner's editor and the share panel is never restored
+    // for anyone: opening it is an action (it publishes). A cold ?name= load
+    // resolves before /api/auth/me answers, so the owner's full set waits and
+    // applies once ownership settles.
     setShowSharePanel(false)
-    if (canAI) applyPanels(open)
-    else { applyPanels([]); pendingPanels.current = authChecked ? null : open }
+    applyPanels(canAI ? open : open.filter(p => p !== 'code'))
+    pendingPanels.current = canAI || authChecked ? null : open
     if (['dark', 'silver', 'color', 'plain'].includes(v.badge)) setBadgeMode(v.badge)
     const raw = d.data.nodes || []
     // Use the owner's saved layout when every node has a stored position;
