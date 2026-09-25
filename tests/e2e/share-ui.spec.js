@@ -319,7 +319,11 @@ test("a visitor cannot move a node on /demo and gets no edit, share or export co
       await expect(page.locator(`header button:has-text("${name}")`)).toHaveCount(0);
     }
     await expect(page.locator(".sd-share-panel")).toHaveCount(0);
-    await expect(page.locator('header button:has-text("Steps")')).toHaveCount(1);
+    // No view controls either: the slim share header carries 1 download and nothing else.
+    await expect(page.locator(".sd-detail-actions")).toHaveCount(0);
+    await expect(page.locator("header.sd-share-header")).toHaveCount(1);
+    await expect(page.locator('header button:has-text("Download PNG")')).toHaveCount(1);
+    await expect(page.locator('header a[href="/demo"]')).toHaveCount(1);
     await ctx.close();
   } finally {
     await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
@@ -373,8 +377,9 @@ test("the info card starts folded on a phone and the badge opens it", async ({ b
   }
 });
 
-// Phone chrome: the 2 marks at the start of the bar are one pair, the actions
-// are finger-sized, and the app mark lines up with the content below it.
+// Phone chrome for the owner: the 2 marks at the start of the bar are one pair,
+// the actions are finger-sized, and the app mark lines up with the content
+// below it. (A visitor gets the slim share header, which has none of this.)
 test("phone header: matched tiles, finger-sized targets, aligned app logo", async ({ browser, baseURL }) => {
   const api = await request.newContext({ baseURL });
   const create = await api.post("/api/ai/flows", {
@@ -384,11 +389,11 @@ test("phone header: matched tiles, finger-sized targets, aligned app logo", asyn
   });
   const id = (await create.json()).url.split("/?id=")[1];
   try {
-    const row = await (await api.get(`/api/flows/${id}`)).json();
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.addCookies([{ name: "sd_session", value: OWNER_COOKIE.split("=")[1], url: baseURL }]);
     const page = await ctx.newPage();
 
-    await page.goto(`/demo?name=${row.slug}`);
+    await page.goto(`/?id=${id}`);
     await page.waitForSelector(".react-flow__node", { timeout: 20000 });
     await page.waitForTimeout(500);
 
@@ -399,8 +404,8 @@ test("phone header: matched tiles, finger-sized targets, aligned app logo", asyn
     expect(Math.round(tile.height)).toBe(Math.round(back.height));
     expect(back.height).toBeGreaterThanOrEqual(44);
 
-    // Every action left in the locked toolbar is a real target.
-    const actions = await page.locator("header button").evaluateAll((els) =>
+    // Every action left in the toolbar is a real target.
+    const actions = await page.locator("header .sd-detail-actions button").evaluateAll((els) =>
       els.map((e) => { const r = e.getBoundingClientRect(); return { w: r.width, h: r.height }; }).filter((r) => r.w > 0));
     expect(actions.length).toBeGreaterThanOrEqual(3);
     for (const a of actions) expect(a.h).toBeGreaterThanOrEqual(38);
@@ -437,6 +442,7 @@ test("phone header: matched tiles, finger-sized targets, aligned app logo", asyn
 // Fit is the only way back to the fitted view after pinching around, so it has
 // to survive on a phone. Nothing may be clipped out of reach either.
 // It builds its own diagram: a fresh CI database has none of the curated demos.
+// Only the owner has Fit now; a visitor gets the diagram already fitted.
 test("phone keeps Fit reachable and never hides a button out of reach", async ({ browser, baseURL }) => {
   const api = await request.newContext({ baseURL });
   const create = await api.post("/api/ai/flows", {
@@ -450,10 +456,10 @@ test("phone keeps Fit reachable and never hides a button out of reach", async ({
   expect(create.status()).toBe(201);
   const id = (await create.json()).url.split("/?id=")[1];
   try {
-    const row = await (await api.get(`/api/flows/${id}`)).json();
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.addCookies([{ name: "sd_session", value: OWNER_COOKIE.split("=")[1], url: baseURL }]);
     const page = await ctx.newPage();
-    await page.goto(`/demo?name=${row.slug}`);
+    await page.goto(`/?id=${id}`);
     await page.waitForSelector(".react-flow__node", { timeout: 20000 });
     await page.waitForTimeout(600);
 

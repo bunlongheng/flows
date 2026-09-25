@@ -77,7 +77,7 @@ test("a shared design URL serves its OWN og tags, not the generic site card", as
     expect(titleTag(html)).toBe(`${DESIGN.title} · Flows`);
 
     // The card points at the per-design renderer, and the canonical url keeps ?name=.
-    expect(html).toMatch(new RegExp(`og:image" content="[^"]*/api/og\\?name=${slug}"`));
+    expect(html).toMatch(new RegExp(`og:image" content="[^"]*/api/og\\?name=${slug}(&amp;v=\\d+)?"`));
     expect(html).toMatch(new RegExp(`og:url" content="[^"]*/demo\\?name=${slug}"`));
 
     // And it is still the real app shell - a human gets the app, not a stub.

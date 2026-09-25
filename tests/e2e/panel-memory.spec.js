@@ -78,10 +78,10 @@ test("Steps survives back-to-gallery and reopen, and off stays off", async ({ pa
   }
 });
 
-// Panel memory is the owner's. A visitor on a shared link gets the diagram and
-// nothing on top of it - the share panel that was open when the owner last
-// looked used to slide out over the canvas on their phone.
-test("a visitor on a shared link gets no panels, even if the owner left share + steps open", async ({ browser, baseURL }) => {
+// A visitor on a shared link sees the diagram the way the owner left it: the
+// saved Steps state comes through, the share panel never does, and there is no
+// toolbar to change any of it.
+test("a visitor on a shared link gets the owner's steps but no share panel and no toolbar", async ({ browser, baseURL }) => {
   const api = await request.newContext({ baseURL });
   const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
@@ -102,7 +102,9 @@ test("a visitor on a shared link gets no panels, even if the owner left share + 
     await page.waitForSelector(".react-flow__node", { timeout: 20000 });
     await page.waitForTimeout(800);
     await expect(page.locator(".sd-share-panel")).toHaveCount(0);
-    expect((await page.locator('button:has-text("Steps")').first().evaluate((e) => e.className))).not.toContain("is-on");
+    await expect(page.locator(".react-flow.sd-steps-on")).toHaveCount(1);
+    await expect(page.locator(".sd-detail-actions")).toHaveCount(0);
+    await expect(page.locator('header button:has-text("Steps")')).toHaveCount(0);
     await ctx.close();
   } finally {
     await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
