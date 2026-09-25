@@ -25,7 +25,8 @@ const PAIR_GAP = 36 // lane spacing for edges that share the same two boxes
 // A spread slot on one face meeting a centred slot on the other leaves a jog of
 // a few pixels that the label then sits on and hides. Ends this close are pulled
 // onto one line instead - a near-straight line has to be exactly straight.
-const SNAP_TOL = 28
+// Wide enough for a spread slot at BOTH ends (2 x 22) plus the centre slop.
+const SNAP_TOL = 48
 
 const onAxis = (drift, span) => drift <= ALIGN_TOL || drift <= span * ALIGN_RATIO
 
@@ -376,7 +377,8 @@ export function GradientEdge({
       const lean = Math.abs(tm[k] - sm[k])
       if (lean && (lean <= SNAP_TOL || lean <= run * ALIGN_RATIO)) {
         const v = (sm[k] + tm[k]) / 2
-        const fits = (node, c) => Math.abs(v - c) <= (alongY ? node.measured.height : node.measured.width) / 2 - PAIR_GAP
+        const reach = (PAIR_GAP * (n - 1)) / 2 + 6 // outermost lane must still land on the face
+        const fits = (node, c) => Math.abs(v - c) <= (alongY ? node.measured.height : node.measured.width) / 2 - reach
         if (fits(sourceNode, centerOf(sourceNode)[k]) && fits(targetNode, centerOf(targetNode)[k])) { sm[k] = v; tm[k] = v }
       }
       const shift = centered * PAIR_GAP
