@@ -148,11 +148,14 @@ describe("read-only demo view", () => {
   const EDIT_ONLY = [/^code$/i, /^arrange$/i, /^share$/i, /^undo$/i, /^redo$/i];
   const KEPT = [/^fit$/i, /^details$/i, /^steps$/i];
 
-  it("hides every edit, share and export control when canEdit is false", () => {
+  // A visitor sees the diagram as the owner left it: a slim bar with the
+  // wordmark and 1 download, no view controls at all.
+  it("shows only the wordmark and a download when canEdit is false", () => {
     setup({ canEdit: false, canUndo: true, canRedo: true, onArrange: vi.fn(), showSharePanel: true, showDetailCode: true, shareSlug: "x", shareUrl: "u" });
-    for (const name of EDIT_ONLY) expect(screen.queryByRole("button", { name }), String(name)).toBeNull();
-    for (const name of KEPT) expect(screen.getByRole("button", { name }), String(name)).toBeInTheDocument();
-    // A remembered view_state must not reopen the panels either.
+    for (const name of [...EDIT_ONLY, ...KEPT]) expect(screen.queryByRole("button", { name }), String(name)).toBeNull();
+    expect(screen.getByRole("button", { name: /^download png$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /flows/i })).toHaveAttribute("href", "/demo");
+    // A remembered view_state must not reopen the share panel either.
     expect(screen.queryByAltText("Share card preview")).toBeNull();
     expect(screen.queryByRole("button", { name: /^copy$/i })).toBeNull();
   });
