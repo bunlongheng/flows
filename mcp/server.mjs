@@ -196,7 +196,7 @@ server.registerTool(
         id: z.string().describe('A known service key (e.g. "lambda","dynamo","cyclr","hubspot"), or any unique id when bringing your own icon'),
         x: z.number().optional().describe('Optional. OMIT x/y and the canvas lays the design out left-to-right for you - that is the wanted look.'),
         y: z.number().optional(),
-        icon: z.string().optional().describe('Bring-your-own logo: a remote https image URL, a data:image URI, or a same-origin /path. Omit for catalog services.'),
+        icon: z.string().optional().describe('Bring-your-own logo: a remote https image URL, a data:image URI, or a same-origin /path, at least 96px on each side (never a favicon). IGNORED when id is a catalog service - the catalog logo always wins, so omit it there.'),
         label: z.string().optional().describe('Display name (required with a custom icon), e.g. "HubSpot"'),
         sub: z.string().optional().describe('Small subtitle under the label, e.g. "CRM"'),
         color: z.string().optional().describe('Brand hex color for the node border/tint, e.g. "#FF7A59"'),
@@ -272,7 +272,7 @@ server.registerTool(
       title: z.string().optional(),
       nodes: z.array(z.object({
         id: z.string(), x: z.number().optional(), y: z.number().optional(),
-        icon: z.string().optional().describe('Bring-your-own logo: https URL, data:image URI, or /path'),
+        icon: z.string().optional().describe('Bring-your-own logo: https URL, data:image URI, or /path, at least 96px on each side. IGNORED when id is a catalog service.'),
         label: z.string().optional(), sub: z.string().optional(), color: z.string().optional(),
         note: z.string().max(400).optional().describe('Plain-text note under the node; see create_flow. Omit to leave a node without one.'),
       })).optional(),
