@@ -15,7 +15,7 @@ All routes run on the Node runtime, `force-dynamic`. HEAD is accepted wherever G
 ![Architecture](https://flows-bheng.vercel.app/api/flows/my-diagram?format=gif)
 ```
 
-14 frames over one 2.6s loop at 900px by default. `?frames=` (2-30) and `?w=` (200-1600) override that. The response is cached for a CDN (`s-maxage=3600`), because the render is a dozen rasterises and a diagram changes rarely.
+14 frames over one 2.6s loop at 900px by default. `?frames=` (2-30) and `?w=` (200-1600) override that. For a README use `?w=1600`: GitHub renders a README 880px wide, so 1600 is what a retina screen needs to stay sharp. That is the width `gif_url` and `readme` in the create response carry. The response is cached for a CDN (`s-maxage=3600`), because the render is a dozen rasterises and a diagram changes rarely.
 
 This is the server-side twin of the in-app GIF button. The in-app one captures the live canvas through `html-to-image`; this one rasterises the same SVG the `?format=svg` export uses, so it works headless.
 
@@ -90,7 +90,9 @@ Response `201`:
   "url": "https://flows-bheng.vercel.app/?id=<uuid>",
   "share_url": "https://flows-bheng.vercel.app/demo?name=<slug>",
   "visibility": "public",
-  "svg_url": "https://flows-bheng.vercel.app/api/flows/<uuid>?format=svg"
+  "svg_url": "https://flows-bheng.vercel.app/api/flows/<uuid>?format=svg",
+  "gif_url": "https://flows-bheng.vercel.app/api/flows/<slug>?format=gif&w=1600",
+  "readme": "![<title>](https://flows-bheng.vercel.app/api/flows/<slug>?format=gif&w=1600)"
 }
 ```
 
@@ -129,7 +131,7 @@ Anything else is `400`. Trashed rows are `404`.
 | `DATABASE_URL` | Yes | `pg` Pool, migrations, MCP server. |
 | `DATABASE_SSL` | No | `"true"` enables TLS with `rejectUnauthorized: false` (self-signed remote). |
 | `OWNER_USER_ID` | Yes | `user_id` on every row; all reads/writes are scoped to it. |
-| `FLOWS_APP_URL` | No | Base for returned `url` / `share_url` / `svg_url` and `metadataBase`. Defaults to the prod URL. |
+| `FLOWS_APP_URL` | No | Base for returned `url` / `share_url` / `svg_url` / `gif_url` and `metadataBase`. Defaults to the prod URL. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth for owner sign-in. Redirect URI: `<APP_URL>/api/auth/callback`. |
 | `AUTH_SECRET` | Yes | HMAC key for the `sd_session` cookie (`openssl rand -hex 32`). 7-day sessions. |
 | `OWNER_EMAIL` | Yes | The only Google account that gets a session. |

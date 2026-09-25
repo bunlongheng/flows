@@ -12,9 +12,9 @@ immediately. Speaks MCP over stdio; logs go to stderr only.
 | Tool | Params | Returns |
 |------|--------|---------|
 | `list_flows` | none | `{ count, designs: [{ id, title, slug, nodes, edges, created_at, url }] }` - node/edge counts, newest first, max 200, trash excluded |
-| `get_flow` | `id` | `{ id, title, slug, nodes, edges, created_at, url }` - the full structure the app renders. Error if the id is unknown or trashed |
-| `create_flow` | `title`, `nodes[]`, `edges[]` (default `[]`), `public?` (default `true`) | `{ id, url, share_url, visibility, share_note?, layout?, warning?, probably_update? }` |
-| `update_flow` | `id`, `reason?`, `title?`, `nodes?`, `edges?`, `public?` | `{ id, url, share_url, visibility, updated: { title, nodes, edges, public }, layout?, reason? }` |
+| `get_flow` | `id` | `{ id, title, slug, nodes, edges, created_at, url, share_url, gif_url, readme }` - the full structure the app renders. Error if the id is unknown or trashed |
+| `create_flow` | `title`, `nodes[]`, `edges[]` (default `[]`), `public?` (default `true`) | `{ id, url, share_url, gif_url, readme, visibility, share_note?, layout?, warning?, probably_update? }` |
+| `update_flow` | `id`, `reason?`, `title?`, `nodes?`, `edges?`, `public?` | `{ id, url, share_url, gif_url, readme, visibility, updated: { title, nodes, edges, public }, layout?, reason? }` |
 | `delete_flow` | `id`, `reason?` | `{ trashed, title, recoverable: true, restore_with: "restore_flow" }` |
 | `restore_flow` | `id` | `{ restored, title, url }` |
 | `purge_flow` | `id` (must already be trashed) | `{ purged, permanent: true }` |
@@ -23,7 +23,10 @@ immediately. Speaks MCP over stdio; logs go to stderr only.
 | `get_diagram_schema` | none | `{ rules, example }` - field shapes, rules and a complete example with notes |
 
 `url` is `<APP_URL>/?id=<uuid>`. `share_url` is `<APP_URL>/demo?name=<slug>`,
-the link to hand to people. `visibility` is `"public"` or `"private"`.
+the link to hand to people. `gif_url` is the animated diagram as an image,
+`<APP_URL>/api/flows/<slug>?format=gif&w=1600`, and `readme` is that URL
+wrapped as a Markdown image, ready to paste into a README. Both need the
+diagram to be public. `visibility` is `"public"` or `"private"`.
 
 ### Node and edge shapes
 
