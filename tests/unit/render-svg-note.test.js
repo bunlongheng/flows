@@ -18,13 +18,13 @@ describe("renderDiagramSvg - node notes", () => {
     expect(svg.match(/stroke="#111111"/g)).toHaveLength(1);
   });
 
-  it("clamps a long note to 3 lines with an ellipsis and escapes markup", () => {
-    const note = "<b>alpha</b> " + "word ".repeat(60);
+  it("clamps a long note to 10 lines with an ellipsis and escapes markup", () => {
+    const note = "<b>alpha</b> " + "word ".repeat(70);
     const svg = renderDiagramSvg([{ ...NODES[0], note }], []);
     expect(svg).not.toContain("<b>alpha</b>");
     expect(svg).toContain("&lt;b&gt;alpha&lt;/b&gt;");
     const lines = svg.match(/<text x="6" y="\d+"/g) || [];
-    expect(lines).toHaveLength(3);
+    expect(lines).toHaveLength(10);
     expect(svg).toContain("…");
   });
 });
