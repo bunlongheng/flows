@@ -24,7 +24,7 @@ immediately. Speaks MCP over stdio; logs go to stderr only.
 
 `url` is `<APP_URL>/?id=<uuid>`. `share_url` is `<APP_URL>/demo?name=<slug>`,
 the link to hand to people. `gif_url` is the animated diagram as an image,
-`<APP_URL>/api/flows/<slug>?format=gif&w=1600`, and `readme` is that URL
+`<APP_URL>/api/flows/<slug>?format=gif&w=3200`, and `readme` is that URL
 wrapped as a Markdown image, ready to paste into a README. Both need the
 diagram to be public. `visibility` is `"public"` or `"private"`.
 

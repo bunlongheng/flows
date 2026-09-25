@@ -26,9 +26,9 @@ const urlFor = id => `${APP_URL}/?id=${id}`
 // The link to hand to people. It opens for anyone and unfurls with the diagram
 // itself (Slack, iMessage) - as long as the design is public.
 const shareUrlFor = slug => `${APP_URL}/demo?name=${encodeURIComponent(slug)}`
-// The animated embed for a README. w=1600 is 2x the 880px GitHub renders a
-// README at, so it stays sharp on a retina screen. Public diagrams only.
-const gifUrlFor = slug => `${APP_URL}/api/flows/${encodeURIComponent(slug)}?format=gif&w=1600`
+// The animated embed for a README. w=3200 is the widest render, so it stays
+// sharp on a retina screen at any zoom. Public diagrams only.
+const gifUrlFor = slug => `${APP_URL}/api/flows/${encodeURIComponent(slug)}?format=gif&w=3200`
 const readmeFor = (title, slug) => `![${title}](${gifUrlFor(slug)})`
 const owner = () => {
   const o = ownerId()

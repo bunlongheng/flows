@@ -53,7 +53,7 @@ curl -X POST "$APP/api/ai/flows" \
 Once it is public, the URL is the image - no auth, no browser, animated:
 
 ```markdown
-![Architecture]($APP/api/flows/url-shortener-like-bitly?format=gif&w=1600)
+![Architecture]($APP/api/flows/url-shortener-like-bitly?format=gif&w=3200)
 ```
 
 <a href="https://sequences-bheng.vercel.app/s/6b8d7e1e-2028-4941-8f7d-2c75eaa747ea">
@@ -101,7 +101,7 @@ npm run dev                        # http://localhost:5174
 | `GET /api/flows/public` | Public | The curated demo roster |
 | `GET /api/og?name=slug` | Public | 1200x630 share card |
 
-`:id` takes a uuid or a slug. The GIF takes `?frames=` (2-30) and `?w=` (200-1600); `w=1600` is the retina width for a README.
+`:id` takes a uuid or a slug. The GIF takes `?frames=` (2-30) and `?w=` (200-3200); `w=3200` is the README width, sharp on retina at any zoom.
 
 **MCP.** `mcp/server.mjs` exposes 10 tools over stdio. Register it with your agent and point `FLOWS_API_SECRET` at your deployment. Full reference in [docs/API.md](docs/API.md) and [mcp/README.md](mcp/README.md).
 

@@ -155,7 +155,7 @@ describe("POST /api/ai/flows - visibility and share link", () => {
     expect(res.body.share_note).toMatch(/404/);
     expect(res.body.share_url).toMatch(/\/demo\?name=netflix-video-streaming$/);
     // The README embed is ready to paste, by slug, at retina width.
-    expect(res.body.gif_url).toMatch(/\/api\/flows\/netflix-video-streaming\?format=gif&w=1600$/);
+    expect(res.body.gif_url).toMatch(/\/api\/flows\/netflix-video-streaming\?format=gif&w=3200$/);
     expect(res.body.readme).toBe(`![${VALID_BODY.title}](${res.body.gif_url})`);
   });
 
