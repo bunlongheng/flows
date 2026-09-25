@@ -125,6 +125,7 @@ export const SERVICES = {
   thryv:        { label: 'Thryv',          sub: 'Marketing Center',       icon: '/brand/thryv.png',         color: '#FF4E00' },
   auth0:        { label: 'Auth0',          sub: 'Identity',               icon: '/brand/auth0.png',         color: '#EB5424' },
   thryvbc:      { label: 'Thryv',          sub: 'Business Center',        icon: '/brand/thryv.png',         color: '#FF4E00' },
+  mbd:          { label: 'MBD App Market', sub: 'Thryv',                  icon: '/brand/thryv.png',         color: '#FF4E00' },
   gcp:          { label: 'Google Cloud',   sub: 'GCP',                    icon: '/brand/gcp.svg',           color: '#4285F4' },
   alloydb:      { label: 'AlloyDB AI',     sub: 'Managed Postgres',       icon: '/brand/alloydb.svg',       color: '#4285F4' },
 }

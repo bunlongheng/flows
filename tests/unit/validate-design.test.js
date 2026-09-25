@@ -37,3 +37,35 @@ describe("validateDesign", () => {
     expect(validateDesign({ nodes: [{ id: "user" }], edges: [{ source: "user" }] }).error).toMatch(/source.*target/);
   });
 });
+
+// A PNG data: URI with only the header, which is all the size check reads.
+const png = (w, h) => {
+  const b = Buffer.alloc(33);
+  b.write("\x89PNG\r\n\x1a\n", 0, "binary");
+  b.writeUInt32BE(13, 8);
+  b.write("IHDR", 12, "ascii");
+  b.writeUInt32BE(w, 16);
+  b.writeUInt32BE(h, 20);
+  return `data:image/png;base64,${b.toString("base64")}`;
+};
+
+describe("validateDesign - pasted icons", () => {
+  it("rejects a favicon-sized inline icon on a custom node", () => {
+    const r = validateDesign({ nodes: [{ id: "mbd-market", label: "MBD", icon: png(16, 16) }] });
+    expect(r.error).toMatch(/"mbd-market" is smaller than 96px/);
+  });
+
+  it("accepts an inline icon at or above 96px, and any SVG", () => {
+    expect(validateDesign({ nodes: [{ id: "x1", label: "X", icon: png(96, 96) }] })).toBeNull();
+    expect(validateDesign({ nodes: [{ id: "x2", label: "X", icon: "data:image/svg+xml;base64,PHN2Zz4=" }] })).toBeNull();
+  });
+
+  it("strips a pasted icon and colour off a catalog id instead of storing it", () => {
+    // How Integry kept arriving grey: an agent pasted a 16x16 favicon on a
+    // catalog id. The catalog logo wins, so the junk never reaches the row.
+    const n = { id: "integry", label: "Integry", icon: png(16, 16), color: "#9aa0a6" };
+    expect(validateDesign({ nodes: [n] })).toBeNull();
+    expect(n.icon).toBeUndefined();
+    expect(n.color).toBeUndefined();
+  });
+});
