@@ -16,10 +16,10 @@ const CLAMP_2 = {
   overflowWrap: 'anywhere',
 }
 
-const CLAMP_3 = { ...CLAMP_2, WebkitLineClamp: 3 }
+const CLAMP_10 = { ...CLAMP_2, WebkitLineClamp: 10 }
 
 // The bordered caption hanging off a card's bottom-left corner. Plain black
-// text in a black frame, clamped to 3 lines with the full note on hover. The
+// text in a black frame, clamped to 10 lines with the full note on hover. The
 // owner double-clicks it (or the "+ note" ghost on an empty card) to edit;
 // everyone else just reads it, so a shared link shows exactly the same note.
 const NOTE_BOX = {
@@ -54,7 +54,7 @@ function NodeNote({ id, note }) {
     <div className="nodrag nopan nowheel" onDoubleClick={e => e.stopPropagation()}
       style={{ position: 'absolute', top: '100%', left: -1, marginTop: 5, width: 'calc(100% + 2px)', textAlign: 'left' }}>
       {editing ? (
-        <textarea autoFocus rows={3} value={draft} maxLength={NOTE_MAX} placeholder="What happens at this step?"
+        <textarea autoFocus rows={10} value={draft} maxLength={NOTE_MAX} placeholder="What happens at this step?"
           onChange={e => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={e => {
@@ -64,7 +64,7 @@ function NodeNote({ id, note }) {
           style={{ ...NOTE_BOX, fontSize: 16, lineHeight: 1.35, width: '100%', resize: 'none', outline: 'none', display: 'block' }} />
       ) : note ? (
         <div title={canEdit ? `${note}\n\nDouble-click to edit` : note} onDoubleClick={canEdit ? startEdit : undefined}
-          style={{ ...NOTE_BOX, display: 'inline-block', maxWidth: '100%', cursor: canEdit ? 'text' : 'default', ...CLAMP_3 }}>{note}</div>
+          style={{ ...NOTE_BOX, display: 'inline-block', maxWidth: '100%', cursor: canEdit ? 'text' : 'default', ...CLAMP_10 }}>{note}</div>
       ) : (
         <button type="button" className="sd-note-add" onClick={startEdit} title="Add a note to this step"
           style={{ ...NOTE_BOX, color: '#6b7280', borderStyle: 'dashed', borderColor: '#9ca3af', cursor: 'pointer', fontWeight: 600 }}>+ note</button>
