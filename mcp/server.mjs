@@ -26,6 +26,10 @@ const urlFor = id => `${APP_URL}/?id=${id}`
 // The link to hand to people. It opens for anyone and unfurls with the diagram
 // itself (Slack, iMessage) - as long as the design is public.
 const shareUrlFor = slug => `${APP_URL}/demo?name=${encodeURIComponent(slug)}`
+// The animated embed for a README. w=1600 is 2x the 880px GitHub renders a
+// README at, so it stays sharp on a retina screen. Public diagrams only.
+const gifUrlFor = slug => `${APP_URL}/api/flows/${encodeURIComponent(slug)}?format=gif&w=1600`
+const readmeFor = (title, slug) => `![${title}](${gifUrlFor(slug)})`
 const owner = () => {
   const o = ownerId()
   if (!o) throw new Error('OWNER_USER_ID not configured in .env')
@@ -175,7 +179,7 @@ server.registerTool(
     try {
       const { rows } = await db.query('SELECT id, title, slug, nodes, edges, created_at FROM flows WHERE id = $1 AND deleted_at IS NULL', [id])
       if (!rows.length) return fail(`No diagram with id ${id}`)
-      return ok({ ...rows[0], url: urlFor(id) })
+      return ok({ ...rows[0], url: urlFor(id), share_url: shareUrlFor(rows[0].slug), gif_url: gifUrlFor(rows[0].slug), readme: readmeFor(rows[0].title, rows[0].slug) })
     } catch (e) { return fail(`get failed: ${e.message}`) }
   },
 )
@@ -236,6 +240,8 @@ server.registerTool(
         id,
         url: urlFor(id),
         share_url: shareUrlFor(slug),
+        gif_url: gifUrlFor(slug),
+        readme: readmeFor(title.trim(), slug),
         visibility: isPublic ? 'public' : 'private',
         ...(isPublic ? {} : { share_note: 'Private: recipients get a 404 and Slack shows the generic site card. Call update_flow with public: true before sending the link.' }),
         ...(enforced.warning ? { layout: enforced.warning } : {}),
@@ -313,6 +319,8 @@ server.registerTool(
         id,
         url: urlFor(id),
         share_url: shareUrlFor(rows[0].slug),
+        gif_url: gifUrlFor(rows[0].slug),
+        readme: readmeFor(rows[0].title, rows[0].slug),
         visibility: rows[0].is_public ? 'public' : 'private',
         updated: { title: title != null, nodes: nodes != null, edges: edges != null, public: isPublic != null },
         ...(layoutWarning ? { layout: layoutWarning } : {}),
