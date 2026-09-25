@@ -22,6 +22,10 @@ const ALIGN_TOL = 8
 const ALIGN_RATIO = 0.05
 const MAX_GAP = 44 // widest spacing between neighbouring attach points on a face
 const PAIR_GAP = 36 // lane spacing for edges that share the same two boxes
+// A spread slot on one face meeting a centred slot on the other leaves a jog of
+// a few pixels that the label then sits on and hides. Ends this close are pulled
+// onto one line instead - a near-straight line has to be exactly straight.
+const SNAP_TOL = 28
 
 const onAxis = (drift, span) => drift <= ALIGN_TOL || drift <= span * ALIGN_RATIO
 
@@ -65,10 +69,30 @@ function attachPoint(node, nodeId, otherNode, edgeId, edges, nodeOf) {
   const offset = (idx - (n - 1) / 2) * gap // 1 edge -> 0, dead center
 
   const w2 = node.measured.width / 2, h2 = node.measured.height / 2
-  if (side === Position.Right) return { x: c.x + w2, y: c.y + offset, side, alone: n === 1 }
-  if (side === Position.Left) return { x: c.x - w2, y: c.y + offset, side, alone: n === 1 }
-  if (side === Position.Bottom) return { x: c.x + offset, y: c.y + h2, side, alone: n === 1 }
-  return { x: c.x + offset, y: c.y - h2, side, alone: n === 1 }
+  // mid/half/gap describe the face, so a caller can slide this slot along it
+  // without leaving the box or stepping into a neighbour's slot.
+  const at = { side, alone: n === 1, gap, half: face / 2, mid: horizontal ? c.y : c.x }
+  if (side === Position.Right) return { x: c.x + w2, y: c.y + offset, ...at }
+  if (side === Position.Left) return { x: c.x - w2, y: c.y + offset, ...at }
+  if (side === Position.Bottom) return { x: c.x + offset, y: c.y + h2, ...at }
+  return { x: c.x + offset, y: c.y - h2, ...at }
+}
+
+// Can this slot move from `from` to `to` along its face? It must stay inside the
+// box, and a shared face must not let it cross into the neighbouring slot.
+const canSlide = (p, from, to) => {
+  const d = Math.abs(to - from)
+  if (d === 0) return true
+  if (Math.abs(to - p.mid) > p.half - 10) return false
+  return p.alone || d <= p.gap / 2 - 2
+}
+
+// One coordinate both ends can share: keep a lone (centred) end where it is and
+// move the spread one, else meet in the middle, else take whichever end can.
+function snapLine(a, av, b, bv) {
+  const mid = (av + bv) / 2
+  const order = a.alone && !b.alone ? [av, mid, bv] : b.alone && !a.alone ? [bv, mid, av] : [mid, av, bv]
+  return order.find(v => canSlide(a, av, v) && canSlide(b, bv, v))
 }
 
 
@@ -301,6 +325,19 @@ export function GradientEdge({
         sx = x; tx = x
       }
     }
+    // Slots that nearly line up get pulled onto one line. Same proportional
+    // rule as the centre test, with a floor wide enough to cover a spread slot.
+    if (!aligned) {
+      const sH = sSide === Position.Left || sSide === Position.Right
+      const tH = tSide === Position.Left || tSide === Position.Right
+      if (sH && tH && sy !== ty && (Math.abs(ty - sy) <= SNAP_TOL || Math.abs(ty - sy) <= Math.abs(tx - sx) * ALIGN_RATIO)) {
+        const y = snapLine(sp2, sy, tp2, ty)
+        if (y != null) { sy = y; ty = y; aligned = true }
+      } else if (!sH && !tH && sx !== tx && (Math.abs(tx - sx) <= SNAP_TOL || Math.abs(tx - sx) <= Math.abs(ty - sy) * ALIGN_RATIO)) {
+        const x = snapLine(sp2, sx, tp2, tx)
+        if (x != null) { sx = x; tx = x; aligned = true }
+      }
+    }
   }
 
   // Parallel edges between the same node pair (e.g. a request + its response loop)
@@ -333,6 +370,15 @@ export function GradientEdge({
       })
       const sm = mean('s'), tm = mean('t')
       const alongY = sSide === Position.Left || sSide === Position.Right // slots run down the face
+      // The pair's centre lines nearly match: share one, so the lanes run
+      // level instead of leaning by a few pixels from end to end.
+      const k = alongY ? 'y' : 'x', run = alongY ? Math.abs(tm.x - sm.x) : Math.abs(tm.y - sm.y)
+      const lean = Math.abs(tm[k] - sm[k])
+      if (lean && (lean <= SNAP_TOL || lean <= run * ALIGN_RATIO)) {
+        const v = (sm[k] + tm[k]) / 2
+        const fits = (node, c) => Math.abs(v - c) <= (alongY ? node.measured.height : node.measured.width) / 2 - PAIR_GAP
+        if (fits(sourceNode, centerOf(sourceNode)[k]) && fits(targetNode, centerOf(targetNode)[k])) { sm[k] = v; tm[k] = v }
+      }
       const shift = centered * PAIR_GAP
       sx = alongY ? sm.x : sm.x + shift; sy = alongY ? sm.y + shift : sm.y
       tx = alongY ? tm.x : tm.x + shift; ty = alongY ? tm.y + shift : tm.y
