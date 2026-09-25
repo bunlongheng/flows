@@ -152,6 +152,11 @@ export function findService(data) {
   // Bring-your-own-icon: a node may carry its own brand (icon + label/color/sub),
   // so ANY service - not just the built-in AWS catalog - can render. The icon is a
   // same-origin path ("/brand/foo.svg") or a data:image URI (CSP allows both).
+  // A node whose id IS a catalog service always draws the catalog logo, even
+  // when an agent pasted its own icon on it. Agents kept passing a favicon URL
+  // for ids like "integry", the server inlined a 16x16 generic PNG, and that
+  // junk beat the real /brand logo - the node came in grey with no logo.
+  if (data && SERVICES[data.id]?.icon) return SERVICES[data.id]
   if (data && typeof data.icon === 'string' && data.icon) {
     // No explicit colour: take it from the logo itself, so a Chrome node draws
     // Chrome blue and a terminal draws terminal green. Grey only when the icon

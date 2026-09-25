@@ -20,6 +20,14 @@ describe("findService", () => {
     expect(svc.icon).toContain("dynamodb");
   });
 
+  it("draws the catalog logo for a catalog id even when the node carries a pasted icon", () => {
+    // An agent passed a favicon URL for "integry"; the inlined 16x16 junk used
+    // to beat the real /brand logo and the node came in grey with no logo.
+    const svc = findService({ id: "integry", label: "Integry", icon: "data:image/png;base64,AAAA", color: "#9aa0a6" });
+    expect(svc.icon).toBe("/brand/integry.png");
+    expect(svc.color).toBe("#34A853");
+  });
+
   it("returns an empty object for a fully unknown node", () => {
     expect(findService({ id: "zzzzz", label: "zzzzz" })).toEqual({});
   });
