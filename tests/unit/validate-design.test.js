@@ -69,3 +69,14 @@ describe("validateDesign - pasted icons", () => {
     expect(n.color).toBeUndefined();
   });
 });
+
+describe("validateDesign - picture nodes", () => {
+  it("passes a custom id with an image and label", () => {
+    expect(validateDesign({ nodes: [{ id: "shot", label: "Checkout page", image: "https://cdn.example.com/shot.png" }] })).toBeNull();
+  });
+
+  it("rejects an image that is not a usable source", () => {
+    const r = validateDesign({ nodes: [{ id: "shot", label: "Checkout page", image: "ftp://x" }] });
+    expect(r.error).toMatch(/"shot" has an image that is not a usable source/);
+  });
+});

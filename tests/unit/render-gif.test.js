@@ -86,4 +86,10 @@ describe("renderDiagramGif", () => {
     const buf = renderDiagramGif([NODES[0]], [], { frames: 3, width: 300 });
     expect(buf.subarray(0, 3).toString("ascii")).toBe("GIF");
   });
+
+  it("renders a picture node", () => {
+    const img = { id: "shot", position: { x: 0, y: 0 }, image: "data:image/jpeg;base64,/9j/4AAQSkZJRg==", label: "Checkout page" };
+    const buf = renderDiagramGif([img], [], { frames: 3, width: 300 });
+    expect(buf.subarray(0, 4).toString("ascii")).toBe("GIF8");
+  });
 });

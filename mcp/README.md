@@ -54,10 +54,11 @@ A locked diagram (embedded in a README or Confluence page) refuses both
 }
 ```
 
-A node is `{ id, x?, y?, icon?, label?, sub?, color?, note? }`:
+A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note? }`:
 
-- `id` - a service key from `list_services` (e.g. `user`, `apigw`, `lambda`, `dynamo`, `kafka`, `redis`, `s3`), or any unique id when bringing your own icon. A key appears at most once per diagram.
+- `id` - a service key from `list_services` (e.g. `user`, `apigw`, `lambda`, `dynamo`, `kafka`, `redis`, `s3`), or any unique id when bringing your own icon or image. A key appears at most once per diagram.
 - `icon` - bring-your-own logo: a remote `https` image URL, a `data:image/(png|jpeg|svg+xml|webp|gif)` URI with a real `;base64,` or `,` boundary, or a same-origin image path such as `/brand/foo.svg` (never protocol-relative `//host`). A remote URL is fetched once (https only, no redirects, `image/*`, max 24KB, 5s, private hosts refused, raster logos at least 96px) and inlined so the diagram stays self-contained. If it cannot be fetched the call fails and names the node. An inline `data:` icon is capped at 24KB.
+- `image` - makes the node a picture card: a screenshot or photo shown at 4:3 inside the card and in every export. Accepts an absolute file path on this machine, an `https` image URL, a `data:image/(png|jpeg|webp|gif);base64` URI, or `airclips:<id>` / `airclips:latest` (the newest image on the AirClips board). Resolved once, resized to 640x480 cover-cropped, and stored as a JPEG data URI inside the diagram. File paths and `airclips:` refs only work through the MCP server (they need this machine); the HTTP API only takes `https` and `data:` sources. Needs `AIRCLIPS_URL` and `AIRCLIPS_TOKEN` in `.env` for `airclips:` refs.
 - `label` - display name, required with a custom icon. `sub` - small subtitle. `color` - 6-digit brand hex (`#FF7A59`) for the border and tint; anything else is dropped because it lands in SVG attributes.
 - `note` - plain text, max 400 chars, 1-2 sentences on what that step does. It renders under the card, bottom-left, in the app, on every shared link, in the SVG and on the share card. Set it on create, or later with `update_flow` by sending the full `nodes` list with `note` on the ones that need it.
 - `x` / `y` - optional. Omit them and the canvas lays the design out left-to-right, which is the wanted look.
@@ -119,6 +120,8 @@ else, so the working directory the agent launches from does not matter.
 | `OWNER_USER_ID` | Yes | Owner uuid; every tool reads and writes only this owner's rows. Missing means every call fails |
 | `FLOWS_APP_URL` | No | Base for `url` / `share_url`. Defaults to `https://flows-bheng.vercel.app` |
 | `DATABASE_SSL` | No | `"true"` for a remote Postgres with a self-signed cert |
+| `AIRCLIPS_URL` | No | Base URL of the AirClips board, for `image: "airclips:<id>"`. Defaults to `http://M4.local:7474` |
+| `AIRCLIPS_TOKEN` | No | AirClips auth token (`x-airclips-token`). Required for any `airclips:` image ref |
 
 Run `npm install` once so `@modelcontextprotocol/sdk` is present.
 

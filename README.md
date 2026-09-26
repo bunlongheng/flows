@@ -19,6 +19,7 @@ Describe a system, get a React Flow canvas back: 118 real services with real log
 
 - **118 real logos** - a node whose id has no logo is refused, so a diagram never shows a lettered box.
 - **Or bring your own** - an `https` or `data:` icon is fetched once and stored inside the diagram.
+- **Or a picture** - a node can carry a screenshot or photo (`image`: file path, https, base64, or an AirClips clip), shown at 4:3 inside the card and in every export.
 - **It places itself** - leave `x`/`y` out and the server lays the nodes out before it saves them.
 - **A diagram is a URL** - the same row as JSON, SVG or animated GIF. New ones are private until you publish.
 - **It reads like a story** - notes, numbered steps, a Details panel, flowing dots, 4 badge styles.
