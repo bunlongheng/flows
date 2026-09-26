@@ -85,5 +85,5 @@ Hand people `share_url`. Paste `readme` into a README or Confluence page as is.
 
 - Do not send `position`, `type`, `tags` or `difficulty`.
 - Do not send a catalog id with a made-up `icon`. The icon is dropped.
-- Do not try to update or delete through this API. Those need the owner's session. A diagram with `locked: true` is embedded somewhere and refuses changes anyway.
+- Do not try to update or delete through this API. Those need the owner's session. A diagram with `locked: true` is embedded somewhere and refuses delete.
 - Do not put secrets, tokens or emails in a title, note or description. They are public.

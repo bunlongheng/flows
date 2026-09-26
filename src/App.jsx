@@ -287,7 +287,7 @@ export default function App() {
     })
     if (!res.ok) { showToastMsg('Could not change the lock'); return }
     setActiveDiagram(a => (a ? { ...a, locked: next } : a))
-    showToastMsg(next ? 'Locked - it cannot be changed or deleted' : 'Unlocked')
+    showToastMsg(next ? 'Locked - it cannot be deleted' : 'Unlocked')
   }
 
   function deleteDiagram(id, { thenBack = false } = {}) {
@@ -418,9 +418,9 @@ export default function App() {
     setEdges(prev => prev.map(e => (
       Boolean(e.data?.onLabelMove) === canAI
         ? e
-        : { ...e, data: { ...e.data, onLabelMove: canAI && !activeDiagram?.locked ? onLabelMove : undefined } }
+        : { ...e, data: { ...e.data, onLabelMove: canAI ? onLabelMove : undefined } }
     )))
-  }, [canAI, view, onLabelMove, activeDiagram?.locked])
+  }, [canAI, view, onLabelMove])
 
   function openDiagram(d) {
     setActiveDiagram(d)
@@ -449,7 +449,7 @@ export default function App() {
     // Carry any custom brand fields (label/icon/color/sub) into node data so a
     // bring-your-own-icon node renders its own logo, not a catalog lookup.
     const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note }, ...(hasSaved ? { position: nd.position } : {}) }))
-    const e = buildEdges(d.data.edges, canAI && !d.locked ? onLabelMove : undefined, raw)
+    const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw)
     setNodes(hasSaved ? n : layoutElements(n, e, { canvas: canvasSize() }))
     setEdges(e)
     setView('detail')

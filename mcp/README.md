@@ -29,8 +29,8 @@ the link to hand to people. `gif_url` is the animated diagram as an image,
 wrapped as a Markdown image, ready to paste into a README. Both need the
 diagram to be public. `visibility` is `"public"` or `"private"`.
 
-A locked diagram (embedded in a README or Confluence page) refuses both
-`update_flow` and `delete_flow` until `lock_flow` unlocks it.
+A locked diagram (embedded in a README or Confluence page) refuses `delete_flow`
+(and the purge) until `lock_flow` unlocks it. Updates still go through.
 
 ### Node and edge shapes
 

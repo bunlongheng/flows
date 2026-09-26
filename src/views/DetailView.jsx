@@ -316,7 +316,7 @@ export function DetailView({
           {canEdit && <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />}
 
           {/* Auto-arrange: re-lay-out left-to-right, spread out, step-ordered, then fit */}
-          {canEdit && !isLocked && <button className="sd-hide-mobile sd-show-mobile sd-hide-tablet" onClick={() => onArrange && onArrange()} title="Auto-arrange the layout" style={{
+          {canEdit && <button className="sd-hide-mobile sd-show-mobile sd-hide-tablet" onClick={() => onArrange && onArrange()} title="Auto-arrange the layout" style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
             background: 'transparent', color: '#64748b',
@@ -475,7 +475,7 @@ export function DetailView({
               off - a second, deliberate action. */}
           {onToggleLock && (
             <button className="sd-hide-mobile" onClick={onToggleLock}
-              title={isLocked ? 'Locked - embedded in a README or Confluence page. Click to unlock, then it can be edited or deleted' : 'Lock this diagram so it cannot be changed or deleted - use it when a README or Confluence page embeds it'} style={{
+              title={isLocked ? 'Locked - embedded in a README or Confluence page. Click to unlock, then it can be deleted' : 'Lock this diagram so it cannot be deleted - use it when a README or Confluence page embeds it'} style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
               background: isLocked ? '#fef3c7' : 'transparent',
@@ -556,7 +556,7 @@ export function DetailView({
         {/* Canvas */}
         <div style={{ flex: 1, position: 'relative', background: '#ffffff' }}>
           <ShowNotesContext.Provider value={showNotes}>
-          <NoteEditContext.Provider value={isLocked ? null : (onNoteChange || null)}>
+          <NoteEditContext.Provider value={onNoteChange || null}>
           <ReactFlow
             className={`${showSteps ? 'sd-steps-on ' : ''}${flowing ? '' : 'sd-still '}sd-badge-${badgeMode}`}
             nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
@@ -571,7 +571,7 @@ export function DetailView({
             onMove={(event) => { if (event) setFitted(false) }}
             onMoveEnd={(_, viewport) => flashZoomHud(viewport.zoom)}
             fitView fitViewOptions={{ padding: 0.15 }}
-            nodesDraggable={canEdit && !isLocked} nodesConnectable={false} elementsSelectable={canEdit}
+            nodesDraggable={canEdit} nodesConnectable={false} elementsSelectable={canEdit}
             panOnDrag zoomOnScroll minZoom={0.2} maxZoom={2.5}
             proOptions={{ hideAttribution: true }}
           >

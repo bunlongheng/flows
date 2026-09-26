@@ -116,7 +116,7 @@ A private create adds `share_note` explaining that recipients get a 404 until it
 
 | `{ "locked": true|false }` | Marks the diagram as embedded (README, Confluence). Returns `{ id, locked }`. |
 
-Anything else is `400`. Trashed rows are `404`. While `locked` is true, every body except `view_state` and `locked` itself is `409 { error: "This diagram is locked" }`.
+Anything else is `400`. Trashed rows are `404`.
 
 ### Delete (owner session only)
 
