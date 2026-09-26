@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { isPlaying, setPlaying, subscribePlaying } from '../flowClock'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { isPlaying, setPlaying, subscribePlaying, isFlowing, subscribeFlowing } from '../flowClock'
 import { ReactFlow, Background } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import diagramData from '../data/diagram.json'
@@ -74,6 +74,39 @@ export function DetailView({
   // read, not watched.
   const [playing, setPlayingState] = useState(isPlaying)
   useEffect(() => subscribePlaying(setPlayingState), [])
+  // What the canvas draws: solid still lines while paused, dashes and dots
+  // while playing or while a GIF capture is stepping the dots (see flowClock).
+  const [flowing, setFlowing] = useState(isFlowing)
+  useEffect(() => subscribeFlowing(setFlowing), [])
+
+  // The title outranks the button labels. When the name would have to
+  // truncate to fit the labelled bar, the bar drops to icons instead; the
+  // labels come back once the header is wide enough for both again. The
+  // width that needs is remembered at the moment of collapse (the width it
+  // had plus the part of the title that was cut off), so this settles in one
+  // pass rather than flapping. A title change forgets it and measures afresh.
+  const headerRef = useRef(null)
+  const [iconsOnly, setIconsOnly] = useState(false)
+  const labelsFitAt = useRef(0)
+  const measuredTitle = useRef(null)
+  const titleText = activeDiagram?.title || ''
+  useLayoutEffect(() => {
+    const header = headerRef.current
+    if (!header || typeof ResizeObserver === 'undefined') return
+    if (measuredTitle.current !== titleText) { measuredTitle.current = titleText; labelsFitAt.current = 0 }
+    const check = () => {
+      const title = header.querySelector('.sd-detail-title')
+      if (!title) return
+      const width = header.clientWidth
+      const cut = title.scrollWidth - title.clientWidth
+      if (!iconsOnly && cut > 0) { labelsFitAt.current = width + cut + 8; setIconsOnly(true) }
+      else if (iconsOnly && width >= labelsFitAt.current) setIconsOnly(false)
+    }
+    check()
+    const ro = new ResizeObserver(check)
+    ro.observe(header)
+    return () => ro.disconnect()
+  }, [iconsOnly, titleText])
   const fitNow = () => {
     rfInstanceRef.current?.fitView({ padding: 0.12, duration: 400 })
     setFitted(true)
@@ -138,7 +171,7 @@ export function DetailView({
         }}>Download PNG</button>
       </header>
       ) : (
-      <header className="sd-detail-header" style={{
+      <header ref={headerRef} className={`sd-detail-header${iconsOnly ? ' sd-icons-only' : ''}`} style={{
         height: 54, background: 'linear-gradient(180deg, #fbfbfc 0%, #eef0f3 100%)', borderBottom: '1px solid #e4e7ea',
         display: 'flex', alignItems: 'center', padding: '0 16px', paddingTop: 'env(safe-area-inset-top)', boxSizing: 'content-box', gap: 10, flexShrink: 0,
         overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch',
@@ -525,7 +558,7 @@ export function DetailView({
           <ShowNotesContext.Provider value={showNotes}>
           <NoteEditContext.Provider value={onNoteChange || null}>
           <ReactFlow
-            className={`${showSteps ? 'sd-steps-on ' : ''}sd-badge-${badgeMode}`}
+            className={`${showSteps ? 'sd-steps-on ' : ''}${flowing ? '' : 'sd-still '}sd-badge-${badgeMode}`}
             nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
             onNodeDragStop={onNodeDragStop}
@@ -789,6 +822,13 @@ export function DetailView({
            looked permanently active on an iPad. Where there is no real hover,
            ignore the inline background entirely and let the genuinely-toggled
            buttons say so with .is-on. */
+        /* The title outranks the labels (see iconsOnly). */
+        .sd-detail-header.sd-icons-only .sd-btn-label { display: none; }
+        /* Paused: a plain solid line and no dot, the diagram is being read.
+           Playing (or a capture stepping the frames): the dash marches and
+           the dot travels. */
+        .react-flow.sd-still .react-flow__edge.animated .react-flow__edge-path { stroke-dasharray: none !important; animation: none !important; }
+        .react-flow.sd-still .sd-flow-dot { display: none; }
         @media (hover: none) {
           .sd-detail-header button { background: transparent !important; }
           .sd-detail-header button.is-on { background: #f1f5f9 !important; }
