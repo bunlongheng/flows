@@ -10,6 +10,12 @@ export const NoteEditContext = createContext(null)
 // /demo link or while signed out - a node with no handler renders no resizer.
 export const NodeResizeContext = createContext(null)
 
+// The owner's icon/photo resize handler, handed to every node the same way as
+// NodeResizeContext but for the image INSIDE the card rather than the card
+// itself. The value is (nodeId, iconSize | null) => void when signed in, and
+// null on a shared /demo link or while signed out.
+export const IconResizeContext = createContext(null)
+
 // Whether node notes are drawn at all. A dense diagram with a caption under
 // every box is a wall of text when you only want to see the shape of it, so the
 // toolbar can turn them off. Defaults to true: a diagram that has never been

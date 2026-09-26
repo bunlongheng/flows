@@ -1,7 +1,7 @@
 import { memo, useContext, useRef, useState } from 'react'
-import { Handle, Position, NodeResizer } from '@xyflow/react'
+import { Handle, Position, NodeResizer, useReactFlow } from '@xyflow/react'
 import { findService } from '../services'
-import { NoteEditContext, NodeResizeContext, ShowNotesContext } from './noteEditContext'
+import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext } from './noteEditContext'
 import { NOTE_MAX, cleanNote } from '../note'
 
 // ─── Custom Node ──────────────────────────────────────────────────────────────
@@ -95,6 +95,54 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   const [live, setLive] = useState(null)
   const box = live || size
 
+  // The icon/photo INSIDE the card, resized independently of the card itself
+  // by dragging the small handle at its own corner. Same live/committed split
+  // as the card's own resize above.
+  const onIconResize = useContext(IconResizeContext)
+  const [liveIcon, setLiveIcon] = useState(null)
+  const iconBox = liveIcon || data.iconSize
+  const imgRef = useRef(null)
+  const { getZoom } = useReactFlow()
+
+  const startIconDrag = e => {
+    if (!onIconResize || e.button !== 0) return
+    e.stopPropagation()
+    e.preventDefault()
+    const zoom = getZoom() || 1
+    const rect = imgRef.current?.getBoundingClientRect()
+    const start = iconBox || (rect ? { w: rect.width / zoom, h: rect.height / zoom } : { w: 48, h: 48 })
+    const ratio = start.w / (start.h || 1)
+    const x0 = e.clientX, y0 = e.clientY
+    let last = null
+    const move = ev => {
+      let w = start.w + (ev.clientX - x0) / zoom
+      let h = ev.shiftKey ? w / ratio : start.h + (ev.clientY - y0) / zoom
+      w = Math.min(600, Math.max(16, w))
+      h = Math.min(600, Math.max(16, h))
+      last = { w: Math.round(w), h: Math.round(h) }
+      setLiveIcon(last)
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      const saved = data.iconSize
+      if (last && (!saved || saved.w !== last.w || saved.h !== last.h)) onIconResize(data.id, last)
+      setLiveIcon(null)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+  const iconHandle = onIconResize && selected && (
+    <span className="nodrag nopan" onPointerDown={startIconDrag}
+      onDoubleClick={e => { e.stopPropagation(); onIconResize(data.id, null) }}
+      title="Drag to stretch the icon; double-click to reset"
+      style={{ position: 'absolute', right: -6, bottom: -6, width: 10, height: 10, background: color, border: '1px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,0.2)', cursor: 'nwse-resize', zIndex: 3 }} />
+  )
+  // Shared by both the icon and picture wrap: a picture with no custom size
+  // still needs `flex: 1` on the wrapper (not just the img) to fill the card,
+  // exactly as the un-wrapped img did before.
+  const iconWrapStyle = { position: 'relative', display: 'inline-flex', maxWidth: '100%', minHeight: 0, ...(picture && !iconBox ? { flex: 1, width: '100%' } : {}) }
+
   return (
     <div style={{
       // Tint blended over solid white: an opaque card hides any edge routed
@@ -122,9 +170,18 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       {/* Logo only - no frame, never an emoji. Every known service has an icon;
           the letter fallback only guards against a bad id the gate should reject. */}
       {picture
-        ? <img src={picture} alt={label} style={{ width: '100%', flex: 1, minHeight: 0, objectFit: 'cover', display: 'block', borderRadius: 2 }} />
+        ? <span style={iconWrapStyle}>
+            <img ref={imgRef} src={picture} alt={label} style={iconBox
+              ? { width: iconBox.w, height: iconBox.h, maxWidth: '100%', flex: 'none', objectFit: 'cover', display: 'block', borderRadius: 2 }
+              : { width: '100%', flex: 1, minHeight: 0, objectFit: 'cover', display: 'block', borderRadius: 2 }} />
+            {iconHandle}
+          </span>
         : svc.icon
-        ? <img src={svc.icon} alt={label} width={48} height={48} style={{ objectFit: 'contain', marginTop: 2 }} />
+        ? <span style={iconWrapStyle}>
+            <img ref={imgRef} src={svc.icon} alt={label} width={iconBox ? iconBox.w : 48} height={iconBox ? iconBox.h : 48}
+              style={{ objectFit: 'contain', marginTop: 2, maxWidth: '100%' }} />
+            {iconHandle}
+          </span>
         : <span style={{ fontSize: 26, fontWeight: 700, color, marginTop: 2, lineHeight: 1 }}>{label[0]?.toUpperCase()}</span>
       }
       <div style={{ textAlign: 'center', width: '100%' }}>

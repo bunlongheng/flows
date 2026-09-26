@@ -529,7 +529,7 @@ export default function App() {
     const hasSaved = raw.length > 0 && raw.every(nd => nd.position && Number.isFinite(nd.position.x) && Number.isFinite(nd.position.y))
     // Carry any custom brand fields (label/icon/color/sub) into node data so a
     // bring-your-own-icon node renders its own logo, not a catalog lookup.
-    const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, size: nd.size }, ...(hasSaved ? { position: nd.position } : {}), ...(nd.size ? { width: nd.size.w, height: nd.size.h } : {}) }))
+    const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, size: nd.size, iconSize: nd.iconSize }, ...(hasSaved ? { position: nd.position } : {}), ...(nd.size ? { width: nd.size.w, height: nd.size.h } : {}) }))
     const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined)
     setNodes(hasSaved ? n : layoutElements(n, e, { canvas: canvasSize() }))
     setEdges(e)
@@ -573,6 +573,7 @@ export default function App() {
         id: n.id,
         position: { x: Math.round(n.position.x), y: Math.round(n.position.y) },
         ...(n.width && n.height ? { size: { w: n.width, h: n.height } } : n.data?.size ? { size: n.data.size } : {}),
+        iconSize: n.data?.iconSize ?? null,
         // Preserve bring-your-own-icon fields so saving the layout never strips them.
         ...(n.icon ? { icon: n.icon } : {}),
         ...(n.label ? { label: n.label } : {}),
@@ -648,6 +649,17 @@ export default function App() {
   const onNodeResize = useCallback((id, size) => {
     setNodes(nds => {
       const next = nds.map(n => n.id === id ? { ...n, width: size.w, height: size.h, data: { ...n.data, size } } : n)
+      if (canAI && activeDiagram?.id) savePositions(activeDiagram.id, next)
+      return next
+    })
+  }, [canAI, activeDiagram, savePositions])
+
+  // The owner dragged the icon/photo's own handle, inside the card - independent
+  // of the card's own size. null resets it to the shape's default (48x48 icon,
+  // photo fills the card).
+  const onIconResize = useCallback((id, iconSize) => {
+    setNodes(nds => {
+      const next = nds.map(n => n.id === id ? { ...n, data: { ...n.data, iconSize: iconSize ?? undefined } } : n)
       if (canAI && activeDiagram?.id) savePositions(activeDiagram.id, next)
       return next
     })
@@ -1307,6 +1319,7 @@ export default function App() {
       onArrange={autoArrange}
       onNoteChange={canAI ? onNoteChange : undefined}
       onNodeResize={canAI ? onNodeResize : undefined}
+      onIconResize={canAI ? onIconResize : undefined}
       isDiagramPublic={activeDiagram?.is_public !== false}
       canEdit={canAI}
       onToggleVisibility={canAI && activeDiagram?.id ? toggleVisibility : undefined}
