@@ -8,6 +8,7 @@
 // Env (from the repo .env): DATABASE_URL, OWNER_USER_ID. Optional:
 // FLOWS_APP_URL (default prod) for the shareable links it returns.
 import './load-env.mjs' // MUST be first - loads .env before lib/db.js opens the pool
+import { readFile } from 'node:fs/promises'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
@@ -18,8 +19,34 @@ import { arrangeNew } from '../lib/arrange.js'
 import { ownerId } from '../lib/auth-owner.js'
 import { SERVICES } from '../src/services.js'
 import { resolveNodeIcons } from '../lib/resolve-icon.js'
+import { resolveNodeImages } from '../lib/resolve-image.js'
 import { cleanNote } from '../src/note.js'
 import { validateDesign, okColor } from '../lib/validate-design.js'
+
+// Picture-node loaders available only here: a file path or an AirClips ref can
+// only be resolved on THIS machine, so the HTTP API refuses them and points
+// callers at the MCP server instead.
+const imageLoaders = {
+  file: (p) => readFile(p),
+  airclips: async (ref) => {
+    const base = (process.env.AIRCLIPS_URL || 'http://M4.local:7474').replace(/\/+$/, '')
+    const token = process.env.AIRCLIPS_TOKEN
+    if (!token) throw new Error('AIRCLIPS_TOKEN not set in .env')
+    const headers = { 'x-airclips-token': token }
+    let id = ref
+    if (ref === 'latest') {
+      const r = await fetch(`${base}/api/board`, { headers })
+      if (!r.ok) throw new Error(`airclips ${r.status}`)
+      const board = await r.json()
+      const images = (board.items || []).filter((i) => i.kind === 'image')
+      if (!images.length) throw new Error('no image on the AirClips board')
+      id = images.reduce((a, b) => (b.created > a.created ? b : a)).id
+    }
+    const r = await fetch(`${base}/api/item/${id}`, { headers })
+    if (!r.ok) throw new Error(`airclips ${r.status}`)
+    return Buffer.from(await r.arrayBuffer())
+  },
+}
 
 const APP_URL = process.env.FLOWS_APP_URL || 'https://flows-bheng.vercel.app'
 const urlFor = id => `${APP_URL}/?id=${id}`
@@ -61,6 +88,7 @@ function toStoredNodes(nodes) {
     ...(okColor(n.color) ? { color: n.color } : {}),
     ...(n.sub ? { sub: n.sub } : {}),
     ...(cleanNote(n.note) ? { note: cleanNote(n.note) } : {}),
+    ...(n.image ? { image: n.image } : {}),
   }))
   return placed
 }
@@ -190,7 +218,7 @@ server.registerTool(
   'create_flow',
   {
     title: 'Create flow',
-    description: "Create a new diagram. Provide a title, nodes, and edges connecting node ids. Each node is EITHER a known catalog service (call list_services), OR a bring-your-own node with a custom `icon` (a remote https logo URL, a data:image URI, or a /path) plus a `label`. Remote https icons are fetched and inlined once so the diagram stays self-contained. Positions are optional (the app auto-layouts). Returns the new id and URL.",
+    description: "Create a new diagram. Provide a title, nodes, and edges connecting node ids. Each node is EITHER a known catalog service (call list_services), OR a bring-your-own node with a custom `icon` (a remote https logo URL, a data:image URI, or a /path) plus a `label`, or a picture node (`image`). Remote https icons are fetched and inlined once so the diagram stays self-contained. Positions are optional (the app auto-layouts). Returns the new id and URL.",
     inputSchema: {
       title: z.string().describe('Descriptive title, e.g. "URL Shortener - Tier 1"'),
       nodes: z.array(z.object({
@@ -198,6 +226,7 @@ server.registerTool(
         x: z.number().optional().describe('Optional. OMIT x/y and the canvas lays the design out left-to-right for you - that is the wanted look.'),
         y: z.number().optional(),
         icon: z.string().optional().describe('Bring-your-own logo: a remote https image URL, a data:image URI, or a same-origin /path, at least 96px on each side (never a favicon). IGNORED when id is a catalog service - the catalog logo always wins, so omit it there.'),
+        image: z.string().optional().describe('Make this a picture node: a screenshot or photo shown at 4:3 inside the card and in every export. Accepts an absolute file path on this machine (/Users/you/shot.png), an https image URL, a data:image/...;base64 URI, or airclips:<id> / airclips:latest (newest image on the AirClips board; needs AIRCLIPS_URL and AIRCLIPS_TOKEN in .env). Resized to 640x480 cover and stored in the diagram. Give the node a label; its id can be anything unique.'),
         label: z.string().optional().describe('Display name (required with a custom icon), e.g. "HubSpot"'),
         sub: z.string().optional().describe('Small subtitle under the label, e.g. "CRM"'),
         color: z.string().optional().describe('Brand hex color for the node border/tint, e.g. "#FF7A59"'),
@@ -219,10 +248,12 @@ server.registerTool(
       if (gate) return gate
       const { nodes: iconNodes, failed } = await resolveNodeIcons(nodes)
       if (failed.length) return fail(`Could not fetch the remote icon for node(s): ${failed.join(', ')}. Use an https image URL that returns image/* under 24KB (no redirects), or inline a data:image URI.`)
+      const im = await resolveNodeImages(iconNodes, imageLoaders)
+      if (im.failed.length) return fail(`Could not load the image for node(s): ${im.failed.map(f => `${f.id} (${f.reason})`).join(', ')}.`)
       const o = owner()
       const slug = await uniqueFlowSlug(o, title)
       const storedEdges = toStoredEdges(edges)
-      const enforced = enforceStartLeft(toStoredNodes(iconNodes), storedEdges)
+      const enforced = enforceStartLeft(toStoredNodes(im.nodes), storedEdges)
       // Born arranged: a new diagram gets the same layout the Arrange button
       // produces, so it never lands on the canvas crammed.
       const storedNodes = arrangeNew(enforced.nodes, storedEdges)
@@ -275,6 +306,7 @@ server.registerTool(
       nodes: z.array(z.object({
         id: z.string(), x: z.number().optional(), y: z.number().optional(),
         icon: z.string().optional().describe('Bring-your-own logo: https URL, data:image URI, or /path, at least 96px on each side. IGNORED when id is a catalog service.'),
+        image: z.string().optional().describe('Make this a picture node: a screenshot or photo shown at 4:3 inside the card and in every export. Accepts an absolute file path on this machine (/Users/you/shot.png), an https image URL, a data:image/...;base64 URI, or airclips:<id> / airclips:latest (newest image on the AirClips board; needs AIRCLIPS_URL and AIRCLIPS_TOKEN in .env). Resized to 640x480 cover and stored in the diagram. Give the node a label; its id can be anything unique.'),
         label: z.string().optional(), sub: z.string().optional(), color: z.string().optional(),
         note: z.string().max(400).optional().describe('Plain-text note under the node; see create_flow. Omit to leave a node without one.'),
       })).optional(),
@@ -297,7 +329,9 @@ server.registerTool(
         const gate = logoGate(nodes, edges || []); if (gate) return gate
         const r = await resolveNodeIcons(nodes)
         if (r.failed.length) return fail(`Could not fetch the remote icon for node(s): ${r.failed.join(', ')}.`)
-        iconNodes = r.nodes
+        const im = await resolveNodeImages(r.nodes, imageLoaders)
+        if (im.failed.length) return fail(`Could not load the image for node(s): ${im.failed.map(f => `${f.id} (${f.reason})`).join(', ')}.`)
+        iconNodes = im.nodes
       }
 
       // No age gate. Any diagram is editable at any time - backfilling and

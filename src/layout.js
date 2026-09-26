@@ -6,6 +6,11 @@ import { findService } from './services.js'
 const NODE_W = 190
 const NODE_H = 120
 
+// A picture node is a bigger, fixed-ratio card - dagre needs its real size too,
+// or it packs picture nodes as if they were the same small width as everything else.
+const IMG_W = 240
+const IMG_H = 225
+
 // Spacing is sized to the BADGE (edge label), not padded way out: a badge is
 // ~100w x ~24h, so a column gap a bit over the badge width and a row gap a bit
 // over a node's height is all that's needed to keep labels off the nodes. Keeping
@@ -83,6 +88,7 @@ function tuckables(nodes, edges) {
 // stack a column so tall that everything shrinks, which defeats the point.
 export function layoutElements(nodes, edges, { rankdir = 'LR', canvas } = {}) {
   const cv = canvas ?? DEFAULT_CANVAS
+  ROW_H = nodes.some(n => n.data?.image) ? IMG_H : NODE_H
   const plain = buildLayout(nodes, edges, rankdir, cv, new Map())
   const tucked = tuckables(nodes, edges)
   if (!tucked.size) return plain.nodes
@@ -117,7 +123,7 @@ function buildLayout(nodes, edges, rankdir, canvas, tucked) {
   // Tucked leaves are held back from dagre entirely - they get parked on their
   // parent's column afterwards instead of earning a rank of their own.
   const flow = nodes.filter(n => !tucked.has(n.id))
-  flow.forEach(n => g.setNode(n.id, { width: NODE_W, height: NODE_H }))
+  flow.forEach(n => g.setNode(n.id, n.data?.image ? { width: IMG_W, height: IMG_H } : { width: NODE_W, height: NODE_H }))
   // Edges INTO the start node are withheld from ranking. On a loop - and most
   // real designs close one - the return edge gives the entry node an incoming
   // rank, so dagre pushes it into the middle and the "Start here" pill ends up
@@ -170,8 +176,8 @@ function buildLayout(nodes, edges, rankdir, canvas, tucked) {
     const key = Math.round(g.node(parent).x)
     const ys = taken.get(key) ?? []
     const dir = role === 'above' ? -1 : 1
-    let y = anchor.y + dir * SLOT
-    for (let k = 2; k <= nodes.length + 2 && !isFree(y, ys); k++) y = anchor.y + dir * SLOT * k
+    let y = anchor.y + dir * slot()
+    for (let k = 2; k <= nodes.length + 2 && !isFree(y, ys); k++) y = anchor.y + dir * slot() * k
     centers.set(id, { x: anchor.x, y })
     ys.push(y)
     taken.set(key, ys)
@@ -191,17 +197,21 @@ function buildLayout(nodes, edges, rankdir, canvas, tucked) {
   // chain line up and its edges draw dead straight.
   const out = [...placed.map(({ n }) => n), ...seated.map(s => s.n)].map(n => {
     const c = centers.get(n.id)
-    const w = n.measured?.width ?? NODE_W
-    const h = n.measured?.height ?? NODE_H
+    const w = n.measured?.width ?? (n.data?.image ? IMG_W : NODE_W)
+    const h = n.measured?.height ?? (n.data?.image ? IMG_H : NODE_H)
     return { ...n, position: { x: c.x - w / 2, y: c.y - h / 2 } }
   })
   return { nodes: out, scale: scaleOf(out, canvas) }
 }
 
-const SLOT = NODE_H + NODE_SEP           // one vertical step in a column
-const MIN_GAP = NODE_H + 40              // closest 2 node centers may ever sit
+// Row spacing follows the tallest card in the diagram. A picture node is almost
+// twice the height of a service card, and spacing sized to the small card put
+// its note on top of whatever sat under it.
+let ROW_H = NODE_H
+const slot = () => ROW_H + NODE_SEP     // one vertical step in a column
+const minGap = () => ROW_H + 40        // closest 2 node centers may ever sit
 
-const isFree = (y, ys) => ys.every(o => Math.abs(o - y) >= MIN_GAP)
+const isFree = (y, ys) => ys.every(o => Math.abs(o - y) >= minGap())
 
 // ─── Straighten ───────────────────────────────────────────────────────────────
 // Dagre lines a chain up, then re-slotting each column into step order pulls it
@@ -227,7 +237,7 @@ function straighten(cols, centers, edges) {
     const want = ys[Math.floor(ys.length / 2)] // median row of whatever feeds it
     const cur = centers.get(it.n.id)
     if (Math.abs(want - cur.y) < 0.5) return
-    const clash = items.some(o => o.n.id !== it.n.id && Math.abs(centers.get(o.n.id).y - want) < MIN_GAP)
+    const clash = items.some(o => o.n.id !== it.n.id && Math.abs(centers.get(o.n.id).y - want) < minGap())
     if (!clash) centers.set(it.n.id, { ...cur, y: want })
   }
 
@@ -268,7 +278,7 @@ function separate(cols, centers) {
     for (let i = 1; i < ids.length; i++) {
       const prev = centers.get(ids[i - 1])
       const cur = centers.get(ids[i])
-      if (cur.y - prev.y < MIN_GAP) centers.set(ids[i], { ...cur, y: prev.y + MIN_GAP })
+      if (cur.y - prev.y < minGap()) centers.set(ids[i], { ...cur, y: prev.y + minGap() })
     }
   }
 }
@@ -279,7 +289,7 @@ function scaleOf(nodes, canvas) {
   const xs = nodes.map(n => n.position.x)
   const ys = nodes.map(n => n.position.y)
   const w = Math.max(...xs) - Math.min(...xs) + NODE_W + MARKER_PAD
-  const h = Math.max(...ys) - Math.min(...ys) + NODE_H
+  const h = Math.max(...ys) - Math.min(...ys) + ROW_H
   return Math.min((canvas.width * WIDTH_BUDGET) / w, canvas.height / h)
 }
 
@@ -301,7 +311,7 @@ function wrapIntoBands(cols, centers, canvas) {
     .sort((a, b) => a[0] - b[0])
     .map(([, items]) => {
       const ys = items.map(it => centers.get(it.n.id).y)
-      return { items, mid: (Math.min(...ys) + Math.max(...ys)) / 2, height: Math.max(...ys) - Math.min(...ys) + NODE_H }
+      return { items, mid: (Math.min(...ys) + Math.max(...ys)) / 2, height: Math.max(...ys) - Math.min(...ys) + ROW_H }
     })
   if (ranks.length < 2) return
   // Only a straight pipeline gets wrapped. Wrapping a graph that branches drags

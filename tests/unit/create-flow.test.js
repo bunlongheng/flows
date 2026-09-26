@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import sharp from "sharp";
 
 // Mock the DB so the create handler's validation + auth can be tested without a
 // real Postgres. First query() (slug lookup) returns no collisions; second
@@ -206,6 +207,16 @@ describe("POST /api/ai/flows - logo gate", () => {
     const written = JSON.parse(query.mock.calls[1][1][3]);
     expect(written[0].icon).toBe("/brand/hubspot.svg");
     expect(written[0]).not.toHaveProperty("color");
+  });
+
+  it("201s a picture node and stores a resolved data:image/jpeg;base64, image", async () => {
+    const png = await sharp({ create: { width: 1200, height: 900, channels: 3, background: { r: 200, g: 100, b: 50 } } }).png().toBuffer();
+    const dataPng = `data:image/png;base64,${png.toString("base64")}`;
+    const res = mockRes();
+    await createFlow(good(`Bearer ${SECRET}`, { ...VALID_BODY, nodes: [{ id: "shot", label: "Checkout page", image: dataPng }], edges: [] }), res);
+    expect(res.statusCode).toBe(201);
+    const written = JSON.parse(query.mock.calls[1][1][3]);
+    expect(written[0].image).toMatch(/^data:image\/jpeg;base64,/);
   });
 });
 

@@ -448,7 +448,7 @@ export default function App() {
     const hasSaved = raw.length > 0 && raw.every(nd => nd.position && Number.isFinite(nd.position.x) && Number.isFinite(nd.position.y))
     // Carry any custom brand fields (label/icon/color/sub) into node data so a
     // bring-your-own-icon node renders its own logo, not a catalog lookup.
-    const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, color: nd.color, sub: nd.sub, note: nd.note }, ...(hasSaved ? { position: nd.position } : {}) }))
+    const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note }, ...(hasSaved ? { position: nd.position } : {}) }))
     const e = buildEdges(d.data.edges, canAI && !d.locked ? onLabelMove : undefined, raw)
     setNodes(hasSaved ? n : layoutElements(n, e, { canvas: canvasSize() }))
     setEdges(e)
