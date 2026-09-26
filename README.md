@@ -22,7 +22,7 @@ Describe a system, get a React Flow canvas back: 118 real services with real log
 - **It places itself** - leave `x`/`y` out and the server lays the nodes out before it saves them.
 - **A diagram is a URL** - the same row as JSON, SVG or animated GIF. New ones are private until you publish.
 - **It reads like a story** - notes, numbered steps, a Details panel, flowing dots, 4 badge styles.
-- **3 ways in** - the canvas, an HTTP API with a token, or 10 MCP tools. Delete is soft, so you can undo it.
+- **3 ways in** - the canvas, an HTTP API with a token, or 11 MCP tools. Delete is soft, so you can undo it.
 
 ## Read this before you clone
 

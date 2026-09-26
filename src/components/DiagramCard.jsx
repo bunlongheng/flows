@@ -9,7 +9,7 @@ import { tierFor } from '../difficulty.js'
 
 // isPrivate: owner's gallery only - a small lock so a diagram that is not yet
 // shareable is obvious before its link goes anywhere.
-export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficulty, onOpen, onViewCode, onDelete, isPrivate }) {
+export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficulty, onOpen, onViewCode, onDelete, isPrivate, isLocked }) {
   const brand = showBrand ? brandFor(title) : null
   const tier = tierFor(difficulty)
   const [active, setActive] = useState(false) // hover OR keyboard focus (for the card's own lift)
@@ -88,6 +88,11 @@ export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficul
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               </span>
             )}
+            {isLocked && (
+              <span className="dc-locked" title="Locked: embedded in a README or Confluence page. It cannot be changed or deleted until unlocked." style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: 5, background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e', flexShrink: 0 }}>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </span>
+            )}
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
           </div>
           {brand && <div style={{ fontSize: 11, color: '#65676b', marginTop: 2 }}>{brand.sub}</div>}
@@ -123,7 +128,7 @@ export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficul
             <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
           </svg>
         </button>}
-        {onDelete && (confirming ? (
+        {onDelete && !isLocked && (confirming ? (
           <button onClick={handleDeleteClick} onBlur={resetConfirm} title="Confirm delete"
             style={{ height: 26, borderRadius: 7, border: '1px solid #dc2626', background: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px', fontSize: 10, fontWeight: 700, color: '#ffffff', whiteSpace: 'nowrap', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
             Delete?

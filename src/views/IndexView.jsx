@@ -259,6 +259,7 @@ export function IndexView({
                 onViewCode={canAI ? () => onViewCode(d) : undefined}
                 onDelete={canAI && !d.sample ? () => onDeleteDiagram(d.id) : undefined}
                 isPrivate={canAI && d.is_public === false}
+                isLocked={canAI && !!d.locked}
               />
             ))}
           </div>
