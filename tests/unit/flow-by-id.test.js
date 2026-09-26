@@ -280,6 +280,29 @@ describe("/api/flows/:id", () => {
     expect(res.body.moved).toBe(1);
   });
 
+  it("PATCH edges stores pinned ends clamped and drops a bad side", async () => {
+    const stored = [
+      { id: "e1", source: "a", target: "b", label: "first" },
+      { id: "e2", source: "b", target: "c", label: "second", ends: { s: { side: "top", at: 0.5 } } },
+    ];
+    query.mockResolvedValueOnce({ rows: [{ edges: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = {
+      edges: [
+        { id: "e1", labelT: 0.5, ends: { s: { side: "bottom", at: 1.2 }, t: { side: "diagonal", at: 0.5 } } },
+        { id: "e2", ends: null },
+      ],
+    };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+
+    const written = JSON.parse(query.mock.calls[1][1][0]);
+    expect(written[0]).toEqual({ id: "e1", source: "a", target: "b", label: "first", labelT: 0.5, ends: { s: { side: "bottom", at: 0.95 } } });
+    expect(written[1]).toEqual({ id: "e2", source: "b", target: "c", label: "second" });
+  });
+
   it("PATCH edges clamps labelT away from the node ends and ignores a non-number", async () => {
     query.mockResolvedValueOnce({
       rows: [{ edges: [{ id: "e1", source: "a", target: "b" }, { id: "e2", source: "b", target: "c" }] }],

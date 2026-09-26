@@ -280,8 +280,41 @@ function nearestTOnPath(d, x, y) {
   } catch { return null }
 }
 
+const SIDE_OF = { top: Position.Top, right: Position.Right, bottom: Position.Bottom, left: Position.Left }
+const END_MIN = 0.05, END_MAX = 0.95
+
+// Where a pinned end sits: `end.at` is a 0..1 fraction along the chosen face.
+// Shaped like an attachPoint result so the callers do not care which it was.
+function pinnedPoint(node, end) {
+  const { x, y } = node.internals.positionAbsolute
+  const w = node.measured.width, h = node.measured.height
+  const at = Math.min(END_MAX, Math.max(END_MIN, end.at))
+  const side = SIDE_OF[end.side] || Position.Right
+  const horizontal = side === Position.Left || side === Position.Right
+  const p = horizontal
+    ? { x: side === Position.Left ? x : x + w, y: y + h * at }
+    : { x: x + w * at, y: side === Position.Top ? y : y + h }
+  return { ...p, side, alone: true, gap: 0, half: (horizontal ? h : w) / 2, mid: horizontal ? y + h / 2 : x + w / 2 }
+}
+
+// The face of `node` closest to a dragged point, and how far along it.
+function nearestEnd(node, px, py) {
+  const { x, y } = node.internals.positionAbsolute
+  const w = node.measured.width, h = node.measured.height
+  const fx = Math.min(END_MAX, Math.max(END_MIN, (px - x) / w))
+  const fy = Math.min(END_MAX, Math.max(END_MIN, (py - y) / h))
+  const cands = [
+    { side: 'top', at: fx, d: Math.abs(py - y) },
+    { side: 'bottom', at: fx, d: Math.abs(py - (y + h)) },
+    { side: 'left', at: fy, d: Math.abs(px - x) },
+    { side: 'right', at: fy, d: Math.abs(px - (x + w)) },
+  ]
+  const best = cands.sort((a, b) => a.d - b.d)[0]
+  return { side: best.side, at: Number(best.at.toFixed(4)) }
+}
+
 export function GradientEdge({
-  id, source, target, sourceX, sourceY, targetX, targetY, markerEnd, data, label,
+  id, source, target, sourceX, sourceY, targetX, targetY, markerEnd, data, label, selected,
 }) {
   const sourceNode = useInternalNode(source)
   const targetNode = useInternalNode(target)
@@ -300,6 +333,11 @@ export function GradientEdge({
   const obstacles = getNodes()
     .filter(n => n.type === 'awsNode' && n.id !== source && n.id !== target && n.measured?.width && n.position)
     .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height }))
+  // A pinned end overrides the automatic attach point for that side only. Live
+  // drag wins over the saved value while it is in progress.
+  const [dragEnd, setDragEnd] = useState(null)
+  const endS = dragEnd?.which === 's' ? dragEnd : data?.ends?.s
+  const endT = dragEnd?.which === 't' ? dragEnd : data?.ends?.t
   let sx = sourceX, sy = sourceY, tx = targetX, ty = targetY
   let sSide = Position.Right, tSide = Position.Left
   let aligned = false
@@ -309,11 +347,14 @@ export function GradientEdge({
     const tp2 = attachPoint(targetNode, target, sourceNode, id, allEdges, nodeOf)
     sx = sp2.x; sy = sp2.y; sSide = sp2.side
     tx = tp2.x; ty = tp2.y; tSide = tp2.side
+    if (endS) { const p = pinnedPoint(sourceNode, endS); sx = p.x; sy = p.y; sSide = p.side }
+    if (endT) { const p = pinnedPoint(targetNode, endT); tx = p.x; ty = p.y; tSide = p.side }
 
     // Straight run for a pair that lines up - but only when neither face is
     // sharing slots, otherwise forcing this one to center would collide with a
-    // neighbour's slot.
-    if (sp2.alone && tp2.alone) {
+    // neighbour's slot. A pinned end is where the owner put it, so it never
+    // gets snapped back onto an auto-computed line.
+    if (!endS && !endT && sp2.alone && tp2.alone) {
       const sc = centerOf(sourceNode), tc = centerOf(targetNode)
       const driftY = Math.abs(sc.y - tc.y), driftX = Math.abs(sc.x - tc.x)
       if (driftX >= driftY && onAxis(driftY, driftX)) {
@@ -328,7 +369,7 @@ export function GradientEdge({
     }
     // Slots that nearly line up get pulled onto one line. Same proportional
     // rule as the centre test, with a floor wide enough to cover a spread slot.
-    if (!aligned) {
+    if (!aligned && !endS && !endT) {
       const sH = sSide === Position.Left || sSide === Position.Right
       const tH = tSide === Position.Left || tSide === Position.Right
       if (sH && tH && sy !== ty && (Math.abs(ty - sy) <= SNAP_TOL || Math.abs(ty - sy) <= Math.abs(tx - sx) * ALIGN_RATIO)) {
@@ -393,6 +434,9 @@ export function GradientEdge({
       const shift = centered * gap
       sx = alongY ? sm.x : sm.x + shift; sy = alongY ? sm.y + shift : sm.y
       tx = alongY ? tm.x : tm.x + shift; ty = alongY ? tm.y + shift : tm.y
+      // A pinned end wins over the lane; the other end keeps its lane shift.
+      if (endS) { const p = pinnedPoint(sourceNode, endS); sx = p.x; sy = p.y }
+      if (endT) { const p = pinnedPoint(targetNode, endT); tx = p.x; ty = p.y }
     }
     path = `M${sx},${sy} L${tx},${ty}`
     // Stagger each sibling's label to a DIFFERENT point along its line so the
@@ -491,6 +535,29 @@ export function GradientEdge({
   const [dragT, setDragT] = useState(null)
   const t = dragT ?? savedT
   const movable = typeof data?.onLabelMove === 'function'
+  const endMovable = typeof data?.onEndMove === 'function'
+
+  const startEndDrag = (e, which) => {
+    if (!endMovable || e.button !== 0) return
+    e.stopPropagation()
+    e.preventDefault()
+    const node = which === 's' ? sourceNode : targetNode
+    let last = null
+    const move = ev => {
+      const f = screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
+      last = nearestEnd(node, f.x, f.y)
+      setDragEnd({ which, ...last })
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      setDragEnd(null)
+      const saved = data?.ends?.[which]
+      if (last && (!saved || saved.side !== last.side || saved.at !== last.at)) data.onEndMove(id, which, last)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
 
   const startDrag = e => {
     if (!movable || e.button !== 0) return
@@ -530,21 +597,29 @@ export function GradientEdge({
       </defs>
       <BaseEdge id={id} path={path} markerEnd={markerEnd} style={{ stroke: `url(#${gid})`, strokeWidth: 1.5 }} />
         <FlowDot edgeId={id} path={path} color={c1} />
-      {(label || hasStep) && (
+      {(label || hasStep || (endMovable && selected)) && (
         <EdgeLabelRenderer>
-          <div
-            className={`sd-edge-badge nodrag nopan${movable ? ' is-movable' : ''}${dragT != null ? ' is-dragging' : ''}`}
-            onPointerDown={startDrag}
-            onDoubleClick={movable ? e => { e.stopPropagation(); data.onLabelMove(id, null) } : undefined}
-            title={movable ? 'Drag along the edge to reposition; double-click to reset' : undefined}
-            style={{
-              transform: `translate(-50%, -50%) translate(${bx}px, ${by}px)`,
-              '--c1': c1, '--c2': c2,
-            }}
-          >
-            {hasStep && <span className="sd-step-chip">{data.step}</span>}
-            {label && <span>{label}</span>}
-          </div>
+          {(label || hasStep) && (
+            <div
+              className={`sd-edge-badge nodrag nopan${movable ? ' is-movable' : ''}${dragT != null ? ' is-dragging' : ''}`}
+              onPointerDown={startDrag}
+              onDoubleClick={movable ? e => { e.stopPropagation(); data.onLabelMove(id, null) } : undefined}
+              title={movable ? 'Drag along the edge to reposition; double-click to reset' : undefined}
+              style={{
+                transform: `translate(-50%, -50%) translate(${bx}px, ${by}px)`,
+                '--c1': c1, '--c2': c2,
+              }}
+            >
+              {hasStep && <span className="sd-step-chip">{data.step}</span>}
+              {label && <span>{label}</span>}
+            </div>
+          )}
+          {endMovable && selected && [['s', sx, sy, data?.sourceColor], ['t', tx, ty, data?.targetColor]].map(([which, x, y, color]) => (
+            <div key={which} className="sd-edge-end nodrag nopan" onPointerDown={e => startEndDrag(e, which)}
+              onDoubleClick={e => { e.stopPropagation(); data.onEndMove(id, which, null) }}
+              title="Drag to another spot on the box; double-click to reset"
+              style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, width: 12, height: 12, borderRadius: '50%', background: color || '#6b7280', border: '2px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,0.25)', cursor: 'grab', pointerEvents: 'all', zIndex: 2 }} />
+          ))}
         </EdgeLabelRenderer>
       )}
     </>
