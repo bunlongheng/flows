@@ -66,7 +66,7 @@ Body fields:
 |-------|-------|
 | `title` | Required string, max 200 chars. |
 | `type` | Optional, only `"flows"` is accepted. |
-| `nodes[]` | Required, 1 to 100. Each `{ id, position?, icon?, label?, sub?, color?, note? }`. `id` is a catalog service key unless `icon` is given. `color` is a 6-digit hex or it is dropped. `note` is plain text, max 400 chars. Positions are optional; missing ones are laid out. |
+| `nodes[]` | Required, 1 to 100. Each `{ id, position?, icon?, image?, label?, sub?, color?, note? }`. `id` is a catalog service key unless `icon` or `image` is given. `image` is a `data:image/...;base64` URI or an https image URL, stored as a 640x480 JPEG and drawn as a 4:3 photo card (file paths and `airclips:` refs are MCP only). `color` is a 6-digit hex or it is dropped. `note` is plain text, max 400 chars. Positions are optional; missing ones are laid out. |
 | `edges[]` | Optional, max 300. Each `{ id?, source, target, label?, animated? }`. |
 | `pattern` | Optional string, max 200. The one-line "what it tests" shown above the diagram and on the share card. |
 | `description` | Optional string, max 600. The goal paragraph under it. |
@@ -114,9 +114,13 @@ A private create adds `share_note` explaining that recipients get a 404 until it
 | `{ "view_state": { panels, badge } }` | Panels from `steps, details, share, code`; badge from `dark, silver, color, plain`. Returns `{ id, view_state }`. |
 | `{ "is_public": true|false }` | Publishes or hides. Returns `{ id, is_public }`. |
 
-Anything else is `400`. Trashed rows are `404`.
+| `{ "locked": true|false }` | Marks the diagram as embedded (README, Confluence). Returns `{ id, locked }`. |
+
+Anything else is `400`. Trashed rows are `404`. While `locked` is true, every body except `view_state` and `locked` itself is `409 { error: "This diagram is locked" }`.
 
 ### Delete (owner session only)
+
+A locked diagram is `409` until it is unlocked.
 
 `DELETE /api/flows/:id` stamps `deleted_at` and returns `{ deleted, recoverable: true }`. The row leaves every list and every shared link but stays in the table. `DELETE /api/flows/:id?purge=1` permanently removes a row that is already in trash and returns `{ purged }`. There is no HTTP restore; use the MCP `restore_flow` tool.
 
