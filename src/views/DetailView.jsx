@@ -64,6 +64,15 @@ export function DetailView({
 }) {
   const brand = brandFor(activeDiagram?.title)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // The Arrange button opens a small style menu instead of arranging directly.
+  const [arrangeMenu, setArrangeMenu] = useState(false)
+  const arrangeRef = useRef(null)
+  useEffect(() => {
+    if (!arrangeMenu) return
+    const onPointerDown = e => { if (arrangeRef.current && !arrangeRef.current.contains(e.target)) setArrangeMenu(false) }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [arrangeMenu])
   // The info card sits over the canvas. On a phone it covers a third of the
   // diagram, so one tap folds it down to a small badge in the same corner.
   const [infoOpen, setInfoOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > PHONE_MAX_WIDTH)
@@ -318,22 +327,34 @@ export function DetailView({
           {/* Arrange and undo are the owner's; a visitor has no group here to fence. */}
           {canEdit && <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />}
 
-          {/* Auto-arrange: re-lay-out left-to-right, spread out, step-ordered, then fit */}
-          {canEdit && <button className="sd-hide-mobile sd-show-mobile sd-hide-tablet" onClick={() => onArrange && onArrange()} title="Auto-arrange the layout" style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
-            background: 'transparent', color: '#64748b',
-            cursor: 'pointer', fontSize: 13, fontWeight: 400,
-            transition: 'all 0.1s', fontFamily: 'inherit',
-          }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M10 6.5h4M17.5 10v4M6.5 10v7.5H10"/>
-            </svg>
-            <span className="sd-btn-label">Arrange</span>
-          </button>}
+          {/* Auto-arrange: a small menu picks the style, then re-lay-out and fit */}
+          {canEdit && <div ref={arrangeRef} style={{ position: 'relative' }}>
+            <button className="sd-hide-mobile sd-show-mobile sd-hide-tablet" onClick={() => setArrangeMenu(m => !m)} title="Arrange the layout" style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
+              background: 'transparent', color: '#64748b',
+              cursor: 'pointer', fontSize: 13, fontWeight: 400,
+              transition: 'all 0.1s', fontFamily: 'inherit',
+            }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M10 6.5h4M17.5 10v4M6.5 10v7.5H10"/>
+              </svg>
+              <span className="sd-btn-label">Arrange</span>
+            </button>
+            {arrangeMenu && <div role="menu" style={{ position: 'absolute', top: 36, left: 0, zIndex: 30, minWidth: 210, padding: 4, background: '#fff', border: '1px solid #e4e6e8', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)' }}>
+              {[['rows', 'Rows', 'Tight, left to right'], ['fan', 'Fan out', 'Branches spread from the start']].map(([style, name, sub]) => (
+                <button key={style} role="menuitem" onClick={() => { onArrange && onArrange(style); setArrangeMenu(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', border: 'none', borderRadius: 7, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{name}</div>
+                  <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 1 }}>{sub}</div>
+                </button>
+              ))}
+            </div>}
+          </div>}
 
           {/* Undo / redo. They appear once there IS something to undo, so a
               freshly opened diagram keeps a clean toolbar, and each button dims
