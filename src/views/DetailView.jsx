@@ -348,7 +348,7 @@ export function DetailView({
               <span className="sd-btn-label">Arrange</span>
             </button>
             {arrangeMenu && <div role="menu" style={{ position: 'absolute', top: 36, left: 0, zIndex: 30, minWidth: 210, padding: 4, background: '#fff', border: '1px solid #e4e6e8', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)' }}>
-              {[['rows', 'Rows', 'Tight, left to right'], ['fan', 'Fan out', 'Branches spread from the start']].map(([style, name, sub]) => (
+              {[['rows', 'Rows', 'Tight, left to right'], ['fan', 'Fan out', 'Branches radiate from the start']].map(([style, name, sub]) => (
                 <button key={style} role="menuitem" onClick={() => { onArrange && onArrange(style); setArrangeMenu(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', border: 'none', borderRadius: 7, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
