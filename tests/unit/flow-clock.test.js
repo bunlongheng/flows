@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   subscribe, beginCapture, stepCapture, endCapture,
   offsetFor, motionAllowed, CAPTURE_PERIOD_MS,
-  isPlaying, setPlaying,
+  isPlaying, setPlaying, isFlowing, subscribeFlowing,
 } from "../../src/flowClock.js";
 
 // The clock exists so a GIF export can show motion. html-to-image serialises the
@@ -106,6 +106,22 @@ describe("flowClock", () => {
     setPlaying(true);
     clock.flush(CAPTURE_PERIOD_MS / 2);
     expect(seen).toHaveLength(1);
+    off();
+  });
+
+  it("the canvas flows while a capture runs, even though the button says Play", () => {
+    setPlaying(false);
+    const seen = [];
+    const off = subscribeFlowing((f) => seen.push(f));
+    expect(isFlowing()).toBe(false);
+    beginCapture();
+    expect(isFlowing()).toBe(true);
+    endCapture();
+    expect(isFlowing()).toBe(false);
+    setPlaying(true);
+    expect(isFlowing()).toBe(true);
+    setPlaying(false);
+    expect(seen).toEqual([true, false, true, false]);
     off();
   });
 

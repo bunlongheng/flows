@@ -51,6 +51,7 @@ export function setPlaying(next) {
   if (playing === next) return
   playing = next
   for (const fn of playSubs) fn(playing)
+  emitFlowing()
   // Cancel on pause rather than waiting for the next tick to notice. Leaving a
   // stale frame id behind makes the following play a no-op, because the restart
   // below is guarded on there being no loop already.
@@ -67,14 +68,31 @@ export function subscribePlaying(fn) {
   return () => playSubs.delete(fn)
 }
 
+// "Flowing" is what the canvas draws, as opposed to what the button says.
+// Paused, an edge is a plain solid line with no dot: the diagram is being read.
+// Playing, the line dashes along and the dot travels. A GIF capture steps the
+// dots by hand while the button still says Play, so the canvas has to show the
+// flowing look for the frames even though nothing is "playing".
+const flowSubs = new Set()
+function emitFlowing() { for (const fn of flowSubs) fn(isFlowing()) }
+
+/** Whether the canvas should draw dashes and dots right now. */
+export function isFlowing() { return playing || pinned != null }
+
+/** Subscribe to the flowing look, for the canvas. */
+export function subscribeFlowing(fn) {
+  flowSubs.add(fn)
+  return () => flowSubs.delete(fn)
+}
+
 /** Take the dots off the wall clock so an export can step them frame by frame. */
-export function beginCapture() { pinned = 0 }
+export function beginCapture() { pinned = 0; emitFlowing() }
 
 /** Put every dot at phase `p` (0..1) and paint it. */
 export function stepCapture(p) { pinned = p; phase = p; emit(p) }
 
 /** Hand the dots back to the wall clock. */
-export function endCapture() { pinned = null }
+export function endCapture() { pinned = null; emitFlowing() }
 
 export const CAPTURE_PERIOD_MS = PERIOD_MS
 
