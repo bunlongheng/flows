@@ -81,6 +81,13 @@ Hand people `share_url`. Paste `readme` into a README or Confluence page as is.
 - `GET /api/flows/<id-or-slug>?format=svg` static SVG.
 - `GET /api/flows/<id-or-slug>?format=gif&w=3200` animated GIF. `w` 200 to 3200, `frames` 2 to 30.
 
+## 4b. Undo a change
+
+Every `update_flow` (MCP) or `PATCH /api/flows/:id` is versioned - the state from just before that write is kept.
+Pass `reason` on `update_flow` so the history reads well; it lands on the version that write replaced.
+Pull a change back with MCP `list_versions` then `restore_version`, or `GET .../versions` then
+`POST .../versions/:vid/restore`. A restore is itself a version, so it is always safe to undo too.
+
 ## 5. Do not
 
 - Do not send `position`, `type`, `tags` or `difficulty`.

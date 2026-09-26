@@ -124,6 +124,33 @@ A locked diagram is `409` until it is unlocked.
 
 `DELETE /api/flows/:id` stamps `deleted_at` and returns `{ deleted, recoverable: true }`. The row leaves every list and every shared link but stays in the table. `DELETE /api/flows/:id?purge=1` permanently removes a row that is already in trash and returns `{ purged }`. There is no HTTP restore; use the MCP `restore_flow` tool.
 
+### History (owner session only)
+
+Every content change writes a version of the diagram from just before that write, and layout-only saves (a drag, an Arrange) are coalesced to at most one per 10 minutes so nudging a node repeatedly does not spam the history; a real content change (nodes, edges, title, pattern, description) is always kept. A `kind` of `layout` means only position/size/iconSize/edge geometry changed; anything else is `content`. 50 versions are kept per flow, oldest dropped.
+
+```bash
+curl https://flows-bheng.vercel.app/api/flows/<id>/versions \
+  -H "Cookie: sd_session=<session>"
+```
+
+Returns `{ versions: [{ id, kind, reason, saved_at, title, node_count, edge_count }] }`, newest first, max 50. `reason` is whatever was passed to the write that this version predates (`update_flow`'s `reason`, for example), so it reads as a trail of what each version undoes.
+
+```bash
+curl https://flows-bheng.vercel.app/api/flows/<id>/versions/<vid> \
+  -H "Cookie: sd_session=<session>"
+```
+
+Returns one version in full: the summary fields above plus `nodes`, `edges`, `pattern`, `description`, `view_state`.
+
+```bash
+curl -X POST https://flows-bheng.vercel.app/api/flows/<id>/versions/<vid>/restore \
+  -H "Cookie: sd_session=<session>"
+```
+
+Puts that version back as the live diagram and returns `{ restored, saved_at, title }`. The write goes through the same versioning as any other, so the state it replaces is kept and a restore can itself be undone. A locked diagram is `409`, same as delete.
+
+All 3 routes `404` on an id that is not the owner's, is in trash, or (for the last 2) a version id that does not belong to the diagram.
+
 ## Environment variables
 
 `lib/env.js` runs on import from `next.config.mjs`. On a production build (`VERCEL_ENV=production`) it throws if any required variable is missing or if `LOCAL_DEV=true`, so a misconfigured deploy fails instead of shipping a dead API. Preview deploys, CI and local dev are not checked.
@@ -181,6 +208,6 @@ Playwright builds and starts a production `next start` on port 4399 (strict CSP,
 - **Paste Mermaid** - paste a `graph LR` / `graph TD` block anywhere on the page and it renders as a diagram. An Import Formats modal copies ready-to-use templates.
 - **Bring your own logo** - a node is either a catalog service key or carries an `icon` (https URL, `data:image/...` URI, or a same-origin image path like `/brand/foo.svg`). Remote icons are fetched once and inlined. 1 validation policy (`lib/validate-design.js`) is shared by the API, the MCP server and AI generate: nodes with no resolvable logo are rejected, `color` must be a 6-digit hex, and the size caps hold everywhere.
 - **AI generate (owner only)** - prompt to diagram via `POST /api/ai/generate`. Gated to the signed-in owner; the public Bearer key is rejected so nobody else can spend Anthropic credits. The model's output passes the same logo gate and is arranged like an API create.
-- **MCP server** - 10 tools for any MCP agent (create, read, update, soft delete, restore, purge, list trash, list services, schema). See [mcp/README.md](./mcp/README.md).
+- **MCP server** - 14 tools for any MCP agent (create, read, update, lock, soft delete, restore, purge, list trash, list services, schema, list/get/restore version history). See [mcp/README.md](./mcp/README.md).
 - **Public API** - `POST /api/ai/flows` renders a finished `{ nodes, edges }` structure into a saved diagram and returns its URLs. No model call.
 - **Security** - per-request CSP nonce in `middleware.js` (no `unsafe-inline`, no `unsafe-eval` in prod), HSTS / X-Frame-Options / nosniff headers in `next.config.mjs`, constant-time Bearer compare, HMAC-signed owner session cookie, per-instance rate limits on every route.

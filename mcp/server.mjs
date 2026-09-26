@@ -13,6 +13,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 import db from '../lib/db.js'
+import { listVersions, getVersion, restoreVersion } from '../lib/versions.js'
 import { uniqueFlowSlug } from '../lib/slugs.js'
 import { titleBase, MIN_BASE_LEN } from '../lib/title-base.js'
 import { arrangeNew } from '../lib/arrange.js'
@@ -297,7 +298,8 @@ server.registerTool(
     description:
       'Modify an existing diagram by id, at any age. Any of title, nodes, or edges you provide replaces that field; ' +
       'omitted fields are left unchanged. ALWAYS prefer this over creating a "v2" of a diagram that already exists - ' +
-      'call list_flows to find the id. Backfilling or correcting old diagrams is exactly what this is for.',
+      'call list_flows to find the id. Backfilling or correcting old diagrams is exactly what this is for. ' +
+      'Every update is kept in history (list_versions / restore_version), so a mistaken rewrite can be pulled back.',
     inputSchema: {
       id: z.string().describe('The diagram id to update'),
       reason: z.string().optional().describe('Optional note on why, e.g. "backfill: correct the Integry decommission date". Recorded on the row as a trail; never required.'),
@@ -444,6 +446,77 @@ server.registerTool(
       if (!rows.length) return fail(`No trashed diagram with id ${id}`)
       return ok({ restored: id, title: rows[0].title, url: urlFor(id) })
     } catch (e) { return fail(`restore failed: ${e.message}`) }
+  },
+)
+
+// ── Version history ─────────────────────────────────────────────────────────
+// A version holds the diagram state from BEFORE the write named by that
+// write's `reason`, so restoring it undoes that write. Restores are versioned
+// too. Layout-only saves are coalesced to once per 10 minutes; content
+// changes are always kept. 50 versions per flow.
+server.registerTool(
+  'list_versions',
+  {
+    title: 'List versions',
+    description:
+      'History for one diagram, newest first: every content change and each burst of layout saves is kept. Use it ' +
+      'after an update_flow you regret, then restore_version with the version id you want back. The reason you ' +
+      'passed to update_flow shows up on the version it replaced.',
+    inputSchema: { id: z.string().describe('The diagram id') },
+  },
+  async ({ id }) => {
+    try {
+      const versions = await listVersions(id, owner())
+      if (versions === null) return fail(`No owned diagram with id ${id}`)
+      return ok({
+        id,
+        url: urlFor(id),
+        versions: versions.map(v => ({ ...v, saved_at: new Date(v.saved_at).toISOString() })),
+      })
+    } catch (e) { return fail(`list_versions failed: ${e.message}`) }
+  },
+)
+
+server.registerTool(
+  'get_version',
+  {
+    title: 'Get version',
+    description: 'The full state of one version from list_versions: nodes, edges, pattern, description, view_state, plus the summary fields.',
+    inputSchema: {
+      id: z.string().describe('The diagram id'),
+      version_id: z.string().describe('The version id from list_versions'),
+    },
+  },
+  async ({ id, version_id }) => {
+    try {
+      const version = await getVersion(id, owner(), version_id)
+      if (version === null) return fail(`No version ${version_id} on diagram ${id} (or you don't own it)`)
+      return ok({ ...version, saved_at: new Date(version.saved_at).toISOString() })
+    } catch (e) { return fail(`get_version failed: ${e.message}`) }
+  },
+)
+
+server.registerTool(
+  'restore_version',
+  {
+    title: 'Restore version',
+    description:
+      'Puts that version back as the live diagram. The current one is kept in history so this is always safe to ' +
+      'undo - restore_version again with the id list_versions shows for right before this call.',
+    inputSchema: {
+      id: z.string().describe('The diagram id'),
+      version_id: z.string().describe('The version id from list_versions'),
+    },
+  },
+  async ({ id, version_id }) => {
+    try {
+      const result = await restoreVersion(id, owner(), version_id)
+      if (result === null) return fail(`No version ${version_id} on diagram ${id} (or you don't own it)`)
+      if (result.locked) {
+        return fail(`Diagram ${id} is locked: it is embedded in a README or Confluence page and cannot be restored. Call lock_flow with locked: false first if you really mean it.`)
+      }
+      return ok({ id, url: urlFor(id), ...result })
+    } catch (e) { return fail(`restore_version failed: ${e.message}`) }
   },
 )
 
