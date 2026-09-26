@@ -283,6 +283,27 @@ function nearestTOnPath(d, x, y) {
 const SIDE_OF = { top: Position.Top, right: Position.Right, bottom: Position.Bottom, left: Position.Left }
 const END_MIN = 0.05, END_MAX = 0.95
 
+const BEND_T = [0.1, 0.9], BEND_D = 600
+
+// The straight run S->T as a unit vector and its length. A bend is kept in
+// this frame so it follows the boxes when they move.
+const bendFrame = (sx, sy, tx, ty) => {
+  const dx = tx - sx, dy = ty - sy, len = Math.hypot(dx, dy) || 1
+  return { ux: dx / len, uy: dy / len, len }
+}
+function bendPoint(sx, sy, tx, ty, b) {
+  const { ux, uy, len } = bendFrame(sx, sy, tx, ty)
+  return { x: sx + ux * len * b.t - uy * b.d, y: sy + uy * len * b.t + ux * b.d }
+}
+// The bend that puts the bend point under a dragged (px, py).
+function bendFor(sx, sy, tx, ty, px, py) {
+  const { ux, uy, len } = bendFrame(sx, sy, tx, ty)
+  const rx = px - sx, ry = py - sy
+  const t = Math.min(BEND_T[1], Math.max(BEND_T[0], (rx * ux + ry * uy) / len))
+  const d = Math.min(BEND_D, Math.max(-BEND_D, -rx * uy + ry * ux))
+  return { t: Number(t.toFixed(4)), d: Number(d.toFixed(1)) }
+}
+
 // Where a pinned end sits: `end.at` is a 0..1 fraction along the chosen face.
 // Shaped like an attachPoint result so the callers do not care which it was.
 function pinnedPoint(node, end) {
@@ -336,6 +357,8 @@ export function GradientEdge({
   // A pinned end overrides the automatic attach point for that side only. Live
   // drag wins over the saved value while it is in progress.
   const [dragEnd, setDragEnd] = useState(null)
+  const [dragBend, setDragBend] = useState(null)
+  const bend = dragBend || data?.bend
   const endS = dragEnd?.which === 's' ? dragEnd : data?.ends?.s
   const endT = dragEnd?.which === 't' ? dragEnd : data?.ends?.t
   let sx = sourceX, sy = sourceY, tx = targetX, ty = targetY
@@ -504,6 +527,14 @@ export function GradientEdge({
       borderRadius: 18,
     })
   }
+  // A hand-bent line: a quadratic curve through the bend point, replacing
+  // whatever the automatic routing chose.
+  if (bend) {
+    const B = bendPoint(sx, sy, tx, ty, bend)
+    const qx = 2 * B.x - (sx + tx) / 2, qy = 2 * B.y - (sy + ty) / 2
+    path = `M${sx},${sy} Q${qx},${qy} ${tx},${ty}`
+    labelX = B.x; labelYRaw = B.y
+  }
   // If the label lands on top of a service node, lift it just above that node so
   // the text never overlaps a box.
   let labelY = labelYRaw
@@ -536,6 +567,28 @@ export function GradientEdge({
   const t = dragT ?? savedT
   const movable = typeof data?.onLabelMove === 'function'
   const endMovable = typeof data?.onEndMove === 'function'
+  const bendMovable = typeof data?.onBendMove === 'function'
+
+  const startBendDrag = e => {
+    if (!bendMovable || e.button !== 0) return
+    e.stopPropagation()
+    e.preventDefault()
+    let last = null
+    const move = ev => {
+      const f = screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
+      last = bendFor(sx, sy, tx, ty, f.x, f.y)
+      setDragBend(last)
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      setDragBend(null)
+      const saved = data?.bend
+      if (last && (!saved || saved.t !== last.t || saved.d !== last.d)) data.onBendMove(id, last)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
 
   const startEndDrag = (e, which) => {
     if (!endMovable || e.button !== 0) return
@@ -595,9 +648,10 @@ export function GradientEdge({
           <stop offset="100%" stopColor={c2} />
         </linearGradient>
       </defs>
-      <BaseEdge id={id} path={path} markerEnd={markerEnd} style={{ stroke: `url(#${gid})`, strokeWidth: 1.5 }} />
+      {selected && <path className="sd-edge-halo" d={path} fill="none" stroke={c1} strokeWidth={10} strokeOpacity={0.18} strokeLinecap="round" pointerEvents="none" />}
+      <BaseEdge id={id} path={path} markerEnd={markerEnd} style={{ stroke: `url(#${gid})`, strokeWidth: selected ? 2.5 : 1.5 }} />
         <FlowDot edgeId={id} path={path} color={c1} />
-      {(label || hasStep || (endMovable && selected)) && (
+      {(label || hasStep || ((endMovable || bendMovable) && selected)) && (
         <EdgeLabelRenderer>
           {(label || hasStep) && (
             <div
@@ -618,8 +672,17 @@ export function GradientEdge({
             <div key={which} className="sd-edge-end nodrag nopan" onPointerDown={e => startEndDrag(e, which)}
               onDoubleClick={e => { e.stopPropagation(); data.onEndMove(id, which, null) }}
               title="Drag to another spot on the box; double-click to reset"
-              style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, width: 12, height: 12, borderRadius: '50%', background: color || '#6b7280', border: '2px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,0.25)', cursor: 'grab', pointerEvents: 'all', zIndex: 2 }} />
+              style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, width: 14, height: 14, borderRadius: '50%', background: color || '#6b7280', border: '2px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,0.25)', cursor: 'grab', pointerEvents: 'all', zIndex: 2 }} />
           ))}
+          {bendMovable && selected && (() => {
+            const h = bend ? bendPoint(sx, sy, tx, ty, bend) : (pointOnPath(path, 0.5) || { x: labelX, y: labelY })
+            return (
+              <div className="sd-edge-bend nodrag nopan" onPointerDown={startBendDrag}
+                onDoubleClick={e => { e.stopPropagation(); data.onBendMove(id, null) }}
+                title="Drag to bend the line; double-click to straighten"
+                style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${h.x}px, ${h.y}px)`, width: 14, height: 14, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', border: `2px solid ${c1}`, boxShadow: '0 0 0 2px #fff', cursor: 'move', pointerEvents: 'all', zIndex: 3 }} />
+            )
+          })()}
         </EdgeLabelRenderer>
       )}
     </>
