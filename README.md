@@ -38,6 +38,8 @@ This is a working app, not a library. It needs 3 things from you, and 1 more if 
 
 ## For agents
 
+An agent posting on its own reads [`/agent.md`](https://flows-bheng.vercel.app/agent.md): the body, the 3 node kinds, every error and what to do about it.
+
 1 Bearer-authed POST returns a URL. Omit the positions and the layout engine places the nodes for you; pass `is_public: true` if the link has to work for anybody but you.
 
 ```bash
@@ -100,11 +102,12 @@ npm run dev                        # http://localhost:5174
 | `POST /api/ai/flows` | Bearer | A new diagram, with `url`, `share_url`, `gif_url` and a paste-ready `readme` line |
 | `GET /api/flows/:id` | Public | JSON, `?format=svg` or `?format=gif` |
 | `GET /api/flows/public` | Public | The curated demo roster |
+| `GET /api/services` | Public | The catalog of node ids with label and sub |
 | `GET /api/og?name=slug` | Public | 1200x630 share card |
 
 `:id` takes a uuid or a slug. The GIF takes `?frames=` (2-30) and `?w=` (200-3200); `w=3200` is the README width, sharp on retina at any zoom.
 
-**MCP.** `mcp/server.mjs` exposes 10 tools over stdio. Register it with your agent and point `FLOWS_API_SECRET` at your deployment. Full reference in [docs/API.md](docs/API.md) and [mcp/README.md](mcp/README.md).
+**MCP.** `mcp/server.mjs` exposes 11 tools over stdio. Register it with your agent and point `FLOWS_API_SECRET` at your deployment. Full reference in [docs/API.md](docs/API.md) and [mcp/README.md](mcp/README.md).
 
 ## Contributing
 
