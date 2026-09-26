@@ -64,10 +64,14 @@ function buildEdges(rawEdges, onLabelMove, rawNodes) {
 // robust even for closed loops. There is deliberately no Destination pill: it
 // guessed at an endpoint the diagram never claimed, and where a flow BEGINS is
 // the only hint a reader actually needs.
-const NODE_W = 190, NODE_H = 120 // nominal card size, for the free-space check
+const NODE_W = 190, NODE_H = 180 // nominal card size, for the free-space check
 const MARKER_GAP = 96            // pill height + connector run
 
-function buildMarkers(nodes, edges) {
+// A card's real footprint when the owner has resized it; the nominal size
+// otherwise (a picture node, or one never touched).
+const sizeOf = n => ({ w: n.data?.size?.w ?? NODE_W, h: n.data?.size?.h ?? NODE_H })
+
+function buildMarkers(nodes, edges, override, draggable) {
   if (!nodes.length) return { nodes: [], edges: [] }
   const byId = id => nodes.find(n => n.id === id)
   const hasIncoming = new Set(edges.map(e => e.target))
@@ -75,6 +79,24 @@ function buildMarkers(nodes, edges) {
   // Start: source of the first edge; else any node with no incoming edge; else node 0.
   let startId = edges[0] && edges[0].source && byId(edges[0].source) ? edges[0].source : null
   if (!startId) startId = (nodes.find(n => !hasIncoming.has(n.id)) || nodes[0]).id
+  const s = byId(startId)
+  if (!s) return { nodes: [], edges: [] }
+  const p = s.position || { x: 0, y: 0 }
+  const { w: sw, h: sh } = sizeOf(s)
+
+  // The owner dragged the pill somewhere of their own choosing - draw it there
+  // and skip the automatic face-picking below, but keep the arrow pointed at
+  // the start node by working out which side of the card the pill now faces.
+  if (override && Number.isFinite(override.x) && Number.isFinite(override.y)) {
+    const pillCenter = { x: override.x + 66, y: override.y + 18 }
+    const cardCenter = { x: p.x + sw / 2, y: p.y + sh / 2 }
+    const dx = cardCenter.x - pillCenter.x, dy = cardCenter.y - pillCenter.y
+    const dir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up')
+    return {
+      nodes: [{ id: `__start_${startId}`, type: 'marker', position: { x: override.x, y: override.y }, width: 132, height: 36, data: { kind: 'start', dir }, draggable: !!draggable, selectable: false }],
+      edges: [],
+    }
+  }
 
   // The pill must never share a face with an edge - a green arrow landing on the
   // same side as a real connection reads as part of the flow. So work out which
@@ -82,7 +104,7 @@ function buildMarkers(nodes, edges) {
   // top (a diagram reads downward), then left, then the remaining sides.
   const nodeCenter = n => ({ x: (n.position?.x ?? 0) + NODE_W / 2, y: (n.position?.y ?? 0) + NODE_H / 2 })
   const used = new Set()
-  const sc = byId(startId) ? nodeCenter(byId(startId)) : { x: 0, y: 0 }
+  const sc = nodeCenter(s)
   for (const e of edges) {
     const otherId = e.source === startId ? e.target : e.target === startId ? e.source : null
     const other = otherId && byId(otherId)
@@ -92,29 +114,26 @@ function buildMarkers(nodes, edges) {
     used.add(Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'bottom' : 'top'))
   }
 
-  const mNodes = []
-  const s = byId(startId)
-  if (s) {
-    const p = s.position || { x: 0, y: 0 }
-    // A side also has to be physically clear - no point pointing the arrow
-    // through a neighbouring box.
-    const clear = {
-      top: !nodes.some(n => n.id !== startId && n.position && Math.abs(n.position.x - p.x) < NODE_W && p.y - n.position.y > 0 && p.y - n.position.y < NODE_H + MARKER_GAP),
-      bottom: !nodes.some(n => n.id !== startId && n.position && Math.abs(n.position.x - p.x) < NODE_W && n.position.y - p.y > 0 && n.position.y - p.y < NODE_H + MARKER_GAP),
-      left: !nodes.some(n => n.id !== startId && n.position && Math.abs(n.position.y - p.y) < NODE_H && p.x - n.position.x > 0 && p.x - n.position.x < NODE_W + 200),
-      right: !nodes.some(n => n.id !== startId && n.position && Math.abs(n.position.y - p.y) < NODE_H && n.position.x - p.x > 0 && n.position.x - p.x < NODE_W + 200),
-    }
-    const order = ['top', 'left', 'bottom', 'right']
-    const side = order.find(k => !used.has(k) && clear[k]) || order.find(k => !used.has(k)) || 'left'
-    const place = {
-      top: { pos: { x: p.x + 6, y: p.y - MARKER_GAP }, dir: 'down' },
-      bottom: { pos: { x: p.x + 6, y: p.y + NODE_H + 40 }, dir: 'up' },
-      left: { pos: { x: p.x - 200, y: p.y + 37 }, dir: 'right' },
-      right: { pos: { x: p.x + 205, y: p.y + 37 }, dir: 'left' },
-    }[side]
-    mNodes.push({ id: `__start_${startId}`, type: 'marker', position: place.pos, width: 132, height: 36, data: { kind: 'start', dir: place.dir }, draggable: false, selectable: false })
+  // A side also has to be physically clear - no point pointing the arrow
+  // through a neighbouring box.
+  const clear = {
+    top: !nodes.some(n => n.id !== startId && n.position && Math.abs(n.position.x - p.x) < NODE_W && p.y - n.position.y > 0 && p.y - n.position.y < NODE_H + MARKER_GAP),
+    bottom: !nodes.some(n => n.id !== startId && n.position && Math.abs(n.position.x - p.x) < NODE_W && n.position.y - p.y > 0 && n.position.y - p.y < NODE_H + MARKER_GAP),
+    left: !nodes.some(n => n.id !== startId && n.position && Math.abs(n.position.y - p.y) < NODE_H && p.x - n.position.x > 0 && p.x - n.position.x < NODE_W + 200),
+    right: !nodes.some(n => n.id !== startId && n.position && Math.abs(n.position.y - p.y) < NODE_H && n.position.x - p.x > 0 && n.position.x - p.x < NODE_W + 200),
   }
-  return { nodes: mNodes, edges: [] }
+  const order = ['top', 'left', 'bottom', 'right']
+  const side = order.find(k => !used.has(k) && clear[k]) || order.find(k => !used.has(k)) || 'left'
+  const place = {
+    top: { pos: { x: p.x + 6, y: p.y - MARKER_GAP }, dir: 'down' },
+    bottom: { pos: { x: p.x + 6, y: p.y + sh + 40 }, dir: 'up' },
+    left: { pos: { x: p.x - 200, y: p.y + sh / 2 - 18 }, dir: 'right' },
+    right: { pos: { x: p.x + 205, y: p.y + sh / 2 - 18 }, dir: 'left' },
+  }[side]
+  return {
+    nodes: [{ id: `__start_${startId}`, type: 'marker', position: place.pos, width: 132, height: 36, data: { kind: 'start', dir: place.dir }, draggable: !!draggable, selectable: false }],
+    edges: [],
+  }
 }
 
 const defaultEdges = buildEdges(diagramData.edges, undefined, diagramData.nodes)
@@ -146,6 +165,9 @@ export default function App() {
   const isDemo = typeof window !== 'undefined' && window.location.pathname === '/demo'
   const [view, setView] = useState('index') // 'index' | 'detail'
   const [activeDiagram, setActiveDiagram] = useState(null)
+  // The Start pill's live position while it is being dragged - not yet saved,
+  // so it has to win over the saved view_state.start until the drag ends.
+  const [startDrag, setStartDrag] = useState(null)
   const [nodes, setNodes] = useState(defaultNodes)
   const [edges, setEdges] = useState(defaultEdges)
   const [toast, setToast] = useState({ message: '', visible: false })
@@ -425,6 +447,7 @@ export default function App() {
   function openDiagram(d) {
     setActiveDiagram(d)
     setHistory({ past: [], future: [] })
+    setStartDrag(null)
     // Reopen where you left off: the panel that was open and the badge style
     // you picked travel with the row, so a diagram never resets to a bare
     // canvas. Anything unsaved falls back to the defaults.
@@ -530,6 +553,37 @@ export default function App() {
     saveTimer.current = setTimeout(() => doSave(diagramId, nds), 600)
   }, [doSave])
 
+  // Persist a view_state patch (panels/badge carried forward, start added or
+  // dropped by the caller) and keep the local copies - activeDiagram and the
+  // gallery list - in step, the same way the panel/badge effect does.
+  const patchViewState = useCallback(view_state => {
+    if (!activeDiagram?.id) return
+    const savingId = activeDiagram.id
+    fetch(`/api/flows/${savingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ view_state }),
+    })
+      .then(r => {
+        if (!r.ok) return
+        setActiveDiagram(a => (a ? { ...a, view_state } : a))
+        setDiagrams(ds => ds.map(d => (d.id === savingId ? { ...d, view_state } : d)))
+      })
+      .catch(() => {})
+  }, [activeDiagram])
+
+  // The owner dropped the Start pill somewhere of their own choosing - save the
+  // spot so it overrides the automatic placement from here on.
+  const saveStart = useCallback(pos => {
+    const prev = activeDiagram?.view_state || {}
+    patchViewState({
+      ...(prev.panels ? { panels: prev.panels } : {}),
+      ...(prev.badge ? { badge: prev.badge } : {}),
+      start: { x: Math.round(pos.x), y: Math.round(pos.y) },
+    })
+    setStartDrag(null)
+  }, [activeDiagram, patchViewState])
+
   // The owner dragged a node's resize handle. Store the new size on the node
   // (both top-level, for React Flow's own sizing, and in data, for AwsNode's
   // card) and persist it the same way a drag persists position.
@@ -618,13 +672,34 @@ export default function App() {
     pushHistory(positionsOf(current), 'arrange')
     setNodes(arranged)
     if (canAI && activeDiagram?.id) savePositions(activeDiagram.id, arranged)
+    // Arrange is a reset to automatic - a Start pill the owner placed by hand
+    // no longer means anything once the layout underneath it has moved.
+    if (canAI && activeDiagram?.view_state?.start) {
+      const prev = activeDiagram.view_state
+      patchViewState({
+        ...(prev.panels ? { panels: prev.panels } : {}),
+        ...(prev.badge ? { badge: prev.badge } : {}),
+      })
+    }
     setTimeout(() => rfInstance.current?.fitView({ padding: 0.15, duration: 400 }), 60)
-  }, [edges, canAI, activeDiagram, savePositions, pushHistory])
+  }, [edges, canAI, activeDiagram, savePositions, patchViewState, pushHistory])
 
   // Let nodes be dragged around the canvas (positions live in React state, and
   // are saved to the DB on drag-end when the owner can edit).
   const onNodesChange = useCallback(
     changes => {
+      // The Start pill's own drag never touches node state - its id is not in
+      // `nodes`, so applyNodeChanges would just drop the change. Instead the
+      // live position is tracked while dragging and saved to view_state on
+      // release, and it is stripped out here so nothing downstream sees it.
+      const startChanges = changes.filter(c => c.type === 'position' && c.position && typeof c.id === 'string' && c.id.startsWith('__start_'))
+      if (startChanges.length) {
+        changes = changes.filter(c => !startChanges.includes(c))
+        for (const c of startChanges) {
+          if (c.dragging === false) saveStart(c.position)
+          else setStartDrag(c.position)
+        }
+      }
       // Cmd/Ctrl held while dragging -> rewrite the drag position so the node
       // latches onto the closest alignment, and show the yellow guide there.
       // Rewriting the CHANGE (not the node afterwards) is what makes the snap
@@ -637,8 +712,9 @@ export default function App() {
       if (drag && drags.length === 1 && snapModRef.current) {
         const all = rfInstance.current?.getNodes() ?? []
         const dragged = all.find(n => n.id === drag.id)
-        // Only real service nodes are snap targets - the auto Start/Destination
-        // pills are decorations whose position is derived, not laid out.
+        // Only real service nodes are snap targets - the Start pill is derived
+        // unless the owner has placed it, and even then it moves by its own
+        // save path above, not by snapping against the other cards.
         const targets = all.filter(n => n.type === 'awsNode')
         if (dragged) {
           const { position, guides } = snapAlign({ ...dragged, position: drag.position }, targets)
@@ -665,7 +741,7 @@ export default function App() {
         dragStartRef.current = null
       }
     },
-    [canAI, activeDiagram, savePositions, pushHistory],
+    [canAI, activeDiagram, savePositions, pushHistory, saveStart],
   )
 
   // Clear the guides whenever the drag (or the modifier) ends.
@@ -757,7 +833,10 @@ export default function App() {
     if (prevKey === panelKey && prev.badge === badgeMode) return
     const savingId = activeDiagram.id
     viewSaveTimer.current = setTimeout(() => {
-      const view_state = { panels: panelKey ? panelKey.split(',') : [], badge: badgeMode }
+      // Carry the owner's Start placement through a plain panel/badge save -
+      // this effect only ever meant to touch those two, and rebuilding the
+      // object from scratch would otherwise silently clear the placement.
+      const view_state = { panels: panelKey ? panelKey.split(',') : [], badge: badgeMode, ...(prev.start ? { start: prev.start } : {}) }
       fetch(`/api/flows/${savingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -1120,7 +1199,7 @@ export default function App() {
 
   // ── DETAIL VIEW ─────────────────────────────────────────────────────────────
   // Start/Destination marker nodes are always shown (auto-detected from edges).
-  const markers = buildMarkers(nodes, edges)
+  const markers = buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)
   const displayNodes = [...nodes, ...markers.nodes]
   const displayEdges = [...edges, ...markers.edges]
   // Step-by-step walkthrough, derived from the diagram's edges in flow order.
