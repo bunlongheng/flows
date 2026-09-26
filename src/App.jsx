@@ -6,6 +6,7 @@ import SignInScreen from './components/SignInScreen'
 import { IndexView } from './views/IndexView'
 import { DetailView } from './views/DetailView'
 import { layoutElements } from './layout'
+import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapAlign } from './snapAlign'
 import { findService } from './services'
@@ -720,12 +721,14 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [view, canAI, activeDiagram, doSave, loadDiagrams, showToastMsg, undo, redo])
 
-  // Auto-arrange: re-run dagre on the current nodes (start on the left, spread out,
-  // steps ordered top-to-bottom, labels clear of nodes), fit-zoom, and persist for
-  // the owner so the tidy layout sticks.
-  const autoArrange = useCallback(() => {
+  // Auto-arrange: 2 styles, rows (dagre - start on the left, spread out, steps
+  // ordered top-to-bottom, labels clear of nodes) and fan (layoutFan.js - a
+  // tree that fans out from the start node). Either way: fit-zoom, and persist
+  // for the owner so the tidy layout sticks.
+  const autoArrange = useCallback((style = 'rows') => {
     const current = nodesRef.current
-    const arranged = layoutElements(current.filter(n => n.type === 'awsNode'), edges, { canvas: canvasSize() })
+    const flow = current.filter(n => n.type === 'awsNode')
+    const arranged = style === 'fan' ? layoutFanOut(flow, edges) : layoutElements(flow, edges, { canvas: canvasSize() })
     pushHistory(positionsOf(current), 'arrange')
     setNodes(arranged)
     if (canAI && activeDiagram?.id) savePositions(activeDiagram.id, arranged)

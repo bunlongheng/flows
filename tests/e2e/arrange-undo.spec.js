@@ -85,6 +85,7 @@ test("undo and redo cover both dragging and Arrange", async ({ page, context, ba
     // 3. Arrange is reversible too, and history stacks: undoing twice walks back
     //    the arrange AND the drag underneath it.
     await page.getByRole("button", { name: "Arrange" }).click();
+    await page.getByRole("menuitem", { name: "Rows" }).click();
     await expect.poll(() => at(page, "dynamo")).not.toBe(dragged);
 
     await undo.click();
