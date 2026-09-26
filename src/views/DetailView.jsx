@@ -15,6 +15,22 @@ import { brandFor } from '../brands'
 // Below this width the summary card starts folded and the canvas is the page.
 const PHONE_MAX_WIDTH = 640
 
+// History row time: fresh saves read as "4 min ago"; once the wall clock has
+// rolled past midnight the day is worth naming again, so "yesterday 14:02".
+function versionTime(iso) {
+  const d = new Date(iso)
+  const now = new Date()
+  const minutes = Math.floor((now.getTime() - d.getTime()) / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes} min ago`
+  const hhmm = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  if (d.toDateString() === now.toDateString()) return `${Math.floor(minutes / 60)} hr ago`
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  if (d.toDateString() === yesterday.toDateString()) return `yesterday ${hhmm}`
+  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${hhmm}`
+}
+
 // ─── Detail (canvas) view ───────────────────────────────────────────────────
 
 export function DetailView({
@@ -24,6 +40,9 @@ export function DetailView({
   rfInstance: rfInstanceRef, flashZoomHud, zoomHudRef,
   showSharePanel, setShowSharePanel,
   showDetailsPanel, setShowDetailsPanel,
+  // Owner only: undefined for anyone else, same as onToggleLock below - one
+  // gate, not two.
+  showHistoryPanel, setShowHistoryPanel, onRestored,
   steps = [],
   showSteps, setShowSteps,
   showNotes, setShowNotes,
@@ -164,7 +183,48 @@ export function DetailView({
     const t = setTimeout(fitNow, 60)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showDetailsPanel, showSteps, showSharePanel, showDetailCode])
+  }, [showDetailsPanel, showSteps, showSharePanel, showDetailCode, showHistoryPanel])
+
+  // History panel: fetch the list on open, and again after every restore - a
+  // restore is itself versioned, so the fresh top row is always what just ran.
+  const [versions, setVersions] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState(null)
+  const [restoringId, setRestoringId] = useState(null)
+  const [restoreError, setRestoreError] = useState(null)
+  function loadVersions() {
+    if (!activeDiagram?.id) return
+    setHistoryLoading(true)
+    setHistoryError(null)
+    fetch(`/api/flows/${activeDiagram.id}/versions`, { credentials: 'include' })
+      .then(r => { if (!r.ok) throw new Error(); return r.json() })
+      .then(data => setVersions(data.versions || []))
+      .catch(() => setHistoryError('Could not load history'))
+      .finally(() => setHistoryLoading(false))
+  }
+  useEffect(() => {
+    if (!showHistoryPanel) return
+    setRestoreError(null)
+    loadVersions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showHistoryPanel])
+
+  function handleRestore(v) {
+    if (restoringId || !activeDiagram?.id) return
+    if (!window.confirm(`Restore the version from ${versionTime(v.saved_at)}? The current diagram is kept in history.`)) return
+    setRestoringId(v.id)
+    setRestoreError(null)
+    fetch(`/api/flows/${activeDiagram.id}/versions/${v.id}/restore`, { method: 'POST', credentials: 'include' })
+      .then(async r => {
+        const body = await r.json().catch(() => ({}))
+        if (r.status === 409) { setRestoreError(body.detail || body.error || 'This diagram is locked'); return }
+        if (!r.ok) { setRestoreError('Could not restore that version'); return }
+        onRestored?.()
+        loadVersions()
+      })
+      .catch(() => setRestoreError('Could not restore that version'))
+      .finally(() => setRestoringId(null))
+  }
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
       <Toast message={toast.message} visible={toast.visible} />
@@ -406,6 +466,28 @@ export function DetailView({
             </svg>
             <span className="sd-btn-label">Details</span>
           </button>
+
+          {/* History panel toggle - owner only: onRestored is only ever passed
+              for the owner's own session (see App), same single gate the
+              Lock and Delete buttons below already use. */}
+          {onRestored && (
+            <button className={`sd-hide-mobile sd-hide-tablet${showHistoryPanel ? ' is-on' : ''}`} onClick={() => setShowHistoryPanel(v => !v)} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
+              background: showHistoryPanel ? '#f1f5f9' : 'transparent',
+              color: showHistoryPanel ? '#1e293b' : '#64748b',
+              cursor: 'pointer', fontSize: 13, fontWeight: showHistoryPanel ? 600 : 400,
+              transition: 'all 0.1s', fontFamily: 'inherit',
+            }}
+              onMouseEnter={e => { if (!showHistoryPanel) e.currentTarget.style.background = '#f1f5f9' }}
+              onMouseLeave={e => { if (!showHistoryPanel) e.currentTarget.style.background = 'transparent' }}
+            >
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/>
+              </svg>
+              <span className="sd-btn-label">History</span>
+            </button>
+          )}
 
           <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
 
@@ -725,6 +807,69 @@ export function DetailView({
           </div>
         )}
 
+        {/* History panel (right side): every saved version, newest first */}
+        {showHistoryPanel && (
+          <div className="sd-history-panel" style={{
+            width: 320, flexShrink: 0, background: '#ffffff', borderLeft: '1px solid #e2e8f0',
+            display: 'flex', flexDirection: 'column', overflowY: 'auto',
+            animation: 'sd-slide-right 0.2s ease-out',
+          }}>
+            <div style={{ padding: '18px 18px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#1a2129' }}>History</div>
+              <button onClick={() => setShowHistoryPanel(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: '#8a8d91', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>✕</button>
+            </div>
+
+            {historyLoading && (
+              <div style={{ padding: '4px 18px 16px', fontSize: 13, color: '#6b7280' }}>Loading...</div>
+            )}
+
+            {!historyLoading && historyError && (
+              <div style={{ padding: '4px 18px 16px', fontSize: 13, color: '#dc2626' }}>{historyError}</div>
+            )}
+
+            {!historyLoading && !historyError && versions.length === 0 && (
+              <div style={{ padding: '4px 18px 16px', fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
+                No versions yet. Every change from here on is kept.
+              </div>
+            )}
+
+            {!historyLoading && !historyError && restoreError && (
+              <div style={{ padding: '0 18px 12px', fontSize: 12, color: '#dc2626', lineHeight: 1.5 }}>{restoreError}</div>
+            )}
+
+            {!historyLoading && versions.map(v => {
+              const isLayout = v.kind === 'layout'
+              const showTitle = v.title && v.title !== activeDiagram?.title
+              return (
+                <div key={v.id} style={{ padding: '12px 18px', borderTop: '1px solid #f1f5f9' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#1a2129' }}>{versionTime(v.saved_at)}</span>
+                    <span style={{
+                      fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
+                      padding: '2px 8px', borderRadius: 999,
+                      background: isLayout ? '#f1f5f9' : '#eff6ff',
+                      color: isLayout ? '#475569' : '#2563eb',
+                      border: `1px solid ${isLayout ? '#e2e8f0' : '#bfdbfe'}`,
+                    }}>{isLayout ? 'Layout' : 'Content'}</span>
+                  </div>
+                  {showTitle && <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 2 }}>{v.title}</div>}
+                  {v.reason && <div style={{ fontSize: 11.5, color: '#6b7280', marginBottom: 6, lineHeight: 1.4 }}>{`Before: ${v.reason}`}</div>}
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>{`${v.node_count} node${v.node_count === 1 ? '' : 's'}, ${v.edge_count} edge${v.edge_count === 1 ? '' : 's'}`}</div>
+                  <button
+                    onClick={() => handleRestore(v)}
+                    disabled={!!restoringId}
+                    style={{
+                      padding: '6px 14px', border: '1px solid #e4e6e8', borderRadius: 8,
+                      background: restoringId === v.id ? '#f4f5f7' : '#ffffff', cursor: restoringId ? 'not-allowed' : 'pointer',
+                      fontSize: 12, fontWeight: 600, fontFamily: 'inherit', color: '#1a2129',
+                    }}
+                  >{restoringId === v.id ? 'Restoring...' : 'Restore'}</button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
         {/* Share panel (right side) */}
         {canEdit && showSharePanel && (
           <div className="sd-share-panel" style={{
@@ -1036,7 +1181,7 @@ export function DetailView({
         /* On phones the fixed-width side panels would crush the canvas, so drop
            them to full-width bottom sheets over the canvas instead. */
         @media (max-width: 640px) {
-          .sd-code-panel, .sd-share-panel, .sd-details-panel {
+          .sd-code-panel, .sd-share-panel, .sd-details-panel, .sd-history-panel {
             position: absolute !important; left: 0 !important; right: 0 !important;
             bottom: 0 !important; top: auto !important; width: 100% !important;
             max-height: 60vh; z-index: 20; border: none !important;

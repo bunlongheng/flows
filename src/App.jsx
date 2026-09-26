@@ -205,6 +205,7 @@ export default function App() {
   const [detailCodeCopied, setDetailCodeCopied] = useState(false)
   const [showSharePanel, setShowSharePanel] = useState(false)
   const [showDetailsPanel, setShowDetailsPanel] = useState(false)
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false)
   const [showSteps, setShowSteps] = useState(false)
   // Notes show unless a diagram has been toggled off - see 'notes-off' below.
   const [showNotes, setShowNotes] = useState(true)
@@ -502,6 +503,21 @@ export default function App() {
     )))
   }, [canAI, view, onLabelMove, onEndMove, onBendMove])
 
+  // Node/edge mapping shared by opening a diagram and restoring a history
+  // version: carries brand fields into node data, keeps a saved layout as-is,
+  // and auto-arranges as a fan only when nothing was saved.
+  function buildDiagramNodesEdges(d) {
+    const raw = d.data.nodes || []
+    // Use the owner's saved layout when every node has a stored position;
+    // otherwise auto-layout as a fan so nothing overlaps.
+    const hasSaved = raw.length > 0 && raw.every(nd => nd.position && Number.isFinite(nd.position.x) && Number.isFinite(nd.position.y))
+    // Carry any custom brand fields (label/icon/color/sub) into node data so a
+    // bring-your-own-icon node renders its own logo, not a catalog lookup.
+    const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, size: nd.size, iconSize: nd.iconSize }, ...(hasSaved ? { position: nd.position } : {}), ...(nd.size ? { width: nd.size.w, height: nd.size.h } : {}) }))
+    const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined)
+    return { nodes: hasSaved ? n : layoutFanOut(n, e), edges: e }
+  }
+
   function openDiagram(d) {
     setActiveDiagram(d)
     setHistory({ past: [], future: [] })
@@ -523,15 +539,8 @@ export default function App() {
     applyPanels(canAI ? open : open.filter(p => p !== 'code'))
     pendingPanels.current = canAI || authChecked ? null : open
     if (['dark', 'silver', 'color', 'plain'].includes(v.badge)) setBadgeMode(v.badge)
-    const raw = d.data.nodes || []
-    // Use the owner's saved layout when every node has a stored position;
-    // otherwise auto-layout as a fan so nothing overlaps.
-    const hasSaved = raw.length > 0 && raw.every(nd => nd.position && Number.isFinite(nd.position.x) && Number.isFinite(nd.position.y))
-    // Carry any custom brand fields (label/icon/color/sub) into node data so a
-    // bring-your-own-icon node renders its own logo, not a catalog lookup.
-    const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, size: nd.size, iconSize: nd.iconSize }, ...(hasSaved ? { position: nd.position } : {}), ...(nd.size ? { width: nd.size.w, height: nd.size.h } : {}) }))
-    const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined)
-    setNodes(hasSaved ? n : layoutFanOut(n, e))
+    const { nodes: n, edges: e } = buildDiagramNodesEdges(d)
+    setNodes(n)
     setEdges(e)
     setView('detail')
     pendingFit.current = true
@@ -1195,6 +1204,26 @@ export default function App() {
   // site card, because the share page and the OG renderer both refuse unlisted
   // designs. So sharing publishes first: one deliberate act, and the recipient
   // gets a working link with a real card. Mirrors the diagrams app.
+  // A restore overwrites the live diagram (see lib/versions.js), so pull the
+  // fresh row and show it exactly as opening the diagram would - same mapping,
+  // fit to the screen once it lands. Unlike openDiagram this never touches
+  // history, panels or the URL: the canvas just catches up to what the DB
+  // now says.
+  async function onRestored() {
+    if (!activeDiagram?.id) return
+    try {
+      const r = await fetch(`/api/flows/${activeDiagram.id}`, { credentials: 'include' })
+      if (!r.ok) return
+      const d = rowToDiagram(await r.json())
+      setActiveDiagram(d)
+      setDiagrams(ds => ds.map(x => (x.id === d.id ? d : x)))
+      const { nodes: n, edges: e } = buildDiagramNodesEdges(d)
+      setNodes(n)
+      setEdges(e)
+      setTimeout(() => rfInstance.current?.fitView({ padding: 0.15, duration: 400 }), 60)
+    } catch { /* the History panel still shows the new row even if this fails */ }
+  }
+
   async function ensureShareable() {
     if (!canAI || !activeDiagram?.id || activeDiagram.is_public) return
     try {
@@ -1296,6 +1325,8 @@ export default function App() {
       rfInstance={rfInstance} flashZoomHud={flashZoomHud} zoomHudRef={zoomHudRef}
       showSharePanel={showSharePanel} setShowSharePanel={setShowSharePanel}
       showDetailsPanel={showDetailsPanel} setShowDetailsPanel={setShowDetailsPanel}
+      showHistoryPanel={showHistoryPanel} setShowHistoryPanel={setShowHistoryPanel}
+      onRestored={canAI && activeDiagram?.id ? onRestored : undefined}
       steps={steps}
       showSteps={showSteps} setShowSteps={setShowSteps}
       showNotes={showNotes} setShowNotes={setShowNotes}

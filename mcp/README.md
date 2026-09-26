@@ -22,6 +22,9 @@ immediately. Speaks MCP over stdio; logs go to stderr only.
 | `list_trash` | none | `{ count, trashed: [{ id, title, slug, deleted_at, update_reason, nodes, edges }] }` - newest first, max 200 |
 | `list_services` | none | `{ count, services: [{ key, label, sub }] }` - every valid catalog id |
 | `get_diagram_schema` | none | `{ rules, example }` - field shapes, rules and a complete example with notes |
+| `list_versions` | `id` | `{ id, url, versions: [{ id, kind, reason, saved_at, title, node_count, edge_count }] }` - newest first, max 50 |
+| `get_version` | `id`, `version_id` | the summary fields plus `nodes`, `edges`, `pattern`, `description`, `view_state` |
+| `restore_version` | `id`, `version_id` | `{ id, url, restored, saved_at, title }` |
 
 `url` is `<APP_URL>/?id=<uuid>`. `share_url` is `<APP_URL>/demo?name=<slug>`,
 the link to hand to people. `gif_url` is the animated diagram as an image,
@@ -31,6 +34,13 @@ diagram to be public. `visibility` is `"public"` or `"private"`.
 
 A locked diagram (embedded in a README or Confluence page) refuses `delete_flow`
 (and the purge) until `lock_flow` unlocks it. Updates still go through.
+
+Every `update_flow` (and `restore_version`) keeps the diagram state from
+before that write as a version. `list_versions` shows the history for one
+flow, newest first, with the `reason` that write was given; `get_version`
+pulls one in full; `restore_version` puts it back live and is itself
+versioned, so a restore is always safe to undo. Refused with `locked: true`
+on a locked diagram, same as `delete_flow`.
 
 ### Node and edge shapes
 
