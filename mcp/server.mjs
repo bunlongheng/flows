@@ -297,8 +297,7 @@ server.registerTool(
     description:
       'Modify an existing diagram by id, at any age. Any of title, nodes, or edges you provide replaces that field; ' +
       'omitted fields are left unchanged. ALWAYS prefer this over creating a "v2" of a diagram that already exists - ' +
-      'call list_flows to find the id. Backfilling or correcting old diagrams is exactly what this is for. ' +
-      'Refused on a locked diagram - see lock_flow.',
+      'call list_flows to find the id. Backfilling or correcting old diagrams is exactly what this is for.',
     inputSchema: {
       id: z.string().describe('The diagram id to update'),
       reason: z.string().optional().describe('Optional note on why, e.g. "backfill: correct the Integry decommission date". Recorded on the row as a trail; never required.'),
@@ -316,14 +315,6 @@ server.registerTool(
   },
   async ({ id, reason, title, nodes, edges, public: isPublic }) => {
     try {
-      const { rows: lockRows } = await db.query(
-        'SELECT locked FROM flows WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL',
-        [id, owner()],
-      )
-      if (lockRows[0]?.locked) {
-        return fail(`Diagram ${id} is locked: it is embedded in a README or Confluence page, so nothing about it may change. If the change is intended, call lock_flow with locked: false, update, then lock it again.`)
-      }
-
       let iconNodes = nodes
       if (nodes) {
         const gate = logoGate(nodes, edges || []); if (gate) return gate
@@ -382,9 +373,9 @@ server.registerTool(
   {
     title: 'Lock or unlock flow',
     description:
-      'Lock a diagram that a README or Confluence page embeds: while locked, update_flow and delete_flow refuse it ' +
-      'and the app greys out editing. locked: false lifts it. Locking is the record that a link out there depends ' +
-      'on this diagram, so lock before you paste the readme line somewhere.',
+      'Lock a diagram that a README or Confluence page embeds: while locked, delete_flow refuses it and the app ' +
+      'hides the Delete button. Editing still works. locked: false lifts it. Locking is the record that a link out ' +
+      'there depends on this diagram, so lock before you paste the readme line somewhere.',
     inputSchema: { id: z.string(), locked: z.boolean() },
   },
   async ({ id, locked }) => {

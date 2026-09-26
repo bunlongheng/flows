@@ -142,7 +142,6 @@ describe("/api/flows/:id", () => {
     const stored = [
       { id: "integry", label: "Integry", color: "#ef4444", sub: "DECOMMISSION", position: { x: 0, y: 0 } },
     ];
-    query.mockResolvedValueOnce({ rows: [{ locked: false }] });
     query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
     query.mockResolvedValueOnce({ rows: [{ id: ID }] });
     const res = mockRes();
@@ -151,7 +150,7 @@ describe("/api/flows/:id", () => {
     r.body = { nodes: [{ id: "integry", position: { x: 500, y: 250 }, icon: "data:image/png;base64,STALE", color: "#000000" }] };
     await flowById(r, res);
 
-    const written = JSON.parse(query.mock.calls[2][1][0]);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
     expect(written[0].position).toEqual({ x: 500, y: 250 }); // the move lands
     expect(written[0].icon).toBeUndefined();                 // the stale icon does not
     expect(written[0].color).toBe("#ef4444");                // stored branding wins
@@ -159,14 +158,13 @@ describe("/api/flows/:id", () => {
   });
 
   it("PATCH nodes still accepts a genuinely new node whole", async () => {
-    query.mockResolvedValueOnce({ rows: [{ locked: false }] });
     query.mockResolvedValueOnce({ rows: [{ nodes: [{ id: "a", position: { x: 0, y: 0 } }] }] });
     query.mockResolvedValueOnce({ rows: [{ id: ID }] });
     const res = mockRes();
     const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
     r.body = { nodes: [{ id: "brand-new", position: { x: 9, y: 9 }, icon: "/brand/x.png", label: "New" }] };
     await flowById(r, res);
-    const written = JSON.parse(query.mock.calls[2][1][0]);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
     const added = written.find((n) => n.id === "brand-new");
     expect(added).toEqual({ id: "brand-new", position: { x: 9, y: 9 }, icon: "/brand/x.png", label: "New" });
     expect(written.find((n) => n.id === "a")).toBeTruthy(); // untouched node survives
@@ -180,7 +178,6 @@ describe("/api/flows/:id", () => {
       { id: "recurly", position: { x: 300, y: 0 }, note: "keep me" },
       { id: "ubs", position: { x: 600, y: 0 } },
     ];
-    query.mockResolvedValueOnce({ rows: [{ locked: false }] });
     query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
     query.mockResolvedValueOnce({ rows: [{ id: ID }] });
     const res = mockRes();
@@ -193,7 +190,7 @@ describe("/api/flows/:id", () => {
     await flowById(r, res);
     expect(res.statusCode).toBe(200);
     expect(res.body.noted).toBe(2);
-    const written = JSON.parse(query.mock.calls[2][1][0]);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
     const tray = written.find((n) => n.id === "tray");
     expect(tray.note).toBe("Reads Recurly subscriptions, branches per app.");
     expect(tray.color).toBe("#1f2937");            // branding untouched
@@ -210,7 +207,6 @@ describe("/api/flows/:id", () => {
     await flowById(anon, res);
     expect(res.statusCode).toBe(401);
 
-    query.mockResolvedValueOnce({ rows: [{ locked: false }] });
     const res2 = mockRes();
     const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
     r.body = { notes: [] };
@@ -220,14 +216,13 @@ describe("/api/flows/:id", () => {
 
   // A layout save carries the note along with the rest of the stored node.
   it("PATCH nodes (layout save) keeps a stored note", async () => {
-    query.mockResolvedValueOnce({ rows: [{ locked: false }] });
     query.mockResolvedValueOnce({ rows: [{ nodes: [{ id: "tray", position: { x: 0, y: 0 }, note: "stays" }] }] });
     query.mockResolvedValueOnce({ rows: [{ id: ID }] });
     const res = mockRes();
     const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
     r.body = { nodes: [{ id: "tray", position: { x: 50, y: 50 } }] };
     await flowById(r, res);
-    const written = JSON.parse(query.mock.calls[2][1][0]);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
     expect(written[0]).toEqual({ id: "tray", position: { x: 50, y: 50 }, note: "stays" });
   });
 
@@ -238,7 +233,6 @@ describe("/api/flows/:id", () => {
       { id: "e1", source: "a", target: "b", label: "first" },
       { id: "e2", source: "b", target: "c", label: "second", labelT: 0.8 },
     ];
-    query.mockResolvedValueOnce({ rows: [{ locked: false }] });
     query.mockResolvedValueOnce({ rows: [{ edges: stored }] });
     query.mockResolvedValueOnce({ rows: [{ id: ID }] });
     const res = mockRes();
@@ -248,7 +242,7 @@ describe("/api/flows/:id", () => {
     await flowById(r, res);
     expect(res.statusCode).toBe(200);
 
-    const written = JSON.parse(query.mock.calls[2][1][0]);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
     expect(written[0]).toEqual({ id: "e1", source: "a", target: "b", label: "first", labelT: 0.1235 });
     // Reset drops the key rather than storing a zero, which would mean "at the start".
     expect(written[1]).toEqual({ id: "e2", source: "b", target: "c", label: "second" });
@@ -256,7 +250,6 @@ describe("/api/flows/:id", () => {
   });
 
   it("PATCH edges clamps labelT away from the node ends and ignores a non-number", async () => {
-    query.mockResolvedValueOnce({ rows: [{ locked: false }] });
     query.mockResolvedValueOnce({
       rows: [{ edges: [{ id: "e1", source: "a", target: "b" }, { id: "e2", source: "b", target: "c" }] }],
     });
@@ -265,13 +258,12 @@ describe("/api/flows/:id", () => {
     const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
     r.body = { edges: [{ id: "e1", labelT: 4.2 }, { id: "e2", labelT: "nope" }] };
     await flowById(r, res);
-    const written = JSON.parse(query.mock.calls[2][1][0]);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
     expect(written[0].labelT).toBe(0.88);      // clamped short of the node
     expect(written[1].labelT).toBeUndefined();  // rubbish ignored
   });
 
   it("PATCH edges drops the legacy free-floating offset", async () => {
-    query.mockResolvedValueOnce({ rows: [{ locked: false }] });
     query.mockResolvedValueOnce({
       rows: [{ edges: [{ id: "e1", source: "a", target: "b", labelOffset: { dx: 30, dy: -20 } }] }],
     });
@@ -280,7 +272,7 @@ describe("/api/flows/:id", () => {
     const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
     r.body = { edges: [{ id: "e1", labelT: 0.5 }] };
     await flowById(r, res);
-    const written = JSON.parse(query.mock.calls[2][1][0]);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
     expect(written[0].labelOffset).toBeUndefined();
     expect(written[0].labelT).toBe(0.5);
   });
@@ -376,15 +368,14 @@ describe("/api/flows/:id", () => {
     expect(query.mock.calls[0][0]).toMatch(/SET locked/);
   });
 
-  it("PATCH nodes on a locked diagram returns 409 and never writes", async () => {
-    query.mockResolvedValueOnce({ rows: [{ locked: true }] });
+  it("PATCH nodes on a locked diagram still saves", async () => {
+    query.mockResolvedValueOnce({ rows: [{ nodes: [{ id: "a", position: { x: 0, y: 0 } }] }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
     const res = mockRes();
     const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
     r.body = { nodes: [{ id: "a", position: { x: 1, y: 1 } }] };
     await flowById(r, res);
-    expect(res.statusCode).toBe(409);
-    expect(res.body.locked).toBe(true);
-    expect(query.mock.calls).toHaveLength(1);
+    expect(res.statusCode).toBe(200);
   });
 
   it("PATCH view_state on a locked diagram still saves", async () => {
