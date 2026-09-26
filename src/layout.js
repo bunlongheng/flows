@@ -4,7 +4,7 @@ import { findService } from './services.js'
 // Real node cards are ~150w x ~100h; pad them so dagre leaves room for the
 // edge labels that sit BETWEEN nodes.
 const NODE_W = 190
-const NODE_H = 120
+const NODE_H = 180
 
 // A picture node is a bigger, fixed-ratio card - dagre needs its real size too,
 // or it packs picture nodes as if they were the same small width as everything else.
@@ -88,7 +88,7 @@ function tuckables(nodes, edges) {
 // stack a column so tall that everything shrinks, which defeats the point.
 export function layoutElements(nodes, edges, { rankdir = 'LR', canvas } = {}) {
   const cv = canvas ?? DEFAULT_CANVAS
-  ROW_H = nodes.some(n => n.data?.image) ? IMG_H : NODE_H
+  ROW_H = Math.max(NODE_H, ...nodes.map(n => n.data?.size?.h ?? (n.data?.image ? IMG_H : NODE_H)))
   const plain = buildLayout(nodes, edges, rankdir, cv, new Map())
   const tucked = tuckables(nodes, edges)
   if (!tucked.size) return plain.nodes
@@ -123,7 +123,10 @@ function buildLayout(nodes, edges, rankdir, canvas, tucked) {
   // Tucked leaves are held back from dagre entirely - they get parked on their
   // parent's column afterwards instead of earning a rank of their own.
   const flow = nodes.filter(n => !tucked.has(n.id))
-  flow.forEach(n => g.setNode(n.id, n.data?.image ? { width: IMG_W, height: IMG_H } : { width: NODE_W, height: NODE_H }))
+  flow.forEach(n => g.setNode(n.id, {
+    width: n.data?.size?.w ?? (n.data?.image ? IMG_W : NODE_W),
+    height: n.data?.size?.h ?? (n.data?.image ? IMG_H : NODE_H),
+  }))
   // Edges INTO the start node are withheld from ranking. On a loop - and most
   // real designs close one - the return edge gives the entry node an incoming
   // rank, so dagre pushes it into the middle and the "Start here" pill ends up
@@ -197,8 +200,8 @@ function buildLayout(nodes, edges, rankdir, canvas, tucked) {
   // chain line up and its edges draw dead straight.
   const out = [...placed.map(({ n }) => n), ...seated.map(s => s.n)].map(n => {
     const c = centers.get(n.id)
-    const w = n.measured?.width ?? (n.data?.image ? IMG_W : NODE_W)
-    const h = n.measured?.height ?? (n.data?.image ? IMG_H : NODE_H)
+    const w = n.measured?.width ?? n.data?.size?.w ?? (n.data?.image ? IMG_W : NODE_W)
+    const h = n.measured?.height ?? n.data?.size?.h ?? (n.data?.image ? IMG_H : NODE_H)
     return { ...n, position: { x: c.x - w / 2, y: c.y - h / 2 } }
   })
   return { nodes: out, scale: scaleOf(out, canvas) }

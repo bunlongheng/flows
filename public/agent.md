@@ -34,7 +34,7 @@ Authorization: Bearer <FLOWS_API_SECRET>
 | Field | Rule |
 |-------|------|
 | `title` | Required. Max 200 chars. |
-| `nodes[]` | Required. 1 to 100. Each `{ id, label?, sub?, note?, icon?, image?, color?, position? }`. |
+| `nodes[]` | Required. 1 to 100. Each `{ id, label?, sub?, note?, icon?, image?, color?, position?, size? }`. `size` is optional `{ w, h }` 130..600 px, the card size on the canvas; icon cards default to 180x180, picture cards to 240x225. |
 | `edges[]` | Optional. Max 300. Each `{ source, target, label?, animated? }`. Ids must exist in `nodes`. |
 | `is_public` | Set `true`. A private diagram gives everyone else a 404 and the GIF will not embed. |
 | `pattern` | Optional. Max 200 chars. 1 line shown above the diagram. |

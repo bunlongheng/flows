@@ -97,20 +97,27 @@ describe("layoutElements column alignment", () => {
   it("centers boxes of different widths on the same axis, so connectors run straight", () => {
     // A vertical chain of 3 nodes whose rendered widths differ - the case where
     // left-aligning them put a slant on every connector.
+    // Plain ids (none match the db/cdn/etc tuck patterns) so tuckables() leaves
+    // the whole chain in the flow - this test is about center alignment, not
+    // the tuck-a-leaf-under-its-parent path.
     const sized = (id, w) => ({ id, type: "awsNode", data: { id }, measured: { width: w, height: 118 } });
-    const nodes = [sized("microservices", 205), sized("postgres", 150), sized("s3", 132)];
+    const nodes = [sized("alpha", 205), sized("beta", 150), sized("gamma", 132)];
     const edges = [
-      { id: "e0", source: "microservices", target: "postgres" },
-      { id: "e1", source: "postgres", target: "s3" },
+      { id: "e0", source: "alpha", target: "beta" },
+      { id: "e1", source: "beta", target: "gamma" },
     ];
-    const out = layoutElements(nodes, edges, { canvas: { width: 1440, height: 800 } });
+    // Narrow and tall so the 3-node chain reliably wraps into one vertical
+    // column (wrapIntoBands picks whichever banding scales biggest on screen) -
+    // a wide canvas can instead put two of the three side by side, which is a
+    // different, unrelated shape this test is not about.
+    const out = layoutElements(nodes, edges, { canvas: { width: 400, height: 2000 } });
     const centerX = id => {
       const n = out.find(x => x.id === id);
       return n.position.x + n.measured.width / 2;
     };
     // Every node in the chain shares a center, whatever its width.
-    expect(centerX("postgres")).toBeCloseTo(centerX("microservices"), 5);
-    expect(centerX("s3")).toBeCloseTo(centerX("microservices"), 5);
+    expect(centerX("beta")).toBeCloseTo(centerX("alpha"), 5);
+    expect(centerX("gamma")).toBeCloseTo(centerX("alpha"), 5);
   });
 });
 
