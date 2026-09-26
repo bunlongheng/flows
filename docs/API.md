@@ -111,7 +111,7 @@ A private create adds `share_note` explaining that recipients get a 404 until it
 | `{ "nodes": [{ id, position, size }] }` | Merges positions and sizes by id into the stored nodes; branding is never taken from the request. `size` is `{ w, h }`, 130..600 px, clamped. A node not yet stored is added whole. Returns `{ id, saved }`. |
 | `{ "notes": [{ id, note }] }` | Sets or clears (empty string) the note per node. Returns `{ id, noted }`. |
 | `{ "edges": [{ id, labelT }] }` | Moves a step badge along its edge, clamped to 0.12..0.88. Returns `{ id, moved }`. |
-| `{ "view_state": { panels, badge } }` | Panels from `steps, details, share, code`; badge from `dark, silver, color, plain`. Returns `{ id, view_state }`. |
+| `{ "view_state": { panels, badge, start } }` | Panels from `steps, details, share, code`; badge from `dark, silver, color, plain`; `start: { x, y }` is the owner's hand-placed spot for the "Start here" pill (omit or send `view_state` without it to go back to automatic placement). Returns `{ id, view_state }`. |
 | `{ "is_public": true|false }` | Publishes or hides. Returns `{ id, is_public }`. |
 
 | `{ "locked": true|false }` | Marks the diagram as embedded (README, Confluence). Returns `{ id, locked }`. |

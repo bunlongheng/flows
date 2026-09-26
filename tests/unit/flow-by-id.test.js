@@ -134,6 +134,24 @@ describe("/api/flows/:id", () => {
     expect(res.body.view_state).toEqual({ panels: ["steps"], badge: null });
   });
 
+  it("PATCH view_state keeps a placed start and drops a missing one", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
+    const r = req("PATCH", ID, undefined, cookie);
+    r.body = { view_state: { panels: [], badge: "dark", start: { x: 10.6, y: 20 } } };
+    await flowById(r, res);
+    expect(res.body.view_state).toEqual({ panels: [], badge: "dark", start: { x: 11, y: 20 } });
+
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res2 = mockRes();
+    const r2 = req("PATCH", ID, undefined, cookie);
+    r2.body = { view_state: { panels: [], badge: "dark" } };
+    await flowById(r2, res2);
+    expect(res2.body.view_state).toEqual({ panels: [], badge: "dark" });
+    expect(res2.body.view_state.start).toBeUndefined();
+  });
+
   // A layout save must move nodes and nothing else. Replacing the array with the
   // client's copy let a tab left open across a change write its stale nodes back
   // on the next drag - a low-res logo that had just been backfilled away came
