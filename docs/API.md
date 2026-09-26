@@ -110,7 +110,7 @@ A private create adds `share_note` explaining that recipients get a 404 until it
 |------|--------|
 | `{ "nodes": [{ id, position, size }] }` | Merges positions and sizes by id into the stored nodes; branding is never taken from the request. `size` is `{ w, h }`, 130..600 px, clamped. A node not yet stored is added whole. Returns `{ id, saved }`. |
 | `{ "notes": [{ id, note }] }` | Sets or clears (empty string) the note per node. Returns `{ id, noted }`. |
-| `{ "edges": [{ id, labelT }] }` | Moves a step badge along its edge, clamped to 0.12..0.88. Returns `{ id, moved }`. |
+| `{ "edges": [{ id, labelT, ends, bend }] }` | Moves a step badge along its edge (`labelT`, clamped 0.12..0.88) and pins where the edge meets each box (`ends: { s, t }`, each `{ side: top\|right\|bottom\|left, at: 0.05..0.95 }`; omit a key to go back to automatic). `bend: { t, d }` bends the line through a point `t` (0.1..0.9) along its straight run and `d` (-600..600) off it; omit it for a straight/automatic line. Returns `{ id, moved }`. |
 | `{ "view_state": { panels, badge, start } }` | Panels from `steps, details, share, code`; badge from `dark, silver, color, plain`; `start: { x, y }` is the owner's hand-placed spot for the "Start here" pill (omit or send `view_state` without it to go back to automatic placement). Returns `{ id, view_state }`. |
 | `{ "is_public": true|false }` | Publishes or hides. Returns `{ id, is_public }`. |
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import * as flowClock from './flowClock'
-import { applyNodeChanges } from '@xyflow/react'
+import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react'
 import diagramData from './data/diagram.json'
 import SignInScreen from './components/SignInScreen'
 import { IndexView } from './views/IndexView'
@@ -32,13 +32,23 @@ const positionsOf = nds => nds
   .filter(n => n.type === 'awsNode' && n.position)
   .map(n => ({ id: n.id, position: { ...n.position } }))
 
+// The bits of an edge worth persisting: its id, its badge position, and its
+// pinned ends. Shared by every PATCH so the server always receives both
+// fields for every edge, not just the one the owner just dragged.
+const edgePins = edges => edges.map((e, i) => ({
+  id: e.id || `e${i}`,
+  ...(typeof e.labelT === 'number' ? { labelT: e.labelT } : {}),
+  ...(e.ends ? { ends: e.ends } : {}),
+  ...(e.bend ? { bend: e.bend } : {}),
+}))
+
 // Every edge renders as a gradient (source color -> target color) and is
 // animated with marching motion. Node id === service key, so we can look up
 // each endpoint's brand color directly.
-// onLabelMove is threaded into every edge's data so a badge can be dragged. It is
-// omitted for the bundled sample and for a read-only viewer, and the edge renders
-// its badge inert in that case.
-function buildEdges(rawEdges, onLabelMove, rawNodes) {
+// onLabelMove and onEndMove are threaded into every edge's data so a badge or a
+// pinned end can be dragged. Both are omitted for the bundled sample and for a
+// read-only viewer, and the edge renders inert in that case.
+function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove) {
   // The edge takes its colour from the SOURCE node, and a node that brings its
   // own logo states its colour only in that logo - so the node itself has to be
   // looked up, not just its id. Passing `{ id }` alone matched generic catalog
@@ -55,7 +65,11 @@ function buildEdges(rawEdges, onLabelMove, rawNodes) {
     data: {
       sourceColor: edgeColor(e.source), targetColor: edgeColor(e.target), step: i + 1,
       ...(typeof e.labelT === 'number' ? { labelT: e.labelT } : {}),
+      ...(e.ends ? { ends: e.ends } : {}),
+      ...(e.bend ? { bend: e.bend } : {}),
       ...(onLabelMove ? { onLabelMove } : {}),
+      ...(onEndMove ? { onEndMove } : {}),
+      ...(onBendMove ? { onBendMove } : {}),
     },
   }))
 }
@@ -399,13 +413,56 @@ export default function App() {
       // Saved on DROP, not debounced. A drop is one discrete action, and a debounce
       // meant dragging a badge then immediately navigating threw the move away.
       if (a.id) {
-        const payload = data.edges.map((e, i) => ({
-          id: e.id || `e${i}`, ...(typeof e.labelT === 'number' ? { labelT: e.labelT } : {}),
-        }))
         fetch(`/api/flows/${a.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ edges: payload }),
+          body: JSON.stringify({ edges: edgePins(data.edges) }),
+        }).catch(() => {})
+      }
+      return { ...a, data }
+    })
+  }, [])
+
+  // A pinned edge end: which face of the box the line meets and where along
+  // it. `end` is { side, at }, or null (double-click) to go back to automatic.
+  const onEndMove = useCallback((edgeId, which, end) => {
+    const mergeEnds = ends => {
+      const next = { ...(ends || {}) }
+      if (end) next[which] = end; else delete next[which]
+      return Object.keys(next).length ? next : undefined
+    }
+    setEdges(prev => prev.map(e => (e.id === edgeId
+      ? { ...e, data: { ...e.data, ends: mergeEnds(e.data?.ends) } }
+      : e)))
+    setActiveDiagram(a => {
+      if (!a) return a
+      const data = { ...a.data, edges: (a.data.edges || []).map((e, i) => ((e.id || `e${i}`) === edgeId
+        ? { ...e, ends: mergeEnds(e.ends) }
+        : e)) }
+      if (a.id) {
+        fetch(`/api/flows/${a.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ edges: edgePins(data.edges) }),
+        }).catch(() => {})
+      }
+      return { ...a, data }
+    })
+  }, [])
+
+  // A hand-bent line: `bend` is { t, d } relative to the straight run, or
+  // null (double-click) to let the line route itself again.
+  const onBendMove = useCallback((edgeId, bend) => {
+    const b = bend || undefined
+    setEdges(prev => prev.map(e => (e.id === edgeId ? { ...e, data: { ...e.data, bend: b } } : e)))
+    setActiveDiagram(a => {
+      if (!a) return a
+      const data = { ...a.data, edges: (a.data.edges || []).map((e, i) => ((e.id || `e${i}`) === edgeId ? { ...e, bend: b } : e)) }
+      if (a.id) {
+        fetch(`/api/flows/${a.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ edges: edgePins(data.edges) }),
         }).catch(() => {})
       }
       return { ...a, data }
@@ -438,11 +495,11 @@ export default function App() {
   useEffect(() => {
     if (view !== 'detail') return
     setEdges(prev => prev.map(e => (
-      Boolean(e.data?.onLabelMove) === canAI
+      Boolean(e.data?.onLabelMove) === canAI && Boolean(e.data?.onEndMove) === canAI && Boolean(e.data?.onBendMove) === canAI
         ? e
-        : { ...e, data: { ...e.data, onLabelMove: canAI ? onLabelMove : undefined } }
+        : { ...e, data: { ...e.data, onLabelMove: canAI ? onLabelMove : undefined, onEndMove: canAI ? onEndMove : undefined, onBendMove: canAI ? onBendMove : undefined } }
     )))
-  }, [canAI, view, onLabelMove])
+  }, [canAI, view, onLabelMove, onEndMove, onBendMove])
 
   function openDiagram(d) {
     setActiveDiagram(d)
@@ -472,7 +529,7 @@ export default function App() {
     // Carry any custom brand fields (label/icon/color/sub) into node data so a
     // bring-your-own-icon node renders its own logo, not a catalog lookup.
     const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, size: nd.size }, ...(hasSaved ? { position: nd.position } : {}), ...(nd.size ? { width: nd.size.w, height: nd.size.h } : {}) }))
-    const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw)
+    const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined)
     setNodes(hasSaved ? n : layoutElements(n, e, { canvas: canvasSize() }))
     setEdges(e)
     setView('detail')
@@ -686,6 +743,13 @@ export default function App() {
 
   // Let nodes be dragged around the canvas (positions live in React state, and
   // are saved to the DB on drag-end when the owner can edit).
+  // Edges are controlled, so a click only selects one if the change is applied
+  // here. Only selection is taken: a selected edge must not vanish on Backspace.
+  const onEdgesChange = useCallback(changes => {
+    const sel = changes.filter(c => c.type === 'select')
+    if (sel.length) setEdges(eds => applyEdgeChanges(sel, eds))
+  }, [])
+
   const onNodesChange = useCallback(
     changes => {
       // The Start pill's own drag never touches node state - its id is not in
@@ -1224,7 +1288,7 @@ export default function App() {
       badgeMode={badgeMode} setBadgeMode={setBadgeMode}
       activeDiagram={activeDiagram}
       detailCodeCopied={detailCodeCopied} setDetailCodeCopied={setDetailCodeCopied}
-      nodes={displayNodes} edges={displayEdges} onNodesChange={onNodesChange}
+      nodes={displayNodes} edges={displayEdges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
       onNodeDragStop={onNodeDragStop} snapGuides={snapGuides}
       canUndo={history.past.length > 0} canRedo={history.future.length > 0} onUndo={undo} onRedo={redo}
       shareSlug={shareSlug} shareUrl={shareUrl}

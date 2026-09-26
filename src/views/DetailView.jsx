@@ -30,7 +30,7 @@ export function DetailView({
   badgeMode, setBadgeMode,
   activeDiagram,
   detailCodeCopied, setDetailCodeCopied,
-  nodes, edges, onNodesChange, onNodeDragStop, snapGuides = [],
+  nodes, edges, onNodesChange, onEdgesChange, onNodeDragStop, snapGuides = [],
   exportPng, exportWebp, exportGif, exportCode, exportJson, copyLink, copiedLink, shareAction, copiedShare, copyCode, copiedCode,
   shareSlug, shareUrl,
   showDocs, setShowDocs, copiedLabel, onCopyFormat,
@@ -564,7 +564,7 @@ export function DetailView({
           <ReactFlow
             className={`${showSteps ? 'sd-steps-on ' : ''}${flowing ? '' : 'sd-still '}sd-badge-${badgeMode}`}
             nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
-            onNodesChange={onNodesChange}
+            onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
             onNodeDragStop={onNodeDragStop}
             /* Cmd/Ctrl is reserved for snap-align while dragging, so additive
                multi-select moves to Shift (box-select already uses Shift). */
