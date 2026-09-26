@@ -66,7 +66,7 @@ Body fields:
 |-------|-------|
 | `title` | Required string, max 200 chars. |
 | `type` | Optional, only `"flows"` is accepted. |
-| `nodes[]` | Required, 1 to 100. Each `{ id, position?, icon?, image?, label?, sub?, color?, note? }`. `id` is a catalog service key unless `icon` or `image` is given. `image` is a `data:image/...;base64` URI or an https image URL, stored as a 640x480 JPEG and drawn as a 4:3 photo card (file paths and `airclips:` refs are MCP only). `color` is a 6-digit hex or it is dropped. `note` is plain text, max 400 chars. Positions are optional; missing ones are laid out. |
+| `nodes[]` | Required, 1 to 100. Each `{ id, position?, size?, icon?, image?, label?, sub?, color?, note? }`. `id` is a catalog service key unless `icon` or `image` is given. `image` is a `data:image/...;base64` URI or an https image URL, stored as a 640x480 JPEG and drawn as a 4:3 photo card (file paths and `airclips:` refs are MCP only). `color` is a 6-digit hex or it is dropped. `note` is plain text, max 400 chars. Positions are optional; missing ones are laid out. `size` is optional `{ w, h }` 130..600 px, the card size on the canvas; icon cards default to 180x180, picture cards to 240x225. |
 | `edges[]` | Optional, max 300. Each `{ id?, source, target, label?, animated? }`. |
 | `pattern` | Optional string, max 200. The one-line "what it tests" shown above the diagram and on the share card. |
 | `description` | Optional string, max 600. The goal paragraph under it. |
@@ -108,7 +108,7 @@ A private create adds `share_note` explaining that recipients get a 404 until it
 
 | Body | Effect |
 |------|--------|
-| `{ "nodes": [{ id, position }] }` | Merges positions by id into the stored nodes; branding is never taken from the request. A node not yet stored is added whole. Returns `{ id, saved }`. |
+| `{ "nodes": [{ id, position, size }] }` | Merges positions and sizes by id into the stored nodes; branding is never taken from the request. `size` is `{ w, h }`, 130..600 px, clamped. A node not yet stored is added whole. Returns `{ id, saved }`. |
 | `{ "notes": [{ id, note }] }` | Sets or clears (empty string) the note per node. Returns `{ id, noted }`. |
 | `{ "edges": [{ id, labelT }] }` | Moves a step badge along its edge, clamped to 0.12..0.88. Returns `{ id, moved }`. |
 | `{ "view_state": { panels, badge } }` | Panels from `steps, details, share, code`; badge from `dark, silver, color, plain`. Returns `{ id, view_state }`. |

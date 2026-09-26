@@ -170,6 +170,19 @@ describe("/api/flows/:id", () => {
     expect(written.find((n) => n.id === "a")).toBeTruthy(); // untouched node survives
   });
 
+  it("PATCH nodes merges size by id and clamps it", async () => {
+    const stored = [{ id: "a", position: { x: 0, y: 0 } }];
+    query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { nodes: [{ id: "a", size: { w: 900, h: 100 } }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
+    expect(written.find((n) => n.id === "a").size).toEqual({ w: 600, h: 130 });
+  });
+
   // A note is one deliberate edit, merged by id: only the note changes, and
   // '' takes it off. Branding and position come from storage, never the client.
   it("PATCH notes sets, replaces and removes a note by node id and nothing else", async () => {

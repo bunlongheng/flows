@@ -1,7 +1,7 @@
 import { memo, useContext, useRef, useState } from 'react'
-import { Handle, Position } from '@xyflow/react'
+import { Handle, Position, NodeResizer } from '@xyflow/react'
 import { findService } from '../services'
-import { NoteEditContext, ShowNotesContext } from './noteEditContext'
+import { NoteEditContext, NodeResizeContext, ShowNotesContext } from './noteEditContext'
 import { NOTE_MAX, cleanNote } from '../note'
 
 // ─── Custom Node ──────────────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ function NodeNote({ id, note }) {
   )
 }
 
-export const AwsNode = memo(function AwsNode({ data }) {
+export const AwsNode = memo(function AwsNode({ data, selected }) {
   const svc = findService(data)
   const color = svc.color || '#6b7280'
   const label = svc.label || data.label || data.id
@@ -82,22 +82,39 @@ export const AwsNode = memo(function AwsNode({ data }) {
   // A picture node: `image` is always the inlined 640x480 JPEG data URI
   // resolved at create/update time - never a raw path, URL or airclips: ref.
   const picture = typeof data.image === 'string' && data.image.startsWith('data:image/') ? data.image : null
+  // The owner's resize handler, or null on a shared/read-only view - absence
+  // is what hides the resize handles below.
+  const onResize = useContext(NodeResizeContext)
+  const canResize = typeof onResize === 'function'
+  // The owner's saved size, or the shape's default when never resized.
+  const size = data.size
+  // Dragging a corner moves the handle, but React Flow does not resize the
+  // node's own box until the drag ends - without this the card sits still
+  // while the outline runs ahead of it. `live` tracks the frame the drag is
+  // currently on; onResizeEnd both commits it and clears the override.
+  const [live, setLive] = useState(null)
+  const box = live || size
 
   return (
     <div style={{
       // Tint blended over solid white: an opaque card hides any edge routed
       // beneath it, so a line never appears to run through a box.
       background: `linear-gradient(${color}14, ${color}14), #ffffff`, border: `1px solid ${color}`, borderRadius: 0,
-      // A node is a fixed-size card, not a text box. A label or sub carrying a
-      // whole sentence used to stretch one card several times wider - and then,
-      // once width was capped, several times TALLER - than its neighbours. Both
-      // are now bounded and clamped, so every card reads the same size and the
-      // full text stays available on hover.
-      padding: picture ? 10 : '12px 16px', minWidth: picture ? 240 : 130, maxWidth: picture ? 240 : 180,
+      // A node is a fixed-size box the owner can resize by dragging a corner. A
+      // label or sub carrying a whole sentence is bounded and clamped inside it
+      // rather than stretching the card, so every unresized card reads the same
+      // size and the full text stays available on hover.
+      width: box ? box.w : (picture ? 240 : 180), height: box ? box.h : (picture ? 225 : 180),
+      padding: picture ? 10 : 12, boxSizing: 'border-box',
       display: 'flex', flexDirection: 'column',
-      alignItems: 'center', gap: 7, position: 'relative',
+      alignItems: 'center', justifyContent: 'center', gap: 7, position: 'relative',
       boxShadow: '0 1px 3px rgba(0,0,0,0.10)',
     }}>
+      {canResize && <NodeResizer isVisible={selected} minWidth={130} minHeight={130} maxWidth={600} maxHeight={600}
+        lineStyle={{ borderColor: color, borderWidth: 1 }}
+        handleStyle={{ width: 9, height: 9, borderRadius: 0, background: color, border: '1px solid #fff' }}
+        onResize={(_, p) => setLive({ w: p.width, h: p.height })}
+        onResizeEnd={(_, p) => { onResize(data.id, { w: Math.round(p.width), h: Math.round(p.height) }); setLive(null) }} />}
       <Handle type="target" position={Position.Left}   style={{ opacity: 0, pointerEvents: 'none' }} />
       <Handle type="target" position={Position.Top}    style={{ opacity: 0, pointerEvents: 'none' }} />
       <Handle type="source" position={Position.Right}  style={{ opacity: 0, pointerEvents: 'none' }} />
@@ -105,7 +122,7 @@ export const AwsNode = memo(function AwsNode({ data }) {
       {/* Logo only - no frame, never an emoji. Every known service has an icon;
           the letter fallback only guards against a bad id the gate should reject. */}
       {picture
-        ? <img src={picture} alt={label} width={220} height={165} style={{ width: 220, height: 165, objectFit: 'cover', display: 'block', borderRadius: 2 }} />
+        ? <img src={picture} alt={label} style={{ width: '100%', height: 'auto', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block', borderRadius: 2 }} />
         : svc.icon
         ? <img src={svc.icon} alt={label} width={48} height={48} style={{ objectFit: 'contain', marginTop: 2 }} />
         : <span style={{ fontSize: 26, fontWeight: 700, color, marginTop: 2, lineHeight: 1 }}>{label[0]?.toUpperCase()}</span>

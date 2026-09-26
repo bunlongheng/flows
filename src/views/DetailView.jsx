@@ -5,7 +5,7 @@ import '@xyflow/react/dist/style.css'
 import diagramData from '../data/diagram.json'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { nodeTypes } from '../components/AwsNode'
-import { NoteEditContext, ShowNotesContext } from '../components/noteEditContext'
+import { NoteEditContext, NodeResizeContext, ShowNotesContext } from '../components/noteEditContext'
 import { edgeTypes } from '../components/GradientEdge'
 import { Toast } from '../components/Toast'
 import { SnapGuides } from '../components/SnapGuides'
@@ -46,6 +46,9 @@ export function DetailView({
   // (nodeId, note) => void when the owner is signed in; undefined otherwise,
   // which makes every node note read-only (shared links, /demo).
   onNoteChange,
+  // (nodeId, { w, h }) => void when the owner is signed in; undefined
+  // otherwise, which makes every node card a fixed, non-resizable size.
+  onNodeResize,
   // Owner only: is the open diagram public, and a click to flip it. Undefined
   // for anyone else, which hides the pill.
   isDiagramPublic, onToggleVisibility,
@@ -557,6 +560,7 @@ export function DetailView({
         <div style={{ flex: 1, position: 'relative', background: '#ffffff' }}>
           <ShowNotesContext.Provider value={showNotes}>
           <NoteEditContext.Provider value={onNoteChange || null}>
+          <NodeResizeContext.Provider value={onNodeResize || null}>
           <ReactFlow
             className={`${showSteps ? 'sd-steps-on ' : ''}${flowing ? '' : 'sd-still '}sd-badge-${badgeMode}`}
             nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
@@ -578,6 +582,7 @@ export function DetailView({
             <Background variant="dots" gap={24} size={1} color="#e6e8eb" />
             <SnapGuides guides={snapGuides} />
           </ReactFlow>
+          </NodeResizeContext.Provider>
           </NoteEditContext.Provider>
           </ShowNotesContext.Provider>
 

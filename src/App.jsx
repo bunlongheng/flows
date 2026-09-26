@@ -448,7 +448,7 @@ export default function App() {
     const hasSaved = raw.length > 0 && raw.every(nd => nd.position && Number.isFinite(nd.position.x) && Number.isFinite(nd.position.y))
     // Carry any custom brand fields (label/icon/color/sub) into node data so a
     // bring-your-own-icon node renders its own logo, not a catalog lookup.
-    const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note }, ...(hasSaved ? { position: nd.position } : {}) }))
+    const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, size: nd.size }, ...(hasSaved ? { position: nd.position } : {}), ...(nd.size ? { width: nd.size.w, height: nd.size.h } : {}) }))
     const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw)
     setNodes(hasSaved ? n : layoutElements(n, e, { canvas: canvasSize() }))
     setEdges(e)
@@ -491,6 +491,7 @@ export default function App() {
       .map(n => ({
         id: n.id,
         position: { x: Math.round(n.position.x), y: Math.round(n.position.y) },
+        ...(n.width && n.height ? { size: { w: n.width, h: n.height } } : n.data?.size ? { size: n.data.size } : {}),
         // Preserve bring-your-own-icon fields so saving the layout never strips them.
         ...(n.icon ? { icon: n.icon } : {}),
         ...(n.label ? { label: n.label } : {}),
@@ -528,6 +529,17 @@ export default function App() {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => doSave(diagramId, nds), 600)
   }, [doSave])
+
+  // The owner dragged a node's resize handle. Store the new size on the node
+  // (both top-level, for React Flow's own sizing, and in data, for AwsNode's
+  // card) and persist it the same way a drag persists position.
+  const onNodeResize = useCallback((id, size) => {
+    setNodes(nds => {
+      const next = nds.map(n => n.id === id ? { ...n, width: size.w, height: size.h, data: { ...n.data, size } } : n)
+      if (canAI && activeDiagram?.id) savePositions(activeDiagram.id, next)
+      return next
+    })
+  }, [canAI, activeDiagram, savePositions])
 
   // Record the layout as it was BEFORE an edit. A new edit clears the redo pile,
   // the same as every editor. 50 steps is far more than anyone walks back.
@@ -1148,6 +1160,7 @@ export default function App() {
       saveState={saveState}
       onArrange={autoArrange}
       onNoteChange={canAI ? onNoteChange : undefined}
+      onNodeResize={canAI ? onNodeResize : undefined}
       isDiagramPublic={activeDiagram?.is_public !== false}
       canEdit={canAI}
       onToggleVisibility={canAI && activeDiagram?.id ? toggleVisibility : undefined}
