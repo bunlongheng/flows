@@ -126,7 +126,7 @@ A locked diagram is `409` until it is unlocked.
 
 ### History (owner session only)
 
-Every content change writes a version of the diagram from just before that write, and layout-only saves (a drag, an Arrange) are coalesced to at most one per 10 minutes so nudging a node repeatedly does not spam the history; a real content change (nodes, edges, title, pattern, description) is always kept. A `kind` of `layout` means only position/size/iconSize/edge geometry changed; anything else is `content`. 50 versions are kept per flow, oldest dropped.
+Every content change writes a version of the diagram from just before that write, and layout-only saves (a drag, an Arrange) are coalesced to at most one per 10 minutes so nudging a node repeatedly does not spam the history, unless the write gave a reason (a restore always does); a real content change (nodes, edges, title, pattern, description) is always kept. A `kind` of `layout` means only position/size/iconSize/edge geometry changed; anything else is `content`. 50 versions are kept per flow, oldest dropped.
 
 ```bash
 curl https://flows-bheng.vercel.app/api/flows/<id>/versions \
