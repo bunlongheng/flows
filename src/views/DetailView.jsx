@@ -68,11 +68,14 @@ export function DetailView({
   const brand = brandFor(activeDiagram?.title)
   const [confirmDelete, setConfirmDelete] = useState(false)
   // The Arrange button opens a small style menu instead of arranging directly.
-  const [arrangeMenu, setArrangeMenu] = useState(false)
+  // Open menu holds the screen spot under the button. It is fixed, not absolute:
+  // the header scrolls sideways, so anything absolute inside it is clipped at
+  // the header's bottom edge and the canvas takes the click instead.
+  const [arrangeMenu, setArrangeMenu] = useState(null)
   const arrangeRef = useRef(null)
   useEffect(() => {
     if (!arrangeMenu) return
-    const onPointerDown = e => { if (arrangeRef.current && !arrangeRef.current.contains(e.target)) setArrangeMenu(false) }
+    const onPointerDown = e => { if (arrangeRef.current && !arrangeRef.current.contains(e.target)) setArrangeMenu(null) }
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [arrangeMenu])
@@ -332,7 +335,7 @@ export function DetailView({
 
           {/* Auto-arrange: a small menu picks the style, then re-lay-out and fit */}
           {canEdit && <div ref={arrangeRef} style={{ position: 'relative' }}>
-            <button className="sd-hide-mobile sd-show-mobile sd-hide-tablet" onClick={() => setArrangeMenu(m => !m)} title="Arrange the layout" style={{
+            <button className="sd-hide-mobile sd-show-mobile sd-hide-tablet" onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setArrangeMenu(m => m ? null : { top: r.bottom + 6, left: Math.max(8, Math.min(r.left, window.innerWidth - 226)) }) }} title="Arrange the layout" style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
               background: 'transparent', color: '#64748b',
@@ -347,9 +350,9 @@ export function DetailView({
               </svg>
               <span className="sd-btn-label">Arrange</span>
             </button>
-            {arrangeMenu && <div role="menu" style={{ position: 'absolute', top: 36, left: 0, zIndex: 30, minWidth: 210, padding: 4, background: '#fff', border: '1px solid #e4e6e8', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)' }}>
-              {[['rows', 'Rows', 'Tight, left to right'], ['fan', 'Fan out', 'Branches spread from the start']].map(([style, name, sub]) => (
-                <button key={style} role="menuitem" onClick={() => { onArrange && onArrange(style); setArrangeMenu(false) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', border: 'none', borderRadius: 7, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}
+            {arrangeMenu && <div role="menu" style={{ position: 'fixed', top: arrangeMenu.top, left: arrangeMenu.left, zIndex: 1000, minWidth: 210, padding: 4, background: '#fff', border: '1px solid #e4e6e8', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)' }}>
+              {[['rows', 'Rows', 'Tight, left to right'], ['fan', 'Fan out', 'Branches radiate from the start']].map(([style, name, sub]) => (
+                <button key={style} role="menuitem" onClick={() => { onArrange && onArrange(style); setArrangeMenu(null) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', border: 'none', borderRadius: 7, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{name}</div>

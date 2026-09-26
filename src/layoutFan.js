@@ -1,12 +1,15 @@
-// Fan-out arrangement: a tree that spreads from the start node. Depth is the
-// column, every leaf takes a row of its own, and a parent sits at the middle
-// of its subtree's rows, so each branch fans out evenly around what it hangs
-// off. This is the spread-out sibling of layout.js, which packs tight rows;
-// the 2 never share logic on purpose.
+// Fan-out arrangement: a tree that spreads to the right from the start node.
+// Every parent's children sit just to its right, packed as tightly as their
+// own subtrees allow, and bowed on a shallow arc so the middle branches reach
+// further right than the outer ones - the shape of an open hand fan. Columns
+// never line up across the tree, and nothing is spaced further than it has to
+// be, so Fit keeps the cards readable. This is the spread-out sibling of
+// layout.js, which packs tight rows; the 2 never share logic on purpose.
 const NODE_W = 190, NODE_H = 180
 const IMG_W = 240, IMG_H = 225
-const COL_GAP = 170  // between a parent's column and its children's - clears a badge
-const ROW_GAP = 60   // between neighbouring rows
+const COL_GAP = 130  // between a parent's right edge and its nearest child - clears a badge
+const ROW_GAP = 40   // between neighbouring subtrees, top to bottom
+const BULGE = 110    // how much further right the middle child sits than the outer ones
 const TREE_GAP = 120 // between the start tree and anything it cannot reach
 
 const sizeOf = n => ({
@@ -31,51 +34,71 @@ export function layoutFanOut(nodes, edges) {
 
   // A spanning forest, breadth first from the start so depth is the shortest
   // route there, then from whatever is still unplaced, in node order.
-  const depth = new Map()
+  const seen = new Set()
   const children = new Map(nodes.map(n => [n.id, []]))
   const roots = []
   const visit = root => {
     roots.push(root)
-    depth.set(root, 0)
+    seen.add(root)
     const q = [root]
     while (q.length) {
       const id = q.shift()
       for (const c of out.get(id)) {
-        if (depth.has(c)) continue
-        depth.set(c, depth.get(id) + 1)
+        if (seen.has(c)) continue
+        seen.add(c)
         children.get(id).push(c)
         q.push(c)
       }
     }
   }
   visit(startNodeId(nodes, edges))
-  nodes.forEach(n => { if (!depth.has(n.id)) visit(n.id) })
+  nodes.forEach(n => { if (!seen.has(n.id)) visit(n.id) })
 
-  // A column is as wide as its widest card.
-  const colW = []
-  nodes.forEach(n => { const d = depth.get(n.id); colW[d] = Math.max(colW[d] || 0, sizeOf(n).w) })
-  const colX = []
-  let x = 0
-  colW.forEach((w, d) => { colX[d] = x + w / 2; x += w + COL_GAP })
+  const size = new Map(nodes.map(n => [n.id, sizeOf(n)]))
 
-  const rowH = Math.max(...nodes.map(n => sizeOf(n).h)) + ROW_GAP
-  const centers = new Map()
-  let cursor = 0
-  const place = id => {
-    const kids = children.get(id)
-    if (!kids.length) {
-      centers.set(id, { x: colX[depth.get(id)], y: cursor + rowH / 2 })
-      cursor += rowH
-      return
-    }
-    kids.forEach(place)
-    const ys = kids.map(k => centers.get(k).y)
-    centers.set(id, { x: colX[depth.get(id)], y: (Math.min(...ys) + Math.max(...ys)) / 2 })
+  // Lay a subtree out in its own box, top-left at 0,0. Returns the box, the
+  // centre of its root, and every node's centre inside it.
+  const layoutSub = id => {
+    const { w, h } = size.get(id)
+    const kids = children.get(id).map(layoutSub)
+    if (!kids.length) return { w, h, cy: h / 2, at: [{ id, x: w / 2, y: h / 2 }] }
+
+    // Stack the children's boxes top to bottom, as close as they get.
+    let top = 0
+    const tops = kids.map(k => { const t = top; top += k.h + ROW_GAP; return t })
+    const kidsH = top - ROW_GAP
+    const first = tops[0] + kids[0].cy, last = tops[kids.length - 1] + kids[kids.length - 1].cy
+    const mid = (first + last) / 2, half = (last - first) / 2
+
+    // The parent sits level with the middle of its children. If it is taller
+    // than all of them together, they drop to sit level with it instead.
+    const shift = Math.max(0, h / 2 - mid)
+    const cy = mid + shift
+    const at = [{ id, x: w / 2, y: cy }]
+    let width = w
+    kids.forEach((k, i) => {
+      // The arc: children near the middle reach further right than the ends.
+      const off = half ? (tops[i] + k.cy - mid) / half : 0
+      const dx = w + COL_GAP + BULGE * (1 - off * off)
+      const dy = tops[i] + shift
+      k.at.forEach(p => at.push({ id: p.id, x: p.x + dx, y: p.y + dy }))
+      width = Math.max(width, dx + k.w)
+    })
+    return { w: width, h: Math.max(kidsH + shift, cy + h / 2), cy, at }
   }
-  roots.forEach((r, i) => { if (i) cursor += TREE_GAP; place(r) })
+
+  // One fan per root, stacked top to bottom so a node the start cannot reach
+  // never lands inside the fan.
+  const centers = new Map()
+  let treeTop = 0
+  roots.forEach(root => {
+    const sub = layoutSub(root)
+    sub.at.forEach(p => centers.set(p.id, { x: p.x, y: p.y + treeTop }))
+    treeTop += sub.h + TREE_GAP
+  })
 
   return nodes.map(n => {
-    const c = centers.get(n.id), { w, h } = sizeOf(n)
+    const c = centers.get(n.id), { w, h } = size.get(n.id)
     return { ...n, position: { x: c.x - w / 2, y: c.y - h / 2 } }
   })
 }
