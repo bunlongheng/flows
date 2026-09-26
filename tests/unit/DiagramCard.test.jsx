@@ -74,6 +74,16 @@ describe("private lock", () => {
   });
 });
 
+// A locked diagram is embedded in a README or Confluence page, so its card
+// carries a badge and offers no delete button.
+describe("locked badge", () => {
+  it("shows the lock badge and no delete button when locked", () => {
+    setup({ isLocked: true });
+    expect(screen.getByTitle(/Locked: embedded in a README or Confluence page/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+  });
+});
+
 // The gallery on /demo offers no code panel either - that is an export.
 describe("view code", () => {
   it("renders the button only when a handler is given", () => {

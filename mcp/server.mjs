@@ -152,7 +152,7 @@ server.registerTool(
   async () => {
     try {
       const { rows } = await db.query(
-        'SELECT id, title, slug, nodes, edges, created_at FROM flows WHERE user_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 200',
+        'SELECT id, title, slug, nodes, edges, locked, created_at FROM flows WHERE user_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 200',
         [owner()],
       )
       return ok({
@@ -160,6 +160,7 @@ server.registerTool(
         designs: rows.map(r => ({
           id: r.id, title: r.title, slug: r.slug,
           nodes: r.nodes?.length ?? 0, edges: r.edges?.length ?? 0,
+          locked: !!r.locked,
           created_at: r.created_at, url: urlFor(r.id),
         })),
       })
@@ -177,7 +178,7 @@ server.registerTool(
   },
   async ({ id }) => {
     try {
-      const { rows } = await db.query('SELECT id, title, slug, nodes, edges, created_at FROM flows WHERE id = $1 AND deleted_at IS NULL', [id])
+      const { rows } = await db.query('SELECT id, title, slug, nodes, edges, locked, created_at FROM flows WHERE id = $1 AND deleted_at IS NULL', [id])
       if (!rows.length) return fail(`No diagram with id ${id}`)
       return ok({ ...rows[0], url: urlFor(id), share_url: shareUrlFor(rows[0].slug), gif_url: gifUrlFor(rows[0].slug), readme: readmeFor(rows[0].title, rows[0].slug) })
     } catch (e) { return fail(`get failed: ${e.message}`) }
@@ -265,7 +266,8 @@ server.registerTool(
     description:
       'Modify an existing diagram by id, at any age. Any of title, nodes, or edges you provide replaces that field; ' +
       'omitted fields are left unchanged. ALWAYS prefer this over creating a "v2" of a diagram that already exists - ' +
-      'call list_flows to find the id. Backfilling or correcting old diagrams is exactly what this is for.',
+      'call list_flows to find the id. Backfilling or correcting old diagrams is exactly what this is for. ' +
+      'Refused on a locked diagram - see lock_flow.',
     inputSchema: {
       id: z.string().describe('The diagram id to update'),
       reason: z.string().optional().describe('Optional note on why, e.g. "backfill: correct the Integry decommission date". Recorded on the row as a trail; never required.'),
@@ -282,6 +284,14 @@ server.registerTool(
   },
   async ({ id, reason, title, nodes, edges, public: isPublic }) => {
     try {
+      const { rows: lockRows } = await db.query(
+        'SELECT locked FROM flows WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL',
+        [id, owner()],
+      )
+      if (lockRows[0]?.locked) {
+        return fail(`Diagram ${id} is locked: it is embedded in a README or Confluence page, so nothing about it may change. If the change is intended, call lock_flow with locked: false, update, then lock it again.`)
+      }
+
       let iconNodes = nodes
       if (nodes) {
         const gate = logoGate(nodes, edges || []); if (gate) return gate
@@ -330,6 +340,31 @@ server.registerTool(
   },
 )
 
+// ── Lock: refuse content changes on a diagram a README or Confluence page ──
+// embeds, so an agent (or the app) cannot break that link by editing or
+// deleting it out from under the page that points at it.
+server.registerTool(
+  'lock_flow',
+  {
+    title: 'Lock or unlock flow',
+    description:
+      'Lock a diagram that a README or Confluence page embeds: while locked, update_flow and delete_flow refuse it ' +
+      'and the app greys out editing. locked: false lifts it. Locking is the record that a link out there depends ' +
+      'on this diagram, so lock before you paste the readme line somewhere.',
+    inputSchema: { id: z.string(), locked: z.boolean() },
+  },
+  async ({ id, locked }) => {
+    try {
+      const { rows } = await db.query(
+        'UPDATE flows SET locked = $1 WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL RETURNING id, title, locked',
+        [locked, id, owner()],
+      )
+      if (!rows.length) return fail(`No owned diagram with id ${id}`)
+      return ok({ id, title: rows[0].title, locked: rows[0].locked })
+    } catch (e) { return fail(`lock failed: ${e.message}`) }
+  },
+)
+
 // ── Delete / restore ────────────────────────────────────────────────────────
 // Delete is SOFT: the row is stamped deleted_at and drops out of every list,
 // gallery and shared link, but it is kept. Cleaning up a batch of duplicates is
@@ -340,7 +375,8 @@ server.registerTool(
     title: 'Delete flow',
     description:
       'Move a diagram to trash by id. This is a soft delete - it disappears from the gallery, the demo list and any ' +
-      'shared link, but the row is kept and restore_flow can bring it back. Safe for cleaning up duplicates.',
+      'shared link, but the row is kept and restore_flow can bring it back. Safe for cleaning up duplicates. ' +
+      'Refused on a locked diagram - see lock_flow.',
     inputSchema: {
       id: z.string().describe('The diagram id to move to trash'),
       reason: z.string().optional().describe('Why it is being removed, e.g. "duplicate of v2.2". Recorded on the row.'),
@@ -348,6 +384,14 @@ server.registerTool(
   },
   async ({ id, reason }) => {
     try {
+      const { rows: lockRows } = await db.query(
+        'SELECT locked FROM flows WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL',
+        [id, owner()],
+      )
+      if (lockRows[0]?.locked) {
+        return fail(`Diagram ${id} is locked: it is embedded in a README or Confluence page and cannot be trashed. Call lock_flow with locked: false first if you really mean it.`)
+      }
+
       const { rows } = await db.query(
         `UPDATE flows SET deleted_at = now(), update_reason = COALESCE($3, update_reason)
          WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL RETURNING id, title`,
