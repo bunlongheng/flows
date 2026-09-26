@@ -525,13 +525,13 @@ export default function App() {
     if (['dark', 'silver', 'color', 'plain'].includes(v.badge)) setBadgeMode(v.badge)
     const raw = d.data.nodes || []
     // Use the owner's saved layout when every node has a stored position;
-    // otherwise auto-layout with dagre so nothing overlaps.
+    // otherwise auto-layout as a fan so nothing overlaps.
     const hasSaved = raw.length > 0 && raw.every(nd => nd.position && Number.isFinite(nd.position.x) && Number.isFinite(nd.position.y))
     // Carry any custom brand fields (label/icon/color/sub) into node data so a
     // bring-your-own-icon node renders its own logo, not a catalog lookup.
     const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, size: nd.size, iconSize: nd.iconSize }, ...(hasSaved ? { position: nd.position } : {}), ...(nd.size ? { width: nd.size.w, height: nd.size.h } : {}) }))
     const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined)
-    setNodes(hasSaved ? n : layoutElements(n, e, { canvas: canvasSize() }))
+    setNodes(hasSaved ? n : layoutFanOut(n, e))
     setEdges(e)
     setView('detail')
     pendingFit.current = true
@@ -737,7 +737,7 @@ export default function App() {
   // ordered top-to-bottom, labels clear of nodes) and fan (layoutFan.js - a
   // tree that fans out from the start node). Either way: fit-zoom, and persist
   // for the owner so the tidy layout sticks.
-  const autoArrange = useCallback((style = 'rows') => {
+  const autoArrange = useCallback((style = 'fan') => {
     const current = nodesRef.current
     const flow = current.filter(n => n.type === 'awsNode')
     const arranged = style === 'fan' ? layoutFanOut(flow, edges) : layoutElements(flow, edges, { canvas: canvasSize() })
