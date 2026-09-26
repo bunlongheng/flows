@@ -105,6 +105,33 @@ describe("layoutFanOut", () => {
     expect(overlaps(layoutFanOut(DEEP_NODES, DEEP_EDGES))).toEqual([]);
   });
 
+  it("leaves room for a note under a card so the next card never covers it", () => {
+    const note = "x".repeat(150);
+    const nodes = FAN_NODES.map(n => (n.id === "a" ? { ...n, data: { ...n.data, note } } : n));
+    const plain = centerOf(layoutFanOut(FAN_NODES, FAN_EDGES));
+    const noted = centerOf(layoutFanOut(nodes, FAN_EDGES));
+    // 150 chars wrap to 6 lines of 14px under a 190px card: about 106px extra.
+    expect(noted("b").y - noted("a").y).toBeGreaterThan(plain("b").y - plain("a").y + 90);
+    expect(overlaps(layoutFanOut(nodes, FAN_EDGES))).toEqual([]);
+  });
+
+  it("widens the run to a child for a wide edge label, and only there", () => {
+    const edges = FAN_EDGES.map(e => (e.source === "b" && e.target === "b1" ? { ...e, label: "no force, ask Jev (TypeSafe key)" } : e));
+    const plain = centerOf(layoutFanOut(FAN_NODES, FAN_EDGES));
+    const wide = centerOf(layoutFanOut(FAN_NODES, edges));
+    expect(wide("b1").x - wide("b").x).toBeGreaterThan(plain("b1").x - plain("b").x + 100);
+    expect(wide("a").x - wide("r").x).toBeCloseTo(plain("a").x - plain("r").x, 5);
+  });
+
+  it("a lone child or a pair sit flush with no arc bulge", () => {
+    const c = centerOf(layoutFanOut(FAN_NODES, FAN_EDGES));
+    // b has 2 children: both at the plain gap, the same distance as an outer child of r.
+    expect(c("b1").x - c("b").x).toBeCloseTo(c("a").x - c("r").x, 5);
+    const [N, E] = mk(["r", "a"], [["r", "a"]]);
+    const one = centerOf(layoutFanOut(N, E));
+    expect(one("a").x - one("r").x).toBeCloseTo(c("a").x - c("r").x, 5);
+  });
+
   it("a node the start cannot reach still gets placed below the fan", () => {
     const c = centerOf(layoutFanOut(LOOSE_NODES, LOOSE_EDGES));
     LOOSE_NODES.map(n => n.id).filter(id => id !== "z").forEach(id => expect(c("z").y).toBeGreaterThan(c(id).y));
