@@ -4,7 +4,7 @@ import { layoutFanOut } from "../../src/layoutFan.js";
 // Copied from tests/unit/layout.test.js on purpose - layoutFan.js is a
 // separate module from layout.js and does not share test helpers with it.
 const NODE_W = 190;
-const NODE_H = 120;
+const NODE_H = 180;
 
 const overlaps = nodes => {
   const hits = [];
@@ -35,55 +35,74 @@ const [LOOSE_NODES, LOOSE_EDGES] = mk(
   [["r", "a"], ["r", "b"], ["r", "c"], ["r", "d"], ["b", "b1"], ["b", "b2"]],
 );
 
-// 12 leaves straight off the hub: more than fit at the widest slot, so the
-// fan has to squeeze its slices and push the ring out.
+// 12 leaves straight off the hub.
 const WIDE_IDS = Array.from({ length: 12 }, (_, i) => `n${i}`);
 const [WIDE_NODES, WIDE_EDGES] = mk(["r", ...WIDE_IDS], WIDE_IDS.map(id => ["r", id]));
+
+// A deep, lopsided tree: the first child carries a long tail, the others are
+// leaves, so the tail must not push its siblings apart.
+const [DEEP_NODES, DEEP_EDGES] = mk(
+  ["r", "a", "b", "c", "a1", "a2", "a11", "a12", "a13"],
+  [["r", "a"], ["r", "b"], ["r", "c"], ["a", "a1"], ["a", "a2"], ["a1", "a11"], ["a1", "a12"], ["a1", "a13"]],
+);
 
 const centerOf = out => {
   const byId = Object.fromEntries(out.map(n => [n.id, n]));
   return id => ({
-    x: byId[id].position.x + (byId[id].measured?.width ?? 190) / 2,
-    y: byId[id].position.y + (byId[id].measured?.height ?? 180) / 2,
+    x: byId[id].position.x + (byId[id].measured?.width ?? NODE_W) / 2,
+    y: byId[id].position.y + (byId[id].measured?.height ?? NODE_H) / 2,
   });
 };
 
-// Polar view from the hub: distance and angle (radians, 0 = straight right).
-const polarFrom = c => (hub, id) => {
-  const dx = c(id).x - c(hub).x, dy = c(id).y - c(hub).y;
-  return { r: Math.hypot(dx, dy), a: Math.atan2(dy, dx) };
+const box = out => {
+  const xs = out.map(n => n.position.x), ys = out.map(n => n.position.y);
+  return { w: Math.max(...xs) - Math.min(...xs) + NODE_W, h: Math.max(...ys) - Math.min(...ys) + NODE_H };
 };
 
 describe("layoutFanOut", () => {
-  it("siblings share a ring around the hub and spread top to bottom in edge order", () => {
+  it("children sit to the right of their parent, top to bottom in edge order", () => {
     const c = centerOf(layoutFanOut(FAN_NODES, FAN_EDGES));
-    const p = polarFrom(c);
-    const ring = p("r", "a").r;
-    ["b", "c", "d"].forEach(id => expect(p("r", id).r).toBeCloseTo(ring, 5));
-    expect(p("r", "a").a).toBeLessThan(p("r", "b").a);
-    expect(p("r", "b").a).toBeLessThan(p("r", "c").a);
-    expect(p("r", "c").a).toBeLessThan(p("r", "d").a);
+    ["a", "b", "c", "d"].forEach(id => expect(c(id).x).toBeGreaterThan(c("r").x + NODE_W));
+    ["b1", "b2"].forEach(id => expect(c(id).x).toBeGreaterThan(c("b").x + NODE_W));
+    expect(c("a").y).toBeLessThan(c("b").y);
+    expect(c("b").y).toBeLessThan(c("c").y);
+    expect(c("c").y).toBeLessThan(c("d").y);
   });
 
-  it("the fan is symmetric about the hub and faces right", () => {
+  it("bows like a fan: the middle children reach further right than the outer ones", () => {
     const c = centerOf(layoutFanOut(FAN_NODES, FAN_EDGES));
-    const p = polarFrom(c);
-    expect(p("r", "a").a).toBeCloseTo(-p("r", "d").a, 5);
-    ["a", "b", "c", "d", "b1", "b2"].forEach(id => expect(c(id).x).toBeGreaterThan(c("r").x));
+    expect(c("a").x).toBeCloseTo(c("d").x, 5);
+    expect(c("b").x).toBeGreaterThan(c("a").x);
+    expect(c("c").x).toBeGreaterThan(c("d").x);
   });
 
-  it("a parent sits at the middle angle of its children, one ring in", () => {
+  it("a parent sits level with the middle of its children", () => {
     const c = centerOf(layoutFanOut(FAN_NODES, FAN_EDGES));
-    const p = polarFrom(c);
-    expect(p("r", "b").a).toBeCloseTo((p("r", "b1").a + p("r", "b2").a) / 2, 5);
-    expect(p("r", "b1").r).toBeGreaterThan(p("r", "b").r + NODE_W);
-    expect(p("r", "b2").r).toBeCloseTo(p("r", "b1").r, 5);
+    expect(c("r").y).toBeCloseTo((c("a").y + c("d").y) / 2, 5);
+    expect(c("b").y).toBeCloseTo((c("b1").y + c("b2").y) / 2, 5);
   });
 
-  it("has no overlapping nodes, even with more leaves than the widest slot fits", () => {
+  it("packs tight: siblings are only a small gap apart and a tail never spreads its aunts", () => {
+    const fan = layoutFanOut(FAN_NODES, FAN_EDGES);
+    const c = centerOf(fan);
+    expect(c("d").y - c("c").y).toBeLessThan(NODE_H + 60);
+    expect(box(fan).h).toBeLessThan(5 * NODE_H + 4 * 60);
+    const deep = centerOf(layoutFanOut(DEEP_NODES, DEEP_EDGES));
+    expect(deep("c").y - deep("b").y).toBeLessThan(NODE_H + 60);
+  });
+
+  it("runs left to right: every step deeper is a step further right", () => {
+    const c = centerOf(layoutFanOut(DEEP_NODES, DEEP_EDGES));
+    expect(c("a").x).toBeGreaterThan(c("r").x + NODE_W);
+    expect(c("a1").x).toBeGreaterThan(c("a").x + NODE_W);
+    expect(c("a11").x).toBeGreaterThan(c("a1").x + NODE_W);
+  });
+
+  it("has no overlapping nodes", () => {
     expect(overlaps(layoutFanOut(FAN_NODES, FAN_EDGES))).toEqual([]);
     expect(overlaps(layoutFanOut(LOOSE_NODES, LOOSE_EDGES))).toEqual([]);
     expect(overlaps(layoutFanOut(WIDE_NODES, WIDE_EDGES))).toEqual([]);
+    expect(overlaps(layoutFanOut(DEEP_NODES, DEEP_EDGES))).toEqual([]);
   });
 
   it("a node the start cannot reach still gets placed below the fan", () => {
