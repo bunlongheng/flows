@@ -375,13 +375,22 @@ export function GradientEdge({
       // level instead of leaning by a few pixels from end to end.
       const k = alongY ? 'y' : 'x', run = alongY ? Math.abs(tm.x - sm.x) : Math.abs(tm.y - sm.y)
       const lean = Math.abs(tm[k] - sm[k])
+      // The shift runs along the face, so a diagonal run ends up with less
+      // daylight between its lanes than PAIR_GAP: a 45 degree pair sat only
+      // 25px apart and a shallower one under 20, with the badges touching.
+      // Widen the shift by the run's angle so the gap ACROSS the lines is
+      // PAIR_GAP, but never past what both faces can hold.
+      const across = Math.max(0.4, run / (Math.hypot(tm.x - sm.x, tm.y - sm.y) || 1))
+      const faceOf = node => alongY ? node.measured.height : node.measured.width
+      const room = n > 1 ? (Math.min(faceOf(sourceNode), faceOf(targetNode)) / 2 - 12) / ((n - 1) / 2) : PAIR_GAP
+      const gap = Math.max(PAIR_GAP, Math.min(PAIR_GAP / across, room))
       if (lean && (lean <= SNAP_TOL || lean <= run * ALIGN_RATIO)) {
         const v = (sm[k] + tm[k]) / 2
-        const reach = (PAIR_GAP * (n - 1)) / 2 + 6 // outermost lane must still land on the face
-        const fits = (node, c) => Math.abs(v - c) <= (alongY ? node.measured.height : node.measured.width) / 2 - reach
+        const reach = (gap * (n - 1)) / 2 + 6 // outermost lane must still land on the face
+        const fits = (node, c) => Math.abs(v - c) <= faceOf(node) / 2 - reach
         if (fits(sourceNode, centerOf(sourceNode)[k]) && fits(targetNode, centerOf(targetNode)[k])) { sm[k] = v; tm[k] = v }
       }
-      const shift = centered * PAIR_GAP
+      const shift = centered * gap
       sx = alongY ? sm.x : sm.x + shift; sy = alongY ? sm.y + shift : sm.y
       tx = alongY ? tm.x : tm.x + shift; ty = alongY ? tm.y + shift : tm.y
     }
