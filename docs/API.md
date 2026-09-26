@@ -66,7 +66,7 @@ Body fields:
 |-------|-------|
 | `title` | Required string, max 200 chars. |
 | `type` | Optional, only `"flows"` is accepted. |
-| `nodes[]` | Required, 1 to 100. Each `{ id, position?, size?, icon?, image?, label?, sub?, color?, note? }`. `id` is a catalog service key unless `icon` or `image` is given. `image` is a `data:image/...;base64` URI or an https image URL, stored as a 640x480 JPEG and drawn as a 4:3 photo card (file paths and `airclips:` refs are MCP only). `color` is a 6-digit hex or it is dropped. `note` is plain text, max 400 chars. Positions are optional; missing ones are laid out. `size` is optional `{ w, h }` 130..600 px, the card size on the canvas; icon cards default to 180x180, picture cards to 240x225. |
+| `nodes[]` | Required, 1 to 100. Each `{ id, position?, size?, iconSize?, icon?, image?, label?, sub?, color?, note? }`. `id` is a catalog service key unless `icon` or `image` is given. `image` is a `data:image/...;base64` URI or an https image URL, stored as a 640x480 JPEG and drawn as a 4:3 photo card (file paths and `airclips:` refs are MCP only). `color` is a 6-digit hex or it is dropped. `note` is plain text, max 400 chars. Positions are optional; missing ones are laid out. `size` is optional `{ w, h }` 130..600 px, the card size on the canvas; icon cards default to 180x180, picture cards to 240x225. `iconSize` is optional `{ w, h }` 16..600 px, the icon or photo drawn inside the card (default 48x48 icon, photo fills the card). |
 | `edges[]` | Optional, max 300. Each `{ id?, source, target, label?, animated? }`. |
 | `pattern` | Optional string, max 200. The one-line "what it tests" shown above the diagram and on the share card. |
 | `description` | Optional string, max 600. The goal paragraph under it. |
@@ -108,7 +108,7 @@ A private create adds `share_note` explaining that recipients get a 404 until it
 
 | Body | Effect |
 |------|--------|
-| `{ "nodes": [{ id, position, size }] }` | Merges positions and sizes by id into the stored nodes; branding is never taken from the request. `size` is `{ w, h }`, 130..600 px, clamped. A node not yet stored is added whole. Returns `{ id, saved }`. |
+| `{ "nodes": [{ id, position, size, iconSize }] }` | Merges positions and sizes by id into the stored nodes; branding is never taken from the request. `size` is `{ w, h }`, 130..600 px, clamped. `iconSize` is `{ w, h }`, 16..600 px, clamped - the icon or photo drawn inside the card; `iconSize: null` clears it back to the default. A node not yet stored is added whole. Returns `{ id, saved }`. |
 | `{ "notes": [{ id, note }] }` | Sets or clears (empty string) the note per node. Returns `{ id, noted }`. |
 | `{ "edges": [{ id, labelT, ends, bend }] }` | Moves a step badge along its edge (`labelT`, clamped 0.12..0.88) and pins where the edge meets each box (`ends: { s, t }`, each `{ side: top\|right\|bottom\|left, at: 0.05..0.95 }`; omit a key to go back to automatic). `bend: { t, d }` bends the line through a point `t` (0.1..0.9) along its straight run and `d` (-600..600) off it; omit it for a straight/automatic line. Returns `{ id, moved }`. |
 | `{ "view_state": { panels, badge, start } }` | Panels from `steps, details, share, code`; badge from `dark, silver, color, plain`; `start: { x, y }` is the owner's hand-placed spot for the "Start here" pill (omit or send `view_state` without it to go back to automatic placement). Returns `{ id, view_state }`. |

@@ -201,6 +201,30 @@ describe("/api/flows/:id", () => {
     expect(written.find((n) => n.id === "a").size).toEqual({ w: 600, h: 130 });
   });
 
+  it("PATCH nodes stores iconSize clamped and null clears it", async () => {
+    const stored = [{ id: "a", position: { x: 0, y: 0 }, iconSize: { w: 96, h: 96 } }];
+    query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { nodes: [{ id: "a", iconSize: { w: 900, h: 8 } }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
+    expect(written.find((n) => n.id === "a").iconSize).toEqual({ w: 600, h: 16 });
+
+    query.mockReset();
+    query.mockResolvedValueOnce({ rows: [{ nodes: [{ id: "a", position: { x: 0, y: 0 }, iconSize: { w: 96, h: 96 } }] }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res2 = mockRes();
+    const r2 = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r2.body = { nodes: [{ id: "a", iconSize: null }] };
+    await flowById(r2, res2);
+    expect(res2.statusCode).toBe(200);
+    const written2 = JSON.parse(query.mock.calls[1][1][0]);
+    expect(written2.find((n) => n.id === "a").iconSize).toBeUndefined();
+  });
+
   // A note is one deliberate edit, merged by id: only the note changes, and
   // '' takes it off. Branding and position come from storage, never the client.
   it("PATCH notes sets, replaces and removes a note by node id and nothing else", async () => {
