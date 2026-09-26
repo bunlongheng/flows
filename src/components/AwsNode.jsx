@@ -110,7 +110,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       alignItems: 'center', justifyContent: 'center', gap: 7, position: 'relative',
       boxShadow: '0 1px 3px rgba(0,0,0,0.10)',
     }}>
-      {canResize && <NodeResizer isVisible={selected} minWidth={130} minHeight={130} maxWidth={600} maxHeight={600}
+      {canResize && <NodeResizer isVisible={selected} minWidth={130} minHeight={130} maxWidth={600} maxHeight={600} keepAspectRatio={!!picture}
         lineStyle={{ borderColor: color, borderWidth: 1 }}
         handleStyle={{ width: 9, height: 9, borderRadius: 0, background: color, border: '1px solid #fff' }}
         onResize={(_, p) => setLive({ w: p.width, h: p.height })}
@@ -122,7 +122,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       {/* Logo only - no frame, never an emoji. Every known service has an icon;
           the letter fallback only guards against a bad id the gate should reject. */}
       {picture
-        ? <img src={picture} alt={label} style={{ width: '100%', height: 'auto', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block', borderRadius: 2 }} />
+        ? <img src={picture} alt={label} style={{ width: '100%', flex: 1, minHeight: 0, objectFit: 'cover', display: 'block', borderRadius: 2 }} />
         : svc.icon
         ? <img src={svc.icon} alt={label} width={48} height={48} style={{ objectFit: 'contain', marginTop: 2 }} />
         : <span style={{ fontSize: 26, fontWeight: 700, color, marginTop: 2, lineHeight: 1 }}>{label[0]?.toUpperCase()}</span>
