@@ -854,7 +854,7 @@ export function DetailView({
                   </div>
                   {showTitle && <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 2 }}>{v.title}</div>}
                   {v.reason && <div style={{ fontSize: 11.5, color: '#6b7280', marginBottom: 6, lineHeight: 1.4 }}>{`Before: ${v.reason}`}</div>}
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>{`${v.node_count} nodes, ${v.edge_count} edges`}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>{`${v.node_count} node${v.node_count === 1 ? '' : 's'}, ${v.edge_count} edge${v.edge_count === 1 ? '' : 's'}`}</div>
                   <button
                     onClick={() => handleRestore(v)}
                     disabled={!!restoringId}
