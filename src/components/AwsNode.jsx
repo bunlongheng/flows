@@ -148,7 +148,10 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   // Shared by both the icon and picture wrap: a picture with no custom size
   // still needs `flex: 1` on the wrapper (not just the img) to fill the card,
   // exactly as the un-wrapped img did before.
-  const iconWrapStyle = { position: 'relative', display: 'inline-flex', justifyContent: 'center', maxWidth: '100%', minHeight: 0, ...(iconBox ? { flex: '0 1 auto' } : { flex: 1, width: '100%' }) }
+  // The ring marks the icon box whenever its drag handle is shown, so what the
+  // handle stretches is visible. outline, not border, so the layout never moves.
+  const iconWrapStyle = { position: 'relative', display: 'inline-flex', justifyContent: 'center', maxWidth: '100%', minHeight: 0, ...(iconBox ? { flex: '0 1 auto' } : { flex: 1, width: '100%' }),
+    ...(iconHandle ? { outline: `1px dashed ${color}`, outlineOffset: 2 } : {}) }
 
   return (
     <div style={{
