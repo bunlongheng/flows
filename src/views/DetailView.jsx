@@ -688,7 +688,7 @@ export function DetailView({
             nodesDraggable={canEdit} nodesConnectable={false} elementsSelectable={canEdit}
             /* 2 fingers on the trackpad pan the canvas in any direction, the way
                Sequences and Mindmaps do; pinch or Cmd + wheel zooms. */
-            panOnDrag panOnScroll panOnScrollMode="free" zoomOnScroll={false} minZoom={0.2} maxZoom={2.5}
+            panOnDrag panOnScroll panOnScrollMode="free" panOnScrollSpeed={1} zoomOnScroll={false} minZoom={0.2} maxZoom={2.5}
             proOptions={{ hideAttribution: true }}
           >
             <Background variant="dots" gap={24} size={1} color="#e6e8eb" />
