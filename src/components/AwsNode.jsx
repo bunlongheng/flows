@@ -4,6 +4,11 @@ import { findService } from '../services'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext } from './noteEditContext'
 import { NOTE_MAX, cleanNote } from '../note'
 
+// An unstretched logo fills whatever the card leaves above its label, about
+// 120px of a 180px card, so it reads as the card's subject even when Fit
+// shrinks the diagram. ICON is only the fallback when the box cannot be measured.
+const ICON = 120
+
 // ─── Custom Node ──────────────────────────────────────────────────────────────
 
 // Two lines then an ellipsis. Without this a sentence-long sub simply grew the
@@ -49,9 +54,11 @@ function NodeNote({ id, note }) {
     if (next !== note) onNoteChange(id, next)
   }
   // nodrag/nopan: typing, selecting and double-clicking here must never move
-  // the card or zoom the canvas.
+  // the card. nowheel only while editing, so the textarea scrolls; otherwise
+  // 2 fingers over a note must pan and pinch the canvas like anywhere else.
+
   return (
-    <div className="nodrag nopan nowheel" onDoubleClick={e => e.stopPropagation()}
+    <div className={editing ? 'nodrag nopan nowheel' : 'nodrag nopan'} onDoubleClick={e => e.stopPropagation()}
       style={{ position: 'absolute', top: '100%', left: -1, marginTop: 5, width: 'calc(100% + 2px)', textAlign: 'left' }}>
       {editing ? (
         <textarea autoFocus rows={10} value={draft} maxLength={NOTE_MAX} placeholder="What happens at this step?"
@@ -110,7 +117,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
     e.preventDefault()
     const zoom = getZoom() || 1
     const rect = imgRef.current?.getBoundingClientRect()
-    const start = iconBox || (rect ? { w: rect.width / zoom, h: rect.height / zoom } : { w: 48, h: 48 })
+    const start = iconBox || (rect ? { w: rect.width / zoom, h: rect.height / zoom } : { w: ICON, h: ICON })
     const ratio = start.w / (start.h || 1)
     const x0 = e.clientX, y0 = e.clientY
     let last = null
@@ -143,7 +150,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   // exactly as the un-wrapped img did before.
   // The ring marks the icon box whenever its drag handle is shown, so what the
   // handle stretches is visible. outline, not border, so the layout never moves.
-  const iconWrapStyle = { position: 'relative', display: 'inline-flex', maxWidth: '100%', minHeight: 0, ...(picture && !iconBox ? { flex: 1, width: '100%' } : {}),
+  const iconWrapStyle = { position: 'relative', display: 'inline-flex', justifyContent: 'center', maxWidth: '100%', minHeight: 0, ...(iconBox ? { flex: '0 1 auto' } : { flex: 1, width: '100%' }),
     ...(iconHandle ? { outline: `1px dashed ${color}`, outlineOffset: 2 } : {}) }
 
   return (
@@ -156,9 +163,11 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       // rather than stretching the card, so every unresized card reads the same
       // size and the full text stays available on hover.
       width: box ? box.w : (picture ? 240 : 180), height: box ? box.h : (picture ? 225 : 180),
-      padding: picture ? 10 : 12, boxSizing: 'border-box',
+      // The same 10px inside every edge; the logo or photo fills the room the
+      // label leaves, and the text is never squeezed - see flex: none below.
+      padding: 10, boxSizing: 'border-box',
       display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: 7, position: 'relative',
+      alignItems: 'center', justifyContent: 'center', gap: 6, position: 'relative',
       boxShadow: '0 1px 3px rgba(0,0,0,0.10)',
     }}>
       {canResize && <NodeResizer isVisible={selected} minWidth={130} minHeight={130} maxWidth={600} maxHeight={600} keepAspectRatio={!!picture}
@@ -181,13 +190,15 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
           </span>
         : svc.icon
         ? <span style={iconWrapStyle}>
-            <img ref={imgRef} src={svc.icon} alt={label} width={iconBox ? iconBox.w : 48} height={iconBox ? iconBox.h : 48}
-              style={{ objectFit: 'contain', marginTop: 2, maxWidth: '100%' }} />
+            <img ref={imgRef} src={svc.icon} alt={label} {...(iconBox ? { width: iconBox.w, height: iconBox.h } : {})}
+              style={iconBox
+                ? { objectFit: 'contain', maxWidth: '100%', maxHeight: '100%' }
+                : { width: 'auto', height: '100%', maxWidth: '100%', objectFit: 'contain', display: 'block' }} />
             {iconHandle}
           </span>
         : <span style={{ fontSize: 26, fontWeight: 700, color, marginTop: 2, lineHeight: 1 }}>{label[0]?.toUpperCase()}</span>
       }
-      <div style={{ textAlign: 'center', width: '100%' }}>
+      <div style={{ textAlign: 'center', width: '100%', flex: 'none' }}>
         <div title={label} style={{
           fontSize: 12, fontWeight: 700, color: '#111827', letterSpacing: '-0.1px', lineHeight: 1.3,
           ...CLAMP_2,
