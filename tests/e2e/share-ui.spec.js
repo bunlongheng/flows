@@ -471,7 +471,10 @@ test("phone keeps Fit reachable and never hides a button out of reach", async ({
     const scale = () => page.locator(".react-flow__viewport").evaluate((el) => Number((/scale\(([\d.]+)\)/.exec(el.style.transform) || [])[1]));
     const fitted = await scale();
     await page.mouse.move(195, 400);
-    await page.mouse.wheel(0, -600);
+    // macOS reports a trackpad pinch as a wheel event with Ctrl held; a plain wheel pans.
+    await page.keyboard.down("Control");
+    await page.mouse.wheel(0, -60);
+    await page.keyboard.up("Control");
     await page.waitForTimeout(500);
     expect(await scale()).not.toBe(fitted);
     await page.locator('header button:has-text("Fit")').click();

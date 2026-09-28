@@ -54,9 +54,11 @@ function NodeNote({ id, note }) {
     if (next !== note) onNoteChange(id, next)
   }
   // nodrag/nopan: typing, selecting and double-clicking here must never move
-  // the card or zoom the canvas.
+  // the card. nowheel only while editing, so the textarea scrolls; otherwise
+  // 2 fingers over a note must pan and pinch the canvas like anywhere else.
+
   return (
-    <div className="nodrag nopan nowheel" onDoubleClick={e => e.stopPropagation()}
+    <div className={editing ? 'nodrag nopan nowheel' : 'nodrag nopan'} onDoubleClick={e => e.stopPropagation()}
       style={{ position: 'absolute', top: '100%', left: -1, marginTop: 5, width: 'calc(100% + 2px)', textAlign: 'left' }}>
       {editing ? (
         <textarea autoFocus rows={10} value={draft} maxLength={NOTE_MAX} placeholder="What happens at this step?"
