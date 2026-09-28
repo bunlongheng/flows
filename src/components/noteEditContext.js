@@ -5,6 +5,11 @@ import { createContext } from 'react'
 // link or while signed out - a node with no handler renders its note read-only.
 export const NoteEditContext = createContext(null)
 
+// The owner's info editor: (nodeId, info) => void when signed in, null
+// otherwise. Info is what a thing is and why it is in this diagram, hidden
+// behind the i badge on the card until the reader hovers or clicks it.
+export const InfoEditContext = createContext(null)
+
 // The owner's node resize handler, handed to every node the same way. The
 // value is (nodeId, { w, h }) => void when signed in, and null on a shared
 // /demo link or while signed out - a node with no handler renders no resizer.
