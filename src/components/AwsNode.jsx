@@ -4,6 +4,10 @@ import { findService } from '../services'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext } from './noteEditContext'
 import { NOTE_MAX, cleanNote } from '../note'
 
+// The logo inside an unstretched card. 72px so it reads as the card's subject
+// even when Fit shrinks the whole diagram; the label sits under it, never beside.
+const ICON = 72
+
 // ─── Custom Node ──────────────────────────────────────────────────────────────
 
 // Two lines then an ellipsis. Without this a sentence-long sub simply grew the
@@ -110,7 +114,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
     e.preventDefault()
     const zoom = getZoom() || 1
     const rect = imgRef.current?.getBoundingClientRect()
-    const start = iconBox || (rect ? { w: rect.width / zoom, h: rect.height / zoom } : { w: 48, h: 48 })
+    const start = iconBox || (rect ? { w: rect.width / zoom, h: rect.height / zoom } : { w: ICON, h: ICON })
     const ratio = start.w / (start.h || 1)
     const x0 = e.clientX, y0 = e.clientY
     let last = null
@@ -178,7 +182,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
           </span>
         : svc.icon
         ? <span style={iconWrapStyle}>
-            <img ref={imgRef} src={svc.icon} alt={label} width={iconBox ? iconBox.w : 48} height={iconBox ? iconBox.h : 48}
+            <img ref={imgRef} src={svc.icon} alt={label} width={iconBox ? iconBox.w : ICON} height={iconBox ? iconBox.h : ICON}
               style={{ objectFit: 'contain', marginTop: 2, maxWidth: '100%' }} />
             {iconHandle}
           </span>
