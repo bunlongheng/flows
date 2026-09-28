@@ -170,30 +170,25 @@ describe("read-only demo view", () => {
 describe("info card", () => {
   const withInfo = { ...sampleDiagram, pattern: "Fan-out on write", description: "A URL shortener." };
 
-  it("folds into a badge on click and comes back", async () => {
+  it("starts folded on every screen, opens on click and folds back", async () => {
     setup({ activeDiagram: withInfo });
-    const card = screen.getByRole("button", { name: /hide the diagram summary/i });
-    expect(screen.getByText("Fan-out on write")).toBeInTheDocument();
-
-    await userEvent.click(card);
     expect(screen.queryByText("Fan-out on write")).toBeNull();
     const badge = screen.getByRole("button", { name: /show the diagram summary/i });
     expect(badge).toHaveAttribute("aria-expanded", "false");
 
     await userEvent.click(badge);
     expect(screen.getByText("Fan-out on write")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /hide the diagram summary/i }));
+    expect(screen.queryByText("Fan-out on write")).toBeNull();
   });
 
-  it("starts folded on a phone-width window and open on a desktop one", () => {
+  it("starts folded on a desktop-width window too", () => {
     const w = window.innerWidth;
     try {
-      window.innerWidth = 390;
-      setup({ activeDiagram: withInfo });
-      expect(screen.getByRole("button", { name: /show the diagram summary/i })).toBeInTheDocument();
-      cleanup();
       window.innerWidth = 1280;
       setup({ activeDiagram: withInfo });
-      expect(screen.getByRole("button", { name: /hide the diagram summary/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /show the diagram summary/i })).toBeInTheDocument();
     } finally {
       window.innerWidth = w;
     }

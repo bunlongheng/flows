@@ -3,6 +3,8 @@ import { Handle, Position, NodeResizer, useReactFlow } from '@xyflow/react'
 import { findService } from '../services'
 import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext } from './noteEditContext'
 import { NOTE_MAX, cleanNote, INFO_MAX, cleanInfo } from '../note'
+import { SUNSET, INK } from '../sunset.js'
+import { SunsetX } from './GradientEdge'
 
 // An unstretched logo fills whatever the card leaves above its label, about
 // 120px of a 180px card, so it reads as the card's subject even when Fit
@@ -84,10 +86,11 @@ function NodeNote({ id, note }) {
 // it is in the diagram (the note under the card is what the step does). It
 // stays hidden until the reader hovers or clicks the badge, so a dense diagram
 // never grows a paragraph on every box. The owner double-clicks the text to
-// edit it; a card with no info shows the owner a faint badge to add one. The
-// popover opens above the card, so it never covers the card's own icon or
-// label, and it touches the badge so hovering into it keeps it open.
-function NodeInfo({ id, info, color }) {
+// edit it; a card with no info shows no badge at all (info arrives through the
+// API). The popover opens above the card, so it never covers the card's own
+// icon or label, and it touches the badge so hovering into it keeps it open.
+// On a sunset card the badge drops below the red X on the icon's corner.
+function NodeInfo({ id, info, color, sunset }) {
   const onInfoChange = useContext(InfoEditContext)
   const canEdit = typeof onInfoChange === 'function'
   const [hover, setHover] = useState(false)
@@ -95,7 +98,7 @@ function NodeInfo({ id, info, color }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const cancelled = useRef(false)
-  if (!info && !canEdit) return null
+  if (!info) return null
   const show = hover || pinned || editing
   const startEdit = e => { e.stopPropagation(); cancelled.current = false; setDraft(info || ''); setEditing(true); setPinned(true) }
   const commit = () => {
@@ -104,15 +107,14 @@ function NodeInfo({ id, info, color }) {
     const next = cleanInfo(draft)
     if (next !== (info || '')) onInfoChange(id, next)
   }
-  const toggle = e => { e.stopPropagation(); if (!info && canEdit) return startEdit(e); setPinned(p => !p) }
+  const toggle = e => { e.stopPropagation(); setPinned(p => !p) }
   const lit = pinned || editing
   return (
     <div className="nodrag nopan" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      onDoubleClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 4, right: 4, zIndex: 4 }}>
+      onDoubleClick={e => e.stopPropagation()} style={{ position: 'absolute', top: sunset ? 26 : 4, right: 4, zIndex: 4 }}>
       <button type="button" onClick={toggle} aria-label="What this is and why it is here" aria-expanded={show}
-        title={info ? undefined : 'Add what this is and why it is here'}
         style={{ width: 16, height: 16, borderRadius: '50%', border: `1px solid ${color}`, padding: 0, cursor: 'pointer',
-          background: lit ? color : '#ffffff', color: lit ? '#ffffff' : color, opacity: info || lit ? 1 : 0.4,
+          background: lit ? color : '#ffffff', color: lit ? '#ffffff' : color,
           fontFamily: 'Georgia, serif', fontStyle: 'italic', fontWeight: 700, fontSize: 10, lineHeight: 1 }}>i</button>
       {show && (
         <div className={editing ? 'nowheel' : undefined} style={{ position: 'absolute', bottom: 14, right: 0, width: 260, zIndex: 5,
@@ -138,7 +140,11 @@ function NodeInfo({ id, info, color }) {
 
 export const AwsNode = memo(function AwsNode({ data, selected }) {
   const svc = findService(data)
-  const color = svc.color || '#6b7280'
+  // Sunset: today's path, about to be unplugged. The card goes light silver
+  // and dimmed, the icon greyscale, with a red X on it. Silver is reserved for
+  // this state, so a node with no colour of its own is ink, never grey.
+  const sunset = data.sunset === true
+  const color = sunset ? SUNSET.border : (svc.color || INK)
   const label = svc.label || data.label || data.id
   const sub = svc.sub || data.sub
   const note = cleanNote(data.note)
@@ -213,7 +219,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
     <div style={{
       // Tint blended over solid white: an opaque card hides any edge routed
       // beneath it, so a line never appears to run through a box.
-      background: `linear-gradient(${color}14, ${color}14), #ffffff`, border: `1px solid ${color}`, borderRadius: 0,
+      background: sunset ? SUNSET.tint : `linear-gradient(${color}14, ${color}14), #ffffff`, border: `1px solid ${color}`, borderRadius: 0,
       // A node is a fixed-size box the owner can resize by dragging a corner. A
       // label or sub carrying a whole sentence is bounded and clamped inside it
       // rather than stretching the card, so every unresized card reads the same
@@ -239,32 +245,34 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
           the letter fallback only guards against a bad id the gate should reject. */}
       {picture
         ? <span style={iconWrapStyle}>
-            <img ref={imgRef} src={picture} alt={label} style={iconBox
+            <img ref={imgRef} src={picture} alt={label} style={{ ...(iconBox
               ? { width: iconBox.w, height: iconBox.h, maxWidth: '100%', flex: 'none', objectFit: 'cover', display: 'block', borderRadius: 2 }
-              : { width: '100%', flex: 1, minHeight: 0, objectFit: 'cover', display: 'block', borderRadius: 2 }} />
+              : { width: '100%', flex: 1, minHeight: 0, objectFit: 'cover', display: 'block', borderRadius: 2 }), ...(sunset ? { filter: 'grayscale(1) opacity(0.55)' } : {}) }} />
+            {sunset && <SunsetX />}
             {iconHandle}
           </span>
         : svc.icon
         ? <span style={iconWrapStyle}>
             <img ref={imgRef} src={svc.icon} alt={label} {...(iconBox ? { width: iconBox.w, height: iconBox.h } : {})}
-              style={iconBox
+              style={{ ...(iconBox
                 ? { objectFit: 'contain', maxWidth: '100%', maxHeight: '100%' }
-                : { width: 'auto', height: '100%', maxWidth: '100%', objectFit: 'contain', display: 'block' }} />
+                : { width: 'auto', height: '100%', maxWidth: '100%', objectFit: 'contain', display: 'block' }), ...(sunset ? { filter: 'grayscale(1) opacity(0.55)' } : {}) }} />
+            {sunset && <SunsetX />}
             {iconHandle}
           </span>
         : <span style={{ fontSize: 26, fontWeight: 700, color, marginTop: 2, lineHeight: 1 }}>{label[0]?.toUpperCase()}</span>
       }
       <div style={{ textAlign: 'center', width: '100%', flex: 'none' }}>
         <div title={label} style={{
-          fontSize: 12, fontWeight: 700, color: '#111827', letterSpacing: '-0.1px', lineHeight: 1.3,
+          fontSize: 12, fontWeight: 700, color: sunset ? SUNSET.ink : '#111827', letterSpacing: '-0.1px', lineHeight: 1.3,
           ...CLAMP_2,
         }}>{label}</div>
         {sub && <div title={sub} style={{
-          fontSize: 10, color: '#6b7280', marginTop: 2, fontWeight: 600, lineHeight: 1.35,
+          fontSize: 10, color: sunset ? SUNSET.ink : '#6b7280', marginTop: 2, fontWeight: 600, lineHeight: 1.35,
           ...CLAMP_2,
         }}>{sub}</div>}
       </div>
-      <NodeInfo id={data.id} info={data.info} color={color} />
+      <NodeInfo id={data.id} info={data.info} color={color} sunset={sunset} />
       <NodeNote id={data.id} note={note} />
     </div>
   )

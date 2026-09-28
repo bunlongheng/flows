@@ -1,4 +1,5 @@
 import { colorFromIcon } from './iconColor.js'
+import { INK } from './sunset.js'
 // ─── AWS Service Config ───────────────────────────────────────────────────────
 // A node's colour tints its card and drives the edge gradient, so it has to
 // match the ICON it wraps. The AWS database glyphs are blue; several were tinted
@@ -162,7 +163,7 @@ export function findService(data) {
     // No explicit colour: take it from the logo itself, so a Chrome node draws
     // Chrome blue and a terminal draws terminal green. Grey only when the icon
     // states no colour at all.
-    return { icon: data.icon, label: data.label || data.id, color: data.color || colorFromIcon(data.icon) || '#6b7280', sub: data.sub }
+    return { icon: data.icon, label: data.label || data.id, color: data.color || colorFromIcon(data.icon) || INK, sub: data.sub }
   }
   const lbl = (data.label || '').toLowerCase()
   const id  = (data.id  || '').toLowerCase()

@@ -90,6 +90,7 @@ function toStoredNodes(nodes) {
     ...(n.sub ? { sub: n.sub } : {}),
     ...(cleanNote(n.note) ? { note: cleanNote(n.note) } : {}),
     ...(cleanInfo(n.info) ? { info: cleanInfo(n.info) } : {}),
+    ...(n.sunset === true ? { sunset: true } : {}),
     ...(n.image ? { image: n.image } : {}),
   }))
   return placed
@@ -234,6 +235,7 @@ server.registerTool(
         color: z.string().optional().describe('Brand hex color for the node border/tint, e.g. "#FF7A59"'),
         note: z.string().max(400).optional().describe('Plain-text note shown under this node (bottom-left, black text in a black frame) in the app, on every shared link and in the SVG. 1-2 sentences on what this step does or why it is there, e.g. "Reads the account\'s Recurly subscriptions, looks the user up in MBD, branches per app."'),
         info: z.string().max(600).optional().describe('What this thing is and why it is in this diagram, 1-3 sentences. Hidden in the app until the reader hovers or clicks the i badge on the card, so it never crowds the diagram; not in the SVG. Different from note, which is always visible under the card.'),
+        sunset: z.boolean().optional().describe('true marks a node that is today\'s path and gets decommissioned. Drawn light silver and dimmed, icon in greyscale, red X, and every edge into it grey. Silver is reserved for this state: never paint a node grey or silver, set sunset instead.'),
       })).min(1).describe('The services in the diagram'),
       edges: z.array(z.object({
         source: z.string().describe('source node id'),
@@ -313,6 +315,7 @@ server.registerTool(
         label: z.string().optional(), sub: z.string().optional(), color: z.string().optional(),
         note: z.string().max(400).optional().describe('Plain-text note under the node; see create_flow. Omit to leave a node without one.'),
         info: z.string().max(600).optional().describe('What this thing is and why it is in this diagram, 1-3 sentences. Hidden in the app until the reader hovers or clicks the i badge on the card, so it never crowds the diagram; not in the SVG. Different from note, which is always visible under the card.'),
+        sunset: z.boolean().optional().describe('true marks a node that is today\'s path and gets decommissioned. Drawn light silver and dimmed, icon in greyscale, red X, and every edge into it grey. Silver is reserved for this state: never paint a node grey or silver, set sunset instead.'),
       })).optional(),
       edges: z.array(z.object({ source: z.string(), target: z.string(), label: z.string().optional() })).optional(),
       public: z.boolean().optional().describe('true publishes (anyone with the link can open it, real preview card); false makes it private again. Omit to leave visibility alone.'),
@@ -596,10 +599,11 @@ server.registerTool(
       'Node positions (x,y) are optional - the app auto-layouts on open.',
       'A node may carry a plain-text `note` (max 400 chars): 1-2 sentences on what that step does. It renders under the card, bottom-left, in the app, on every shared link and in the SVG - so put the per-step explanation THERE, not only in the title or edge labels.',
       'A node may also carry a plain-text `info` (max 600 chars): what this thing is and why it is in this diagram, shown only on hover/click of the i badge on the card, and never in the SVG.',
+      'A node may carry `sunset: true` to mark it as today\'s path being decommissioned - drawn light silver and dimmed, icon in greyscale, red X, and every edge into it grey. Silver is reserved for this state; never paint a node grey or silver to mean retired, set sunset instead.',
     ],
     example: {
       title: 'URL Shortener - Tier 1',
-      nodes: [{ id: 'user' }, { id: 'cloudfront', note: 'Edge cache. A hit answers here and never reaches the API.', info: 'CloudFront is the CDN in front of the API, caching hot short-code lookups at the edge.' }, { id: 'apigw' }, { id: 'lambda', note: 'Looks the short code up and 302s to the long URL.' }, { id: 'dynamo' }],
+      nodes: [{ id: 'user' }, { id: 'cloudfront', note: 'Edge cache. A hit answers here and never reaches the API.', info: 'CloudFront is the CDN in front of the API, caching hot short-code lookups at the edge.', sunset: true }, { id: 'apigw' }, { id: 'lambda', note: 'Looks the short code up and 302s to the long URL.' }, { id: 'dynamo' }],
       edges: [
         { source: 'user', target: 'cloudfront', label: 'GET /abc' },
         { source: 'cloudfront', target: 'apigw', label: 'miss' },
