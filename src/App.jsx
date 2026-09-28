@@ -10,6 +10,7 @@ import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapAlign } from './snapAlign'
 import { findService } from './services'
+import { SUNSET, INK } from './sunset.js'
 import { fireflies } from './fireflies'
 
 // Vite exposed import.meta.env.DEV; Next replaces process.env.NODE_ENV at build
@@ -55,7 +56,10 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove) {
   // looked up, not just its id. Passing `{ id }` alone matched generic catalog
   // entries (`browser`, `cli`, `api`) and painted a Chrome edge pink.
   const byId = new Map((rawNodes || []).map(n => [n.id, n]))
-  const edgeColor = id => findService(byId.get(id) || { id })?.color || '#6b7280'
+  // A sunset node is silver on both ends of its edges, and an edge INTO one
+  // carries the flag so its badge goes grey with the red X.
+  const sunsetOf = id => byId.get(id)?.sunset === true
+  const edgeColor = id => (sunsetOf(id) ? SUNSET.border : findService(byId.get(id) || { id })?.color || INK)
   return rawEdges.map((e, i) => ({
     id: e.id || `e${i}`,
     source: e.source,
@@ -65,6 +69,7 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove) {
     animated: true,
     data: {
       sourceColor: edgeColor(e.source), targetColor: edgeColor(e.target), step: i + 1,
+      ...(sunsetOf(e.target) ? { sunset: true } : {}),
       ...(typeof e.labelT === 'number' ? { labelT: e.labelT } : {}),
       ...(e.ends ? { ends: e.ends } : {}),
       ...(e.bend ? { bend: e.bend } : {}),
@@ -518,7 +523,7 @@ export default function App() {
     const hasSaved = raw.length > 0 && raw.every(nd => nd.position && Number.isFinite(nd.position.x) && Number.isFinite(nd.position.y))
     // Carry any custom brand fields (label/icon/color/sub) into node data so a
     // bring-your-own-icon node renders its own logo, not a catalog lookup.
-    const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, size: nd.size, iconSize: nd.iconSize }, ...(hasSaved ? { position: nd.position } : {}), ...(nd.size ? { width: nd.size.w, height: nd.size.h } : {}) }))
+    const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, size: nd.size, iconSize: nd.iconSize }, ...(hasSaved ? { position: nd.position } : {}), ...(nd.size ? { width: nd.size.w, height: nd.size.h } : {}) }))
     const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined)
     return { nodes: hasSaved ? n : layoutFanOut(n, e), edges: e }
   }

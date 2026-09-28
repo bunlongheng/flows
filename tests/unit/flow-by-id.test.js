@@ -303,6 +303,39 @@ describe("/api/flows/:id", () => {
     expect(tray.info).toBe("old info");
   });
 
+  // sunset follows the same per-key contract as note/info: a key left off an
+  // entry leaves the stored value alone.
+  it("PATCH notes { id, sunset: true } sets sunset", async () => {
+    const stored = [{ id: "tray", position: { x: 0, y: 0 }, note: "old note" }];
+    query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { notes: [{ id: "tray", sunset: true }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.noted).toBe(1);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
+    const tray = written.find((n) => n.id === "tray");
+    expect(tray.sunset).toBe(true);
+    expect(tray.note).toBe("old note");
+  });
+
+  it("PATCH notes { id, sunset: false } removes sunset", async () => {
+    const stored = [{ id: "tray", position: { x: 0, y: 0 }, note: "old note", sunset: true }];
+    query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { notes: [{ id: "tray", sunset: false }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
+    const tray = written.find((n) => n.id === "tray");
+    expect(tray).not.toHaveProperty("sunset");
+    expect(tray.note).toBe("old note");
+  });
+
   it("PATCH notes is owner-only and rejects an empty list", async () => {
     const res = mockRes();
     const anon = req("PATCH", ID);

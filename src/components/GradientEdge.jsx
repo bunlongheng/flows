@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, useInternalNode, useReactFlow, Position } from '@xyflow/react'
 import { subscribe, currentPhase, motionAllowed, offsetFor } from '../flowClock'
+import { SUNSET, INK } from '../sunset.js'
 
 // ─── Edge geometry ────────────────────────────────────────────────────────────
 // Edges attach to a face of the box, spread evenly across it and centered: one
@@ -549,8 +550,11 @@ export function GradientEdge({
       break
     }
   }
-  const c1 = data?.sourceColor || '#6b7280'
-  const c2 = data?.targetColor || '#6b7280'
+  const c1 = data?.sourceColor || INK
+  const c2 = data?.targetColor || INK
+  // Into a sunset node: the badge drops its style and goes flat silver with a
+  // red X, whatever badge style the owner picked, so the outdated route reads.
+  const sunset = data?.sunset === true
   const gid = `grad-${id}`
   const hasStep = data?.step != null
 
@@ -662,8 +666,10 @@ export function GradientEdge({
               style={{
                 transform: `translate(-50%, -50%) translate(${bx}px, ${by}px)`,
                 '--c1': c1, '--c2': c2,
+                ...(sunset ? { color: SUNSET.ink, background: SUNSET.tint, border: `1.5px solid ${SUNSET.border}`, textShadow: 'none' } : {}),
               }}
             >
+              {sunset && <SunsetX size={12} />}
               {hasStep && <span className="sd-step-chip">{data.step}</span>}
               {label && <span>{label}</span>}
             </div>
@@ -686,6 +692,19 @@ export function GradientEdge({
         </EdgeLabelRenderer>
       )}
     </>
+  )
+}
+
+// The red X that marks something outdated: on a sunset card's icon and on the
+// badge of every edge into it. Sits on the top-right corner of its parent.
+export function SunsetX({ size = 16 }) {
+  const r = size / 2
+  return (
+    <svg aria-label="Sunset: gets decommissioned" width={size} height={size} viewBox="0 0 16 16"
+      style={{ position: 'absolute', top: -r + 1, right: -r + 1, pointerEvents: 'none', filter: 'drop-shadow(0 0 0 #fff)' }}>
+      <circle cx="8" cy="8" r="7.5" fill={SUNSET.x} stroke="#fff" strokeWidth="1" />
+      <path d="M5 5 L11 11 M11 5 L5 11" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+    </svg>
   )
 }
 

@@ -148,6 +148,23 @@ describe("POST /api/ai/flows - node notes", () => {
     expect(written.find((n) => n.id === "cloudfront").info).toHaveLength(600);
     expect(written.find((n) => n.id === "apigw")).not.toHaveProperty("info");
   });
+
+  // sunset marks a node as today's path being decommissioned; only an explicit
+  // true is stored, same as the other node-level booleans.
+  it("stores sunset: true on the node and drops sunset: false or missing", async () => {
+    const res = mockRes();
+    const nodes = [
+      { id: "user", sunset: true },
+      { id: "cloudfront", sunset: false },
+      { id: "apigw" },
+    ];
+    await createFlow(good(`Bearer ${SECRET}`, { ...VALID_BODY, nodes, edges: [] }), res);
+    expect(res.statusCode).toBe(201);
+    const written = JSON.parse(query.mock.calls[1][1][3]);
+    expect(written.find((n) => n.id === "user").sunset).toBe(true);
+    expect(written.find((n) => n.id === "cloudfront")).not.toHaveProperty("sunset");
+    expect(written.find((n) => n.id === "apigw")).not.toHaveProperty("sunset");
+  });
 });
 
 describe("POST /api/ai/flows - visibility and share link", () => {
