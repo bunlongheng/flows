@@ -131,6 +131,23 @@ describe("POST /api/ai/flows - node notes", () => {
     expect(written.find((n) => n.id === "cloudfront").note).toHaveLength(400);
     expect(written.find((n) => n.id === "apigw")).not.toHaveProperty("note");
   });
+
+  // Same contract as note: an agent can explain what a thing is and why it is
+  // in the diagram, hidden until the reader hovers or clicks the i badge.
+  it("stores a trimmed, bounded info on the node and drops an empty one", async () => {
+    const res = mockRes();
+    const nodes = [
+      { id: "user", info: "  Integry is the iPaaS we use to sync CRM contacts.  " },
+      { id: "cloudfront", info: "x".repeat(700) },
+      { id: "apigw", info: "   " },
+    ];
+    await createFlow(good(`Bearer ${SECRET}`, { ...VALID_BODY, nodes, edges: [] }), res);
+    expect(res.statusCode).toBe(201);
+    const written = JSON.parse(query.mock.calls[1][1][3]);
+    expect(written.find((n) => n.id === "user").info).toBe("Integry is the iPaaS we use to sync CRM contacts.");
+    expect(written.find((n) => n.id === "cloudfront").info).toHaveLength(600);
+    expect(written.find((n) => n.id === "apigw")).not.toHaveProperty("info");
+  });
 });
 
 describe("POST /api/ai/flows - visibility and share link", () => {

@@ -1,8 +1,8 @@
 import { memo, useContext, useRef, useState } from 'react'
 import { Handle, Position, NodeResizer, useReactFlow } from '@xyflow/react'
 import { findService } from '../services'
-import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext } from './noteEditContext'
-import { NOTE_MAX, cleanNote } from '../note'
+import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext } from './noteEditContext'
+import { NOTE_MAX, cleanNote, INFO_MAX, cleanInfo } from '../note'
 
 // ─── Custom Node ──────────────────────────────────────────────────────────────
 
@@ -68,6 +68,62 @@ function NodeNote({ id, note }) {
       ) : (
         <button type="button" className="sd-note-add" onClick={startEdit} title="Add a note to this step"
           style={{ ...NOTE_BOX, color: '#6b7280', borderStyle: 'dashed', borderColor: '#9ca3af', cursor: 'pointer', fontWeight: 600 }}>+ note</button>
+      )}
+    </div>
+  )
+}
+
+// The i badge at a card's top-right corner. Info is what this thing is and why
+// it is in the diagram (the note under the card is what the step does). It
+// stays hidden until the reader hovers or clicks the badge, so a dense diagram
+// never grows a paragraph on every box. The owner double-clicks the text to
+// edit it; a card with no info shows the owner a faint badge to add one. The
+// popover opens above the card, so it never covers the card's own icon or
+// label, and it touches the badge so hovering into it keeps it open.
+function NodeInfo({ id, info, color }) {
+  const onInfoChange = useContext(InfoEditContext)
+  const canEdit = typeof onInfoChange === 'function'
+  const [hover, setHover] = useState(false)
+  const [pinned, setPinned] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const cancelled = useRef(false)
+  if (!info && !canEdit) return null
+  const show = hover || pinned || editing
+  const startEdit = e => { e.stopPropagation(); cancelled.current = false; setDraft(info || ''); setEditing(true); setPinned(true) }
+  const commit = () => {
+    setEditing(false); setPinned(false)
+    if (cancelled.current) { cancelled.current = false; return }
+    const next = cleanInfo(draft)
+    if (next !== (info || '')) onInfoChange(id, next)
+  }
+  const toggle = e => { e.stopPropagation(); if (!info && canEdit) return startEdit(e); setPinned(p => !p) }
+  const lit = pinned || editing
+  return (
+    <div className="nodrag nopan" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      onDoubleClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 4, right: 4, zIndex: 4 }}>
+      <button type="button" onClick={toggle} aria-label="What this is and why it is here" aria-expanded={show}
+        title={info ? undefined : 'Add what this is and why it is here'}
+        style={{ width: 16, height: 16, borderRadius: '50%', border: `1px solid ${color}`, padding: 0, cursor: 'pointer',
+          background: lit ? color : '#ffffff', color: lit ? '#ffffff' : color, opacity: info || lit ? 1 : 0.4,
+          fontFamily: 'Georgia, serif', fontStyle: 'italic', fontWeight: 700, fontSize: 10, lineHeight: 1 }}>i</button>
+      {show && (
+        <div className={editing ? 'nowheel' : undefined} style={{ position: 'absolute', bottom: 14, right: 0, width: 260, zIndex: 5,
+          background: '#ffffff', color: '#1a2129', border: `1px solid ${color}`, boxShadow: '0 4px 14px rgba(0,0,0,0.14)',
+          padding: '8px 10px', fontSize: 12, fontWeight: 500, lineHeight: 1.45, textAlign: 'left', whiteSpace: 'pre-wrap', cursor: 'default' }}>
+          {editing ? (
+            <textarea autoFocus rows={6} value={draft} maxLength={INFO_MAX} placeholder="What is this, and why is it here?"
+              onChange={e => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.currentTarget.blur() }
+                if (e.key === 'Escape') { cancelled.current = true; e.currentTarget.blur() }
+              }}
+              style={{ width: '100%', fontSize: 16, lineHeight: 1.35, fontFamily: 'inherit', border: 0, outline: 'none', resize: 'none', display: 'block', background: 'transparent' }} />
+          ) : (
+            <div onDoubleClick={canEdit ? startEdit : undefined} title={canEdit ? 'Double-click to edit' : undefined}>{info}</div>
+          )}
+        </div>
       )}
     </div>
   )
@@ -194,6 +250,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
           ...CLAMP_2,
         }}>{sub}</div>}
       </div>
+      <NodeInfo id={data.id} info={data.info} color={color} />
       <NodeNote id={data.id} note={note} />
     </div>
   )

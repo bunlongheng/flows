@@ -5,15 +5,13 @@ import '@xyflow/react/dist/style.css'
 import diagramData from '../data/diagram.json'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { nodeTypes } from '../components/AwsNode'
-import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext } from '../components/noteEditContext'
+import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext } from '../components/noteEditContext'
 import { edgeTypes } from '../components/GradientEdge'
 import { Toast } from '../components/Toast'
 import { SnapGuides } from '../components/SnapGuides'
 import { Footer } from '../components/Footer'
 import { brandFor } from '../brands'
 
-// Below this width the summary card starts folded and the canvas is the page.
-const PHONE_MAX_WIDTH = 640
 
 // History row time: fresh saves read as "4 min ago"; once the wall clock has
 // rolled past midnight the day is worth naming again, so "yesterday 14:02".
@@ -65,6 +63,7 @@ export function DetailView({
   // (nodeId, note) => void when the owner is signed in; undefined otherwise,
   // which makes every node note read-only (shared links, /demo).
   onNoteChange,
+  onInfoChange,
   // (nodeId, { w, h }) => void when the owner is signed in; undefined
   // otherwise, which makes every node card a fixed, non-resizable size.
   onNodeResize,
@@ -98,9 +97,10 @@ export function DetailView({
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [arrangeMenu])
-  // The info card sits over the canvas. On a phone it covers a third of the
-  // diagram, so one tap folds it down to a small badge in the same corner.
-  const [infoOpen, setInfoOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > PHONE_MAX_WIDTH)
+  // The summary card sits over the canvas and covers part of the diagram, so
+  // it starts folded to a small badge in the corner on every screen; a click
+  // opens it when the reader wants the framing.
+  const [infoOpen, setInfoOpen] = useState(false)
   // Fit is an ACTION, but it reads as a state on touch (the inline hover
   // background never clears without a mouseleave). So make the state real:
   // lit only while the canvas actually IS the fitted view, cleared the moment
@@ -669,6 +669,7 @@ export function DetailView({
         <div style={{ flex: 1, position: 'relative', background: '#ffffff' }}>
           <ShowNotesContext.Provider value={showNotes}>
           <NoteEditContext.Provider value={onNoteChange || null}>
+          <InfoEditContext.Provider value={onInfoChange || null}>
           <NodeResizeContext.Provider value={onNodeResize || null}>
           <IconResizeContext.Provider value={onIconResize || null}>
           <ReactFlow
@@ -696,6 +697,7 @@ export function DetailView({
           </ReactFlow>
           </IconResizeContext.Provider>
           </NodeResizeContext.Provider>
+          </InfoEditContext.Provider>
           </NoteEditContext.Provider>
           </ShowNotesContext.Provider>
 

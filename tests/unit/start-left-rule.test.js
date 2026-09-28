@@ -14,7 +14,7 @@ beforeAll(async () => {
   const mod = await import(
     // toStoredNodes bounds a node note through the shared helper, so hand it the real one.
     "data:text/javascript," + encodeURIComponent(
-      `import { cleanNote } from "${pathToFileURL("src/note.js").href}";\nimport { okColor } from "${pathToFileURL("lib/validate-design.js").href}";\n` + body + "\nexport { toStoredNodes, enforceStartLeft }",
+      `import { cleanNote, cleanInfo } from "${pathToFileURL("src/note.js").href}";\nimport { okColor } from "${pathToFileURL("lib/validate-design.js").href}";\n` + body + "\nexport { toStoredNodes, enforceStartLeft }",
     )
   );
   ({ toStoredNodes, enforceStartLeft } = mod);

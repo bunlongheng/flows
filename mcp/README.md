@@ -64,13 +64,14 @@ on a locked diagram, same as `delete_flow`.
 }
 ```
 
-A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note? }`:
+A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info? }`:
 
 - `id` - a service key from `list_services` (e.g. `user`, `apigw`, `lambda`, `dynamo`, `kafka`, `redis`, `s3`), or any unique id when bringing your own icon or image. A key appears at most once per diagram.
 - `icon` - bring-your-own logo: a remote `https` image URL, a `data:image/(png|jpeg|svg+xml|webp|gif)` URI with a real `;base64,` or `,` boundary, or a same-origin image path such as `/brand/foo.svg` (never protocol-relative `//host`). A remote URL is fetched once (https only, no redirects, `image/*`, max 24KB, 5s, private hosts refused, raster logos at least 96px) and inlined so the diagram stays self-contained. If it cannot be fetched the call fails and names the node. An inline `data:` icon is capped at 24KB.
 - `image` - makes the node a picture card: a screenshot or photo shown at 4:3 inside the card and in every export. Accepts an absolute file path on this machine, an `https` image URL, a `data:image/(png|jpeg|webp|gif);base64` URI, or `airclips:<id>` / `airclips:latest` (the newest image on the AirClips board). Resolved once, resized to 640x480 cover-cropped, and stored as a JPEG data URI inside the diagram. File paths and `airclips:` refs only work through the MCP server (they need this machine); the HTTP API only takes `https` and `data:` sources. Needs `AIRCLIPS_URL` and `AIRCLIPS_TOKEN` in `.env` for `airclips:` refs.
 - `label` - display name, required with a custom icon. `sub` - small subtitle. `color` - 6-digit brand hex (`#FF7A59`) for the border and tint; anything else is dropped because it lands in SVG attributes.
 - `note` - plain text, max 400 chars, 1-2 sentences on what that step does. It renders under the card, bottom-left, in the app, on every shared link, in the SVG and on the share card. Set it on create, or later with `update_flow` by sending the full `nodes` list with `note` on the ones that need it.
+- `info` - plain text, max 600 chars, 1-3 sentences on what this thing is and why it is in this diagram. Hidden until the reader hovers or clicks the i badge on the card; not in the SVG. Different from `note`, which is always visible.
 - `x` / `y` - optional. Omit them and the canvas lays the design out left-to-right, which is the wanted look.
 
 Edges are directed `{ source, target, label? }` using node ids, in flow order. Each edge becomes a numbered step in the app.

@@ -21,7 +21,7 @@ import { ownerId } from '../lib/auth-owner.js'
 import { SERVICES } from '../src/services.js'
 import { resolveNodeIcons } from '../lib/resolve-icon.js'
 import { resolveNodeImages } from '../lib/resolve-image.js'
-import { cleanNote } from '../src/note.js'
+import { cleanNote, cleanInfo } from '../src/note.js'
 import { validateDesign, okColor } from '../lib/validate-design.js'
 
 // Picture-node loaders available only here: a file path or an AirClips ref can
@@ -89,6 +89,7 @@ function toStoredNodes(nodes) {
     ...(okColor(n.color) ? { color: n.color } : {}),
     ...(n.sub ? { sub: n.sub } : {}),
     ...(cleanNote(n.note) ? { note: cleanNote(n.note) } : {}),
+    ...(cleanInfo(n.info) ? { info: cleanInfo(n.info) } : {}),
     ...(n.image ? { image: n.image } : {}),
   }))
   return placed
@@ -232,6 +233,7 @@ server.registerTool(
         sub: z.string().optional().describe('Small subtitle under the label, e.g. "CRM"'),
         color: z.string().optional().describe('Brand hex color for the node border/tint, e.g. "#FF7A59"'),
         note: z.string().max(400).optional().describe('Plain-text note shown under this node (bottom-left, black text in a black frame) in the app, on every shared link and in the SVG. 1-2 sentences on what this step does or why it is there, e.g. "Reads the account\'s Recurly subscriptions, looks the user up in MBD, branches per app."'),
+        info: z.string().max(600).optional().describe('What this thing is and why it is in this diagram, 1-3 sentences. Hidden in the app until the reader hovers or clicks the i badge on the card, so it never crowds the diagram; not in the SVG. Different from note, which is always visible under the card.'),
       })).min(1).describe('The services in the diagram'),
       edges: z.array(z.object({
         source: z.string().describe('source node id'),
@@ -310,6 +312,7 @@ server.registerTool(
         image: z.string().optional().describe('Make this a picture node: a screenshot or photo shown at 4:3 inside the card and in every export. Accepts an absolute file path on this machine (/Users/you/shot.png), an https image URL, a data:image/...;base64 URI, or airclips:<id> / airclips:latest (newest image on the AirClips board; needs AIRCLIPS_URL and AIRCLIPS_TOKEN in .env). Resized to 640x480 cover and stored in the diagram. Give the node a label; its id can be anything unique.'),
         label: z.string().optional(), sub: z.string().optional(), color: z.string().optional(),
         note: z.string().max(400).optional().describe('Plain-text note under the node; see create_flow. Omit to leave a node without one.'),
+        info: z.string().max(600).optional().describe('What this thing is and why it is in this diagram, 1-3 sentences. Hidden in the app until the reader hovers or clicks the i badge on the card, so it never crowds the diagram; not in the SVG. Different from note, which is always visible under the card.'),
       })).optional(),
       edges: z.array(z.object({ source: z.string(), target: z.string(), label: z.string().optional() })).optional(),
       public: z.boolean().optional().describe('true publishes (anyone with the link can open it, real preview card); false makes it private again. Omit to leave visibility alone.'),
@@ -592,10 +595,11 @@ server.registerTool(
       'Edges are directed { source, target, label? } using node ids; order them in execution/flow order.',
       'Node positions (x,y) are optional - the app auto-layouts on open.',
       'A node may carry a plain-text `note` (max 400 chars): 1-2 sentences on what that step does. It renders under the card, bottom-left, in the app, on every shared link and in the SVG - so put the per-step explanation THERE, not only in the title or edge labels.',
+      'A node may also carry a plain-text `info` (max 600 chars): what this thing is and why it is in this diagram, shown only on hover/click of the i badge on the card, and never in the SVG.',
     ],
     example: {
       title: 'URL Shortener - Tier 1',
-      nodes: [{ id: 'user' }, { id: 'cloudfront', note: 'Edge cache. A hit answers here and never reaches the API.' }, { id: 'apigw' }, { id: 'lambda', note: 'Looks the short code up and 302s to the long URL.' }, { id: 'dynamo' }],
+      nodes: [{ id: 'user' }, { id: 'cloudfront', note: 'Edge cache. A hit answers here and never reaches the API.', info: 'CloudFront is the CDN in front of the API, caching hot short-code lookups at the edge.' }, { id: 'apigw' }, { id: 'lambda', note: 'Looks the short code up and 302s to the long URL.' }, { id: 'dynamo' }],
       edges: [
         { source: 'user', target: 'cloudfront', label: 'GET /abc' },
         { source: 'cloudfront', target: 'apigw', label: 'miss' },

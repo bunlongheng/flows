@@ -255,6 +255,54 @@ describe("/api/flows/:id", () => {
     expect(written.find((n) => n.id === "ghost")).toBeUndefined();
   });
 
+  // info follows the same per-key contract as note, merged independently: a key
+  // left off an entry leaves the stored value for that key alone.
+  it("PATCH notes { id, info } sets info and leaves the stored note alone", async () => {
+    const stored = [{ id: "tray", position: { x: 0, y: 0 }, note: "old note" }];
+    query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { notes: [{ id: "tray", info: "  Tray is the iPaaS this app runs on.  " }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.noted).toBe(1);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
+    const tray = written.find((n) => n.id === "tray");
+    expect(tray.info).toBe("Tray is the iPaaS this app runs on.");
+    expect(tray.note).toBe("old note");
+  });
+
+  it("PATCH notes { id, info: '' } removes info", async () => {
+    const stored = [{ id: "tray", position: { x: 0, y: 0 }, note: "old note", info: "old info" }];
+    query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { notes: [{ id: "tray", info: "" }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
+    const tray = written.find((n) => n.id === "tray");
+    expect(tray).not.toHaveProperty("info");
+    expect(tray.note).toBe("old note");
+  });
+
+  it("PATCH notes { id, note } alone leaves a stored info alone", async () => {
+    const stored = [{ id: "tray", position: { x: 0, y: 0 }, note: "old note", info: "old info" }];
+    query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { notes: [{ id: "tray", note: "new note" }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
+    const tray = written.find((n) => n.id === "tray");
+    expect(tray.note).toBe("new note");
+    expect(tray.info).toBe("old info");
+  });
+
   it("PATCH notes is owner-only and rejects an empty list", async () => {
     const res = mockRes();
     const anon = req("PATCH", ID);
