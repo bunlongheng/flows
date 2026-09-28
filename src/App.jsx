@@ -334,7 +334,8 @@ export default function App() {
       // Measure the card (or the open canvas) BEFORE React drops it, then let
       // the fireflies take its place - once it is unmounted there is nothing
       // to measure and the swarm would land in the top-left corner.
-      fireflies(thenBack ? document.querySelector('.react-flow') : document.querySelector(`[data-flow-id="${id}"]`))
+      if (thenBack) fireflies(document.querySelector('.react-flow'))
+      else fireflies(document.querySelector(`[data-flow-id="${id}"]`), { tiny: true })
       // Deleting the diagram you are looking at has to leave the canvas too,
       // or you are staring at something that no longer exists.
       if (thenBack) { setView('index'); setActiveDiagram(null) }

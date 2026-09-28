@@ -5,7 +5,9 @@
 
 const rand = n => (Math.random() * 2 - 1) * n
 
-export function fireflies(el) {
+// opts.tiny: 1px red specks - what a card on the index scatters, where the
+// swarm has a small tile to leave and the yellow glow would swamp the grid.
+export function fireflies(el, opts = {}) {
   if (!el) return
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
 
@@ -21,8 +23,9 @@ export function fireflies(el) {
   for (let n = 0; n < count; n++) {
     const bit = document.createElement('i')
     // A few burn greener, the way a real swarm is never one colour.
-    if (Math.random() < 0.3) bit.className = 'ff-green'
-    const size = 2 + Math.round(Math.random() * 2)
+    if (opts.tiny) bit.className = 'ff-red'
+    else if (Math.random() < 0.3) bit.className = 'ff-green'
+    const size = opts.tiny ? 1 : 2 + Math.round(Math.random() * 2)
     bit.style.cssText =
       `left:${Math.random() * box.width}px;top:${Math.random() * box.height}px;` +
       `width:${size}px;height:${size}px;` +
