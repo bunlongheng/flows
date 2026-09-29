@@ -4,7 +4,9 @@ import { signSession } from "../../lib/auth-session.js";
 // A note hangs below its card and React Flow never measures it, so the edge
 // router used to treat the node as ending at the card. A line leaving the
 // bottom face then ran BEHIND the opaque note box and re-emerged under it,
-// which reads as a connector that dead-ends into a box.
+// which reads as a connector that dead-ends into a box. Ending the line flush
+// ON the box's border is the same defect with one fewer pixel, so the assertion
+// is clearance, not intersection.
 //
 // This is a geometry fact about the rendered DOM, so it can only be checked in
 // a real browser.
@@ -41,7 +43,7 @@ test("no edge is drawn through a note box", async ({ page, baseURL }) => {
     await page.waitForSelector(".sd-note-box");
     await page.waitForTimeout(2500); // notes measure, then the edges re-route
 
-    const probe = await page.evaluate(() => {
+    const probe = await page.evaluate((CLEAR) => {
       const notes = [...document.querySelectorAll(".sd-note-box")]
         .filter((b) => b.offsetHeight)
         .map((b) => b.getBoundingClientRect());
@@ -53,16 +55,17 @@ test("no edge is drawn through a note box", async ({ page, baseURL }) => {
           const p = path.getPointAtLength(t);
           const x = p.x * ctm.a + p.y * ctm.c + ctm.e;
           const y = p.x * ctm.b + p.y * ctm.d + ctm.f;
-          // 2px in from the border: a line grazing the edge of the box is not
-          // a line running through it.
-          if (notes.some((r) => x > r.left + 2 && x < r.right - 2 && y > r.top + 2 && y < r.bottom - 2)) {
+          // Tested OUTSIDE the border, not inside it: a line that starts exactly
+          // on the note's bottom edge never enters the box and still reads as a
+          // line running into it. CLEAR is the daylight the router must keep.
+          if (notes.some((r) => x > r.left - CLEAR && x < r.right + CLEAR && y > r.top - CLEAR && y < r.bottom + CLEAR)) {
             hits.push({ x: Math.round(x), y: Math.round(y) });
             break;
           }
         }
       }
       return { noteBoxes: notes.length, hits };
-    });
+    }, 5);
 
     expect(probe.noteBoxes).toBe(3);
     expect(probe.hits).toEqual([]);

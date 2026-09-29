@@ -29,8 +29,13 @@ const CLAMP_10 = { ...CLAMP_2, WebkitLineClamp: 10 }
 // text in a black frame, clamped to 10 lines with the full note on hover. The
 // owner double-clicks it (or the "+ note" ghost on an empty card) to edit;
 // everyone else just reads it, so a shared link shows exactly the same note.
-// The gap between the card's bottom edge and the note box (marginTop below).
+// The gap between the card's bottom edge and the note box (marginTop below),
+// plus the daylight kept UNDER the box. A connector that starts exactly on the
+// note's bottom border reads as a line running into the box - which is the one
+// thing this whole measurement exists to prevent - so the published extent
+// carries its own clearance and every consumer inherits it.
 const NOTE_GAP = 5
+const NOTE_CLEAR = 14
 
 const NOTE_BOX = {
   fontSize: 10, lineHeight: 1.4, color: '#111111', background: '#ffffff',
@@ -59,7 +64,7 @@ function NodeNote({ id, note }) {
   useEffect(() => {
     const box = boxRef.current
     if (!box) { setNoteHeight(id, 0); return undefined }
-    const publish = () => setNoteHeight(id, box.offsetHeight + NOTE_GAP)
+    const publish = () => setNoteHeight(id, box.offsetHeight + NOTE_GAP + NOTE_CLEAR)
     publish()
     const ro = new ResizeObserver(publish)
     ro.observe(box)
