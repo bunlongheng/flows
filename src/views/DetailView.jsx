@@ -953,10 +953,21 @@ export function DetailView({
               {activeDiagram?.id && (
                 <a href={`/api/flows/${activeDiagram.id}?format=excalidraw`} download
                   title="An editable .excalidraw scene - every card a real shape with its logo, every edge a bound arrow"
-                  style={{ gridColumn: '1 / -1', background: '#FF6188', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit', textAlign: 'center', textDecoration: 'none' }}
+                  style={{ background: '#FF6188', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit', textAlign: 'center', textDecoration: 'none' }}
                   onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
                   onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
                 >Excalidraw</a>
+              )}
+              {/* One file, four tools: Lucidchart File > Import takes a draw.io
+                  file on any account, and so do draw.io, Confluence and VS Code.
+                  Lucid's own .lucid format would need an OAuth'd import API. */}
+              {activeDiagram?.id && (
+                <a href={`/api/flows/${activeDiagram.id}?format=drawio`} download
+                  title="A .drawio file - import into Lucidchart (File > Import), or open in draw.io, Confluence or VS Code"
+                  style={{ background: '#FC9867', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit', textAlign: 'center', textDecoration: 'none' }}
+                  onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
+                  onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
+                >Lucid / draw.io</a>
               )}
             </div>
           </div>
