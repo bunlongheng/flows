@@ -79,3 +79,22 @@ test("a private flow's export is a 404 to a stranger, same as its svg", async ({
     await anon.dispose();
   });
 });
+
+test("?format=drawio returns XML Lucid and draw.io both import", async ({ baseURL }) => {
+  await withDesign(baseURL, { publish: true }, async (api, id) => {
+    const res = await api.get(`/api/flows/${id}?format=drawio`);
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-disposition"]).toMatch(/attachment; filename=".*\.drawio"/);
+
+    const xml = await res.text();
+    expect(xml.startsWith("<mxfile")).toBe(true);
+    // One vertex per node, one edge per edge, both wired to ids that exist.
+    const cells = xml.match(/<mxCell [^>]*>/g) || [];
+    expect(cells.filter((c) => c.includes('vertex="1"'))).toHaveLength(3);
+    expect(cells.filter((c) => c.includes('edge="1"'))).toHaveLength(2);
+
+    // The logos, in the one form draw.io's semicolon-delimited style survives.
+    expect(xml.match(/image=data:image\/svg\+xml,/g)).toHaveLength(3);
+    expect(xml).not.toContain(";base64,");
+  });
+});
