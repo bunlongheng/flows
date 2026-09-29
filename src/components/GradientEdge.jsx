@@ -3,6 +3,7 @@ import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, useInternalNode, useRea
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteEditContext'
 import { subscribe, currentPhase, motionAllowed, offsetFor } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
+import { dashArray } from '../style.js'
 
 // ─── Edge geometry ────────────────────────────────────────────────────────────
 // Edges attach to a face of the box, spread evenly across it and centered: one
@@ -627,6 +628,8 @@ export function GradientEdge({
       break
     }
   }
+  // The line's look, from the format panel.
+  const st = data?.style || {}
   const c1 = data?.sourceColor || INK
   const c2 = data?.targetColor || INK
   // Into a sunset node: the badge drops its style and goes flat silver with a
@@ -730,7 +733,19 @@ export function GradientEdge({
         </linearGradient>
       </defs>
       {selected && <path className="sd-edge-halo" d={path} fill="none" stroke={c1} strokeWidth={10} strokeOpacity={0.18} strokeLinecap="round" pointerEvents="none" />}
-      <BaseEdge id={id} path={path} markerEnd={markerEnd} style={{ stroke: `url(#${gid})`, strokeWidth: selected ? 2.5 : 1.5 }} />
+      {/* A picked stroke replaces the gradient outright rather than tinting it.
+          The gradient's whole job is to say which node a line came FROM and
+          which it goes TO; once the owner has chosen a colour, that is the
+          statement, and a fade between it and a brand colour says neither. */}
+      <BaseEdge id={id} path={path} markerEnd={markerEnd} style={{
+        stroke: st.stroke || `url(#${gid})`,
+        // The +1 on a selected line is what makes clicking one feel like it
+        // landed, so a picked width is thickened the same way rather than
+        // overriding the feedback.
+        strokeWidth: (st.bw || 1.5) + (selected ? 1 : 0),
+        strokeDasharray: dashArray(st.bs, st.bw || 1.5) || undefined,
+        opacity: st.opacity == null ? undefined : st.opacity / 100,
+      }} />
         <FlowDot edgeId={id} path={path} color={c1} />
       {(label || hasStep || ((endMovable || bendMovable) && selected)) && (
         <EdgeLabelRenderer>

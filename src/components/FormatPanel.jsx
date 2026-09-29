@@ -64,7 +64,10 @@ const Align = ({ to }) => (
 )
 const FONT_GLYPH = { sans: 'A', serif: 'A', mono: '</>' }
 
-export function FormatPanel({ value, onChange, onReset }) {
+export function FormatPanel({ value, onChange, onReset, target = 'node' }) {
+  // A line has no inside, no corners and no text of its own, so it is offered
+  // the four controls that mean something on a stroke and nothing it cannot use.
+  const isNode = target === 'node'
   const v = value || {}
   const set = (k) => (x) => onChange({ ...v, [k]: x })
   const Tile = ({ k, pick, children, title }) => (
@@ -78,7 +81,7 @@ export function FormatPanel({ value, onChange, onReset }) {
       animation: 'sd-slide-right 0.2s ease-out',
     }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6b7280' }}>Card</div>
+        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6b7280' }}>{isNode ? 'Card' : 'Line'}</div>
         <button type="button" onClick={onReset} title="Back to the default look"
           style={{ border: 'none', background: 'none', color: '#6b7280', fontSize: 11, cursor: 'pointer', padding: 0 }}>Reset</button>
       </div>
@@ -87,9 +90,11 @@ export function FormatPanel({ value, onChange, onReset }) {
         {STROKE_PICKS.map((c) => <Swatch key={c} color={c} on={v.stroke === c} onPick={set('stroke')} />)}
       </Section>
 
-      <Section label="Background">
-        {BG_PICKS.map((c) => <Swatch key={c} color={c} on={v.bg === c} onPick={set('bg')} />)}
-      </Section>
+      {isNode && (
+        <Section label="Background">
+          {BG_PICKS.map((c) => <Swatch key={c} color={c} on={v.bg === c} onPick={set('bg')} />)}
+        </Section>
+      )}
 
       <Section label="Stroke width">
         {BORDER_WIDTHS.map((w) => <Tile key={w} k="bw" pick={w} title={`${w}px`}><Line w={w} /></Tile>)}
@@ -103,29 +108,31 @@ export function FormatPanel({ value, onChange, onReset }) {
         ))}
       </Section>
 
-      <Section label="Edges">
-        {RADII.map((r) => <Tile key={r} k="radius" pick={r} title={r ? 'Round' : 'Sharp'}><Corner round={!!r} /></Tile>)}
-      </Section>
+      {isNode && <>
+        <Section label="Edges">
+          {RADII.map((r) => <Tile key={r} k="radius" pick={r} title={r ? 'Round' : 'Sharp'}><Corner round={!!r} /></Tile>)}
+        </Section>
 
-      <Section label="Font family">
-        {FONTS.map((f) => (
-          <Tile key={f} k="font" pick={f} title={f}>
-            <span style={{ fontSize: f === 'mono' ? 10 : 15, fontFamily: f === 'serif' ? 'Georgia, serif' : f === 'mono' ? 'ui-monospace, monospace' : 'inherit' }}>{FONT_GLYPH[f]}</span>
-          </Tile>
-        ))}
-      </Section>
+        <Section label="Font family">
+          {FONTS.map((f) => (
+            <Tile key={f} k="font" pick={f} title={f}>
+              <span style={{ fontSize: f === 'mono' ? 10 : 15, fontFamily: f === 'serif' ? 'Georgia, serif' : f === 'mono' ? 'ui-monospace, monospace' : 'inherit' }}>{FONT_GLYPH[f]}</span>
+            </Tile>
+          ))}
+        </Section>
 
-      <Section label="Font size">
-        {FONT_SIZES.map((s, i) => (
-          <Tile key={s} k="fs" pick={s} title={`${s}px`}>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>{['S', 'M', 'L', 'XL'][i]}</span>
-          </Tile>
-        ))}
-      </Section>
+        <Section label="Font size">
+          {FONT_SIZES.map((s, i) => (
+            <Tile key={s} k="fs" pick={s} title={`${s}px`}>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>{['S', 'M', 'L', 'XL'][i]}</span>
+            </Tile>
+          ))}
+        </Section>
 
-      <Section label="Text align">
-        {ALIGNS.map((a) => <Tile key={a} k="align" pick={a} title={a}><Align to={a} /></Tile>)}
-      </Section>
+        <Section label="Text align">
+          {ALIGNS.map((a) => <Tile key={a} k="align" pick={a} title={a}><Align to={a} /></Tile>)}
+        </Section>
+      </>}
 
       <Section label="Opacity">
         <input type="range" min={0} max={100} step={10} value={v.opacity ?? 100}

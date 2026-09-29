@@ -77,3 +77,71 @@ test("the format panel styles the selected card and the style survives a reload"
     await api.dispose();
   }
 });
+
+// A line is clicked on its path, not its bounding box: the box's centre can sit
+// well off a routed edge, and a miss here would select nothing and pass anyway.
+// A third of the way along, not half - the draggable step badge sits at the
+// midpoint and swallows the click.
+const clickEdge = async (page) => {
+  const pt = await page.evaluate(() => {
+    const p = document.querySelector(".react-flow__edge-interaction") || document.querySelector(".react-flow__edge-path");
+    const m = p.getPointAtLength(p.getTotalLength() * 0.3);
+    const t = p.ownerSVGElement.getScreenCTM();
+    return { x: m.x * t.a + m.y * t.c + t.e, y: m.x * t.b + m.y * t.d + t.f };
+  });
+  await page.mouse.click(pt.x, pt.y);
+};
+
+test("the format panel styles the selected line and offers it only what a stroke can use", async ({ page, baseURL }) => {
+  const api = await request.newContext({ baseURL });
+  const create = await api.post("/api/ai/flows", { headers: { Authorization: `Bearer ${SECRET}` }, data: { ...DESIGN, title: "E2E Line Panel" } });
+  expect(create.status()).toBe(201);
+  const id = (await create.json()).url.split("/?id=")[1];
+
+  try {
+    await page.context().addCookies([{ name: "sd_session", value: OWNER_COOKIE.split("=")[1], domain: "localhost", path: "/" }]);
+    await page.goto(`/?id=${id}`);
+    await page.waitForSelector(".react-flow__edge-path", { state: "attached" });
+    await page.waitForTimeout(1500);
+
+    await clickEdge(page);
+    await page.waitForSelector(".sd-format-panel");
+    // A line has no inside, no corners and no text of its own.
+    await expect(page.locator(".sd-format-panel")).toContainText("Line");
+    await expect(page.locator(".sd-format-panel")).not.toContainText("Background");
+    await expect(page.locator(".sd-format-panel")).not.toContainText("Font family");
+
+    await pick(page, "Stroke", 3);       // #1971c2
+    await pick(page, "Stroke width", 2); // 4px
+    await pick(page, "Stroke style", 1); // dashed
+    await page.waitForTimeout(1200);
+
+    const line = () => page.$eval(".react-flow__edge-path", (e) => ({ stroke: e.style.stroke, w: e.style.strokeWidth, dash: e.style.strokeDasharray }));
+    const painted = await line();
+    // A picked colour REPLACES the from/to gradient rather than tinting it.
+    expect(painted.stroke).toBe("rgb(25, 113, 194)");
+    expect(painted.dash).not.toBe("");
+
+    const saved = await (await api.get(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
+    expect((saved.data?.edges || saved.edges)[0].style).toEqual({ stroke: "#1971c2", bw: 4, bs: "dashed" });
+    // The badge pin the pins branch owns is not collateral damage.
+    expect((saved.data?.edges || saved.edges)[0].label).toBe("invoke");
+
+    await page.reload();
+    await page.waitForSelector(".react-flow__edge-path", { state: "attached" });
+    await page.waitForTimeout(1500);
+    expect((await line()).stroke).toBe("rgb(25, 113, 194)");
+
+    await clickEdge(page);
+    await page.waitForSelector(".sd-format-panel");
+    await page.click(".sd-format-panel button:has-text('Reset')");
+    await page.waitForTimeout(1200);
+    expect((await line()).stroke).toContain("url(");
+    const after = await (await api.get(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
+    expect((after.data?.edges || after.edges)[0]).not.toHaveProperty("style");
+  } finally {
+    await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.dispose();
+  }
+});
