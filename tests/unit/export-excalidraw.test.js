@@ -227,6 +227,16 @@ describe("renderExcalidraw", () => {
     expect(arrow.startBinding.elementId).toBe("r-apigw");
   });
 
+  it("maps the 3 arrow types onto Excalidraw's own", () => {
+    const nodes = [{ id: "apigw", position: { x: 0, y: 0 } }, { id: "lambda", position: { x: 300, y: 0 } }];
+    const of = (arrow) => renderExcalidraw(nodes, [{ source: "apigw", target: "lambda", ...(arrow ? { style: { arrow } } : {}) }])
+      .elements.find((e) => e.type === "arrow");
+    expect(of("step").elbowed).toBe(true);
+    expect(of().elbowed).toBe(true); // step is the canvas default
+    expect(of("curved")).toMatchObject({ elbowed: false, roundness: { type: 2 } });
+    expect(of("straight")).toMatchObject({ elbowed: false, roundness: null });
+  });
+
   it("keeps silver on a sunset line even when a stroke was picked", () => {
     const nodes = [{ id: "apigw", position: { x: 0, y: 0 } }, { id: "lambda", sunset: true, position: { x: 300, y: 0 } }];
     const edges = [{ source: "apigw", target: "lambda", style: { stroke: "#1971c2" } }];

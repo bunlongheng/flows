@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   cleanStyle, STROKE_PICKS, BG_PICKS, dashArray, STYLE_DEFAULTS,
-  BORDER_WIDTHS, BORDER_STYLES, RADII, FONTS, FONT_SIZES, ALIGNS,
+  BORDER_WIDTHS, BORDER_STYLES, RADII, FONTS, FONT_SIZES, ALIGNS, ARROWS,
 } from "../../src/style.js";
 
 // cleanStyle is the only gate between a browser payload and a jsonb column that
@@ -68,9 +68,15 @@ describe("cleanStyle", () => {
     expect(FONTS).toContain(STYLE_DEFAULTS.font);
     expect(FONT_SIZES).toContain(STYLE_DEFAULTS.fs);
     expect(ALIGNS).toContain(STYLE_DEFAULTS.align);
+    expect(ARROWS).toContain(STYLE_DEFAULTS.arrow);
     expect(STYLE_DEFAULTS.opacity).toBe(100);
     // stroke and bg have no default here on purpose: a card's is its brand colour.
     expect(STYLE_DEFAULTS.stroke).toBeUndefined();
     expect(STYLE_DEFAULTS.bg).toBeUndefined();
+  });
+
+  it("keeps an arrow type only when it is one of the 3 the canvas can draw", () => {
+    for (const a of ARROWS) expect(cleanStyle({ arrow: a })).toEqual({ arrow: a });
+    expect(cleanStyle({ arrow: "squiggle" })).toBe(null);
   });
 });

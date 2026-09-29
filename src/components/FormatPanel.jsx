@@ -1,4 +1,4 @@
-import { STROKE_PICKS, BG_PICKS, BORDER_WIDTHS, BORDER_STYLES, RADII, FONTS, FONT_SIZES, ALIGNS, STYLE_DEFAULTS } from '../style.js'
+import { STROKE_PICKS, BG_PICKS, BORDER_WIDTHS, BORDER_STYLES, RADII, FONTS, FONT_SIZES, ALIGNS, ARROWS, STYLE_DEFAULTS } from '../style.js'
 
 // The properties panel, modelled on Excalidraw's. Its metrics are Excalidraw's
 // too - 36px square buttons, 8px radius, #e0dfff behind the active one, #6965db
@@ -67,6 +67,18 @@ const Align = ({ to }) => (
 )
 const FONT_GLYPH = { sans: 'A', serif: 'A', mono: '</>' }
 
+// Straight, curved, squared-off - each drawn as the line it actually makes,
+// with the same arrowhead, so the row reads without a word on it.
+const ARROW_PATH = { straight: 'M3 15L13 5', curved: 'M3 15C3 8 8 5 13 5', step: 'M3 15h5V5h5' }
+const Arrow = ({ kind }) => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    <path d={ARROW_PATH[kind]} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    <path d={kind === 'straight' ? 'M9 5h4v4' : 'M10 2l3 3-3 3'} stroke="currentColor" strokeWidth="1.6"
+      strokeLinecap="round" strokeLinejoin="round" fill="none"
+      transform={kind === 'straight' ? 'rotate(-45 13 5)' : undefined} />
+  </svg>
+)
+
 // Excalidraw shows the element's CURRENT colour beside its 2 colour rows,
 // because a card's brand colour is never one of the 5 swatches and a row with
 // nothing lit reads as a control that does not work. It sits on the label line
@@ -113,6 +125,12 @@ export function FormatPanel({ value, onChange, onReset, target = 'node', stroke,
       {isNode && (
         <Section label="Background" right={(v.bg || fill) && <Current background={v.bg === 'transparent' ? CHECKER : v.bg || fill} />}>
           {BG_PICKS.map((c) => <Swatch key={c} color={c} on={v.bg === c} onPick={set('bg')} />)}
+        </Section>
+      )}
+
+      {!isNode && (
+        <Section label="Arrow type">
+          {ARROWS.map((a) => <Tile key={a} k="arrow" pick={a} title={a}><Arrow kind={a} /></Tile>)}
         </Section>
       )}
 

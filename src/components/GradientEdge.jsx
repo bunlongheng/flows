@@ -1,5 +1,5 @@
 import { useState, useEffect, useSyncExternalStore } from 'react'
-import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, useInternalNode, useReactFlow, Position } from '@xyflow/react'
+import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, getBezierPath, useInternalNode, useReactFlow, Position } from '@xyflow/react'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteEditContext'
 import { subscribe, currentPhase, motionAllowed, offsetFor } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
@@ -604,6 +604,21 @@ export function GradientEdge({
       sourceX: sx, sourceY: sy, sourcePosition: sSide,
       targetX: tx, targetY: ty, targetPosition: tSide,
       borderRadius: 18,
+    })
+  }
+  // An arrow type picked in the format panel replaces the routing outright.
+  // "step" IS the routing above, so it is the one that changes nothing; the
+  // other two are the owner saying they would rather have the short line than
+  // the one that dodges the boxes in between.
+  const picked = data?.style?.arrow
+  if (!bend && picked === 'straight') {
+    path = `M${sx},${sy} L${tx},${ty}`
+    labelX = (sx + tx) / 2
+    labelYRaw = (sy + ty) / 2
+  } else if (!bend && picked === 'curved') {
+    ;[path, labelX, labelYRaw] = getBezierPath({
+      sourceX: sx, sourceY: sy, sourcePosition: sSide,
+      targetX: tx, targetY: ty, targetPosition: tSide,
     })
   }
   // A hand-bent line: a quadratic curve through the bend point, replacing

@@ -20,13 +20,16 @@ export const RADII = [0, 12];
 export const FONTS = ["sans", "serif", "mono"];
 export const FONT_SIZES = [12, 14, 18, 24];
 export const ALIGNS = ["left", "center", "right"];
+// Line only. "step" is what the canvas already routes - a squared-off elbow that
+// dodges whatever boxes sit in between - so it is the default.
+export const ARROWS = ["step", "curved", "straight"];
 
 // What a card or a line already looks like before anyone has styled it. The
 // panel lights these so an untouched selection shows its current values instead
 // of 8 empty rows. stroke and bg are deliberately absent: their default is the
 // service's own brand colour, which is not one of the 5 swatches, so those 2
 // rows show the current colour in a box at the end instead.
-export const STYLE_DEFAULTS = { bw: 1, bs: "solid", radius: 0, font: "sans", fs: 12, align: "center", opacity: 100 };
+export const STYLE_DEFAULTS = { bw: 1, bs: "solid", radius: 0, font: "sans", fs: 12, align: "center", opacity: 100, arrow: "step" };
 
 export const FONT_STACK = {
   sans: "inherit",
@@ -68,6 +71,8 @@ export function cleanStyle(s) {
   if (fs) out.fs = fs;
   const align = pick(s.align, ALIGNS);
   if (align) out.align = align;
+  const arrow = pick(s.arrow, ARROWS);
+  if (arrow) out.arrow = arrow;
   // A slider, so it is a range rather than a pick - and 0 is legal (invisible
   // on purpose is a thing people do).
   if (Number.isFinite(s.opacity)) out.opacity = Math.max(0, Math.min(100, Math.round(s.opacity)));
