@@ -273,6 +273,35 @@ describe("/api/flows/:id", () => {
     expect(tray.note).toBe("old note");
   });
 
+  // The format panel's payload. It is sent WHOLE every time, never merged: the
+  // panel always knows a node's full look, and a merge would make "back to
+  // default" impossible to express.
+  it("PATCH notes { id, style } stores only the keys a renderer can draw", async () => {
+    const stored = [{ id: "tray", position: { x: 0, y: 0 }, note: "old note" }];
+    query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { notes: [{ id: "tray", style: { stroke: "#E03131", bw: 2, bs: "dashed", radius: 0, opacity: 60, bogus: "drop me", align: "justify" } }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    const tray = JSON.parse(query.mock.calls[1][1][0]).find((n) => n.id === "tray");
+    expect(tray.style).toEqual({ stroke: "#e03131", bw: 2, bs: "dashed", radius: 0, opacity: 60 });
+    expect(tray.note).toBe("old note"); // style is its own key, note is untouched
+  });
+
+  it("PATCH notes { id, style: null } puts the node back to its default look", async () => {
+    const stored = [{ id: "tray", position: { x: 0, y: 0 }, style: { stroke: "#e03131" } }];
+    query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { notes: [{ id: "tray", style: null }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(query.mock.calls[1][1][0])[0]).not.toHaveProperty("style");
+  });
+
   it("PATCH notes { id, info: '' } removes info", async () => {
     const stored = [{ id: "tray", position: { x: 0, y: 0 }, note: "old note", info: "old info" }];
     query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
