@@ -11,6 +11,7 @@ import { Toast } from '../components/Toast'
 import { SnapGuides } from '../components/SnapGuides'
 import { Footer } from '../components/Footer'
 import { brandFor } from '../brands'
+import { FormatPanel } from '../components/FormatPanel.jsx'
 
 
 // History row time: fresh saves read as "4 min ago"; once the wall clock has
@@ -51,6 +52,7 @@ export function DetailView({
   exportPng, exportWebp, exportGif, exportCode, exportJson, copyLink, copiedLink, shareAction, copiedShare, copyCode, copiedCode,
   shareSlug, shareUrl,
   showDocs, setShowDocs, copiedLabel, onCopyFormat,
+  onStyleChange,
   showToastMsg,
   isPublic,
   saveState = 'idle',
@@ -84,6 +86,12 @@ export function DetailView({
   onShareOpen,
 }) {
   const brand = brandFor(activeDiagram?.title)
+  // React Flow already carries selection on the node object, so the format
+  // panel needs no state of its own - and cannot drift out of step with the
+  // canvas. One card at a time: styling a multi-select would have to answer
+  // what the panel shows when two cards disagree, and the answer is a feature
+  // of its own.
+  const selectedNode = nodes.length ? nodes.filter(n => n.selected).length === 1 && nodes.find(n => n.selected) : null
   const [confirmDelete, setConfirmDelete] = useState(false)
   // The Arrange button opens a small style menu instead of arranging directly.
   // Open menu holds the screen spot under the button. It is fixed, not absolute:
@@ -893,6 +901,17 @@ export function DetailView({
               )
             })}
           </div>
+        )}
+
+        {/* Format panel (right side). Selection is already on the node object
+            React Flow hands back, so the panel needs no state of its own: the
+            card that is selected is the card being styled. */}
+        {canEdit && onStyleChange && selectedNode && (
+          <FormatPanel
+            value={selectedNode.data?.style}
+            onChange={(style) => onStyleChange(selectedNode.id, style)}
+            onReset={() => onStyleChange(selectedNode.id, null)}
+          />
         )}
 
         {/* Share panel (right side) */}

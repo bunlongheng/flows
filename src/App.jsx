@@ -505,13 +505,20 @@ export default function App() {
   // bundled into a layout save, which a stale tab replays on every drag. ''
   // removes the field.
   const activeId = activeDiagram?.id
-  const saveNodeText = useCallback((field, nodeId, value) => {
+  // State only. Split out so a field that writes many times a second (the
+  // format panel) can paint instantly and send once.
+  const applyNodeField = useCallback((field, nodeId, value) => {
     const withField = nd => { const { [field]: _old, ...rest } = nd; return value ? { ...rest, [field]: value } : rest }
     const patch = nds => (nds || []).map(nd => (nd.id === nodeId ? withField(nd) : nd))
     setNodes(prev => prev.map(n => (n.id === nodeId ? { ...withField(n), data: { ...n.data, [field]: value } } : n)))
     setActiveDiagram(a => (a ? { ...a, data: { ...a.data, nodes: patch(a.data.nodes) } } : a))
     if (!activeId) return
     setDiagrams(ds => ds.map(d => (d.id !== activeId ? d : { ...d, data: { ...d.data, nodes: patch(d.data.nodes) } })))
+  }, [activeId])
+
+  const saveNodeText = useCallback((field, nodeId, value) => {
+    applyNodeField(field, nodeId, value)
+    if (!activeId) return
     const label = field === 'info' ? 'Info' : 'Note'
     fetch(`/api/flows/${activeId}`, {
       method: 'PATCH', credentials: 'include',
@@ -520,9 +527,31 @@ export default function App() {
     })
       .then(r => showToastMsg(r.ok ? (value ? `${label} saved` : `${label} removed`) : 'Could not save (owner only)'))
       .catch(() => showToastMsg('Could not save'))
-  }, [activeId, showToastMsg])
+  }, [activeId, applyNodeField, showToastMsg])
   const onNoteChange = useCallback((nodeId, note) => saveNodeText('note', nodeId, note), [saveNodeText])
   const onInfoChange = useCallback((nodeId, info) => saveNodeText('info', nodeId, info), [saveNodeText])
+
+  // The format panel fires a write per click, and 5 PATCHes racing to the same
+  // row do NOT arrive in the order they were sent - the e2e caught the last two
+  // settings of a fast run missing from the stored node. So the card repaints on
+  // the click and exactly one request goes out once the clicking stops, carrying
+  // whatever the style ended up being. null is what clears it.
+  const styleSend = useRef({})
+  const onStyleChange = useCallback((nodeId, style) => {
+    applyNodeField('style', nodeId, style)
+    if (!activeId) return
+    clearTimeout(styleSend.current[nodeId])
+    styleSend.current[nodeId] = setTimeout(() => {
+      delete styleSend.current[nodeId]
+      fetch(`/api/flows/${activeId}`, {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: [{ id: nodeId, style }] }),
+      })
+        .then(r => { if (!r.ok) showToastMsg('Could not save (owner only)') })
+        .catch(() => showToastMsg('Could not save'))
+    }, 350)
+  }, [activeId, applyNodeField, showToastMsg])
 
   // A cold ?name= / ?id= load resolves the design BEFORE /api/auth/me answers, so
   // canAI was still false when the edges were built and no badge came out
@@ -546,7 +575,7 @@ export default function App() {
     const hasSaved = raw.length > 0 && raw.every(nd => nd.position && Number.isFinite(nd.position.x) && Number.isFinite(nd.position.y))
     // Carry any custom brand fields (label/icon/color/sub) into node data so a
     // bring-your-own-icon node renders its own logo, not a catalog lookup.
-    const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, size: nd.size, iconSize: nd.iconSize }, ...(hasSaved ? { position: nd.position } : {}), ...(nd.size ? { width: nd.size.w, height: nd.size.h } : {}) }))
+    const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, size: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: nd.position } : {}), ...(nd.size ? { width: nd.size.w, height: nd.size.h } : {}) }))
     const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined)
     return { nodes: hasSaved ? n : layoutFanOut(n, e), edges: e }
   }
@@ -1413,6 +1442,7 @@ export default function App() {
       onArrange={autoArrange}
       onNoteChange={canAI ? onNoteChange : undefined}
       onInfoChange={canAI ? onInfoChange : undefined}
+      onStyleChange={canAI ? onStyleChange : undefined}
       onNodeResize={canAI ? onNodeResize : undefined}
       onIconResize={canAI ? onIconResize : undefined}
       isDiagramPublic={activeDiagram?.is_public !== false}
