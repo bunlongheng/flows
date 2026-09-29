@@ -98,3 +98,21 @@ test("?format=drawio returns XML Lucid and draw.io both import", async ({ baseUR
     expect(xml).not.toContain(";base64,");
   });
 });
+
+test("the Miro push is owner-only and checks the board URL before it calls Miro", async ({ baseURL }) => {
+  await withDesign(baseURL, { publish: true }, async (api, id) => {
+    // Public flow, but a push writes to someone's board - a stranger cannot.
+    const anon = await request.newContext({ baseURL });
+    const out = await anon.post(`/api/flows/${id}/miro`, { data: { token: "t", board: "https://miro.com/app/board/abc123=/" } });
+    expect(out.status()).toBe(401);
+    await anon.dispose();
+
+    // The owner gets as far as validation, which rejects a non-board URL
+    // without ever putting the token on the wire.
+    const bad = await api.post(`/api/flows/${id}/miro`, {
+      headers: { Cookie: OWNER_COOKIE },
+      data: { token: "t", board: "https://example.com/not-a-board" },
+    });
+    expect(bad.status()).toBe(400);
+  });
+});
