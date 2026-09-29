@@ -327,6 +327,10 @@ test("a visitor cannot move a node on /demo and gets no edit, share or export co
     // A way back in. Without it an owner whose session ran out lands on this bar
     // with a canvas that answers no click and nothing saying why.
     await expect(page.locator('header a[href="/api/auth/login"]')).toHaveCount(1);
+    // A shared link has no header at all: the diagram is the whole page.
+    await page.goto(`/?id=${id}`);
+    await page.waitForSelector(".react-flow__node", { timeout: 20000 });
+    await expect(page.locator("header")).toHaveCount(0);
     await ctx.close();
   } finally {
     await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });

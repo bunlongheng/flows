@@ -282,7 +282,10 @@ export function DetailView({
           narrow screens so every action stays reachable instead of clipping. */}
       {/* A visitor gets the same slim bar Sequences and Mindmaps put over a
           shared diagram: the wordmark home, one download, nothing else. */}
-      {!canEdit ? (
+      {/* A shared link has no header at all: the diagram is the whole page.
+          The slim bar with the wordmark, Download and Sign in is the /demo
+          showcase's, where the reader is browsing a portfolio. */}
+      {!canEdit ? (isPublic && (
       <header className="sd-share-header" style={{
         height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 20px', paddingTop: 'env(safe-area-inset-top)', boxSizing: 'content-box', flexShrink: 0,
@@ -307,7 +310,7 @@ export function DetailView({
           }}>Sign in</a>
         </div>
       </header>
-      ) : (
+      )) : (
       <header ref={headerRef} className={`sd-detail-header${iconsOnly ? ' sd-icons-only' : ''}`} style={{
         height: 54, background: 'linear-gradient(180deg, #fbfbfc 0%, #eef0f3 100%)', borderBottom: '1px solid #e4e7ea',
         display: 'flex', alignItems: 'center', padding: '0 16px', paddingTop: 'env(safe-area-inset-top)', boxSizing: 'content-box', gap: 10, flexShrink: 0,

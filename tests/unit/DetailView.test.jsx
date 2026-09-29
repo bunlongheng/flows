@@ -152,15 +152,25 @@ describe("read-only demo view", () => {
   const KEPT = [/^fit$/i, /^details$/i, /^steps$/i];
 
   // A visitor sees the diagram as the owner left it: a slim bar with the
-  // wordmark and 1 download, no view controls at all.
-  it("shows only the wordmark and a download when canEdit is false", () => {
-    setup({ canEdit: false, canUndo: true, canRedo: true, onArrange: vi.fn(), showSharePanel: true, showDetailCode: true, shareSlug: "x", shareUrl: "u" });
+  // wordmark, no view controls at all. On the /demo showcase (isPublic) the
+  // bar also carries 1 download and a way to sign in.
+  it("shows only the wordmark and a download when canEdit is false on /demo", () => {
+    setup({ canEdit: false, isPublic: true, canUndo: true, canRedo: true, onArrange: vi.fn(), showSharePanel: true, showDetailCode: true, shareSlug: "x", shareUrl: "u" });
     for (const name of [...EDIT_ONLY, ...KEPT]) expect(screen.queryByRole("button", { name }), String(name)).toBeNull();
     expect(screen.getByRole("button", { name: /^download png$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^sign in$/i })).toHaveAttribute("href", "/api/auth/login");
     expect(screen.getByRole("link", { name: /flows/i })).toHaveAttribute("href", "/demo");
     // A remembered view_state must not reopen the share panel either.
     expect(screen.queryByAltText("Share card preview")).toBeNull();
     expect(screen.queryByRole("button", { name: /^copy$/i })).toBeNull();
+  });
+
+  // A shared link has no header at all: the diagram is the whole page.
+  it("draws no header on a shared link", () => {
+    setup({ canEdit: false, isPublic: false });
+    expect(document.querySelector("header")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^download png$/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^sign in$/i })).toBeNull();
   });
 
   it("keeps them for the owner", () => {
