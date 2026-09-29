@@ -292,10 +292,20 @@ export function DetailView({
           <img src="/icon-96.png" alt="Flows" width={28} height={28} style={{ borderRadius: 7 }} />
           <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em', color: '#111827' }}>Flows</span>
         </a>
-        <button type="button" onClick={exportPng} style={{
-          fontSize: 13, fontWeight: 600, color: '#4b5563', background: 'none', border: 'none',
-          padding: 0, cursor: 'pointer', fontFamily: 'inherit',
-        }}>Download PNG</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+          <button type="button" onClick={exportPng} style={{
+            fontSize: 13, fontWeight: 600, color: '#4b5563', background: 'none', border: 'none',
+            padding: 0, cursor: 'pointer', fontFamily: 'inherit',
+          }}>Download PNG</button>
+          {/* The owner whose session has run out lands on exactly this bar, where
+              the canvas answers no click and nothing says why. Without a way back
+              in from here the app just reads as broken. The login route takes the
+              page you were on from the Referer, so signing in returns you to it. */}
+          <a href="/api/auth/login" style={{
+            fontSize: 13, fontWeight: 600, color: '#111827', textDecoration: 'none',
+            border: '1px solid #e5e7eb', borderRadius: 8, padding: '6px 12px',
+          }}>Sign in</a>
+        </div>
       </header>
       ) : (
       <header ref={headerRef} className={`sd-detail-header${iconsOnly ? ' sd-icons-only' : ''}`} style={{
