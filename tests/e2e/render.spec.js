@@ -45,7 +45,7 @@ test("the /?id= URL renders the design in the browser", async ({ page, baseURL }
     // React Flow paints .react-flow__node once the design loads.
     await page.waitForSelector(".react-flow__node", { timeout: 15000 });
     // Count only the service nodes (awsNode); the canvas also renders auto
-    // Start/Destination marker nodes that are not part of the design.
+    // Start marker node that is not part of the design.
     const nodeCount = await page.locator(".react-flow__node-awsNode").count();
     expect(nodeCount).toBe(DESIGN.nodes.length);
   } finally {
