@@ -61,8 +61,8 @@ export function IndexView({
       <style>{`
         @keyframes sd-spin { to { transform: rotate(360deg); } }
         /* One gallery grid for BOTH the owner index and /demo, so they look the
-           same: 4 desktop, 3 on laptop, 2 on iPad portrait + phone. */
-        .sd-grid-demo { grid-template-columns: repeat(4, 1fr) !important; }
+           same: 5 desktop, 3 on laptop, 2 on iPad portrait + phone. */
+        .sd-grid-demo { grid-template-columns: repeat(5, 1fr) !important; }
         @media (max-width: 1280px) { .sd-grid-demo { grid-template-columns: repeat(3, 1fr) !important; } }
         @media (max-width: 1024px) { .sd-grid-demo { grid-template-columns: repeat(2, 1fr) !important; } }
         @media (max-width: 480px) { .sd-grid-demo { grid-template-columns: 1fr !important; } }
