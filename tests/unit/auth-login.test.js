@@ -63,6 +63,36 @@ describe("GET /api/auth/login", () => {
     expect([].concat(res.headers["Set-Cookie"]).some((c) => c.startsWith("sd_oauth_next="))).toBe(false);
   });
 
+  // A shared link asks Google quietly whether the browser is already the owner.
+  // prompt=none means Google answers instead of asking, login_hint picks the
+  // owner's account in a browser signed into several, and the silent cookie
+  // tells the callback to come back without a word when the answer is no.
+  it("?silent=1 asks Google with prompt=none, hints the owner account and marks the round trip", async () => {
+    const oe = process.env.OWNER_EMAIL;
+    process.env.OWNER_EMAIL = "owner@example.com";
+    const r = req();
+    r.query = { silent: "1" };
+    r.headers.referer = "https://flows-bheng.vercel.app/?id=abc-123";
+    const res = mockRes();
+    await authLogin(r, res);
+    process.env.OWNER_EMAIL = oe;
+    const u = new URL(res.headers.Location);
+    expect(u.searchParams.get("prompt")).toBe("none");
+    expect(u.searchParams.get("login_hint")).toBe("owner@example.com");
+    const set = [].concat(res.headers["Set-Cookie"]);
+    expect(set.some((c) => c.startsWith("sd_oauth_silent=1"))).toBe(true);
+    expect(set.find((c) => c.startsWith("sd_oauth_next="))).toContain(encodeURIComponent("/?id=abc-123"));
+  });
+
+  it("a plain sign in still asks Google to pick an account and sets no silent cookie", async () => {
+    const res = mockRes();
+    await authLogin(req(), res);
+    const u = new URL(res.headers.Location);
+    expect(u.searchParams.get("prompt")).toBe("select_account");
+    expect(u.searchParams.has("login_hint")).toBe(false);
+    expect([].concat(res.headers["Set-Cookie"]).some((c) => c.startsWith("sd_oauth_silent="))).toBe(false);
+  });
+
   it("redirects (302) to Google's consent screen with the expected params and sets the state cookie", async () => {
     const res = mockRes();
     await authLogin(req(), res);
