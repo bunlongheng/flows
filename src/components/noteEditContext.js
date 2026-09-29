@@ -27,3 +27,36 @@ export const IconResizeContext = createContext(null)
 // toggled keeps showing the notes its author wrote, and a shared link is not
 // silently stripped of the explanations that came with it.
 export const ShowNotesContext = createContext(true)
+
+// ─── Measured note heights ────────────────────────────────────────────────────
+// A note hangs BELOW the card (position: absolute, top: 100%), so React Flow
+// never measures it: as far as the edge router is concerned the node stops at
+// the card, and a line leaving the bottom face runs straight under the note box
+// and disappears behind it. The box is opaque, so the connection just looks
+// broken.
+//
+// The router already avoids every other card (GradientEdge's obstacle list), so
+// the note only has to be part of the same box for lines to route around it.
+// Its height depends on how the text wraps, which is a DOM fact - hence a
+// measurement published from the node and read by the edges.
+const heights = new Map()
+const listeners = new Set()
+
+export function setNoteHeight(id, h) {
+  const next = Math.max(0, Math.round(h || 0))
+  if (heights.get(id) === next) return
+  if (next) heights.set(id, next); else heights.delete(id)
+  for (const fn of listeners) fn()
+}
+
+export const getNoteHeight = (id) => heights.get(id) || 0
+
+// useSyncExternalStore needs a stable snapshot, so this is a version counter
+// rather than the Map itself.
+let version = 0
+export function subscribeNoteHeights(fn) {
+  const bump = () => { version += 1; fn() }
+  listeners.add(bump)
+  return () => listeners.delete(bump)
+}
+export const noteHeightsVersion = () => version

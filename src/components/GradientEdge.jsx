@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useSyncExternalStore } from 'react'
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, useInternalNode, useReactFlow, Position } from '@xyflow/react'
+import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteEditContext'
 import { subscribe, currentPhase, motionAllowed, offsetFor } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 
@@ -76,7 +77,11 @@ function attachPoint(node, nodeId, otherNode, edgeId, edges, nodeOf) {
   const at = { side, alone: n === 1, gap, half: face / 2, mid: horizontal ? c.y : c.x }
   if (side === Position.Right) return { x: c.x + w2, y: c.y + offset, ...at }
   if (side === Position.Left) return { x: c.x - w2, y: c.y + offset, ...at }
-  if (side === Position.Bottom) return { x: c.x + offset, y: c.y + h2, ...at }
+  // The bottom face is the card's edge, but the note hangs BELOW that edge and
+  // is opaque, so a line leaving here would run behind it and re-emerge lower -
+  // reading as a line that dead-ends into a box. Start under the note instead.
+  // Only this face moves: the note is not beside or above the card.
+  if (side === Position.Bottom) return { x: c.x + offset, y: c.y + h2 + getNoteHeight(nodeId), ...at }
   return { x: c.x + offset, y: c.y - h2, ...at }
 }
 
@@ -350,11 +355,20 @@ export function GradientEdge({
       : null
   }
 
+  // A note is measured after its node paints, and re-wraps whenever the card is
+  // resized or the text edited. Subscribing keeps the route honest instead of
+  // leaving it computed against a height that has since changed.
+  useSyncExternalStore(subscribeNoteHeights, noteHeightsVersion, () => 0)
+
   const allEdges = getEdges()
   // Every other service box is something this edge must not run through.
+  // A note hangs below its card and React Flow does not measure it, so the box
+  // to avoid is the card PLUS whatever the note wraps to. Without this a line
+  // leaving a bottom face runs under the note and vanishes behind it - the box
+  // is opaque, so the connection reads as broken.
   const obstacles = getNodes()
     .filter(n => n.type === 'awsNode' && n.id !== source && n.id !== target && n.measured?.width && n.position)
-    .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height }))
+    .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
   // A pinned end overrides the automatic attach point for that side only. Live
   // drag wins over the saved value while it is in progress.
   const [dragEnd, setDragEnd] = useState(null)
@@ -485,8 +499,8 @@ export function GradientEdge({
     const tHoriz = tSide === Position.Left || tSide === Position.Right
     const S = { x: sx, y: sy }, T = { x: tx, y: ty }
     const axis = sHoriz && tHoriz ? 'x' : (!sHoriz && !tHoriz ? 'y' : null)
-    const sRect = { x: sourceNode.internals.positionAbsolute.x, y: sourceNode.internals.positionAbsolute.y, w: sourceNode.measured.width, h: sourceNode.measured.height }
-    const tRect = { x: targetNode.internals.positionAbsolute.x, y: targetNode.internals.positionAbsolute.y, w: targetNode.measured.width, h: targetNode.measured.height }
+    const sRect = { x: sourceNode.internals.positionAbsolute.x, y: sourceNode.internals.positionAbsolute.y, w: sourceNode.measured.width, h: sourceNode.measured.height + getNoteHeight(source) }
+    const tRect = { x: targetNode.internals.positionAbsolute.x, y: targetNode.internals.positionAbsolute.y, w: targetNode.measured.width, h: targetNode.measured.height + getNoteHeight(target) }
     // Everything a leg must miss: other boxes, plus the cores of its own two.
     const guard = [...obstacles, shrink(sRect), shrink(tRect)]
     let pts = null

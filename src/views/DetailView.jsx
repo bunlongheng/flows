@@ -1240,6 +1240,10 @@ export function DetailView({
         }
         /* "+ note" ghost on a card with no note: owner only, shown on hover. */
         .sd-note-add { opacity: 0; transition: opacity 0.12s; }
+        /* iOS zooms the whole page when a focused input is under 16px. Only a
+           touch device pays that tax - a mouse keeps the note's own 10px, so
+           the text does not change size the moment it is clicked. */
+        @media (hover: none) and (pointer: coarse) { .sd-note-edit { font-size: 16px; } }
         .react-flow__node:hover .sd-note-add, .react-flow__node.selected .sd-note-add { opacity: 1; }
         /* Step number, first thing in the badge - hidden until Steps is on. */
         .sd-step-chip { display: none; }
