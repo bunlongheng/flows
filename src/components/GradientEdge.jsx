@@ -87,6 +87,49 @@ function attachPoint(node, nodeId, otherNode, edgeId, edges, nodeOf) {
   return { x: c.x + offset, y: c.y - h2, ...at }
 }
 
+// Where a DETOURING edge meets a face. A face's natural occupants are the edges
+// whose partner actually lies that way; attachPoint spreads them across the
+// middle. An edge that only arrives here because its direct route was blocked
+// does not belong to that band - parking it on the face centre is how two lines
+// ended up on the exact same pixel, and two lines on one pixel cannot be told
+// apart.
+//
+// So a detour parks OUTSIDE the natural band, alternating sides and working
+// outwards. The rank is taken over every edge that COULD detour onto this face,
+// not the ones that happened to, so a slot does not move when an unrelated
+// route elsewhere becomes clear.
+const EDGE_MARGIN = 10 // a slot never lands on the corner of the face
+
+function detourSlot(node, nodeId, side, edgeId, edges, nodeOf) {
+  const c = centerOf(node)
+  const horizontal = side === Position.Left || side === Position.Right
+  const face = horizontal ? node.measured.height : node.measured.width
+  const mid = horizontal ? c.y : c.x
+  const natural = [], outer = []
+  for (const e of edges) {
+    const farId = e.source === nodeId ? e.target : e.target === nodeId ? e.source : null
+    if (!farId || farId === nodeId) continue
+    const far = nodeOf(farId)
+    if (!far?.measured?.width) continue
+    const fc = centerOf(far)
+    const along = horizontal ? fc.y : fc.x
+    ;(sideFor(c, fc) === side ? natural : outer).push({ id: e.id, along })
+  }
+  const n = Math.max(1, natural.length)
+  const gap = Math.min(face / (n + 1), MAX_GAP)
+  const inner = ((n - 1) / 2) * gap + gap / 2 // clear of the outermost natural slot
+  outer.sort((a, b) => a.along - b.along || (a.id < b.id ? -1 : 1))
+  const rank = Math.max(0, outer.findIndex(o => o.id === edgeId))
+  // Rank -> (which side, how far out) is one-to-one, so no two detours on this
+  // face can resolve to the same offset.
+  const room = Math.max(gap / 2, face / 2 - EDGE_MARGIN - inner)
+  const perSide = Math.max(1, Math.ceil(outer.length / 2))
+  const at = mid + (rank % 2 ? -1 : 1) * (inner + (room / perSide) * (Math.floor(rank / 2) + 0.5))
+  // The rank rides along: two edges converging on one face need two lanes as
+  // well as two slots, or they arrive apart and travel on top of each other.
+  return { at, rank }
+}
+
 // Can this slot move from `from` to `to` along its face? It must stay inside the
 // box, and a shared face must not let it cross into the neighbouring slot.
 const canSlide = (p, from, to) => {
@@ -178,25 +221,39 @@ const lanes = (mid, rects, axis, own = []) => {
 // that row and passes through whatever sits between them. The way out is to
 // leave through the TOP or BOTTOM face instead and travel in a clear lane above
 // or below the row. Mirrored for two boxes sharing a column.
-function detour(sRect, tRect, rects, vertical) {
-  const sc = { x: sRect.x + sRect.w / 2, y: sRect.y + sRect.h / 2 }
-  const tc = { x: tRect.x + tRect.w / 2, y: tRect.y + tRect.h / 2 }
+function detour(sRect, tRect, rects, vertical, slotS, slotT) {
+  // The nearest clear lane is the right answer for ONE edge. When several
+  // detour to the same face they all pick it, arrive at their own slots, and
+  // then run the whole way down the same line - which is the overlap this is
+  // here to stop. So an edge skips as many clear lanes as its rank on the
+  // busier of its two faces, and lands in a lane of its own. Rank 0 still gets
+  // the nearest one, so a lone detour is unchanged.
+  let fallback = null
   for (const before of [true, false]) {
+    const side = vertical
+      ? (before ? Position.Left : Position.Right)
+      : (before ? Position.Top : Position.Bottom)
+    const ps = slotS(side), pt = slotT(side)
     const s = vertical
-      ? { x: before ? sRect.x : sRect.x + sRect.w, y: sc.y }
-      : { x: sc.x, y: before ? sRect.y : sRect.y + sRect.h }
+      ? { x: before ? sRect.x : sRect.x + sRect.w, y: ps.at }
+      : { x: ps.at, y: before ? sRect.y : sRect.y + sRect.h }
     const t = vertical
-      ? { x: before ? tRect.x : tRect.x + tRect.w, y: tc.y }
-      : { x: tc.x, y: before ? tRect.y : tRect.y + tRect.h }
+      ? { x: before ? tRect.x : tRect.x + tRect.w, y: pt.at }
+      : { x: pt.at, y: before ? tRect.y : tRect.y + tRect.h }
     const mid = vertical ? (s.x + t.x) / 2 : (s.y + t.y) / 2
+    let skip = Math.max(ps.rank, pt.rank)
     for (const c of lanes(mid, rects, vertical ? 'x' : 'y', [sRect, tRect])) {
       const pts = vertical
         ? [s, { x: c, y: s.y }, { x: c, y: t.y }, t]
         : [s, { x: s.x, y: c }, { x: t.x, y: c }, t]
-      if (clearPolyline(pts, rects)) return pts
+      if (!clearPolyline(pts, rects)) continue
+      // Every clear lane is a valid route, so the last one seen is the answer
+      // if this edge's rank runs past the end of the list.
+      fallback = pts
+      if (skip-- <= 0) return pts
     }
   }
-  return null
+  return fallback
 }
 
 // Orthogonal points for a pair of faces, with the middle placed at `c`.
@@ -363,6 +420,7 @@ export function GradientEdge({
   useSyncExternalStore(subscribeNoteHeights, noteHeightsVersion, () => 0)
 
   const allEdges = getEdges()
+  const nodeOf = nid => (nid === source ? sourceNode : nid === target ? targetNode : internalById(nid))
   // Every other service box is something this edge must not run through.
   // A note hangs below its card and React Flow does not measure it, so the box
   // to avoid is the card PLUS whatever the note wraps to. Without this a line
@@ -382,7 +440,6 @@ export function GradientEdge({
   let sSide = Position.Right, tSide = Position.Left
   let aligned = false
   if (sourceNode?.measured?.width && targetNode?.measured?.width) {
-    const nodeOf = nid => (nid === source ? sourceNode : nid === target ? targetNode : internalById(nid))
     const sp2 = attachPoint(sourceNode, source, targetNode, id, allEdges, nodeOf)
     const tp2 = attachPoint(targetNode, target, sourceNode, id, allEdges, nodeOf)
     sx = sp2.x; sy = sp2.y; sSide = sp2.side
@@ -441,7 +498,6 @@ export function GradientEdge({
     // that starts in the left slot curving right, so a request and its response
     // crossed in an X and the two labels landed on top of each other.
     if (sourceNode?.measured?.width && targetNode?.measured?.width) {
-      const nodeOf = nid => (nid === source ? sourceNode : nid === target ? targetNode : internalById(nid))
       const slots = siblings.map(e => ({
         s: attachPoint(sourceNode, source, targetNode, e.id, allEdges, nodeOf),
         t: attachPoint(targetNode, target, sourceNode, e.id, allEdges, nodeOf),
@@ -505,6 +561,10 @@ export function GradientEdge({
     const tRect = { x: targetNode.internals.positionAbsolute.x, y: targetNode.internals.positionAbsolute.y, w: targetNode.measured.width, h: targetNode.measured.height + getNoteHeight(target) }
     // Everything a leg must miss: other boxes, plus the cores of its own two.
     const guard = [...obstacles, shrink(sRect), shrink(tRect)]
+    // A detour lands on a face this edge was never routed to, so it asks for a
+    // slot there rather than taking the middle - see detourSlot.
+    const slotS = side => detourSlot(sourceNode, source, side, id, allEdges, nodeOf)
+    const slotT = side => detourSlot(targetNode, target, side, id, allEdges, nodeOf)
     let pts = null
     if (axis) {
       const mid = axis === 'x' ? (sx + tx) / 2 : (sy + ty) / 2
@@ -514,8 +574,8 @@ export function GradientEdge({
       }
       if (!pts) {
         // Nothing clear on these faces - go over the top (or round the side).
-        pts = detour(sRect, tRect, guard, axis === 'y')
-          || detour(sRect, tRect, guard, axis !== 'y')
+        pts = detour(sRect, tRect, guard, axis === 'y', slotS, slotT)
+          || detour(sRect, tRect, guard, axis !== 'y', slotS, slotT)
           || routePoints(S, T, sHoriz, tHoriz, mid)
       }
     } else {
@@ -525,7 +585,8 @@ export function GradientEdge({
       const b = sHoriz ? [S, { x: S.x, y: T.y }, T] : [S, { x: T.x, y: S.y }, T]
       pts = clearPolyline(a, guard) ? a
         : clearPolyline(b, guard) ? b
-          : (detour(sRect, tRect, guard, false) || detour(sRect, tRect, guard, true) || a)
+          : (detour(sRect, tRect, guard, false, slotS, slotT)
+            || detour(sRect, tRect, guard, true, slotS, slotT) || a)
     }
     path = roundedPath(pts)
     const m = pts[Math.floor(pts.length / 2)]
