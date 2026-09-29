@@ -69,6 +69,51 @@ describe("GET /api/auth/callback (OAuth security boundary)", () => {
     global.fetch = originalFetch;
   });
 
+  // A silent check that Google answered "not signed in" is not a failed sign
+  // in. The reader never asked for one, so no /?auth=error toast: straight
+  // back to the diagram, every OAuth cookie cleared, nothing minted.
+  it("a silent check with no code goes quietly back to the diagram", async () => {
+    const res = mockRes();
+    const back = encodeURIComponent("/?id=abc-123");
+    await authCallback(req({ error: "login_required", state: "s" }, `sd_oauth_state=s; sd_oauth_next=${back}; sd_oauth_silent=1`), res);
+    expect(res.headers.Location).toBe("/?id=abc-123");
+    expect(setCookieText(res)).toMatch(/sd_oauth_silent=;/);
+    expect(setCookieText(res)).not.toMatch(/sd_session=[^;]/);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("a silent check that comes back as someone else goes quietly back too, with no session", async () => {
+    global.fetch
+      .mockResolvedValueOnce({ json: async () => ({ access_token: "AT" }) })
+      .mockResolvedValueOnce({ json: async () => ({ email: "notowner@x.com", email_verified: true }) });
+    const res = mockRes();
+    const back = encodeURIComponent("/?id=abc-123");
+    await authCallback(req({ code: "c1", state: "s" }, `sd_oauth_state=s; sd_oauth_next=${back}; sd_oauth_silent=1`), res);
+    expect(res.headers.Location).toBe("/?id=abc-123");
+    expect(setCookieText(res)).not.toMatch(/sd_session=[^;]/);
+  });
+
+  it("a silent check that comes back as the owner signs them in on that diagram", async () => {
+    global.fetch
+      .mockResolvedValueOnce({ json: async () => ({ access_token: "AT" }) })
+      .mockResolvedValueOnce({ json: async () => ({ email: OWNER_EMAIL, email_verified: true }) });
+    const res = mockRes();
+    const back = encodeURIComponent("/?id=abc-123");
+    await authCallback(req({ code: "c1", state: "s" }, `sd_oauth_state=s; sd_oauth_next=${back}; sd_oauth_silent=1`), res);
+    expect(res.headers.Location).toBe("/?id=abc-123");
+    expect(setCookieText(res)).toMatch(/sd_session=[^;]/);
+    expect(setCookieText(res)).toMatch(/sd_oauth_silent=;/);
+  });
+
+  // Without the silent cookie a missing code is still a failed sign in, and a
+  // silent cookie alone never skips the state check when a code is present.
+  it("a silent cookie with a code and a bad state is still refused", async () => {
+    const res = mockRes();
+    await authCallback(req({ code: "c1", state: "wrong" }, "sd_oauth_state=s; sd_oauth_silent=1"), res);
+    expect(res.headers.Location).toBe("/?auth=error");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it("missing code or state redirects to /?auth=error", async () => {
     const res = mockRes();
     await authCallback(req({}, undefined), res);
