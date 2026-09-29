@@ -1094,7 +1094,9 @@ export function DetailView({
         )}
       </div>
 
-      {/* Public footer - only on a demoed (public) diagram, never owner views */}
+      {/* The social footer belongs to the showcase alone: a diagram opened from
+          /demo. A shared link or a signed-out owner is reading someone's work,
+          not browsing a portfolio, and a footer there is an advert. */}
       {/* Delete confirmation. Delete is a SOFT delete now - the row is stamped
           deleted_at and sits in trash - so the modal says it is recoverable
           rather than final. It still names the diagram before removing it. */}

@@ -1502,7 +1502,7 @@ export default function App() {
       copyCode={copyCode} copiedCode={copiedCode}
       showDocs={showDocs} setShowDocs={setShowDocs}
       copiedLabel={copiedLabel} onCopyFormat={copyFormat}
-      isPublic={isDemo || !user}
+      isPublic={isDemo}
       saveState={saveState}
       onArrange={autoArrange}
       onNoteChange={canAI ? onNoteChange : undefined}
