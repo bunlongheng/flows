@@ -170,4 +170,52 @@ describe("renderExcalidraw", () => {
     const out = renderExcalidraw([{ id: "a", position: { x: 0, y: 0 } }], []);
     expect(out.elements.some((e) => e.id.startsWith("nb-") || e.id.startsWith("nt-"))).toBe(false);
   });
+
+  it("carries a styled card through, in Excalidraw's own vocabulary", () => {
+    const style = { stroke: "#e03131", bg: "#ffec99", bw: 4, bs: "dotted", radius: 12, font: "mono", fs: 24, align: "left", opacity: 60 };
+    const out = renderExcalidraw([{ id: "lambda", style, position: { x: 0, y: 0 } }], []);
+    const card = out.elements.find((e) => e.id === "r-lambda");
+    expect(card.strokeColor).toBe("#e03131");
+    // An explicit background is taken flat, not as an 8% wash of the stroke.
+    expect(card.backgroundColor).toBe("#ffec99");
+    expect(card.strokeWidth).toBe(4);
+    expect(card.strokeStyle).toBe("dotted");
+    // Excalidraw has no radius in px: a rounded corner is a roundness type.
+    expect(card.roundness).toEqual({ type: 3 });
+    expect(card.opacity).toBe(60);
+    // ...and no serif, so only mono leaves family 2. Never family 1 - that is
+    // the hand-drawn face, and this writer does not make sketches.
+    const label = out.elements.find((e) => e.id === "t-lambda");
+    expect(label.fontFamily).toBe(3);
+    expect(label.textAlign).toBe("left");
+    // An alignment inside a box that shrinks to its content is not an
+    // alignment, so the box has to be pinned to the card width first.
+    expect(label.autoResize).toBe(false);
+    expect(label.fontSize).toBe(32);
+  });
+
+  it("leaves an unstyled card exactly as it was", () => {
+    const out = renderExcalidraw([{ id: "lambda", position: { x: 0, y: 0 } }], []);
+    const card = out.elements.find((e) => e.id === "r-lambda");
+    expect(card.strokeWidth).toBe(1);
+    expect(card.strokeStyle).toBe("solid");
+    expect(card.roundness).toBe(null);
+    expect(card.opacity).toBe(100);
+    expect(out.elements.find((e) => e.id === "t-lambda").fontFamily).toBe(2);
+  });
+
+  it("refuses a style the panel could never have written", () => {
+    // The rows predate the panel and the API is hand-callable, so the export
+    // must not be the first thing to trust what it reads.
+    const out = renderExcalidraw([{ id: "lambda", position: { x: 0, y: 0 }, style: { stroke: "red; x", bw: 99, bs: "groove" } }], []);
+    const card = out.elements.find((e) => e.id === "r-lambda");
+    expect(card.strokeWidth).toBe(1);
+    expect(card.strokeStyle).toBe("solid");
+    expect(card.strokeColor).not.toContain("red");
+  });
+
+  it("keeps silver on a sunset card even when a stroke was picked", () => {
+    const out = renderExcalidraw([{ id: "lambda", sunset: true, style: { stroke: "#e03131" }, position: { x: 0, y: 0 } }], []);
+    expect(out.elements.find((e) => e.id === "r-lambda").strokeColor).not.toBe("#e03131");
+  });
 });
