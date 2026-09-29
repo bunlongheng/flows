@@ -21,7 +21,8 @@ describe("renderDrawio", () => {
     const xml = renderDrawio(NODES, EDGES);
     expect(xml.startsWith("<mxfile")).toBe(true);
     expect(xml).toContain('<mxCell id="0"/><mxCell id="1" parent="0"/>');
-    const vertices = cellsOf(xml).filter((c) => c.includes('vertex="1"') && !attr(c, "id").startsWith("x-"));
+    const vertices = cellsOf(xml).filter((c) => c.includes('vertex="1"')
+      && !attr(c, "id").startsWith("x-") && !attr(c, "id").startsWith("g-"));
     expect(vertices).toHaveLength(3);
     expect(vertices.map((c) => attr(c, "id"))).toEqual(["apigw", "lambda", "dynamo"]);
   });
@@ -203,5 +204,28 @@ describe("renderDrawio", () => {
     expect(of("curved")).toContain("curved=1");
     expect(of("straight")).toContain("edgeStyle=none");
     expect(of("straight")).not.toContain("curved=1");
+  });
+
+  // draw.io stacks by document order and does not move a free vertex with the
+  // shape above it, so both rules live in the writer, not in the importer.
+  it("writes the edges first and rides a note in a group with its card", () => {
+    const xml = renderDrawio([{ id: "lambda", note: "watch this one", position: { x: 0, y: 0 } },
+      { id: "apigw", position: { x: 400, y: 0 } }], [{ source: "apigw", target: "lambda" }]);
+    const ids = cellsOf(xml).map((c) => attr(c, "id"));
+    // Every connector is below every shape.
+    expect(ids.indexOf("edge-0")).toBeLessThan(ids.indexOf("lambda"));
+    expect(ids.indexOf("edge-0")).toBeLessThan(ids.indexOf("nt-lambda"));
+    // The card and its note are children of one group, and their geometry is
+    // relative to it - an absolute x here would fling the note across the page.
+    const group = cellsOf(xml).find((c) => attr(c, "id") === "g-lambda");
+    expect(group).toContain('style="group;"');
+    for (const id of ["lambda", "nt-lambda"]) {
+      expect(cellsOf(xml).find((c) => attr(c, "id") === id)).toContain('parent="g-lambda"');
+    }
+    const geo = (id) => /x="(-?\d+)" y="(-?\d+)"/.exec(xml.slice(xml.indexOf(`id="${id}"`)));
+    expect(geo("lambda").slice(1)).toEqual(["0", "0"]);
+    // A card with nothing hanging off it needs no group.
+    expect(ids).not.toContain("g-apigw");
+    expect(cellsOf(xml).find((c) => attr(c, "id") === "apigw")).toContain('parent="1"');
   });
 });
