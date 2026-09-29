@@ -100,7 +100,7 @@ describe("renderOgSvg", () => {
     expect(svg).toContain('preserveAspectRatio="xMidYMid meet"');
   });
 
-  it("drops the Destination pill so the card matches what the app draws", () => {
+  it("draws the Start pill and never a Destination pill, like the app", () => {
     const svg = renderOgSvg({ ...DESIGN, nodes: [...DESIGN.nodes] });
     expect(svg).toContain("Start here");
     expect(svg).not.toContain("Destination");
