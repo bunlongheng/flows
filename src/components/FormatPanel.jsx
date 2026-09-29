@@ -10,10 +10,17 @@ import { STROKE_PICKS, BG_PICKS, BORDER_WIDTHS, BORDER_STYLES, RADII, FONTS, FON
 const ACTIVE = '#6965db'
 const ACTIVE_BG = '#e0dfff'
 
+// Excalidraw draws the chosen tile as a lavender fill on a WHITE panel, where
+// that is plenty of contrast. This panel's ground is #f1f5f9, and #e0dfff on
+// #f1f5f9 is 2 pale colours a few points apart - the tile was technically lit
+// and practically invisible, which reads as a control that does nothing. The
+// ring is what makes it chosen at a glance; the unlit tile gets a white face so
+// the row reads as a set of buttons rather than bare glyphs on the panel.
 const btn = (on) => ({
   width: 36, height: 36, display: 'grid', placeItems: 'center', cursor: 'pointer',
   border: 'none', borderRadius: 8, padding: 0,
-  background: on ? ACTIVE_BG : 'transparent', color: on ? ACTIVE : '#1b1b1f',
+  background: on ? ACTIVE_BG : '#ffffff', color: on ? ACTIVE : '#1b1b1f',
+  boxShadow: on ? `inset 0 0 0 2px ${ACTIVE}` : 'inset 0 0 0 1px rgba(15,23,42,0.08)',
 })
 
 function Section({ label, right, children }) {
