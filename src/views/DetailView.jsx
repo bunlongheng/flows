@@ -292,7 +292,11 @@ export function DetailView({
           <img src="/icon-96.png" alt="Flows" width={28} height={28} style={{ borderRadius: 7 }} />
           <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em', color: '#111827' }}>Flows</span>
         </a>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+        {/* The showcase keeps its Download and Sign in; a shared link keeps
+            neither. Someone reading a diagram they were sent has nothing to
+            sign in to, and a download button on it reads as a pitch. The
+            owner who is signed out on their own link gets back in from /. */}
+        {isPublic && <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
           <button type="button" onClick={exportPng} style={{
             fontSize: 13, fontWeight: 600, color: '#4b5563', background: 'none', border: 'none',
             padding: 0, cursor: 'pointer', fontFamily: 'inherit',
@@ -305,7 +309,7 @@ export function DetailView({
             fontSize: 13, fontWeight: 600, color: '#111827', textDecoration: 'none',
             border: '1px solid #e5e7eb', borderRadius: 8, padding: '6px 12px',
           }}>Sign in</a>
-        </div>
+        </div>}
       </header>
       ) : (
       <header ref={headerRef} className={`sd-detail-header${iconsOnly ? ' sd-icons-only' : ''}`} style={{
