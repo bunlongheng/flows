@@ -165,13 +165,12 @@ describe("read-only demo view", () => {
     expect(screen.queryByRole("button", { name: /^copy$/i })).toBeNull();
   });
 
-  // A shared link is the same bar with neither: nothing to sign in to, and a
-  // download button on someone's work reads as a pitch.
-  it("drops the download and sign in on a shared link", () => {
+  // A shared link has no header at all: the diagram is the whole page.
+  it("draws no header on a shared link", () => {
     setup({ canEdit: false, isPublic: false });
+    expect(document.querySelector("header")).toBeNull();
     expect(screen.queryByRole("button", { name: /^download png$/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /^sign in$/i })).toBeNull();
-    expect(screen.getByRole("link", { name: /flows/i })).toHaveAttribute("href", "/demo");
   });
 
   it("keeps them for the owner", () => {

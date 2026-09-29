@@ -282,7 +282,10 @@ export function DetailView({
           narrow screens so every action stays reachable instead of clipping. */}
       {/* A visitor gets the same slim bar Sequences and Mindmaps put over a
           shared diagram: the wordmark home, one download, nothing else. */}
-      {!canEdit ? (
+      {/* A shared link has no header at all: the diagram is the whole page.
+          The slim bar with the wordmark, Download and Sign in is the /demo
+          showcase's, where the reader is browsing a portfolio. */}
+      {!canEdit ? (isPublic && (
       <header className="sd-share-header" style={{
         height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 20px', paddingTop: 'env(safe-area-inset-top)', boxSizing: 'content-box', flexShrink: 0,
@@ -292,11 +295,7 @@ export function DetailView({
           <img src="/icon-96.png" alt="Flows" width={28} height={28} style={{ borderRadius: 7 }} />
           <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em', color: '#111827' }}>Flows</span>
         </a>
-        {/* The showcase keeps its Download and Sign in; a shared link keeps
-            neither. Someone reading a diagram they were sent has nothing to
-            sign in to, and a download button on it reads as a pitch. The
-            owner who is signed out on their own link gets back in from /. */}
-        {isPublic && <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
           <button type="button" onClick={exportPng} style={{
             fontSize: 13, fontWeight: 600, color: '#4b5563', background: 'none', border: 'none',
             padding: 0, cursor: 'pointer', fontFamily: 'inherit',
@@ -309,9 +308,9 @@ export function DetailView({
             fontSize: 13, fontWeight: 600, color: '#111827', textDecoration: 'none',
             border: '1px solid #e5e7eb', borderRadius: 8, padding: '6px 12px',
           }}>Sign in</a>
-        </div>}
+        </div>
       </header>
-      ) : (
+      )) : (
       <header ref={headerRef} className={`sd-detail-header${iconsOnly ? ' sd-icons-only' : ''}`} style={{
         height: 54, background: 'linear-gradient(180deg, #fbfbfc 0%, #eef0f3 100%)', borderBottom: '1px solid #e4e7ea',
         display: 'flex', alignItems: 'center', padding: '0 16px', paddingTop: 'env(safe-area-inset-top)', boxSizing: 'content-box', gap: 10, flexShrink: 0,
