@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildScene, CARD_W, CARD_H, PIC_W, PIC_H } from "../../lib/export/scene.js";
+import { buildScene, wrapText, CARD_W, CARD_H, PIC_W, PIC_H } from "../../lib/export/scene.js";
 import { SUNSET } from "../../src/sunset.js";
 
 describe("buildScene - the geometry every interchange export shares", () => {
@@ -57,5 +57,16 @@ describe("buildScene - the geometry every interchange export shares", () => {
 
   it("returns an empty scene rather than throwing on a flow with no nodes", () => {
     expect(buildScene([], [])).toEqual({ nodes: [], edges: [], bounds: { x: 0, y: 0, w: 0, h: 0 } });
+  });
+
+  it("carries what the i badge hides, so the export does not drop it", () => {
+    const info = "Runs the shortener. Stateless, so it scales with traffic.";
+    const scene = buildScene([{ id: "lambda", info, position: { x: 0, y: 0 } }], []);
+    expect(scene.nodes[0].info).toBe(info);
+  });
+
+  it("wraps text to a measure, since Excalidraw never wraps one for you", () => {
+    expect(wrapText("one two three four five", 9)).toEqual(["one two", "three", "four five"]);
+    expect(wrapText("", 10)).toEqual([]);
   });
 });

@@ -92,4 +92,19 @@ describe("renderDrawio", () => {
     expect(xml.startsWith("<mxfile")).toBe(true);
     expect(cellsOf(xml).filter((c) => c.includes('vertex="1"'))).toHaveLength(0);
   });
+
+  it("puts the i badge's text under the card as a third line", () => {
+    const xml = renderDrawio([{ id: "lambda", info: "Runs the shortener.", position: { x: 0, y: 0 } }], []);
+    // Escaped twice - it is markup inside an XML attribute, same as the label.
+    expect(xml).toContain("&lt;font color=&quot;#9ca3af&quot;");
+    expect(xml).toContain("Runs the shortener.");
+    // A label under an image shape runs off sideways without this.
+    expect(xml).toContain("whiteSpace=wrap");
+  });
+
+  it("escapes info as carefully as the label", () => {
+    const xml = renderDrawio([{ id: "x", info: '<script>"go"', position: { x: 0, y: 0 } }], []);
+    expect(xml).not.toContain("<script>");
+    expect(xml).toContain("&amp;lt;script&amp;gt;");
+  });
 });

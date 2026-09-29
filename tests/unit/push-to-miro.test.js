@@ -11,7 +11,7 @@ vi.mock("../../lib/auth-owner.js", () => ({
 
 const NODES = [
   { id: "apigw", position: { x: 0, y: 0 } },
-  { id: "lambda", position: { x: 300, y: 0 } },
+  { id: "lambda", position: { x: 300, y: 0 }, info: "Scales with traffic and costs nothing idle." },
 ];
 const EDGES = [{ source: "apigw", target: "lambda", label: "invoke" }];
 
@@ -113,5 +113,17 @@ describe("pushToMiro", () => {
     const r = res();
     await pushToMiro(req({ token: "super-secret", board: "abc123=" }), r);
     expect(JSON.stringify(r.body)).not.toContain("super-secret");
+  });
+
+  it("posts the i badge's text as its own item under the card", async () => {
+    // Not inside the shape: a 600-character info in a 180px box either
+    // overflows it or shrinks the label along with it.
+    await pushToMiro(req({ token: "tok", board: "abc123=" }), res());
+    const texts = calls.filter((c) => c.url.endsWith("/texts"));
+    // One node has an info, the other does not.
+    expect(texts).toHaveLength(1);
+    expect(texts[0].body.data.content).toContain("Scales with traffic");
+    // Under the 180px card, not on top of it.
+    expect(texts[0].body.position.y).toBeGreaterThan(180);
   });
 });
