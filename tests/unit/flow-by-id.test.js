@@ -332,6 +332,29 @@ describe("/api/flows/:id", () => {
     expect(JSON.parse(query.mock.calls[1][1][0])[0]).not.toHaveProperty("style");
   });
 
+  it("PATCH deleteEdges removes only the lines it names", async () => {
+    const stored = [{ id: "a-b", source: "a", target: "b" }, { source: "b", target: "c" }, { id: "c-d" }];
+    query.mockResolvedValueOnce({ rows: [{ edges: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    // "e1" is the fallback id the canvas gives an edge that was stored without one.
+    r.body = { deleteEdges: ["a-b", "e1"] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.deleted).toBe(2);
+    expect(JSON.parse(query.mock.calls[1][1][0])).toEqual([{ id: "c-d" }]);
+  });
+
+  it("PATCH deleteEdges [] is rejected rather than wiping every line", async () => {
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { deleteEdges: [] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(400);
+    expect(query).not.toHaveBeenCalled();
+  });
+
   it("PATCH notes { id, info: '' } removes info", async () => {
     const stored = [{ id: "tray", position: { x: 0, y: 0 }, note: "old note", info: "old info" }];
     query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });

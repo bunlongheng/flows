@@ -723,6 +723,13 @@ export function DetailView({
             /* Cmd/Ctrl is reserved for snap-align while dragging, so additive
                multi-select moves to Shift (box-select already uses Shift). */
             multiSelectionKeyCode="Shift"
+            /* Delete as well as Backspace, because Delete is the key people
+               reach for and React Flow only listens for Backspace by default.
+               A visitor gets neither. */
+            deleteKeyCode={canEdit ? ['Backspace', 'Delete'] : null}
+            /* It removes a LINE and only a line. A card dropped here would go
+               from the canvas but not from the row, and be back on reload. */
+            onBeforeDelete={({ edges: dying }) => Promise.resolve({ nodes: [], edges: dying })}
             onInit={inst => { rfInstanceRef.current = inst; setTimeout(() => { inst.fitView({ padding: 0.15 }); setFitted(true) }, 0) }}
             /* event is null when react-flow moves the viewport itself (fitView),
                and set when a finger or wheel did it - only the latter un-fits. */
