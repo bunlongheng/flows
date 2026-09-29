@@ -1156,6 +1156,8 @@ export function DetailView({
            the dot travels. */
         .react-flow.sd-still .react-flow__edge.animated .react-flow__edge-path { stroke-dasharray: none !important; animation: none !important; }
         .react-flow.sd-still .sd-flow-dot { display: none; }
+        /* The Start pill's connector is an edge too: solid and still with the rest. */
+        .react-flow.sd-still .sd-marker-line { stroke-dasharray: none !important; animation: none !important; }
         @media (hover: none) {
           .sd-detail-header button { background: transparent !important; }
           .sd-detail-header button.is-on { background: #f1f5f9 !important; }

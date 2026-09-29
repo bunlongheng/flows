@@ -78,13 +78,12 @@ function attachPoint(node, nodeId, otherNode, edgeId, edges, nodeOf) {
   const at = { side, alone: n === 1, gap, half: face / 2, mid: horizontal ? c.y : c.x }
   if (side === Position.Right) return { x: c.x + w2, y: c.y + offset, ...at }
   if (side === Position.Left) return { x: c.x - w2, y: c.y + offset, ...at }
-  // The bottom face is the card's edge, but the note hangs BELOW that edge and
-  // is opaque, so a line leaving here would run behind it and re-emerge lower -
-  // reading as a line that dead-ends into a box. Start under the note instead,
-  // clear of its border - the published height carries that daylight, so a line
-  // never touches the frame. Only this face moves: the note is not beside or
-  // above the card.
-  if (side === Position.Bottom) return { x: c.x + offset, y: c.y + h2 + getNoteHeight(nodeId), ...at }
+  // The bottom face is the card's edge, note or no note. The note hangs below
+  // it and the line runs on to the card underneath the note: the owner wants a
+  // connector to touch the box it joins, and a line that stops at the note's
+  // foot read as one that never arrived. The note paints over the line, which
+  // is fine - the card is what the line is for.
+  if (side === Position.Bottom) return { x: c.x + offset, y: c.y + h2, ...at }
   return { x: c.x + offset, y: c.y - h2, ...at }
 }
 
@@ -424,9 +423,9 @@ export function GradientEdge({
   const nodeOf = nid => (nid === source ? sourceNode : nid === target ? targetNode : internalById(nid))
   // Every other service box is something this edge must not run through.
   // A note hangs below its card and React Flow does not measure it, so the box
-  // to avoid is the card PLUS whatever the note wraps to. Without this a line
-  // leaving a bottom face runs under the note and vanishes behind it - the box
-  // is opaque, so the connection reads as broken.
+  // to avoid is the card PLUS whatever the note wraps to: a passing line still
+  // goes around another card's note. Only this edge's OWN two notes are open
+  // to it, since it runs under them to reach its cards (see attachPoint).
   const obstacles = getNodes()
     .filter(n => n.type === 'awsNode' && n.id !== source && n.id !== target && n.measured?.width && n.position)
     .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
@@ -565,8 +564,11 @@ export function GradientEdge({
     const tHoriz = tSide === Position.Left || tSide === Position.Right
     const S = { x: sx, y: sy }, T = { x: tx, y: ty }
     const axis = sHoriz && tHoriz ? 'x' : (!sHoriz && !tHoriz ? 'y' : null)
-    const sRect = { x: sourceNode.internals.positionAbsolute.x, y: sourceNode.internals.positionAbsolute.y, w: sourceNode.measured.width, h: sourceNode.measured.height + getNoteHeight(source) }
-    const tRect = { x: targetNode.internals.positionAbsolute.x, y: targetNode.internals.positionAbsolute.y, w: targetNode.measured.width, h: targetNode.measured.height + getNoteHeight(target) }
+    // The cards only, without their notes: the line starts and ends on the
+    // card's border and crosses its own note on the way, so the note must not
+    // count as a wall for this edge.
+    const sRect = { x: sourceNode.internals.positionAbsolute.x, y: sourceNode.internals.positionAbsolute.y, w: sourceNode.measured.width, h: sourceNode.measured.height }
+    const tRect = { x: targetNode.internals.positionAbsolute.x, y: targetNode.internals.positionAbsolute.y, w: targetNode.measured.width, h: targetNode.measured.height }
     // Everything a leg must miss: other boxes, plus the cores of its own two.
     const guard = [...obstacles, shrink(sRect), shrink(tRect)]
     // A detour lands on a face this edge was never routed to, so it asks for a

@@ -1,12 +1,11 @@
 import { test, expect, request } from "@playwright/test";
 import { signSession } from "../../lib/auth-session.js";
 
-// A note hangs below its card and React Flow never measures it, so the edge
-// router used to treat the node as ending at the card. A line leaving the
-// bottom face then ran BEHIND the opaque note box and re-emerged under it,
-// which reads as a connector that dead-ends into a box. Ending the line flush
-// ON the box's border is the same defect with one fewer pixel, so the assertion
-// is clearance, not intersection.
+// A note hangs below its card and React Flow never measures it. The line from
+// a bottom face now runs to the card's own border, under the note, because a
+// connector that stopped at the note's foot read as one that never arrived. So
+// the assertions are: the path starts on the card's bottom edge, and the note
+// paints over the line rather than the line over the note.
 //
 // This is a geometry fact about the rendered DOM, so it can only be checked in
 // a real browser.
@@ -31,7 +30,7 @@ const DESIGN = {
   ],
 };
 
-test("no edge is drawn through a note box", async ({ page, baseURL }) => {
+test("a line from a bottom face reaches the card under its note", async ({ page, baseURL }) => {
   const api = await request.newContext({ baseURL });
   const create = await api.post("/api/ai/flows", { headers: { Authorization: `Bearer ${SECRET}` }, data: DESIGN });
   expect(create.status()).toBe(201);
@@ -43,32 +42,29 @@ test("no edge is drawn through a note box", async ({ page, baseURL }) => {
     await page.waitForSelector(".sd-note-box");
     await page.waitForTimeout(2500); // notes measure, then the edges re-route
 
-    const probe = await page.evaluate((CLEAR) => {
-      const notes = [...document.querySelectorAll(".sd-note-box")]
-        .filter((b) => b.offsetHeight)
-        .map((b) => b.getBoundingClientRect());
-      const hits = [];
-      for (const path of document.querySelectorAll(".react-flow__edge-path")) {
-        const len = path.getTotalLength();
+    const probe = await page.evaluate(() => {
+      const node = (id) => document.querySelector(`.react-flow__node[data-id="${id}"]`);
+      const out = [];
+      for (const [eid, src] of [["e1", "apigw"], ["e2", "codebuild"]]) {
+        const path = document.querySelector(`.react-flow__edge[data-id="${eid}"] .react-flow__edge-path`);
         const ctm = path.ownerSVGElement.getScreenCTM();
-        for (let t = 0; t <= len; t += 2) {
-          const p = path.getPointAtLength(t);
-          const x = p.x * ctm.a + p.y * ctm.c + ctm.e;
-          const y = p.x * ctm.b + p.y * ctm.d + ctm.f;
-          // Tested OUTSIDE the border, not inside it: a line that starts exactly
-          // on the note's bottom edge never enters the box and still reads as a
-          // line running into it. CLEAR is the daylight the router must keep.
-          if (notes.some((r) => x > r.left - CLEAR && x < r.right + CLEAR && y > r.top - CLEAR && y < r.bottom + CLEAR)) {
-            hits.push({ x: Math.round(x), y: Math.round(y) });
-            break;
-          }
-        }
+        const p = path.getPointAtLength(0);
+        const x = p.x * ctm.a + p.y * ctm.c + ctm.e, y = p.x * ctm.b + p.y * ctm.d + ctm.f;
+        const card = node(src).firstElementChild;
+        const cr = card.getBoundingClientRect();
+        const note = node(src).querySelector(".sd-note-box").getBoundingClientRect();
+        // 8px into the note along the line: what the reader sees there.
+        const under = document.elementFromPoint(x, note.top + 8);
+        out.push({ eid, startGap: Math.round(y - cr.bottom), noteBelowStart: note.top >= y - 1, coveredByNote: !!under?.closest(".sd-note-box") });
       }
-      return { noteBoxes: notes.length, hits };
-    }, 5);
+      return out;
+    });
 
-    expect(probe.noteBoxes).toBe(3);
-    expect(probe.hits).toEqual([]);
+    for (const r of probe) {
+      expect(Math.abs(r.startGap), `${r.eid} starts on the card's bottom edge`).toBeLessThanOrEqual(2);
+      expect(r.noteBelowStart, `${r.eid} note hangs below the start`).toBe(true);
+      expect(r.coveredByNote, `${r.eid} note paints over the line`).toBe(true);
+    }
   } finally {
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
