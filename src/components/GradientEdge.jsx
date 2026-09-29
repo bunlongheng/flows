@@ -772,9 +772,9 @@ export function GradientEdge({
           statement, and a fade between it and a brand colour says neither. */}
       <BaseEdge id={id} path={path} markerEnd={markerEnd} style={data?.sunsetLine ? {
         // A line touching a sunset card, in or out, is the path on its way out:
-        // flat light silver at half strength, and nothing the panel picked -
+        // flat light silver at 3/4 strength, and nothing the panel picked -
         // colour, width, dash or opacity - reaches it. Grey, always.
-        stroke: SUNSET.line, strokeWidth: 1.5, strokeDasharray: undefined, opacity: 0.5,
+        stroke: SUNSET.line, strokeWidth: 1.5, strokeDasharray: undefined, opacity: 0.75,
       } : {
         stroke: st.stroke || `url(#${gid})`,
         // No +1 while selected. The panel is only ever open on a selected line,
