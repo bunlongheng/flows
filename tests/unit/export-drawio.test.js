@@ -192,4 +192,16 @@ describe("renderDrawio", () => {
     expect(style).toContain("dashed=1");
     expect(style).toContain("opacity=40");
   });
+
+  it("maps the 3 arrow types onto draw.io's own", () => {
+    const of = (arrow) => {
+      const xml = renderDrawio(NODES, [{ source: "apigw", target: "lambda", ...(arrow ? { style: { arrow } } : {}) }]);
+      return attr(cellsOf(xml).find((c) => c.includes('edge="1"')), "style");
+    };
+    expect(of("step")).toContain("edgeStyle=orthogonalEdgeStyle");
+    expect(of()).toContain("edgeStyle=orthogonalEdgeStyle");
+    expect(of("curved")).toContain("curved=1");
+    expect(of("straight")).toContain("edgeStyle=none");
+    expect(of("straight")).not.toContain("curved=1");
+  });
 });
