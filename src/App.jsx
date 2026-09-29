@@ -877,11 +877,27 @@ export default function App() {
   // Let nodes be dragged around the canvas (positions live in React state, and
   // are saved to the DB on drag-end when the owner can edit).
   // Edges are controlled, so a click only selects one if the change is applied
-  // here. Only selection is taken: a selected edge must not vanish on Backspace.
+  // here. Selection and removal are taken, nothing else: a remove is the Delete
+  // key on a selected line, and it has to reach the row as well as the canvas -
+  // a line that comes back on the next reload was never deleted.
   const onEdgesChange = useCallback(changes => {
-    const sel = changes.filter(c => c.type === 'select')
-    if (sel.length) setEdges(eds => applyEdgeChanges(sel, eds))
-  }, [])
+    const take = changes.filter(c => c.type === 'select' || (c.type === 'remove' && canAI))
+    if (!take.length) return
+    setEdges(eds => applyEdgeChanges(take, eds))
+    const gone = take.filter(c => c.type === 'remove').map(c => c.id)
+    if (!gone.length || !activeId) return
+    // Filtered by id, never replaced wholesale: the same rule the server uses.
+    const drop = eds => (eds || []).filter((e, i) => !gone.includes(e.id || `e${i}`))
+    setActiveDiagram(a => (a ? { ...a, data: { ...a.data, edges: drop(a.data.edges) } } : a))
+    setDiagrams(ds => ds.map(d => (d.id !== activeId ? d : { ...d, data: { ...d.data, edges: drop(d.data.edges) } })))
+    fetch(`/api/flows/${activeId}`, {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deleteEdges: gone }),
+    })
+      .then(r => showToastMsg(r.ok ? (gone.length > 1 ? `${gone.length} lines deleted` : 'Line deleted') : 'Could not delete (owner only)'))
+      .catch(() => showToastMsg('Could not delete'))
+  }, [canAI, activeId, showToastMsg])
 
   const onNodesChange = useCallback(
     changes => {
