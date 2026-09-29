@@ -29,3 +29,28 @@ export function noteParts(text) {
   if (last < String(text || '').length) out.push({ text: text.slice(last) })
   return out
 }
+
+// What a link SHOWS. The owner links tickets, and a note that prints the whole
+// Jira URL is a note nobody can read, so a link wears its ticket key when the
+// URL carries one (SHAR-7977) and otherwise its address minus the scheme and
+// www, cut short. The full URL stays on the anchor's title and href.
+export function linkLabel(url) {
+  const key = String(url || '').match(/[A-Z][A-Z0-9]+-\d+/)
+  if (key) return key[0]
+  const bare = String(url || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '')
+  return bare.length > 32 ? `${bare.slice(0, 31)}…` : bare
+}
+
+// The info popover always opens with the card's name: "Cyclr is the embedded
+// iPaaS behind...". Text that already names the card is left alone; the rest
+// gets "<name> is " in front, with the old first letter dropped to lower case
+// unless it is an initialism (AWS, S3) that has to keep it.
+export function infoLead(label, info) {
+  const text = String(info || '').trim()
+  const name = String(label || '').trim()
+  if (!text || !name) return { name: '', rest: text }
+  if (text.toLowerCase().startsWith(name.toLowerCase())) return { name: text.slice(0, name.length), rest: text.slice(name.length) }
+  const first = text[0], second = text[1] || ''
+  const lead = second && second === second.toLowerCase() && second !== second.toUpperCase() ? first.toLowerCase() : first
+  return { name, rest: ` is ${lead}${text.slice(1)}` }
+}

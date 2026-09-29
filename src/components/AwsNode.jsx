@@ -2,7 +2,7 @@ import { memo, useContext, useEffect, useRef, useState } from 'react'
 import { Handle, Position, NodeResizer, useReactFlow } from '@xyflow/react'
 import { findService } from '../services'
 import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, setNoteHeight } from './noteEditContext'
-import { NOTE_MAX, cleanNote, noteParts, INFO_MAX, cleanInfo } from '../note'
+import { NOTE_MAX, cleanNote, noteParts, linkLabel, INFO_MAX, cleanInfo, infoLead } from '../note'
 import { SUNSET, INK } from '../sunset.js'
 import { FONT_STACK, borderStyleOf } from '../style.js'
 
@@ -105,8 +105,8 @@ function NodeNote({ id, note }) {
         <div title={canEdit ? `${note}\n\nDouble-click to edit` : note} onDoubleClick={canEdit ? startEdit : undefined}
           style={{ ...NOTE_BOX, display: 'inline-block', maxWidth: '100%', cursor: canEdit ? 'text' : 'default', ...CLAMP_10 }}>
           {noteParts(note).map((part, i) => part.url
-            ? <a key={i} href={part.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                style={{ color: '#1d4ed8', textDecoration: 'underline', wordBreak: 'break-all' }}>{part.url}</a>
+            ? <a key={i} href={part.url} title={part.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                style={{ color: '#1d4ed8', textDecoration: 'underline', wordBreak: 'break-all' }}>{linkLabel(part.url)}</a>
             : <span key={i}>{part.text}</span>)}
         </div>
       ) : (
@@ -124,7 +124,12 @@ function NodeNote({ id, note }) {
 // edit it; a card with no info shows no badge at all (info arrives through the
 // API). The popover opens above the card, so it never covers the card's own
 // icon or label, and it touches the badge so hovering into it keeps it open.
-function NodeInfo({ id, info, color }) {
+// Only 1 info popover stays open at a time. Opening one announces its card id
+// here and every other badge closes on hearing it, so a reader stepping through
+// a diagram never ends up with 3 paragraphs stacked over the boxes.
+const INFO_OPENED = new EventTarget()
+
+function NodeInfo({ id, label, info, color }) {
   const onInfoChange = useContext(InfoEditContext)
   const canEdit = typeof onInfoChange === 'function'
   const [hover, setHover] = useState(false)
@@ -132,23 +137,29 @@ function NodeInfo({ id, info, color }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const cancelled = useRef(false)
+  useEffect(() => {
+    const onOther = e => { if (e.detail !== id) { setPinned(false); setEditing(false) } }
+    INFO_OPENED.addEventListener('open', onOther)
+    return () => INFO_OPENED.removeEventListener('open', onOther)
+  }, [id])
   if (!info) return null
   const show = hover || pinned || editing
-  const startEdit = e => { e.stopPropagation(); cancelled.current = false; setDraft(info || ''); setEditing(true); setPinned(true) }
+  const announce = () => INFO_OPENED.dispatchEvent(new CustomEvent('open', { detail: id }))
+  const startEdit = e => { e.stopPropagation(); cancelled.current = false; setDraft(info || ''); announce(); setEditing(true); setPinned(true) }
   const commit = () => {
     setEditing(false); setPinned(false)
     if (cancelled.current) { cancelled.current = false; return }
     const next = cleanInfo(draft)
     if (next !== (info || '')) onInfoChange(id, next)
   }
-  const toggle = e => { e.stopPropagation(); setPinned(p => !p) }
+  const toggle = e => { e.stopPropagation(); if (!pinned) announce(); setPinned(!pinned) }
   const lit = pinned || editing
   return (
     <div className="nodrag nopan" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       onDoubleClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 4, right: 4, zIndex: 4 }}>
       <button type="button" onClick={toggle} aria-label="What this is and why it is here" aria-expanded={show}
-        style={{ width: 16, height: 16, borderRadius: '50%', border: `1px solid ${lit ? color : INK}`, padding: 0, cursor: 'pointer',
-          background: lit ? color : INK, color: '#ffffff',
+        style={{ width: 16, height: 16, borderRadius: '50%', border: `1px solid ${color}`, padding: 0, cursor: 'pointer',
+          background: lit ? color : '#ffffff', color: lit ? '#ffffff' : color,
           fontFamily: 'Georgia, serif', fontStyle: 'italic', fontWeight: 700, fontSize: 10, lineHeight: 1 }}>i</button>
       {show && (
         <div className={editing ? 'nowheel' : undefined} style={{ position: 'absolute', bottom: 14, right: 0, width: 260, zIndex: 5,
@@ -164,7 +175,9 @@ function NodeInfo({ id, info, color }) {
               }}
               style={{ width: '100%', fontSize: 16, lineHeight: 1.35, fontFamily: 'inherit', border: 0, outline: 'none', resize: 'none', display: 'block', background: 'transparent' }} />
           ) : (
-            <div onDoubleClick={canEdit ? startEdit : undefined} title={canEdit ? 'Double-click to edit' : undefined}>{info}</div>
+            <div onDoubleClick={canEdit ? startEdit : undefined} title={canEdit ? 'Double-click to edit' : undefined}>
+              <strong>{infoLead(label, info).name}</strong>{infoLead(label, info).rest}
+            </div>
           )}
         </div>
       )}
@@ -318,7 +331,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
           ...CLAMP_2,
         }}>{sub}</div>}
       </div>
-      <NodeInfo id={data.id} info={data.info} color={color} />
+      <NodeInfo id={data.id} label={label} info={data.info} color={color} />
       <NodeNote id={data.id} note={note} />
     </div>
   )

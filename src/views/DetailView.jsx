@@ -921,19 +921,21 @@ export function DetailView({
                       color: isLayout ? '#475569' : '#2563eb',
                       border: `1px solid ${isLayout ? '#e2e8f0' : '#bfdbfe'}`,
                     }}>{isLayout ? 'Layout' : 'Content'}</span>
+                    {/* Restore sits on the time line, pushed to the right, so a
+                        row is 2 lines and the list shows twice as many versions. */}
+                    <button
+                      onClick={() => handleRestore(v)}
+                      disabled={!!restoringId}
+                      style={{
+                        marginLeft: 'auto', padding: '4px 12px', border: '1px solid #e4e6e8', borderRadius: 8,
+                        background: restoringId === v.id ? '#f4f5f7' : '#ffffff', cursor: restoringId ? 'not-allowed' : 'pointer',
+                        fontSize: 12, fontWeight: 600, fontFamily: 'inherit', color: '#1a2129',
+                      }}
+                    >{restoringId === v.id ? 'Restoring...' : 'Restore'}</button>
                   </div>
                   {showTitle && <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 2 }}>{v.title}</div>}
                   {v.reason && <div style={{ fontSize: 11.5, color: '#6b7280', marginBottom: 6, lineHeight: 1.4 }}>{`Before: ${v.reason}`}</div>}
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>{`${v.node_count} node${v.node_count === 1 ? '' : 's'}, ${v.edge_count} edge${v.edge_count === 1 ? '' : 's'}`}</div>
-                  <button
-                    onClick={() => handleRestore(v)}
-                    disabled={!!restoringId}
-                    style={{
-                      padding: '6px 14px', border: '1px solid #e4e6e8', borderRadius: 8,
-                      background: restoringId === v.id ? '#f4f5f7' : '#ffffff', cursor: restoringId ? 'not-allowed' : 'pointer',
-                      fontSize: 12, fontWeight: 600, fontFamily: 'inherit', color: '#1a2129',
-                    }}
-                  >{restoringId === v.id ? 'Restoring...' : 'Restore'}</button>
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{`${v.node_count} node${v.node_count === 1 ? '' : 's'}, ${v.edge_count} edge${v.edge_count === 1 ? '' : 's'}`}</div>
                 </div>
               )
             })}
