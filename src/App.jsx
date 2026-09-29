@@ -67,8 +67,8 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove) {
   // looked up, not just its id. Passing `{ id }` alone matched generic catalog
   // entries (`browser`, `cli`, `api`) and painted a Chrome edge pink.
   const byId = new Map((rawNodes || []).map(n => [n.id, n]))
-  // A sunset node is silver on both ends of its edges, and an edge INTO one
-  // carries the flag so its badge goes grey with the red X.
+  // An edge touching a sunset node is a faint silver line at both ends, and an
+  // edge INTO one also carries the flag so its badge goes grey with the red X.
   const sunsetOf = id => byId.get(id)?.sunset === true
   const edgeColor = id => (sunsetOf(id) ? SUNSET.border : findService(byId.get(id) || { id })?.color || INK)
   return rawEdges.map((e, i) => ({
@@ -81,6 +81,7 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove) {
     data: {
       sourceColor: edgeColor(e.source), targetColor: edgeColor(e.target), step: i + 1,
       ...(sunsetOf(e.target) ? { sunset: true } : {}),
+      ...(sunsetOf(e.source) || sunsetOf(e.target) ? { sunsetLine: true } : {}),
       ...(typeof e.labelT === 'number' ? { labelT: e.labelT } : {}),
       ...(e.ends ? { ends: e.ends } : {}),
       ...(e.bend ? { bend: e.bend } : {}),

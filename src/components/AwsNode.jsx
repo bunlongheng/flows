@@ -5,7 +5,6 @@ import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext,
 import { NOTE_MAX, cleanNote, INFO_MAX, cleanInfo } from '../note'
 import { SUNSET, INK } from '../sunset.js'
 import { FONT_STACK, borderStyleOf } from '../style.js'
-import { SunsetX } from './GradientEdge'
 
 // An unstretched logo fills whatever the card leaves above its label, about
 // 120px of a 180px card, so it reads as the card's subject even when Fit
@@ -120,8 +119,7 @@ function NodeNote({ id, note }) {
 // edit it; a card with no info shows no badge at all (info arrives through the
 // API). The popover opens above the card, so it never covers the card's own
 // icon or label, and it touches the badge so hovering into it keeps it open.
-// On a sunset card the badge drops below the red X on the icon's corner.
-function NodeInfo({ id, info, color, sunset }) {
+function NodeInfo({ id, info, color }) {
   const onInfoChange = useContext(InfoEditContext)
   const canEdit = typeof onInfoChange === 'function'
   const [hover, setHover] = useState(false)
@@ -142,10 +140,10 @@ function NodeInfo({ id, info, color, sunset }) {
   const lit = pinned || editing
   return (
     <div className="nodrag nopan" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      onDoubleClick={e => e.stopPropagation()} style={{ position: 'absolute', top: sunset ? 26 : 4, right: 4, zIndex: 4 }}>
+      onDoubleClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 4, right: 4, zIndex: 4 }}>
       <button type="button" onClick={toggle} aria-label="What this is and why it is here" aria-expanded={show}
-        style={{ width: 16, height: 16, borderRadius: '50%', border: `1px solid ${color}`, padding: 0, cursor: 'pointer',
-          background: lit ? color : '#ffffff', color: lit ? '#ffffff' : color,
+        style={{ width: 16, height: 16, borderRadius: '50%', border: `1px solid ${lit ? color : INK}`, padding: 0, cursor: 'pointer',
+          background: lit ? color : INK, color: '#ffffff',
           fontFamily: 'Georgia, serif', fontStyle: 'italic', fontWeight: 700, fontSize: 10, lineHeight: 1 }}>i</button>
       {show && (
         <div className={editing ? 'nowheel' : undefined} style={{ position: 'absolute', bottom: 14, right: 0, width: 260, zIndex: 5,
@@ -172,8 +170,9 @@ function NodeInfo({ id, info, color, sunset }) {
 export const AwsNode = memo(function AwsNode({ data, selected }) {
   const svc = findService(data)
   // Sunset: today's path, about to be unplugged. The card goes light silver
-  // and dimmed, the icon greyscale, with a red X on it. Silver is reserved for
-  // this state, so a node with no colour of its own is ink, never grey.
+  // and dimmed, the icon greyscale. No red X on the card: the X marks the
+  // badges only. Silver is reserved for this state, so a node with no colour
+  // of its own is ink, never grey.
   const sunset = data.sunset === true
   // The format panel's overrides. Sunset still wins on colour: silver is the
   // one state the whole app reads at a glance, so a styled card that is on its
@@ -290,7 +289,6 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
             <img ref={imgRef} src={picture} alt={label} style={{ ...(iconBox
               ? { width: iconBox.w, height: iconBox.h, maxWidth: '100%', flex: 'none', objectFit: 'cover', display: 'block', borderRadius: 2 }
               : { width: '100%', flex: 1, minHeight: 0, objectFit: 'cover', display: 'block', borderRadius: 2 }), ...(sunset ? { filter: 'grayscale(1) opacity(0.55)' } : {}) }} />
-            {sunset && <SunsetX />}
             {iconHandle}
           </span>
         : svc.icon
@@ -299,7 +297,6 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
               style={{ ...(iconBox
                 ? { objectFit: 'contain', maxWidth: '100%', maxHeight: '100%' }
                 : { width: 'auto', height: '100%', maxWidth: '100%', objectFit: 'contain', display: 'block' }), ...(sunset ? { filter: 'grayscale(1) opacity(0.55)' } : {}) }} />
-            {sunset && <SunsetX />}
             {iconHandle}
           </span>
         : <span style={{ fontSize: 26, fontWeight: 700, color, marginTop: 2, lineHeight: 1 }}>{label[0]?.toUpperCase()}</span>
@@ -316,7 +313,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
           ...CLAMP_2,
         }}>{sub}</div>}
       </div>
-      <NodeInfo id={data.id} info={data.info} color={color} sunset={sunset} />
+      <NodeInfo id={data.id} info={data.info} color={color} />
       <NodeNote id={data.id} note={note} />
     </div>
   )
