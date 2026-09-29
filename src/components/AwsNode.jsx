@@ -4,6 +4,7 @@ import { findService } from '../services'
 import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, setNoteHeight } from './noteEditContext'
 import { NOTE_MAX, cleanNote, INFO_MAX, cleanInfo } from '../note'
 import { SUNSET, INK } from '../sunset.js'
+import { FONT_STACK, borderStyleOf } from '../style.js'
 import { SunsetX } from './GradientEdge'
 
 // An unstretched logo fills whatever the card leaves above its label, about
@@ -174,7 +175,11 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   // and dimmed, the icon greyscale, with a red X on it. Silver is reserved for
   // this state, so a node with no colour of its own is ink, never grey.
   const sunset = data.sunset === true
-  const color = sunset ? SUNSET.border : (svc.color || INK)
+  // The format panel's overrides. Sunset still wins on colour: silver is the
+  // one state the whole app reads at a glance, so a styled card that is on its
+  // way out still looks like it (src/sunset.js).
+  const st = data.style || {}
+  const color = sunset ? SUNSET.border : (st.stroke || svc.color || INK)
   const label = svc.label || data.label || data.id
   const sub = svc.sub || data.sub
   const note = cleanNote(data.note)
@@ -249,7 +254,14 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
     <div style={{
       // Tint blended over solid white: an opaque card hides any edge routed
       // beneath it, so a line never appears to run through a box.
-      background: sunset ? SUNSET.tint : `linear-gradient(${color}14, ${color}14), #ffffff`, border: `1px solid ${color}`, borderRadius: 0,
+      // An explicit background is taken flat: it was picked to be that colour,
+      // not to be an 8% wash of it. "transparent" still paints white, because
+      // an opaque card is what keeps a line from appearing to run through it.
+      background: sunset ? SUNSET.tint
+        : st.bg ? (st.bg === 'transparent' ? '#ffffff' : st.bg)
+        : `linear-gradient(${color}14, ${color}14), #ffffff`,
+      border: `${st.bw || 1}px ${borderStyleOf(st.bs)} ${color}`, borderRadius: st.radius || 0,
+      opacity: st.opacity == null ? 1 : st.opacity / 100,
       // A node is a fixed-size box the owner can resize by dragging a corner. A
       // label or sub carrying a whole sentence is bounded and clamped inside it
       // rather than stretching the card, so every unresized card reads the same
@@ -292,13 +304,15 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
           </span>
         : <span style={{ fontSize: 26, fontWeight: 700, color, marginTop: 2, lineHeight: 1 }}>{label[0]?.toUpperCase()}</span>
       }
-      <div style={{ textAlign: 'center', width: '100%', flex: 'none' }}>
+      <div style={{ textAlign: st.align || 'center', width: '100%', flex: 'none', fontFamily: FONT_STACK[st.font] || 'inherit' }}>
         <div title={label} style={{
-          fontSize: 12, fontWeight: 700, color: sunset ? SUNSET.ink : '#111827', letterSpacing: '-0.1px', lineHeight: 1.3,
+          fontSize: st.fs || 12, fontWeight: 700, color: sunset ? SUNSET.ink : '#111827', letterSpacing: '-0.1px', lineHeight: 1.3,
           ...CLAMP_2,
         }}>{label}</div>
         {sub && <div title={sub} style={{
-          fontSize: 10, color: sunset ? SUNSET.ink : '#6b7280', marginTop: 2, fontWeight: 600, lineHeight: 1.35,
+          // The sub stays proportional to the label rather than fixed at 10px,
+          // so bumping the card to XL does not leave a caption the same size.
+          fontSize: st.fs ? Math.round(st.fs * 0.82) : 10, color: sunset ? SUNSET.ink : '#6b7280', marginTop: 2, fontWeight: 600, lineHeight: 1.35,
           ...CLAMP_2,
         }}>{sub}</div>}
       </div>
