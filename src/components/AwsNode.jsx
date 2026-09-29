@@ -1,7 +1,7 @@
-import { memo, useContext, useRef, useState } from 'react'
+import { memo, useContext, useEffect, useRef, useState } from 'react'
 import { Handle, Position, NodeResizer, useReactFlow } from '@xyflow/react'
 import { findService } from '../services'
-import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext } from './noteEditContext'
+import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, setNoteHeight } from './noteEditContext'
 import { NOTE_MAX, cleanNote, INFO_MAX, cleanInfo } from '../note'
 import { SUNSET, INK } from '../sunset.js'
 import { SunsetX } from './GradientEdge'
@@ -29,12 +29,20 @@ const CLAMP_10 = { ...CLAMP_2, WebkitLineClamp: 10 }
 // text in a black frame, clamped to 10 lines with the full note on hover. The
 // owner double-clicks it (or the "+ note" ghost on an empty card) to edit;
 // everyone else just reads it, so a shared link shows exactly the same note.
+// The gap between the card's bottom edge and the note box (marginTop below).
+const NOTE_GAP = 5
+
 const NOTE_BOX = {
   fontSize: 10, lineHeight: 1.4, color: '#111111', background: '#ffffff',
   border: '1px solid #111111', borderRadius: 0, padding: '3px 6px',
   fontFamily: 'inherit', textAlign: 'left', boxSizing: 'border-box',
 }
 
+// The editor inherits NOTE_BOX whole - same 10px, same line height - so
+// clicking a note does not resize the text under the cursor. It used to jump to
+// 16px, which is the iOS no-zoom floor; that floor now lives in a media query
+// on .sd-note-edit (DetailView.jsx) where it only costs touch devices. The box
+// itself drags taller, since a 400-character note does not fit 3 rows.
 function NodeNote({ id, note }) {
   const onNoteChange = useContext(NoteEditContext)
   const showNotes = useContext(ShowNotesContext)
@@ -42,6 +50,22 @@ function NodeNote({ id, note }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const cancelled = useRef(false)
+  // Published so an edge routes around this box instead of under it - see
+  // setNoteHeight in noteEditContext. offsetHeight, not getBoundingClientRect:
+  // the canvas is a CSS transform, and only offsetHeight is in the same
+  // unzoomed units the node positions are. A note re-wraps when the card is
+  // resized or the text is edited, so it is observed rather than measured once.
+  const boxRef = useRef(null)
+  useEffect(() => {
+    const box = boxRef.current
+    if (!box) { setNoteHeight(id, 0); return undefined }
+    const publish = () => setNoteHeight(id, box.offsetHeight + NOTE_GAP)
+    publish()
+    const ro = new ResizeObserver(publish)
+    ro.observe(box)
+    return () => { ro.disconnect(); setNoteHeight(id, 0) }
+  })
+
   // Hidden means hidden: the owner's "+ note" ghost goes too, or turning notes
   // off would still leave a row of empty placeholders under the diagram.
   // Hooks run first - the early return has to come after them.
@@ -60,7 +84,7 @@ function NodeNote({ id, note }) {
   // 2 fingers over a note must pan and pinch the canvas like anywhere else.
 
   return (
-    <div className={editing ? 'nodrag nopan nowheel' : 'nodrag nopan'} onDoubleClick={e => e.stopPropagation()}
+    <div ref={boxRef} className={editing ? 'sd-note-box nodrag nopan nowheel' : 'sd-note-box nodrag nopan'} onDoubleClick={e => e.stopPropagation()}
       style={{ position: 'absolute', top: '100%', left: -1, marginTop: 5, width: 'calc(100% + 2px)', textAlign: 'left' }}>
       {editing ? (
         <textarea autoFocus rows={10} value={draft} maxLength={NOTE_MAX} placeholder="What happens at this step?"
@@ -70,7 +94,8 @@ function NodeNote({ id, note }) {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.currentTarget.blur() }
             if (e.key === 'Escape') { cancelled.current = true; e.currentTarget.blur() }
           }}
-          style={{ ...NOTE_BOX, fontSize: 16, lineHeight: 1.35, width: '100%', resize: 'none', outline: 'none', display: 'block' }} />
+          className="sd-note-edit"
+          style={{ ...NOTE_BOX, width: '100%', minHeight: 60, resize: 'vertical', outline: 'none', display: 'block' }} />
       ) : note ? (
         <div title={canEdit ? `${note}\n\nDouble-click to edit` : note} onDoubleClick={canEdit ? startEdit : undefined}
           style={{ ...NOTE_BOX, display: 'inline-block', maxWidth: '100%', cursor: canEdit ? 'text' : 'default', ...CLAMP_10 }}>{note}</div>
