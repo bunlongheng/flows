@@ -36,7 +36,7 @@ function versionTime(iso) {
 
 export function DetailView({
   toast,
-  setView,
+  onBack,
   showDetailCode, setShowDetailCode,
   rfInstance: rfInstanceRef, flashZoomHud, zoomHudRef,
   showSharePanel, setShowSharePanel,
@@ -314,7 +314,7 @@ export function DetailView({
         overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch',
       }}>
         {/* Back button */}
-        <button onClick={() => { setView('index'); setShowDetailCode(false); }}
+        <button onClick={() => { onBack(); setShowDetailCode(false); }}
           aria-label="Back to gallery"
           style={{
             width: 36, height: 36, borderRadius: 10, flexShrink: 0,
