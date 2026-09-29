@@ -28,6 +28,9 @@ describe("linkLabel", () => {
     expect(linkLabel("https://jira.example.com/browse/SHAR-7977")).toBe("SHAR-7977");
     expect(linkLabel("https://acme.atlassian.net/jira/software/c/projects/SHAR/issues/SHAR-8206?filter=x")).toBe("SHAR-8206");
   });
+  it("shows PR <n> for a GitHub pull request URL", () => {
+    expect(linkLabel("https://github.com/ThryvLabs/integration-service/pull/226")).toBe("PR 226");
+  });
   it("drops the scheme and www for any other link", () => {
     expect(linkLabel("https://www.github.com/bunlongheng/flows")).toBe("github.com/bunlongheng/flows");
   });

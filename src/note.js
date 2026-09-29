@@ -35,6 +35,8 @@ export function noteParts(text) {
 // URL carries one (SHAR-7977) and otherwise its address minus the scheme and
 // www, cut short. The full URL stays on the anchor's title and href.
 export function linkLabel(url) {
+  const pr = String(url || '').match(/github\.com\/[^/]+\/[^/]+\/pull\/(\d+)/)
+  if (pr) return `PR ${pr[1]}`
   const key = String(url || '').match(/[A-Z][A-Z0-9]+-\d+/)
   if (key) return key[0]
   const bare = String(url || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '')
