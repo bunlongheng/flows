@@ -214,6 +214,26 @@ describe("renderExcalidraw", () => {
     expect(card.strokeColor).not.toContain("red");
   });
 
+  it("carries a styled line through", () => {
+    const nodes = [{ id: "apigw", position: { x: 0, y: 0 } }, { id: "lambda", position: { x: 300, y: 0 } }];
+    const edges = [{ source: "apigw", target: "lambda", style: { stroke: "#1971c2", bw: 4, bs: "dashed", opacity: 40 } }];
+    const arrow = renderExcalidraw(nodes, edges).elements.find((e) => e.type === "arrow");
+    expect(arrow.strokeColor).toBe("#1971c2");
+    expect(arrow.strokeWidth).toBe(4);
+    expect(arrow.strokeStyle).toBe("dashed");
+    expect(arrow.opacity).toBe(40);
+    // A picked colour never costs the line its binding: drag a card and the
+    // arrow still follows.
+    expect(arrow.startBinding.elementId).toBe("r-apigw");
+  });
+
+  it("keeps silver on a sunset line even when a stroke was picked", () => {
+    const nodes = [{ id: "apigw", position: { x: 0, y: 0 } }, { id: "lambda", sunset: true, position: { x: 300, y: 0 } }];
+    const edges = [{ source: "apigw", target: "lambda", style: { stroke: "#1971c2" } }];
+    const arrow = renderExcalidraw(nodes, edges).elements.find((e) => e.type === "arrow");
+    expect(arrow.strokeColor).toBe(SUNSET.border);
+  });
+
   it("keeps silver on a sunset card even when a stroke was picked", () => {
     const out = renderExcalidraw([{ id: "lambda", sunset: true, style: { stroke: "#e03131" }, position: { x: 0, y: 0 } }], []);
     expect(out.elements.find((e) => e.id === "r-lambda").strokeColor).not.toBe("#e03131");

@@ -302,6 +302,36 @@ describe("/api/flows/:id", () => {
     expect(JSON.parse(query.mock.calls[1][1][0])[0]).not.toHaveProperty("style");
   });
 
+  // Lines have their own PATCH key. The pins branch (body.edges) deletes every
+  // pin it was not sent, so a style carried there would be wiped by the next
+  // badge drag.
+  it("PATCH edgeStyles paints one line and leaves its pins alone", async () => {
+    const stored = [{ id: "a-b", source: "a", target: "b", labelT: 0.3 }, { id: "b-c" }];
+    query.mockResolvedValueOnce({ rows: [{ edges: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { edgeStyles: [{ id: "a-b", style: { stroke: "#1971C2", bw: 4, bs: "dotted", fs: 18 } }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.styled).toBe(1);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
+    expect(written[0].style).toEqual({ stroke: "#1971c2", bw: 4, bs: "dotted", fs: 18 });
+    expect(written[0].labelT).toBe(0.3);
+    expect(written[1]).not.toHaveProperty("style");
+  });
+
+  it("PATCH edgeStyles { style: null } puts a line back to its gradient", async () => {
+    query.mockResolvedValueOnce({ rows: [{ edges: [{ id: "a-b", style: { stroke: "#e03131" } }] }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { edgeStyles: [{ id: "a-b", style: null }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(query.mock.calls[1][1][0])[0]).not.toHaveProperty("style");
+  });
+
   it("PATCH notes { id, info: '' } removes info", async () => {
     const stored = [{ id: "tray", position: { x: 0, y: 0 }, note: "old note", info: "old info" }];
     query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });

@@ -182,4 +182,14 @@ describe("renderDrawio", () => {
     expect(s).not.toContain("dashed=1");
     expect(s).not.toContain("opacity=");
   });
+
+  it("carries a styled line into the connector style", () => {
+    const xml = renderDrawio(NODES, [{ source: "apigw", target: "lambda", style: { stroke: "#1971c2", bw: 4, bs: "dashed", opacity: 40 } }]);
+    const edge = cellsOf(xml).find((c) => c.includes('edge="1"'));
+    const style = attr(edge, "style");
+    expect(style).toContain("strokeColor=#1971c2");
+    expect(style).toContain("strokeWidth=4");
+    expect(style).toContain("dashed=1");
+    expect(style).toContain("opacity=40");
+  });
 });

@@ -52,7 +52,7 @@ export function DetailView({
   exportPng, exportWebp, exportGif, exportCode, exportJson, copyLink, copiedLink, shareAction, copiedShare, copyCode, copiedCode,
   shareSlug, shareUrl,
   showDocs, setShowDocs, copiedLabel, onCopyFormat,
-  onStyleChange,
+  onStyleChange, onEdgeStyleChange,
   showToastMsg,
   isPublic,
   saveState = 'idle',
@@ -92,6 +92,10 @@ export function DetailView({
   // what the panel shows when two cards disagree, and the answer is a feature
   // of its own.
   const selectedNode = nodes.length ? nodes.filter(n => n.selected).length === 1 && nodes.find(n => n.selected) : null
+  // A card wins over a line: clicking a card can leave the line it sits on
+  // selected too, and the thing under the pointer is the thing being styled.
+  const selectedEdge = selectedNode ? null
+    : edges.length ? edges.filter(e => e.selected).length === 1 && edges.find(e => e.selected) : null
   const [confirmDelete, setConfirmDelete] = useState(false)
   // The Arrange button opens a small style menu instead of arranging directly.
   // Open menu holds the screen spot under the button. It is fixed, not absolute:
@@ -911,6 +915,15 @@ export function DetailView({
             value={selectedNode.data?.style}
             onChange={(style) => onStyleChange(selectedNode.id, style)}
             onReset={() => onStyleChange(selectedNode.id, null)}
+          />
+        )}
+
+        {canEdit && onEdgeStyleChange && selectedEdge && (
+          <FormatPanel
+            target="edge"
+            value={selectedEdge.data?.style}
+            onChange={(style) => onEdgeStyleChange(selectedEdge.id, style)}
+            onReset={() => onEdgeStyleChange(selectedEdge.id, null)}
           />
         )}
 

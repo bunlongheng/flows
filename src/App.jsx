@@ -84,6 +84,7 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove) {
       ...(typeof e.labelT === 'number' ? { labelT: e.labelT } : {}),
       ...(e.ends ? { ends: e.ends } : {}),
       ...(e.bend ? { bend: e.bend } : {}),
+      ...(e.style ? { style: e.style } : {}),
       ...(onLabelMove ? { onLabelMove } : {}),
       ...(onEndMove ? { onEndMove } : {}),
       ...(onBendMove ? { onBendMove } : {}),
@@ -537,21 +538,37 @@ export default function App() {
   // the click and exactly one request goes out once the clicking stops, carrying
   // whatever the style ended up being. null is what clears it.
   const styleSend = useRef({})
-  const onStyleChange = useCallback((nodeId, style) => {
-    applyNodeField('style', nodeId, style)
+  const sendStyle = useCallback((key, body) => {
     if (!activeId) return
-    clearTimeout(styleSend.current[nodeId])
-    styleSend.current[nodeId] = setTimeout(() => {
-      delete styleSend.current[nodeId]
+    clearTimeout(styleSend.current[key])
+    styleSend.current[key] = setTimeout(() => {
+      delete styleSend.current[key]
       fetch(`/api/flows/${activeId}`, {
         method: 'PATCH', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: [{ id: nodeId, style }] }),
+        body: JSON.stringify(body),
       })
         .then(r => { if (!r.ok) showToastMsg('Could not save (owner only)') })
         .catch(() => showToastMsg('Could not save'))
     }, 350)
-  }, [activeId, applyNodeField, showToastMsg])
+  }, [activeId, showToastMsg])
+
+  const onStyleChange = useCallback((nodeId, style) => {
+    applyNodeField('style', nodeId, style)
+    sendStyle(`n:${nodeId}`, { notes: [{ id: nodeId, style }] })
+  }, [applyNodeField, sendStyle])
+
+  // A line's style has its own PATCH key, not the pins one: that branch wipes
+  // every pin it was not sent, so folding style in would make a badge drag and
+  // a colour pick able to erase each other.
+  const onEdgeStyleChange = useCallback((edgeId, style) => {
+    const withStyle = ed => { const { style: _old, ...rest } = ed; return style ? { ...rest, style } : rest }
+    setEdges(prev => prev.map(e => (e.id === edgeId ? { ...e, data: { ...e.data, style } } : e)))
+    const patch = eds => (eds || []).map((ed, i) => ((ed.id || `e${i}`) === edgeId ? withStyle(ed) : ed))
+    setActiveDiagram(a => (a ? { ...a, data: { ...a.data, edges: patch(a.data.edges) } } : a))
+    setDiagrams(ds => ds.map(d => (d.id !== activeId ? d : { ...d, data: { ...d.data, edges: patch(d.data.edges) } })))
+    sendStyle(`e:${edgeId}`, { edgeStyles: [{ id: edgeId, style }] })
+  }, [activeId, sendStyle])
 
   // A cold ?name= / ?id= load resolves the design BEFORE /api/auth/me answers, so
   // canAI was still false when the edges were built and no badge came out
@@ -1443,6 +1460,7 @@ export default function App() {
       onNoteChange={canAI ? onNoteChange : undefined}
       onInfoChange={canAI ? onInfoChange : undefined}
       onStyleChange={canAI ? onStyleChange : undefined}
+      onEdgeStyleChange={canAI ? onEdgeStyleChange : undefined}
       onNodeResize={canAI ? onNodeResize : undefined}
       onIconResize={canAI ? onIconResize : undefined}
       isDiagramPublic={activeDiagram?.is_public !== false}
