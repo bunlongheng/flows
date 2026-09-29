@@ -107,4 +107,18 @@ describe("renderDrawio", () => {
     expect(xml).not.toContain("<script>");
     expect(xml).toContain("&amp;lt;script&amp;gt;");
   });
+
+  it("gives the note its own vertex under the card, escaped twice", () => {
+    const xml = renderDrawio([{ id: "cb", note: 'calls Get<ctx> & "key"', position: { x: 0, y: 0 } }], []);
+    const cell = /<mxCell id="nt-cb" value="([^"]*)"[\s\S]*?<mxGeometry x="(-?\d+)" y="(-?\d+)"/.exec(xml);
+    expect(cell).toBeTruthy();
+    // XML layer then HTML layer: a single escape would hand draw.io live markup.
+    expect(cell[1]).toBe("calls Get&amp;lt;ctx&amp;gt; &amp;amp; &amp;quot;key&amp;quot;");
+    // Under the card, never inside it - a paragraph in a 180px shape crushes the logo.
+    expect(Number(cell[3])).toBeGreaterThanOrEqual(180);
+  });
+
+  it("writes no note vertex for a node that has none", () => {
+    expect(renderDrawio([{ id: "a", position: { x: 0, y: 0 } }], [])).not.toContain('id="nt-a"');
+  });
 });
