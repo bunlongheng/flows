@@ -147,3 +147,49 @@ test("the format panel styles the selected line and offers it only what a stroke
     await api.dispose();
   }
 });
+
+// A hand bend beats a picked arrow type in the renderer, so on a line that had
+// been dragged into a curve the Arrow type row did nothing at all: the pick
+// saved, the canvas never moved, and the row read as a dead control.
+test("an arrow type picked on a hand-bent line replaces the bend", async ({ page, baseURL }) => {
+  const api = await request.newContext({ baseURL });
+  const create = await api.post("/api/ai/flows", { headers: { Authorization: `Bearer ${SECRET}` }, data: { ...DESIGN, title: "E2E Bent Line" } });
+  expect(create.status()).toBe(201);
+  const id = (await create.json()).url.split("/?id=")[1];
+  const stored = async () => {
+    const body = await (await api.get(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
+    return (body.data?.edges || body.edges)[0];
+  };
+
+  try {
+    // Bend it the way a drag would, through the same PATCH the drag uses.
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE }, data: { edges: [{ id: "e1", bend: { t: 0.5, d: 120 } }] } });
+    expect((await stored()).bend).toEqual({ t: 0.5, d: 120 });
+
+    await page.context().addCookies([{ name: "sd_session", value: OWNER_COOKIE.split("=")[1], domain: "localhost", path: "/" }]);
+    await page.goto(`/?id=${id}`);
+    await page.waitForSelector(".react-flow__edge-path", { state: "attached" });
+    await page.waitForTimeout(1500);
+
+    const d = () => page.$eval(".react-flow__edge-path", (e) => e.getAttribute("d"));
+    const bent = await d();
+    expect(bent).toContain("Q"); // a hand bend is a quadratic
+
+    await clickEdge(page);
+    await page.waitForSelector(".sd-format-panel");
+    // While bent, no arrow type is in effect, so the row shows the default lit.
+    await pick(page, "Arrow type", 2); // straight
+    await page.waitForTimeout(1200);
+
+    const after = await d();
+    expect(after).not.toContain("Q");
+    expect(after).not.toBe(bent);
+    const row = await stored();
+    expect(row.style.arrow).toBe("straight");
+    expect(row).not.toHaveProperty("bend");
+  } finally {
+    await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.dispose();
+  }
+});

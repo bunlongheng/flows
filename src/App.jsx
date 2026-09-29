@@ -562,13 +562,18 @@ export default function App() {
   // every pin it was not sent, so folding style in would make a badge drag and
   // a colour pick able to erase each other.
   const onEdgeStyleChange = useCallback((edgeId, style) => {
+    // A hand bend and a picked arrow type answer the same question - how does
+    // this line get there - and the bend wins in the renderer. So picking an
+    // arrow type drops the bend, or the pick lands on a line that never moves
+    // and the row reads as a control that does not work. Cmd+Z brings it back.
+    if (style?.arrow && edgesRef.current.find(e => e.id === edgeId)?.data?.bend) onBendMove(edgeId, null)
     const withStyle = ed => { const { style: _old, ...rest } = ed; return style ? { ...rest, style } : rest }
     setEdges(prev => prev.map(e => (e.id === edgeId ? { ...e, data: { ...e.data, style } } : e)))
     const patch = eds => (eds || []).map((ed, i) => ((ed.id || `e${i}`) === edgeId ? withStyle(ed) : ed))
     setActiveDiagram(a => (a ? { ...a, data: { ...a.data, edges: patch(a.data.edges) } } : a))
     setDiagrams(ds => ds.map(d => (d.id !== activeId ? d : { ...d, data: { ...d.data, edges: patch(d.data.edges) } })))
     sendStyle(`e:${edgeId}`, { edgeStyles: [{ id: edgeId, style }] })
-  }, [activeId, sendStyle])
+  }, [activeId, sendStyle, onBendMove])
 
   // A cold ?name= / ?id= load resolves the design BEFORE /api/auth/me answers, so
   // canAI was still false when the edges were built and no badge came out
