@@ -193,3 +193,44 @@ test("an arrow type picked on a hand-bent line replaces the bend", async ({ page
     await api.dispose();
   }
 });
+
+// The other tests here pick with element.click(), which dispatches the click
+// straight to the button. A real pointer is mousedown then mouseup, and the
+// browser only fires click when both land on the SAME element. Tile used to be
+// declared inside FormatPanel, so every tile was remounted each animation
+// frame and a real click never fired while the JS click passed. This one
+// presses the mouse the way the owner does.
+test("a real pointer click on a tile changes the card", async ({ page, baseURL }) => {
+  const api = await request.newContext({ baseURL });
+  const create = await api.post("/api/ai/flows", { headers: { Authorization: `Bearer ${SECRET}` }, data: { ...DESIGN, title: "E2E Real Click" } });
+  expect(create.status()).toBe(201);
+  const id = (await create.json()).url.split("/?id=")[1];
+
+  try {
+    await page.context().addCookies([{ name: "sd_session", value: OWNER_COOKIE.split("=")[1], domain: "localhost", path: "/" }]);
+    await page.goto(`/?id=${id}`);
+    await page.waitForSelector(".react-flow__node");
+    await page.waitForTimeout(1500);
+    await page.click(".react-flow__node");
+    await page.waitForSelector(".sd-format-panel");
+    // The panel slides in over 0.2s; a box measured mid-slide is 16px off.
+    await page.waitForTimeout(400);
+
+    // Coordinates, not the element: if the button under the pointer is replaced
+    // between down and up, a locator click would silently retarget it.
+    const box = await page.locator(".sd-format-panel button[title='4px']").boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(120);
+    await page.mouse.up();
+
+    await expect.poll(() => page.$eval(".react-flow__node > div", (e) => getComputedStyle(e).borderWidth)).toBe("4px");
+    await page.waitForTimeout(1200);
+    const saved = await (await api.get(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
+    expect((saved.data?.nodes || saved.nodes).find((n) => n.id === "gateway").style).toMatchObject({ bw: 4 });
+  } finally {
+    await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
+    await api.dispose();
+  }
+});
