@@ -39,9 +39,9 @@ Authorization: Bearer <FLOWS_API_SECRET>
 | `is_public` | Set `true`. A private diagram gives everyone else a 404 and the GIF will not embed. |
 | `pattern` | Optional. Max 200 chars. 1 line shown above the diagram. |
 | `description` | Optional. Max 600 chars. |
-| `nodes[].note` | Optional. Plain text, max 400 chars. Shown under the node. |
-| `nodes[].info` | Optional. Plain text, max 600 chars. What the node is and why it is in this diagram; hidden until the reader hovers or clicks the i badge on the card. Not in the SVG. |
-| `nodes[].sunset` | Optional. Boolean. `true` marks a node that is today's path and gets decommissioned: drawn light silver and dimmed, icon in greyscale, red X, and every edge into it grey. Silver is reserved for this; never paint a node grey or silver to mean retired, set `sunset` instead. A node with no colour of its own falls back to black. |
+| `nodes[].note` | Optional. Max 400 chars. Shown under the node. Light markdown: `**bold**`, `*italic*`, `__underline__`, `~~strike~~`, `` `code` ``, 1 level. A URL becomes a blue link showing its ticket key (SHAR-7977) or its bare address. |
+| `nodes[].info` | Optional. Plain text, max 600 chars. What the node is and why it is in this diagram; hidden until the reader hovers or clicks the i badge on the card, 1 open at a time. Shown as `<card name> is <text>`, so write it to read after "is". Not in the SVG. |
+| `nodes[].sunset` | Optional. Boolean. `true` marks a node that is today's path and gets decommissioned: drawn light silver and dimmed, icon in greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) light silver, immune to any line style; no X on the card. Silver is reserved for this; never paint a node grey or silver to mean retired, set `sunset` instead. A node with no colour of its own falls back to black. |
 | `position` | Omit it. The layout engine places the nodes. |
 | `return` | `"svg"` to get the rendered SVG back in the same response. |
 

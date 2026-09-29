@@ -2,7 +2,7 @@ import { memo, useContext, useEffect, useRef, useState } from 'react'
 import { Handle, Position, NodeResizer, useReactFlow } from '@xyflow/react'
 import { findService } from '../services'
 import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, setNoteHeight } from './noteEditContext'
-import { NOTE_MAX, cleanNote, noteParts, linkLabel, INFO_MAX, cleanInfo, infoLead } from '../note'
+import { NOTE_MAX, cleanNote, noteRuns, linkLabel, INFO_MAX, cleanInfo, infoLead } from '../note'
 import { SUNSET, INK } from '../sunset.js'
 import { FONT_STACK, borderStyleOf } from '../style.js'
 
@@ -34,6 +34,15 @@ const CLAMP_10 = { ...CLAMP_2, WebkitLineClamp: 10 }
 // note's bottom border reads as a line running into the box - which is the one
 // thing this whole measurement exists to prevent - so the published extent
 // carries its own clearance and every consumer inherits it.
+// How a marked run of note text is drawn: weight, slant and a line for the
+// word marks, and a small tinted chip for `code`, so a flag name or a path
+// reads as the literal thing it is.
+const runStyle = r => ({
+  fontWeight: r.b ? 700 : undefined, fontStyle: r.i ? 'italic' : undefined,
+  textDecoration: [r.u && 'underline', r.s && 'line-through'].filter(Boolean).join(' ') || undefined,
+  ...(r.code ? { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '0.92em', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 4, padding: '0 4px' } : {}),
+})
+
 const NOTE_GAP = 5
 const NOTE_CLEAR = 14
 
@@ -104,10 +113,10 @@ function NodeNote({ id, note }) {
       ) : note ? (
         <div title={canEdit ? `${note}\n\nDouble-click to edit` : note} onDoubleClick={canEdit ? startEdit : undefined}
           style={{ ...NOTE_BOX, display: 'inline-block', maxWidth: '100%', cursor: canEdit ? 'text' : 'default', ...CLAMP_10 }}>
-          {noteParts(note).map((part, i) => part.url
+          {noteRuns(note).map((part, i) => part.url
             ? <a key={i} href={part.url} title={part.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
                 style={{ color: '#1d4ed8', textDecoration: 'underline', whiteSpace: 'nowrap' }}>{linkLabel(part.url)}</a>
-            : <span key={i}>{part.text}</span>)}
+            : <span key={i} style={runStyle(part)}>{part.text}</span>)}
         </div>
       ) : (
         <button type="button" className="sd-note-add" onClick={startEdit} title="Add a note to this step"

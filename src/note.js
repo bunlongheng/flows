@@ -54,3 +54,28 @@ export function infoLead(label, info) {
   const lead = second && second === second.toLowerCase() && second !== second.toUpperCase() ? first.toLowerCase() : first
   return { name, rest: ` is ${lead}${text.slice(1)}` }
 }
+
+// Light markdown inside a note: **bold**, *italic* or _italic_, __underline__,
+// ~~strike~~ and `code`. One level, no nesting - a note is 1-2 sentences, and
+// the marks are there so a word can carry weight, not to typeset a page. A
+// link stays a link (noteParts runs first, so a URL's underscores are safe),
+// and _ only counts at a word edge, so snake_case reads as written.
+const MARK_RE = /`([^`\n]+)`|\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~|(?<![A-Za-z0-9*])\*([^*\n]+?)\*(?![A-Za-z0-9*])|(?<![A-Za-z0-9_])_([^_\n]+?)_(?![A-Za-z0-9_])/g
+export function noteRuns(text) {
+  const out = []
+  for (const part of noteParts(text)) {
+    if (part.url) { out.push(part); continue }
+    let last = 0
+    for (const m of part.text.matchAll(MARK_RE)) {
+      if (m.index > last) out.push({ text: part.text.slice(last, m.index) })
+      if (m[1] != null) out.push({ text: m[1], code: true })
+      else if (m[2] != null) out.push({ text: m[2], b: true })
+      else if (m[3] != null) out.push({ text: m[3], u: true })
+      else if (m[4] != null) out.push({ text: m[4], s: true })
+      else out.push({ text: m[5] ?? m[6], i: true })
+      last = m.index + m[0].length
+    }
+    if (last < part.text.length) out.push({ text: part.text.slice(last) })
+  }
+  return out
+}

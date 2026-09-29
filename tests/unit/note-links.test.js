@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { noteParts, linkLabel, infoLead } from "../../src/note.js";
+import { noteParts, noteRuns, linkLabel, infoLead } from "../../src/note.js";
 
 // The owner links tickets in notes, so a URL has to come out as its own part
 // and everything around it as text - and a full stop after the link is text.
@@ -48,5 +48,24 @@ describe("infoLead", () => {
   });
   it("leaves text that already names the card", () => {
     expect(infoLead("Cyclr", "Cyclr replaces Tray.io.")).toEqual({ name: "Cyclr", rest: " replaces Tray.io." });
+  });
+});
+
+// The word marks a note may carry, and the 2 traps: a URL's underscores and
+// snake_case are never italics.
+describe("noteRuns", () => {
+  it("marks bold, italic, underline, strike and code", () => {
+    expect(noteRuns("**done** *soon* _maybe_ __key__ ~~old~~ `FLAG_X`")).toEqual([
+      { text: "done", b: true }, { text: " " }, { text: "soon", i: true }, { text: " " }, { text: "maybe", i: true }, { text: " " },
+      { text: "key", u: true }, { text: " " }, { text: "old", s: true }, { text: " " }, { text: "FLAG_X", code: true },
+    ]);
+  });
+  it("keeps a link whole and leaves snake_case alone", () => {
+    expect(noteRuns("see https://x.io/a_b_c and use_this_name")).toEqual([
+      { text: "see " }, { url: "https://x.io/a_b_c" }, { text: " and use_this_name" },
+    ]);
+  });
+  it("leaves a plain note as one run", () => {
+    expect(noteRuns("Resolves the slug.")).toEqual([{ text: "Resolves the slug." }]);
   });
 });
