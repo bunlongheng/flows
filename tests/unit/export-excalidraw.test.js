@@ -121,4 +121,23 @@ describe("renderExcalidraw", () => {
     expect(out.type).toBe("excalidraw");
     expect(out.elements).toEqual([]);
   });
+
+  it("draws the i badge's text under the card, wrapped to the card width", () => {
+    // Excalidraw has no hover badge and no auto-wrap, so the info becomes a
+    // text element with the line breaks already in it.
+    const info = "Runs the shortener on demand. Stateless, so it scales with traffic and costs nothing idle.";
+    const out = renderExcalidraw([{ id: "lambda", info, position: { x: 0, y: 0 } }], []);
+    const note = out.elements.find((e) => e.id === "n-lambda");
+    expect(note.text.split("\n").length).toBeGreaterThan(1);
+    expect(note.text.replace(/\n/g, " ")).toBe(info);
+    // Below the card, and not grouped with it - a long info is taller than the
+    // gap to the next row and must not ride along on every drag.
+    expect(note.y).toBeGreaterThanOrEqual(180);
+    expect(note.groupIds).toEqual([]);
+  });
+
+  it("writes no info element for a node that has none", () => {
+    const out = renderExcalidraw(NODES, EDGES);
+    expect(out.elements.some((e) => e.id.startsWith("n-"))).toBe(false);
+  });
 });
