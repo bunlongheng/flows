@@ -140,4 +140,34 @@ describe("renderExcalidraw", () => {
     const out = renderExcalidraw(NODES, EDGES);
     expect(out.elements.some((e) => e.id.startsWith("n-"))).toBe(false);
   });
+
+  it("draws the note in its own bordered box under the card", () => {
+    const note = "Step 4 Hidden tests. lib/cache/fncache_test.go, package cache. TestFnCacheSanity calls newFnCache directly.";
+    const out = renderExcalidraw([{ id: "codebuild", note, position: { x: 0, y: 0 } }], []);
+    const box = out.elements.find((e) => e.id === "nb-codebuild");
+    const txt = out.elements.find((e) => e.id === "nt-codebuild");
+    // A box, not loose text: white fill, black border, exactly what the canvas draws.
+    expect(box.type).toBe("rectangle");
+    expect(box.strokeColor).toBe("#111111");
+    expect(box.backgroundColor).toBe("#ffffff");
+    // Every word survives the wrap - a truncated note is worse than no note.
+    expect(txt.text.replace(/\n/g, " ")).toBe(note);
+    expect(txt.text.split("\n").length).toBeGreaterThan(1);
+    // The text sits inside its box, and the box sits below the card.
+    expect(box.y).toBeGreaterThanOrEqual(180);
+    expect(txt.y).toBeGreaterThan(box.y);
+    expect(txt.y + txt.height).toBeLessThanOrEqual(box.y + box.height);
+  });
+
+  it("stacks the note under the info when a node has both", () => {
+    const out = renderExcalidraw([{ id: "a", info: "Why it is here.", note: "What happens here.", position: { x: 0, y: 0 } }], []);
+    const info = out.elements.find((e) => e.id === "n-a");
+    const box = out.elements.find((e) => e.id === "nb-a");
+    expect(box.y).toBeGreaterThanOrEqual(info.y + info.height);
+  });
+
+  it("writes no note box for a node that has none", () => {
+    const out = renderExcalidraw([{ id: "a", position: { x: 0, y: 0 } }], []);
+    expect(out.elements.some((e) => e.id.startsWith("nb-") || e.id.startsWith("nt-"))).toBe(false);
+  });
 });
