@@ -770,17 +770,20 @@ export function GradientEdge({
           The gradient's whole job is to say which node a line came FROM and
           which it goes TO; once the owner has chosen a colour, that is the
           statement, and a fade between it and a brand colour says neither. */}
-      <BaseEdge id={id} path={path} markerEnd={markerEnd} style={{
-        // A line touching a sunset card is the path on its way out: flat, very
-        // light silver at half strength, whatever colour or opacity was picked.
-        stroke: data?.sunsetLine ? SUNSET.line : (st.stroke || `url(#${gid})`),
+      <BaseEdge id={id} path={path} markerEnd={markerEnd} style={data?.sunsetLine ? {
+        // A line touching a sunset card, in or out, is the path on its way out:
+        // flat light silver at half strength, and nothing the panel picked -
+        // colour, width, dash or opacity - reaches it. Grey, always.
+        stroke: SUNSET.line, strokeWidth: 1.5, strokeDasharray: undefined, opacity: 0.5,
+      } : {
+        stroke: st.stroke || `url(#${gid})`,
         // No +1 while selected. The panel is only ever open on a selected line,
         // so thickening it there meant picking 1px painted 2 and picking 2px
         // painted 3 - the one row in the panel that could never show the value
         // it claimed. The halo above already says which line is selected.
         strokeWidth: st.bw || 1.5,
         strokeDasharray: dashArray(st.bs, st.bw || 1.5) || undefined,
-        opacity: data?.sunsetLine ? 0.5 : (st.opacity == null ? undefined : st.opacity / 100),
+        opacity: st.opacity == null ? undefined : st.opacity / 100,
       }} />
         <FlowDot edgeId={id} path={path} color={c1} />
       {(label || hasStep || ((endMovable || bendMovable) && selected)) && (

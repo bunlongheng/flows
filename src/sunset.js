@@ -5,7 +5,7 @@
 // of its own falls back to ink instead. Shared by the canvas and the exports.
 export const SUNSET = {
   border: '#b9bfc7',   // silver line: the card border
-  line: '#e3e6ea',     // every edge touching the card: very light silver, drawn at half opacity
+  line: '#c4cad2',     // every edge touching the card, in or out: light silver at half opacity, immune to any picked line style
   tint: '#f2f3f5',     // light silver card fill
   ink: '#9ca3af',      // greyed label, sub and badge text
   x: '#dc2626',        // the red X

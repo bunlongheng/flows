@@ -147,8 +147,8 @@ function NodeInfo({ id, info, color }) {
     <div className="nodrag nopan" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       onDoubleClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 4, right: 4, zIndex: 4 }}>
       <button type="button" onClick={toggle} aria-label="What this is and why it is here" aria-expanded={show}
-        style={{ width: 16, height: 16, borderRadius: '50%', border: `1px solid ${lit ? color : INK}`, padding: 0, cursor: 'pointer',
-          background: lit ? color : INK, color: '#ffffff',
+        style={{ width: 16, height: 16, borderRadius: '50%', border: `1px solid ${color}`, padding: 0, cursor: 'pointer',
+          background: lit ? color : '#ffffff', color: lit ? '#ffffff' : color,
           fontFamily: 'Georgia, serif', fontStyle: 'italic', fontWeight: 700, fontSize: 10, lineHeight: 1 }}>i</button>
       {show && (
         <div className={editing ? 'nowheel' : undefined} style={{ position: 'absolute', bottom: 14, right: 0, width: 260, zIndex: 5,
