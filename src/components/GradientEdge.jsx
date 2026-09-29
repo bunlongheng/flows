@@ -79,8 +79,10 @@ function attachPoint(node, nodeId, otherNode, edgeId, edges, nodeOf) {
   if (side === Position.Left) return { x: c.x - w2, y: c.y + offset, ...at }
   // The bottom face is the card's edge, but the note hangs BELOW that edge and
   // is opaque, so a line leaving here would run behind it and re-emerge lower -
-  // reading as a line that dead-ends into a box. Start under the note instead.
-  // Only this face moves: the note is not beside or above the card.
+  // reading as a line that dead-ends into a box. Start under the note instead,
+  // clear of its border - the published height carries that daylight, so a line
+  // never touches the frame. Only this face moves: the note is not beside or
+  // above the card.
   if (side === Position.Bottom) return { x: c.x + offset, y: c.y + h2 + getNoteHeight(nodeId), ...at }
   return { x: c.x + offset, y: c.y - h2, ...at }
 }
