@@ -42,6 +42,27 @@ describe("GET /api/auth/login", () => {
     process.env.GOOGLE_CLIENT_ID = orig.c;
   });
 
+  // An expired session drops the owner on the visitor bar of whatever flow they
+  // were reading. Signing in has to bring them back to that flow.
+  it("remembers the page the Sign in link was clicked on", async () => {
+    const r = req();
+    r.headers.referer = "https://flows-bheng.vercel.app/?id=abc-123";
+    const res = mockRes();
+    await authLogin(r, res);
+    const set = [].concat(res.headers["Set-Cookie"]);
+    expect(set.find((c) => c.startsWith("sd_oauth_next="))).toContain(encodeURIComponent("/?id=abc-123"));
+  });
+
+  // The Referer is whatever a browser says it is, so anything pointing off-site
+  // is dropped rather than turned into an open redirect.
+  it("ignores a Referer from another origin", async () => {
+    const r = req();
+    r.headers.referer = "https://evil.example.com/steal";
+    const res = mockRes();
+    await authLogin(r, res);
+    expect([].concat(res.headers["Set-Cookie"]).some((c) => c.startsWith("sd_oauth_next="))).toBe(false);
+  });
+
   it("redirects (302) to Google's consent screen with the expected params and sets the state cookie", async () => {
     const res = mockRes();
     await authLogin(req(), res);
@@ -59,6 +80,6 @@ describe("GET /api/auth/login", () => {
     expect(url.searchParams.get("response_type")).toBe("code");
     expect(url.searchParams.get("state")).toBeTruthy();
 
-    expect(res.headers["Set-Cookie"]).toMatch(/^sd_oauth_state=/);
+    expect([].concat(res.headers["Set-Cookie"])[0]).toMatch(/^sd_oauth_state=/);
   });
 });

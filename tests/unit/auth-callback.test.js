@@ -112,4 +112,33 @@ describe("GET /api/auth/callback (OAuth security boundary)", () => {
     expect(res.headers.Location).toBe("/");
     expect(setCookieText(res)).toMatch(/sd_session=/);
   });
+
+  // The whole point of the round trip: a session that ran out on a flow comes
+  // back to that flow rather than to the index.
+  it("returns to the page the sign in started from", async () => {
+    global.fetch
+      .mockResolvedValueOnce({ json: async () => ({ access_token: "AT" }) })
+      .mockResolvedValueOnce({ json: async () => ({ email: OWNER_EMAIL, email_verified: true }) });
+
+    const res = mockRes();
+    const back = encodeURIComponent("/?id=abc-123");
+    await authCallback(req({ code: "c1", state: "s" }, `sd_oauth_state=s; sd_oauth_next=${back}`), res);
+
+    expect(res.headers.Location).toBe("/?id=abc-123");
+    expect(setCookieText(res)).toMatch(/sd_oauth_next=;/);
+  });
+
+  // A cookie is still something a browser can be told to send, so an absolute
+  // URL in there must not become an open redirect.
+  it("refuses an off-site sd_oauth_next and goes to / instead", async () => {
+    global.fetch
+      .mockResolvedValueOnce({ json: async () => ({ access_token: "AT" }) })
+      .mockResolvedValueOnce({ json: async () => ({ email: OWNER_EMAIL, email_verified: true }) });
+
+    const res = mockRes();
+    const back = encodeURIComponent("//evil.example.com/steal");
+    await authCallback(req({ code: "c1", state: "s" }, `sd_oauth_state=s; sd_oauth_next=${back}`), res);
+
+    expect(res.headers.Location).toBe("/");
+  });
 });
