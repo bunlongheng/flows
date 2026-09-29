@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { cleanStyle, STROKE_PICKS, BG_PICKS, dashArray } from "../../src/style.js";
+import {
+  cleanStyle, STROKE_PICKS, BG_PICKS, dashArray, STYLE_DEFAULTS,
+  BORDER_WIDTHS, BORDER_STYLES, RADII, FONTS, FONT_SIZES, ALIGNS,
+} from "../../src/style.js";
 
 // cleanStyle is the only gate between a browser payload and a jsonb column that
 // is read straight into a border, a font and an opacity. Everything it lets
@@ -54,5 +57,20 @@ describe("cleanStyle", () => {
     expect(dashArray("dashed", 1)).toBe("5 3");
     expect(dashArray("dashed", 4)).toBe("20 12");
     expect(dashArray("dotted", 2)).toBe("2 5");
+  });
+
+  // The panel lights the default when a key is absent, so a default that is not
+  // one of the offered picks would light nothing and the row would look dead.
+  it("every default is one of the picks the panel actually offers", () => {
+    expect(BORDER_WIDTHS).toContain(STYLE_DEFAULTS.bw);
+    expect(BORDER_STYLES).toContain(STYLE_DEFAULTS.bs);
+    expect(RADII).toContain(STYLE_DEFAULTS.radius);
+    expect(FONTS).toContain(STYLE_DEFAULTS.font);
+    expect(FONT_SIZES).toContain(STYLE_DEFAULTS.fs);
+    expect(ALIGNS).toContain(STYLE_DEFAULTS.align);
+    expect(STYLE_DEFAULTS.opacity).toBe(100);
+    // stroke and bg have no default here on purpose: a card's is its brand colour.
+    expect(STYLE_DEFAULTS.stroke).toBeUndefined();
+    expect(STYLE_DEFAULTS.bg).toBeUndefined();
   });
 });

@@ -19,7 +19,9 @@ const DESIGN = {
 
 // Sections are addressed by their visible label, the same way the owner does.
 const pick = (page, section, n) => page.evaluate(({ section, n }) => {
-  const s = [...document.querySelectorAll(".sd-format-panel > div")].find((d) => d.firstChild?.textContent === section);
+  // Each section is a label line then a row of controls, so the name is the
+  // label line's first child - the line itself can also carry the current colour.
+  const s = [...document.querySelectorAll(".sd-format-panel > div")].find((d) => d.firstChild?.firstChild?.textContent === section);
   s.lastChild.children[n].click();
 }, { section, n });
 

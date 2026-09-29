@@ -12,6 +12,8 @@ import { SnapGuides } from '../components/SnapGuides'
 import { Footer } from '../components/Footer'
 import { brandFor } from '../brands'
 import { FormatPanel } from '../components/FormatPanel.jsx'
+import { findService } from '../services.js'
+import { SUNSET, INK } from '../sunset.js'
 
 
 // History row time: fresh saves read as "4 min ago"; once the wall clock has
@@ -96,6 +98,14 @@ export function DetailView({
   // selected too, and the thing under the pointer is the thing being styled.
   const selectedEdge = selectedNode ? null
     : edges.length ? edges.filter(e => e.selected).length === 1 && edges.find(e => e.selected) : null
+  // The colour the thing ALREADY is, so the panel's 2 colour rows can show it.
+  // A card's brand colour is never one of the 5 swatches, and a line's default
+  // is not a colour at all but the from/to gradient.
+  const colorOf = (id) => {
+    const n = nodes.find(x => x.id === id)
+    return n?.data?.sunset ? SUNSET.border : (findService(n?.data || {})?.color || INK)
+  }
+  const cardColor = selectedNode ? colorOf(selectedNode.id) : null
   const [confirmDelete, setConfirmDelete] = useState(false)
   // The Arrange button opens a small style menu instead of arranging directly.
   // Open menu holds the screen spot under the button. It is fixed, not absolute:
@@ -913,6 +923,8 @@ export function DetailView({
         {canEdit && onStyleChange && selectedNode && (
           <FormatPanel
             value={selectedNode.data?.style}
+            stroke={cardColor}
+            fill={`linear-gradient(${cardColor}14, ${cardColor}14), #ffffff`}
             onChange={(style) => onStyleChange(selectedNode.id, style)}
             onReset={() => onStyleChange(selectedNode.id, null)}
           />
@@ -922,6 +934,7 @@ export function DetailView({
           <FormatPanel
             target="edge"
             value={selectedEdge.data?.style}
+            stroke={`linear-gradient(90deg, ${colorOf(selectedEdge.source)}, ${colorOf(selectedEdge.target)})`}
             onChange={(style) => onEdgeStyleChange(selectedEdge.id, style)}
             onReset={() => onEdgeStyleChange(selectedEdge.id, null)}
           />

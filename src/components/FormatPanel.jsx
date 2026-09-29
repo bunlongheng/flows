@@ -1,4 +1,4 @@
-import { STROKE_PICKS, BG_PICKS, BORDER_WIDTHS, BORDER_STYLES, RADII, FONTS, FONT_SIZES, ALIGNS } from '../style.js'
+import { STROKE_PICKS, BG_PICKS, BORDER_WIDTHS, BORDER_STYLES, RADII, FONTS, FONT_SIZES, ALIGNS, STYLE_DEFAULTS } from '../style.js'
 
 // The properties panel, modelled on Excalidraw's. Its metrics are Excalidraw's
 // too - 36px square buttons, 8px radius, #e0dfff behind the active one, #6965db
@@ -16,10 +16,13 @@ const btn = (on) => ({
   background: on ? ACTIVE_BG : 'transparent', color: on ? ACTIVE : '#1b1b1f',
 })
 
-function Section({ label, children }) {
+function Section({ label, right, children }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 12, fontWeight: 500, color: '#1b1b1f', marginBottom: 6 }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: '#1b1b1f' }}>{label}</div>
+        {right}
+      </div>
       <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>{children}</div>
     </div>
   )
@@ -64,14 +67,31 @@ const Align = ({ to }) => (
 )
 const FONT_GLYPH = { sans: 'A', serif: 'A', mono: '</>' }
 
-export function FormatPanel({ value, onChange, onReset, target = 'node' }) {
+// Excalidraw shows the element's CURRENT colour beside its 2 colour rows,
+// because a card's brand colour is never one of the 5 swatches and a row with
+// nothing lit reads as a control that does not work. It sits on the label line
+// rather than after the swatches: a 6th box on that row wraps at 240px wide and
+// then reads as another option.
+function Current({ background }) {
+  return (
+    <span title="Current" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#6b7280' }}>
+      now
+      <span style={{ width: 18, height: 18, borderRadius: 5, background, border: '1px solid rgba(0,0,0,0.12)' }} />
+    </span>
+  )
+}
+
+export function FormatPanel({ value, onChange, onReset, target = 'node', stroke, fill }) {
   // A line has no inside, no corners and no text of its own, so it is offered
   // the four controls that mean something on a stroke and nothing it cannot use.
   const isNode = target === 'node'
   const v = value || {}
+  // An unset key is not "nothing", it is the default the renderer already draws,
+  // so that is what the row lights.
+  const cur = (k) => (v[k] === undefined ? STYLE_DEFAULTS[k] : v[k])
   const set = (k) => (x) => onChange({ ...v, [k]: x })
   const Tile = ({ k, pick, children, title }) => (
-    <button type="button" title={title} onClick={() => set(k)(pick)} style={btn(v[k] === pick)}>{children}</button>
+    <button type="button" title={title} onClick={() => set(k)(pick)} style={btn(cur(k) === pick)}>{children}</button>
   )
 
   return (
@@ -86,12 +106,12 @@ export function FormatPanel({ value, onChange, onReset, target = 'node' }) {
           style={{ border: 'none', background: 'none', color: '#6b7280', fontSize: 11, cursor: 'pointer', padding: 0 }}>Reset</button>
       </div>
 
-      <Section label="Stroke">
+      <Section label="Stroke" right={(v.stroke || stroke) && <Current background={v.stroke || stroke} />}>
         {STROKE_PICKS.map((c) => <Swatch key={c} color={c} on={v.stroke === c} onPick={set('stroke')} />)}
       </Section>
 
       {isNode && (
-        <Section label="Background">
+        <Section label="Background" right={(v.bg || fill) && <Current background={v.bg === 'transparent' ? CHECKER : v.bg || fill} />}>
           {BG_PICKS.map((c) => <Swatch key={c} color={c} on={v.bg === c} onPick={set('bg')} />)}
         </Section>
       )}
@@ -135,7 +155,7 @@ export function FormatPanel({ value, onChange, onReset, target = 'node' }) {
       </>}
 
       <Section label="Opacity">
-        <input type="range" min={0} max={100} step={10} value={v.opacity ?? 100}
+        <input type="range" min={0} max={100} step={10} value={cur('opacity')}
           onChange={(e) => set('opacity')(Number(e.target.value))}
           style={{ width: '100%', accentColor: ACTIVE, cursor: 'pointer' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: 10, color: '#6b7280' }}>
