@@ -945,6 +945,19 @@ export function DetailView({
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
                 onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
               >{copiedCode ? 'Copied!' : 'Copy'}</button>
+              {/* The exports above are pictures of the diagram. This one is the
+                  diagram: real shapes and bound arrows with the logos embedded,
+                  so it can be opened and kept working on in Excalidraw. Plain
+                  link, not a blob - the owner's session cookie rides along on a
+                  same-origin navigation and the server does the rendering. */}
+              {activeDiagram?.id && (
+                <a href={`/api/flows/${activeDiagram.id}?format=excalidraw`} download
+                  title="An editable .excalidraw scene - every card a real shape with its logo, every edge a bound arrow"
+                  style={{ gridColumn: '1 / -1', background: '#FF6188', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit', textAlign: 'center', textDecoration: 'none' }}
+                  onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
+                  onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
+                >Excalidraw</a>
+              )}
             </div>
           </div>
         )}
