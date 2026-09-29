@@ -2,7 +2,7 @@ import { memo, useContext, useEffect, useRef, useState } from 'react'
 import { Handle, Position, NodeResizer, useReactFlow } from '@xyflow/react'
 import { findService } from '../services'
 import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, setNoteHeight } from './noteEditContext'
-import { NOTE_MAX, cleanNote, noteParts, linkLabel, INFO_MAX, cleanInfo } from '../note'
+import { NOTE_MAX, cleanNote, noteParts, linkLabel, INFO_MAX, cleanInfo, infoLead } from '../note'
 import { SUNSET, INK } from '../sunset.js'
 import { FONT_STACK, borderStyleOf } from '../style.js'
 
@@ -129,7 +129,7 @@ function NodeNote({ id, note }) {
 // a diagram never ends up with 3 paragraphs stacked over the boxes.
 const INFO_OPENED = new EventTarget()
 
-function NodeInfo({ id, info, color }) {
+function NodeInfo({ id, label, info, color }) {
   const onInfoChange = useContext(InfoEditContext)
   const canEdit = typeof onInfoChange === 'function'
   const [hover, setHover] = useState(false)
@@ -175,7 +175,9 @@ function NodeInfo({ id, info, color }) {
               }}
               style={{ width: '100%', fontSize: 16, lineHeight: 1.35, fontFamily: 'inherit', border: 0, outline: 'none', resize: 'none', display: 'block', background: 'transparent' }} />
           ) : (
-            <div onDoubleClick={canEdit ? startEdit : undefined} title={canEdit ? 'Double-click to edit' : undefined}>{info}</div>
+            <div onDoubleClick={canEdit ? startEdit : undefined} title={canEdit ? 'Double-click to edit' : undefined}>
+              <strong>{infoLead(label, info).name}</strong>{infoLead(label, info).rest}
+            </div>
           )}
         </div>
       )}
@@ -329,7 +331,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
           ...CLAMP_2,
         }}>{sub}</div>}
       </div>
-      <NodeInfo id={data.id} info={data.info} color={color} />
+      <NodeInfo id={data.id} label={label} info={data.info} color={color} />
       <NodeNote id={data.id} note={note} />
     </div>
   )

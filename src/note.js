@@ -40,3 +40,17 @@ export function linkLabel(url) {
   const bare = String(url || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '')
   return bare.length > 32 ? `${bare.slice(0, 31)}…` : bare
 }
+
+// The info popover always opens with the card's name: "Cyclr is the embedded
+// iPaaS behind...". Text that already names the card is left alone; the rest
+// gets "<name> is " in front, with the old first letter dropped to lower case
+// unless it is an initialism (AWS, S3) that has to keep it.
+export function infoLead(label, info) {
+  const text = String(info || '').trim()
+  const name = String(label || '').trim()
+  if (!text || !name) return { name: '', rest: text }
+  if (text.toLowerCase().startsWith(name.toLowerCase())) return { name: text.slice(0, name.length), rest: text.slice(name.length) }
+  const first = text[0], second = text[1] || ''
+  const lead = second && second === second.toLowerCase() && second !== second.toUpperCase() ? first.toLowerCase() : first
+  return { name, rest: ` is ${lead}${text.slice(1)}` }
+}

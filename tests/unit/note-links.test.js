@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { noteParts, linkLabel } from "../../src/note.js";
+import { noteParts, linkLabel, infoLead } from "../../src/note.js";
 
 // The owner links tickets in notes, so a URL has to come out as its own part
 // and everything around it as text - and a full stop after the link is text.
@@ -35,5 +35,18 @@ describe("linkLabel", () => {
     const label = linkLabel("https://docs.example.com/some/very/long/path/that/keeps/going/on/and/on");
     expect(label.length).toBe(32);
     expect(label.endsWith("\u2026")).toBe(true);
+  });
+});
+
+// The popover opens with the card's name, so every card reads "<Name> is ...".
+describe("infoLead", () => {
+  it("puts the name in front and lowers the old first letter", () => {
+    expect(infoLead("Cyclr", "The embedded iPaaS behind every rebuilt integration.")).toEqual({ name: "Cyclr", rest: " is the embedded iPaaS behind every rebuilt integration." });
+  });
+  it("keeps an initialism's capital", () => {
+    expect(infoLead("Lambda", "AWS compute for the handler.")).toEqual({ name: "Lambda", rest: " is AWS compute for the handler." });
+  });
+  it("leaves text that already names the card", () => {
+    expect(infoLead("Cyclr", "Cyclr replaces Tray.io.")).toEqual({ name: "Cyclr", rest: " replaces Tray.io." });
   });
 });
