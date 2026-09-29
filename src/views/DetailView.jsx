@@ -98,6 +98,12 @@ export function DetailView({
   // selected too, and the thing under the pointer is the thing being styled.
   const selectedEdge = selectedNode ? null
     : edges.length ? edges.filter(e => e.selected).length === 1 && edges.find(e => e.selected) : null
+  // A hand bend beats a picked arrow type in the renderer, so while a line is
+  // bent NO arrow type is in effect. Lighting one would be the panel reporting
+  // something the canvas is not doing - and it would also swallow the click
+  // that is supposed to replace the bend.
+  const edgeStyleShown = !selectedEdge ? null : !selectedEdge.data?.bend ? selectedEdge.data?.style
+    : Object.fromEntries(Object.entries(selectedEdge.data.style || {}).filter(([k]) => k !== 'arrow'))
   // The colour the thing ALREADY is, so the panel's 2 colour rows can show it.
   // A card's brand colour is never one of the 5 swatches, and a line's default
   // is not a colour at all but the from/to gradient.
@@ -940,7 +946,7 @@ export function DetailView({
         {canEdit && onEdgeStyleChange && selectedEdge && (
           <FormatPanel
             target="edge"
-            value={selectedEdge.data?.style}
+            value={edgeStyleShown}
             stroke={`linear-gradient(90deg, ${colorOf(selectedEdge.source)}, ${colorOf(selectedEdge.target)})`}
             onChange={(style) => onEdgeStyleChange(selectedEdge.id, style)}
             onReset={() => onEdgeStyleChange(selectedEdge.id, null)}
