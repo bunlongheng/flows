@@ -21,6 +21,13 @@ export const FONTS = ["sans", "serif", "mono"];
 export const FONT_SIZES = [12, 14, 18, 24];
 export const ALIGNS = ["left", "center", "right"];
 
+// What a card or a line already looks like before anyone has styled it. The
+// panel lights these so an untouched selection shows its current values instead
+// of 8 empty rows. stroke and bg are deliberately absent: their default is the
+// service's own brand colour, which is not one of the 5 swatches, so those 2
+// rows show the current colour in a box at the end instead.
+export const STYLE_DEFAULTS = { bw: 1, bs: "solid", radius: 0, font: "sans", fs: 12, align: "center", opacity: 100 };
+
 export const FONT_STACK = {
   sans: "inherit",
   serif: "Georgia, 'Times New Roman', serif",
