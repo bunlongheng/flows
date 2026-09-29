@@ -124,6 +124,11 @@ function NodeNote({ id, note }) {
 // edit it; a card with no info shows no badge at all (info arrives through the
 // API). The popover opens above the card, so it never covers the card's own
 // icon or label, and it touches the badge so hovering into it keeps it open.
+// Only 1 info popover stays open at a time. Opening one announces its card id
+// here and every other badge closes on hearing it, so a reader stepping through
+// a diagram never ends up with 3 paragraphs stacked over the boxes.
+const INFO_OPENED = new EventTarget()
+
 function NodeInfo({ id, info, color }) {
   const onInfoChange = useContext(InfoEditContext)
   const canEdit = typeof onInfoChange === 'function'
@@ -132,16 +137,22 @@ function NodeInfo({ id, info, color }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const cancelled = useRef(false)
+  useEffect(() => {
+    const onOther = e => { if (e.detail !== id) { setPinned(false); setEditing(false) } }
+    INFO_OPENED.addEventListener('open', onOther)
+    return () => INFO_OPENED.removeEventListener('open', onOther)
+  }, [id])
   if (!info) return null
   const show = hover || pinned || editing
-  const startEdit = e => { e.stopPropagation(); cancelled.current = false; setDraft(info || ''); setEditing(true); setPinned(true) }
+  const announce = () => INFO_OPENED.dispatchEvent(new CustomEvent('open', { detail: id }))
+  const startEdit = e => { e.stopPropagation(); cancelled.current = false; setDraft(info || ''); announce(); setEditing(true); setPinned(true) }
   const commit = () => {
     setEditing(false); setPinned(false)
     if (cancelled.current) { cancelled.current = false; return }
     const next = cleanInfo(draft)
     if (next !== (info || '')) onInfoChange(id, next)
   }
-  const toggle = e => { e.stopPropagation(); setPinned(p => !p) }
+  const toggle = e => { e.stopPropagation(); if (!pinned) announce(); setPinned(!pinned) }
   const lit = pinned || editing
   return (
     <div className="nodrag nopan" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
