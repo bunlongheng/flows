@@ -754,10 +754,11 @@ export function GradientEdge({
           statement, and a fade between it and a brand colour says neither. */}
       <BaseEdge id={id} path={path} markerEnd={markerEnd} style={{
         stroke: st.stroke || `url(#${gid})`,
-        // The +1 on a selected line is what makes clicking one feel like it
-        // landed, so a picked width is thickened the same way rather than
-        // overriding the feedback.
-        strokeWidth: (st.bw || 1.5) + (selected ? 1 : 0),
+        // No +1 while selected. The panel is only ever open on a selected line,
+        // so thickening it there meant picking 1px painted 2 and picking 2px
+        // painted 3 - the one row in the panel that could never show the value
+        // it claimed. The halo above already says which line is selected.
+        strokeWidth: st.bw || 1.5,
         strokeDasharray: dashArray(st.bs, st.bw || 1.5) || undefined,
         opacity: st.opacity == null ? undefined : st.opacity / 100,
       }} />

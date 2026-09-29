@@ -1,0 +1,158 @@
+import { test, expect, request } from "@playwright/test";
+import { signSession } from "../../lib/auth-session.js";
+import { STROKE_PICKS, BG_PICKS, BORDER_WIDTHS, BORDER_STYLES, RADII, FONTS, FONT_SIZES, ALIGNS, ARROWS, FONT_STACK } from "../../src/style.js";
+
+// Every tile in the panel, one by one, checked against what the canvas actually
+// draws - not against what was stored. "It saved" was already true of controls
+// that were reported as dead, because what makes a tile feel broken is the card
+// or the line not moving. So each pick here is read back off the rendered DOM.
+const SECRET = process.env.FLOWS_API_SECRET || "e2e-secret";
+const OWNER_COOKIE = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
+
+test.use({ viewport: { width: 1500, height: 950 } });
+
+const DESIGN = {
+  title: "E2E Every Button",
+  type: "flows",
+  // The 2 cards are deliberately NOT aligned. Facing each other on one axis,
+  // the router draws a step route as a plain straight run, and then "step" and
+  // "straight" make the same path and the test cannot tell them apart.
+  nodes: [{ id: "gateway", position: { x: 0, y: 0 } }, { id: "lambda", position: { x: 420, y: 260 } }],
+  edges: [{ id: "e1", source: "gateway", target: "lambda", label: "invoke" }],
+};
+
+const rgb = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+};
+
+const pick = (page, section, n) => page.evaluate(({ section, n }) => {
+  const s = [...document.querySelectorAll(".sd-format-panel > div")].find((d) => d.firstChild?.firstChild?.textContent === section);
+  if (!s) throw new Error(`no section ${section}`);
+  s.lastChild.children[n].click();
+}, { section, n });
+
+const open = async (page, id) => {
+  await page.context().addCookies([{ name: "sd_session", value: OWNER_COOKIE.split("=")[1], domain: "localhost", path: "/" }]);
+  await page.goto(`/?id=${id}`);
+  await page.waitForSelector(".react-flow__edge-path", { state: "attached" });
+  await page.waitForTimeout(1500);
+};
+
+const make = async (api, title) => {
+  const create = await api.post("/api/ai/flows", { headers: { Authorization: `Bearer ${SECRET}` }, data: { ...DESIGN, title } });
+  expect(create.status()).toBe(201);
+  return (await create.json()).url.split("/?id=")[1];
+};
+
+const drop = async (api, id) => {
+  await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
+  await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
+};
+
+test("every tile in the card panel moves the card", async ({ page, baseURL }) => {
+  const api = await request.newContext({ baseURL });
+  const id = await make(api, "E2E Card Buttons");
+  try {
+    await open(page, id);
+    await page.click(".react-flow__node");
+    await page.waitForSelector(".sd-format-panel");
+
+    // One read of everything the 8 rows can change, off the rendered card.
+    const drawn = () => page.evaluate(() => {
+      const box = document.querySelector(".react-flow__node > div");
+      const label = box.querySelector("div[title]");
+      const c = getComputedStyle(box), t = getComputedStyle(label.parentElement);
+      return {
+        stroke: c.borderTopColor, bg: c.backgroundColor, bw: c.borderTopWidth, bs: c.borderTopStyle,
+        radius: c.borderTopLeftRadius, align: t.textAlign, font: t.fontFamily,
+        // Chrome re-quotes a font stack with double quotes, so both sides are
+        // normalised rather than the expectation being written to match.
+        fs: getComputedStyle(label).fontSize,
+      };
+    });
+
+    const rows = [
+      ["Stroke", STROKE_PICKS, "stroke", (v) => rgb(v)],
+      // "transparent" still paints white: an opaque card is what keeps a line
+      // from appearing to run through it.
+      ["Background", BG_PICKS, "bg", (v) => (v === "transparent" ? "rgb(255, 255, 255)" : rgb(v))],
+      ["Stroke width", BORDER_WIDTHS, "bw", (v) => `${v}px`],
+      ["Stroke style", BORDER_STYLES, "bs", (v) => v],
+      ["Edges", RADII, "radius", (v) => `${v}px`],
+      // sans is FONT_STACK.sans = "inherit", so its computed value is whatever
+      // the app font resolves to - captured before any pick rather than guessed.
+      ["Font family", FONTS, "font", (v) => (v === "sans" ? baseFont : FONT_STACK[v])],
+      ["Font size", FONT_SIZES, "fs", (v) => `${v}px`],
+      ["Text align", ALIGNS, "align", (v) => v],
+    ];
+
+    const baseFont = (await drawn()).font;
+
+    for (const [section, opts, key, expected] of rows) {
+      for (let i = 0; i < opts.length; i++) {
+        await pick(page, section, i);
+        // Poll: the paint is a React commit away, and the row write is debounced.
+        const norm = (x) => String(x).replace(/["']/g, "");
+        await expect.poll(async () => norm((await drawn())[key]), { timeout: 4000 }).toBe(norm(expected(opts[i])));
+      }
+    }
+  } finally {
+    await drop(api, id);
+    await api.dispose();
+  }
+});
+
+// A line is clicked on its path a third of the way along, not at the midpoint -
+// the draggable step badge sits there and swallows the click.
+const clickEdge = async (page) => {
+  const pt = await page.evaluate(() => {
+    const p = document.querySelector(".react-flow__edge-interaction") || document.querySelector(".react-flow__edge-path");
+    const m = p.getPointAtLength(p.getTotalLength() * 0.3);
+    const t = p.ownerSVGElement.getScreenCTM();
+    return { x: m.x * t.a + m.y * t.c + t.e, y: m.x * t.b + m.y * t.d + t.f };
+  });
+  await page.mouse.click(pt.x, pt.y);
+};
+
+test("every tile in the line panel moves the line", async ({ page, baseURL }) => {
+  const api = await request.newContext({ baseURL });
+  const id = await make(api, "E2E Line Buttons");
+  try {
+    await open(page, id);
+    await clickEdge(page);
+    await page.waitForSelector(".sd-format-panel");
+    await expect(page.locator(".sd-format-panel")).toContainText("Line");
+
+    const drawn = () => page.$eval(".react-flow__edge-path", (e) => ({
+      stroke: e.style.stroke, bw: e.style.strokeWidth,
+      dashed: Boolean(e.style.strokeDasharray), d: e.getAttribute("d"),
+    }));
+
+    for (let i = 0; i < STROKE_PICKS.length; i++) {
+      await pick(page, "Stroke", i);
+      await expect.poll(async () => (await drawn()).stroke, { timeout: 4000 }).toBe(rgb(STROKE_PICKS[i]));
+    }
+    for (let i = 0; i < BORDER_WIDTHS.length; i++) {
+      await pick(page, "Stroke width", i);
+      await expect.poll(async () => (await drawn()).bw, { timeout: 4000 }).toBe(String(BORDER_WIDTHS[i]));
+    }
+    for (let i = 0; i < BORDER_STYLES.length; i++) {
+      await pick(page, "Stroke style", i);
+      await expect.poll(async () => (await drawn()).dashed, { timeout: 4000 }).toBe(BORDER_STYLES[i] !== "solid");
+    }
+
+    // Arrow type is the row that reads as dead when it fails, because the only
+    // evidence it worked is the shape of the path. A curve is a cubic, a
+    // straight run is one L and nothing else, an elbow is neither.
+    const straight = (d) => /^M[\d.,-]+ L[\d.,-]+$/.test(d);
+    const shape = { curved: (d) => d.includes("C"), straight, step: (d) => !d.includes("C") && !straight(d) };
+    for (let i = 0; i < ARROWS.length; i++) {
+      await pick(page, "Arrow type", i);
+      await expect.poll(async () => shape[ARROWS[i]]((await drawn()).d), { timeout: 4000 }).toBe(true);
+    }
+  } finally {
+    await drop(api, id);
+    await api.dispose();
+  }
+});
