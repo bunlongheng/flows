@@ -118,7 +118,68 @@ describe("renderDrawio", () => {
     expect(Number(cell[3])).toBeGreaterThanOrEqual(180);
   });
 
+  it("drops the note below the card's own label, which draw.io hangs underneath", () => {
+    // verticalLabelPosition=bottom means the label and sub live in the gap under
+    // the shape. A note parked at the bottom edge covers them and the card loses
+    // its name - so the more the card says, the further the note falls.
+    const note = "what happens here";
+    const y = (node) => Number(/<mxCell id="nt-[^"]*"[\s\S]*?<mxGeometry x="-?\d+" y="(-?\d+)"/.exec(renderDrawio([node], []))[1]);
+    const bare = y({ id: "lambda", note, position: { x: 0, y: 0 } });
+    const wordy = y({ id: "lambda", note, sub: "Trigger", info: "Runs the shortener on demand, stateless and cheap when idle.", position: { x: 0, y: 0 } });
+    expect(bare).toBeGreaterThan(180);
+    expect(wordy).toBeGreaterThan(bare);
+    // A bigger label takes more of that gap, so the clearance scales with it.
+    expect(y({ id: "lambda", note, style: { fs: 24 }, position: { x: 0, y: 0 } })).toBeGreaterThan(bare);
+  });
+
+  it("paints a logo card's border with imageBorder, which is the only one that shows", () => {
+    // strokeColor on shape=image is accepted and drawn by nothing.
+    const s = /<mxCell id="lambda" [^>]*style="([^"]*)"/.exec(renderDrawio([{ id: "lambda", position: { x: 0, y: 0 } }], []))[1];
+    expect(s).toContain("imageBorder=");
+  });
+
   it("writes no note vertex for a node that has none", () => {
     expect(renderDrawio([{ id: "a", position: { x: 0, y: 0 } }], [])).not.toContain('id="nt-a"');
+  });
+
+  it("carries a styled card through, in draw.io's own vocabulary", () => {
+    const style = { stroke: "#e03131", bg: "#ffec99", bw: 4, bs: "dashed", radius: 12, font: "mono", fs: 24, align: "left", opacity: 60 };
+    // A vertex with no logo takes the plain-rectangle style branch, which is
+    // where fill and corner live - the image branch has neither.
+    const xml = renderDrawio([{ id: "x", label: "X", icon: "/brand/x.svg", style, position: { x: 0, y: 0 } }], []);
+    const s = /<mxCell id="x" [^>]*style="([^"]*)"/.exec(xml)[1];
+    expect(s).toContain("strokeColor=#e03131");
+    expect(s).toContain("strokeWidth=4");
+    // draw.io spells a dash as its own pair, not as an SVG dasharray attribute.
+    expect(s).toContain("dashed=1");
+    expect(s).toContain("dashPattern=20 12");
+    expect(s).toContain("opacity=60");
+    expect(s).toContain("fontFamily=Courier New");
+    expect(s).toContain("fontSize=24");
+    expect(s).toContain("align=left");
+    // A plain card is a rectangle, so fill and corner land the usual way -
+    // draw.io's arcSize is a PERCENTAGE of the shorter side, not px.
+    expect(s).toContain("fillColor=#ffec99");
+    expect(s).toContain("rounded=1");
+    expect(s).toContain("arcSize=13");
+  });
+
+  it("paints a logo card's background with imageBackground, where fillColor does nothing", () => {
+    // A catalog id resolves to a real logo, which is draw.io's image shape -
+    // a different style vocabulary from the plain rectangle above.
+    const s = /<mxCell id="lambda" [^>]*style="([^"]*)"/.exec(
+      renderDrawio([{ id: "lambda", style: { bg: "#ffec99", bw: 2 }, position: { x: 0, y: 0 } }], []),
+    )[1];
+    expect(s).toContain("shape=image");
+    expect(s).toContain("imageBackground=#ffec99");
+    expect(s).toContain("strokeWidth=2");
+    expect(s).not.toContain("fillColor=");
+  });
+
+  it("leaves an unstyled card exactly as it was", () => {
+    const s = /<mxCell id="x" [^>]*style="([^"]*)"/.exec(renderDrawio([{ id: "x", label: "X", icon: "/brand/x.svg", position: { x: 0, y: 0 } }], []))[1];
+    expect(s).not.toContain("strokeWidth=");
+    expect(s).not.toContain("dashed=1");
+    expect(s).not.toContain("opacity=");
   });
 });
