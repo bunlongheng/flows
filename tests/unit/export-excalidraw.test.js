@@ -130,10 +130,10 @@ describe("renderExcalidraw", () => {
     const note = out.elements.find((e) => e.id === "n-lambda");
     expect(note.text.split("\n").length).toBeGreaterThan(1);
     expect(note.text.replace(/\n/g, " ")).toBe(info);
-    // Below the card, and not grouped with it - a long info is taller than the
-    // gap to the next row and must not ride along on every drag.
+    // Below the card and grouped WITH it: drag the card and its info follows,
+    // because an info line left behind describes the wrong card.
     expect(note.y).toBeGreaterThanOrEqual(180);
-    expect(note.groupIds).toEqual([]);
+    expect(note.groupIds).toEqual(out.elements.find((e) => e.id === "r-lambda").groupIds);
   });
 
   it("writes no info element for a node that has none", () => {
@@ -247,5 +247,33 @@ describe("renderExcalidraw", () => {
   it("keeps silver on a sunset card even when a stroke was picked", () => {
     const out = renderExcalidraw([{ id: "lambda", sunset: true, style: { stroke: "#e03131" }, position: { x: 0, y: 0 } }], []);
     expect(out.elements.find((e) => e.id === "r-lambda").strokeColor).not.toBe("#e03131");
+  });
+
+  // Array index IS z-order in Excalidraw, so this is the whole stacking rule.
+  it("stacks lines under boxes under logos, and groups a note with its card", () => {
+    const nodes = [{ id: "lambda", note: "watch this one", position: { x: 0, y: 0 } },
+      { id: "apigw", position: { x: 400, y: 0 } }];
+    const els = renderExcalidraw(nodes, [{ source: "apigw", target: "lambda", label: "invoke" }]).elements;
+    const at = (id) => els.findIndex((e) => e.id === id);
+    const arrow = els.findIndex((e) => e.type === "arrow");
+    // A line never crosses a logo or a word.
+    expect(arrow).toBeLessThan(at("r-lambda"));
+    expect(arrow).toBeLessThan(at("nb-lambda"));
+    expect(at("r-lambda")).toBeLessThan(at("i-lambda"));
+    expect(at("nb-lambda")).toBeLessThan(at("i-lambda"));
+    expect(at("nb-lambda")).toBeLessThan(at("t-lambda"));
+    // The line is at the bottom, its caption is not: a word under a card is half
+    // a word.
+    expect(at("el-0")).toBeGreaterThan(at("nb-lambda"));
+    // Every box is under every logo, across nodes as well as within one.
+    expect(at("r-apigw")).toBeLessThan(at("i-lambda"));
+    // The card, its logo, its label and its note move as one.
+    const g = els.find((e) => e.id === "r-lambda").groupIds;
+    expect(g).toHaveLength(1);
+    for (const id of ["i-lambda", "t-lambda", "nb-lambda", "nt-lambda"]) {
+      expect(els.find((e) => e.id === id).groupIds).toEqual(g);
+    }
+    // ...and a different card is a different group.
+    expect(els.find((e) => e.id === "r-apigw").groupIds).not.toEqual(g);
   });
 });
