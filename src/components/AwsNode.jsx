@@ -2,7 +2,7 @@ import { memo, useContext, useEffect, useRef, useState } from 'react'
 import { Handle, Position, NodeResizer, useReactFlow } from '@xyflow/react'
 import { findService } from '../services'
 import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, setNoteHeight } from './noteEditContext'
-import { NOTE_MAX, cleanNote, INFO_MAX, cleanInfo } from '../note'
+import { NOTE_MAX, cleanNote, noteParts, INFO_MAX, cleanInfo } from '../note'
 import { SUNSET, INK } from '../sunset.js'
 import { FONT_STACK, borderStyleOf } from '../style.js'
 
@@ -26,7 +26,7 @@ const CLAMP_2 = {
 const CLAMP_10 = { ...CLAMP_2, WebkitLineClamp: 10 }
 
 // The bordered caption hanging off a card's bottom-left corner. Plain black
-// text in a black frame, clamped to 10 lines with the full note on hover. The
+// text in a black frame, any URL in it a blue link, clamped to 10 lines with the full note on hover. The
 // owner double-clicks it (or the "+ note" ghost on an empty card) to edit;
 // everyone else just reads it, so a shared link shows exactly the same note.
 // The gap between the card's bottom edge and the note box (marginTop below),
@@ -103,7 +103,12 @@ function NodeNote({ id, note }) {
           style={{ ...NOTE_BOX, width: '100%', minHeight: 60, resize: 'vertical', outline: 'none', display: 'block' }} />
       ) : note ? (
         <div title={canEdit ? `${note}\n\nDouble-click to edit` : note} onDoubleClick={canEdit ? startEdit : undefined}
-          style={{ ...NOTE_BOX, display: 'inline-block', maxWidth: '100%', cursor: canEdit ? 'text' : 'default', ...CLAMP_10 }}>{note}</div>
+          style={{ ...NOTE_BOX, display: 'inline-block', maxWidth: '100%', cursor: canEdit ? 'text' : 'default', ...CLAMP_10 }}>
+          {noteParts(note).map((part, i) => part.url
+            ? <a key={i} href={part.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                style={{ color: '#1d4ed8', textDecoration: 'underline', wordBreak: 'break-all' }}>{part.url}</a>
+            : <span key={i}>{part.text}</span>)}
+        </div>
       ) : (
         <button type="button" className="sd-note-add" onClick={startEdit} title="Add a note to this step"
           style={{ ...NOTE_BOX, color: '#6b7280', borderStyle: 'dashed', borderColor: '#9ca3af', cursor: 'pointer', fontWeight: 600 }}>+ note</button>
