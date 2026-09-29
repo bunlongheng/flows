@@ -39,6 +39,17 @@ function Section({ label, right, children }) {
 // Excalidraw uses - an empty white square reads as white, which is a real choice.
 const CHECKER = 'repeating-conic-gradient(#efefef 0% 25%, #ffffff 0% 50%) 50% / 8px 8px'
 
+// Tile lives at module scope on purpose. Declared inside FormatPanel it was a
+// new component type on every render, so React unmounted and remounted every
+// tile each frame while the canvas animated: mousedown landed on one button,
+// mouseup on its replacement, and the browser never fired click. The swatches
+// never had this problem, which is why colours worked and nothing below did.
+function Tile({ on, onPick, title, children }) {
+  return (
+    <button type="button" title={title} onClick={onPick} style={btn(on)}>{children}</button>
+  )
+}
+
 function Swatch({ color, on, onPick }) {
   return (
     <button type="button" title={color} onClick={() => onPick(color)}
@@ -109,9 +120,8 @@ export function FormatPanel({ value, onChange, onReset, target = 'node', stroke,
   // so that is what the row lights.
   const cur = (k) => (v[k] === undefined ? STYLE_DEFAULTS[k] : v[k])
   const set = (k) => (x) => onChange({ ...v, [k]: x })
-  const Tile = ({ k, pick, children, title }) => (
-    <button type="button" title={title} onClick={() => set(k)(pick)} style={btn(cur(k) === pick)}>{children}</button>
-  )
+  // Props for the one tile of row k that picks value `pick`.
+  const tile = (k, pick) => ({ on: cur(k) === pick, onPick: () => set(k)(pick) })
 
   return (
     <div className="sd-format-panel" style={{
@@ -137,17 +147,17 @@ export function FormatPanel({ value, onChange, onReset, target = 'node', stroke,
 
       {!isNode && (
         <Section label="Arrow type">
-          {ARROWS.map((a) => <Tile key={a} k="arrow" pick={a} title={a}><Arrow kind={a} /></Tile>)}
+          {ARROWS.map((a) => <Tile key={a} {...tile('arrow', a)} title={a}><Arrow kind={a} /></Tile>)}
         </Section>
       )}
 
       <Section label="Stroke width">
-        {BORDER_WIDTHS.map((w) => <Tile key={w} k="bw" pick={w} title={`${w}px`}><Line w={w} /></Tile>)}
+        {BORDER_WIDTHS.map((w) => <Tile key={w} {...tile('bw', w)} title={`${w}px`}><Line w={w} /></Tile>)}
       </Section>
 
       <Section label="Stroke style">
         {BORDER_STYLES.map((s) => (
-          <Tile key={s} k="bs" pick={s} title={s}>
+          <Tile key={s} {...tile('bs', s)} title={s}>
             <Line w={2} dash={s === 'dashed' ? '5 3' : s === 'dotted' ? '0.5 3' : null} />
           </Tile>
         ))}
@@ -155,12 +165,12 @@ export function FormatPanel({ value, onChange, onReset, target = 'node', stroke,
 
       {isNode && <>
         <Section label="Edges">
-          {RADII.map((r) => <Tile key={r} k="radius" pick={r} title={r ? 'Round' : 'Sharp'}><Corner round={!!r} /></Tile>)}
+          {RADII.map((r) => <Tile key={r} {...tile('radius', r)} title={r ? 'Round' : 'Sharp'}><Corner round={!!r} /></Tile>)}
         </Section>
 
         <Section label="Font family">
           {FONTS.map((f) => (
-            <Tile key={f} k="font" pick={f} title={f}>
+            <Tile key={f} {...tile('font', f)} title={f}>
               <span style={{ fontSize: f === 'mono' ? 10 : 15, fontFamily: f === 'serif' ? 'Georgia, serif' : f === 'mono' ? 'ui-monospace, monospace' : 'inherit' }}>{FONT_GLYPH[f]}</span>
             </Tile>
           ))}
@@ -168,14 +178,14 @@ export function FormatPanel({ value, onChange, onReset, target = 'node', stroke,
 
         <Section label="Font size">
           {FONT_SIZES.map((s, i) => (
-            <Tile key={s} k="fs" pick={s} title={`${s}px`}>
+            <Tile key={s} {...tile('fs', s)} title={`${s}px`}>
               <span style={{ fontSize: 13, fontWeight: 500 }}>{['S', 'M', 'L', 'XL'][i]}</span>
             </Tile>
           ))}
         </Section>
 
         <Section label="Text align">
-          {ALIGNS.map((a) => <Tile key={a} k="align" pick={a} title={a}><Align to={a} /></Tile>)}
+          {ALIGNS.map((a) => <Tile key={a} {...tile('align', a)} title={a}><Align to={a} /></Tile>)}
         </Section>
       </>}
 
