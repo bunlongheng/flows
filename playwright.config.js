@@ -11,7 +11,7 @@ export default defineConfig({
   retries: 0,
   use: { baseURL: BASE },
   projects: [
-    { name: "api", testMatch: /(api|share)\.spec\.js/ },
+    { name: "api", testMatch: /(api|share|export)\.spec\.js/ },
     { name: "browser", testMatch: /(render|snap|arrange-undo|share-ui|panel-memory)\.spec\.js/, use: { browserName: "chromium" } },
   ],
   webServer: {
