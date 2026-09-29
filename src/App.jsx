@@ -34,6 +34,17 @@ const positionsOf = nds => nds
   .filter(n => n.type === 'awsNode' && n.position)
   .map(n => ({ id: n.id, position: { ...n.position } }))
 
+// The other half of a snapshot: everything the owner has pinned by hand on the
+// edges. A bent line is an edit like any other, so Cmd+Z has to walk it back
+// the same way it walks back a drag - which it could not do while a snapshot
+// was node positions and nothing else.
+const pinsOf = eds => eds.map(e => ({
+  id: e.id,
+  labelT: e.data?.labelT,
+  ends: e.data?.ends,
+  bend: e.data?.bend,
+}))
+
 // The bits of an edge worth persisting: its id, its badge position, and its
 // pinned ends. Shared by every PATCH so the server always receives both
 // fields for every edge, not just the one the owner just dragged.
@@ -262,6 +273,15 @@ export default function App() {
     events.forEach(t => window.addEventListener(t, track))
     return () => events.forEach(t => window.removeEventListener(t, track))
   }, [])
+  // Record the canvas as it was BEFORE an edit. A new edit clears the redo pile,
+  // the same as every editor. 50 steps is far more than anyone walks back.
+  // `pins` defaults to the edges as they stand: every caller records the state
+  // before its own change, and a node drag does not touch them anyway.
+  const pushHistory = useCallback((positions, kind, pins) => {
+    const step = { positions, kind, pins: pins || pinsOf(edgesRef.current) }
+    setHistory(h => ({ past: [...h.past, step].slice(-50), future: [] }))
+  }, [])
+
   const pendingFit = useRef(false)
   const menuRef = useRef(null)
   const aiInputRef = useRef(null)
@@ -409,6 +429,7 @@ export default function App() {
   // override. `t` is a 0..1 distance along the edge; null (double-click) puts
   // it back to the computed spot.
   const onLabelMove = useCallback((edgeId, t) => {
+    pushHistory(positionsOf(nodesRef.current), 'edge')
     const labelT = typeof t === 'number' ? t : undefined
     setEdges(prev => prev.map(e => (e.id === edgeId
       ? { ...e, data: { ...e.data, labelT } }
@@ -429,11 +450,12 @@ export default function App() {
       }
       return { ...a, data }
     })
-  }, [])
+  }, [pushHistory])
 
   // A pinned edge end: which face of the box the line meets and where along
   // it. `end` is { side, at }, or null (double-click) to go back to automatic.
   const onEndMove = useCallback((edgeId, which, end) => {
+    pushHistory(positionsOf(nodesRef.current), 'edge')
     const mergeEnds = ends => {
       const next = { ...(ends || {}) }
       if (end) next[which] = end; else delete next[which]
@@ -456,11 +478,12 @@ export default function App() {
       }
       return { ...a, data }
     })
-  }, [])
+  }, [pushHistory])
 
   // A hand-bent line: `bend` is { t, d } relative to the straight run, or
   // null (double-click) to let the line route itself again.
   const onBendMove = useCallback((edgeId, bend) => {
+    pushHistory(positionsOf(nodesRef.current), 'edge')
     const b = bend || undefined
     setEdges(prev => prev.map(e => (e.id === edgeId ? { ...e, data: { ...e.data, bend: b } } : e)))
     setActiveDiagram(a => {
@@ -475,7 +498,7 @@ export default function App() {
       }
       return { ...a, data }
     })
-  }, [])
+  }, [pushHistory])
 
   // The owner edited a node's note (double-click the caption, or "+ note") or
   // its info (the i badge). One deliberate edit, saved at once by id - never
@@ -684,36 +707,66 @@ export default function App() {
     })
   }, [canAI, activeDiagram, savePositions])
 
-  // Record the layout as it was BEFORE an edit. A new edit clears the redo pile,
-  // the same as every editor. 50 steps is far more than anyone walks back.
-  const pushHistory = useCallback((positions, kind) => {
-    setHistory(h => ({ past: [...h.past, { positions, kind }].slice(-50), future: [] }))
+  // Put the hand-pinned edge state back. The PATCH deletes every pin it is not
+  // sent, so an undone bend is undone on the server too and stays undone
+  // through a reload - the same contract the drag handlers use.
+  const restorePins = useCallback(pins => {
+    const byId = Object.fromEntries(pins.map(p => [p.id, p]))
+    setEdges(prev => prev.map(e => (byId[e.id]
+      ? { ...e, data: { ...e.data, labelT: byId[e.id].labelT, ends: byId[e.id].ends, bend: byId[e.id].bend } }
+      : e)))
+    setActiveDiagram(a => {
+      if (!a) return a
+      const edges = (a.data.edges || []).map((e, i) => {
+        const p = byId[e.id || `e${i}`]
+        if (!p) return e
+        const next = { ...e }
+        for (const k of ['labelT', 'ends', 'bend']) {
+          if (p[k] === undefined) delete next[k]
+          else next[k] = p[k]
+        }
+        return next
+      })
+      const data = { ...a.data, edges }
+      if (a.id) {
+        fetch(`/api/flows/${a.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ edges: edgePins(edges) }),
+        }).catch(() => {})
+      }
+      return { ...a, data }
+    })
   }, [])
 
   // Put a snapshot back on the canvas and persist it, so an undo survives reload.
-  const applyPositions = useCallback((positions, refit) => {
-    const byId = Object.fromEntries(positions.map(p => [p.id, p.position]))
+  const applySnapshot = useCallback((step, refit) => {
+    const byId = Object.fromEntries(step.positions.map(p => [p.id, p.position]))
     const next = nodesRef.current.map(n => (byId[n.id] ? { ...n, position: { ...byId[n.id] } } : n))
     setNodes(next)
     if (canAI && activeDiagram?.id) savePositions(activeDiagram.id, next)
+    if (step.pins) restorePins(step.pins)
     if (refit) setTimeout(() => rfInstance.current?.fitView({ padding: 0.15, duration: 400 }), 60)
-  }, [canAI, activeDiagram, savePositions])
+  }, [canAI, activeDiagram, savePositions, restorePins])
+
+  // Where the canvas stands right now, so undo can hand it to redo.
+  const snapshot = kind => ({ positions: positionsOf(nodesRef.current), pins: pinsOf(edgesRef.current), kind })
 
   const undo = useCallback(() => {
     const { past, future } = historyRef.current
     if (!past.length) return
     const step = past[past.length - 1]
-    setHistory({ past: past.slice(0, -1), future: [...future, { positions: positionsOf(nodesRef.current), kind: step.kind }] })
-    applyPositions(step.positions, step.kind === 'arrange')
-  }, [applyPositions])
+    setHistory({ past: past.slice(0, -1), future: [...future, snapshot(step.kind)] })
+    applySnapshot(step, step.kind === 'arrange')
+  }, [applySnapshot])
 
   const redo = useCallback(() => {
     const { past, future } = historyRef.current
     if (!future.length) return
     const step = future[future.length - 1]
-    setHistory({ past: [...past, { positions: positionsOf(nodesRef.current), kind: step.kind }], future: future.slice(0, -1) })
-    applyPositions(step.positions, step.kind === 'arrange')
-  }, [applyPositions])
+    setHistory({ past: [...past, snapshot(step.kind)], future: future.slice(0, -1) })
+    applySnapshot(step, step.kind === 'arrange')
+  }, [applySnapshot])
 
   // Keyboard shortcuts: Cmd/Ctrl+S saves the current layout immediately (owner,
   // on the detail canvas); Cmd/Ctrl+R re-fetches diagrams in-app (pull-to-refresh)
