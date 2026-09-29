@@ -27,7 +27,7 @@ const sampleDiagram = {
 function setup(overrides = {}) {
   const props = {
     toast: { message: "", visible: false },
-    setView: vi.fn(),
+    onBack: vi.fn(),
     showDetailCode: false,
     setShowDetailCode: vi.fn(),
     rfInstance: { current: null },
@@ -81,11 +81,14 @@ describe("DetailView", () => {
     expect(screen.getByText("Fit")).toBeInTheDocument();
   });
 
+  // onBack, not setView("index"): going back has to clear ?name= from the URL
+  // as well as change the view, or the address bar still names a flow and a
+  // reload drops you straight back into it.
   it("goes back to the index view and hides the code panel when back is clicked", async () => {
-    const { setView, setShowDetailCode } = setup();
+    const { onBack, setShowDetailCode } = setup();
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /back to gallery/i }));
-    expect(setView).toHaveBeenCalledWith("index");
+    expect(onBack).toHaveBeenCalled();
     expect(setShowDetailCode).toHaveBeenCalledWith(false);
   });
 

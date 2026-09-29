@@ -12,7 +12,7 @@ export default defineConfig({
   use: { baseURL: BASE },
   projects: [
     { name: "api", testMatch: /(api|share|export)\.spec\.js/ },
-    { name: "browser", testMatch: /(render|snap|arrange-undo|share-ui|panel-memory|note-routing|edge-overlap|edge-undo|edge-delete|format-panel|format-buttons)\.spec\.js/, use: { browserName: "chromium" } },
+    { name: "browser", testMatch: /(render|snap|arrange-undo|share-ui|panel-memory|note-routing|edge-overlap|edge-undo|edge-delete|format-panel|format-buttons|index-list)\.spec\.js/, use: { browserName: "chromium" } },
   ],
   webServer: {
     // Prod build + prod-like server (NODE_ENV=production via `npm run start`),

@@ -635,7 +635,11 @@ export default function App() {
       const url = new URL(window.location.href)
       url.searchParams.delete('id')
       url.searchParams.set('name', d.slug)
-      window.history.replaceState({}, '', url)
+      // Pushed when this is somewhere new, replaced when the URL already says
+      // it. Replacing unconditionally destroyed the list's history entry, so
+      // the browser Back button left the app instead of going back to the
+      // list - and on a phone the back gesture is the only back there is.
+      window.history[url.href === window.location.href ? 'replaceState' : 'pushState']({}, '', url)
     }
   }
 
@@ -1029,6 +1033,28 @@ export default function App() {
       .catch(() => { setLoadError(true); setLoadingId(false) })
     // Resolves the URL once on mount. openDiagram is stable for that purpose and
     // listing it would re-run the fetch on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Back and Forward. The URL is the source of truth for which view is up: no
+  // ?name= and no ?id= is the list, anything else is a flow, resolved the same
+  // way a cold load resolves it. Without this the address bar would change
+  // under a view that never re-rendered.
+  useEffect(() => {
+    const onPop = () => {
+      const q = new URLSearchParams(window.location.search)
+      const key = q.get('name') || q.get('id')
+      if (!key) return backToGallery()
+      setLoadingId(true)
+      fetch(`/api/flows/${encodeURIComponent(key)}`)
+        .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+        .then(row => { openDiagram(rowToDiagram(row)); setLoadingId(false) })
+        .catch(() => { setLoadError(true); setLoadingId(false) })
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+    // Same as the two loaders above: openDiagram is stable for this purpose and
+    // listing it would re-subscribe on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -1450,7 +1476,7 @@ export default function App() {
   return (
     <DetailView
       toast={toast} showToastMsg={showToastMsg}
-      setView={setView}
+      onBack={backToGallery}
       showDetailCode={showDetailCode} setShowDetailCode={setShowDetailCode}
       rfInstance={rfInstance} flashZoomHud={flashZoomHud} zoomHudRef={zoomHudRef}
       showSharePanel={showSharePanel} setShowSharePanel={setShowSharePanel}
