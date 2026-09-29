@@ -29,3 +29,14 @@ export function noteParts(text) {
   if (last < String(text || '').length) out.push({ text: text.slice(last) })
   return out
 }
+
+// What a link SHOWS. The owner links tickets, and a note that prints the whole
+// Jira URL is a note nobody can read, so a link wears its ticket key when the
+// URL carries one (SHAR-7977) and otherwise its address minus the scheme and
+// www, cut short. The full URL stays on the anchor's title and href.
+export function linkLabel(url) {
+  const key = String(url || '').match(/[A-Z][A-Z0-9]+-\d+/)
+  if (key) return key[0]
+  const bare = String(url || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '')
+  return bare.length > 32 ? `${bare.slice(0, 31)}…` : bare
+}

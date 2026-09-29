@@ -2,7 +2,7 @@ import { memo, useContext, useEffect, useRef, useState } from 'react'
 import { Handle, Position, NodeResizer, useReactFlow } from '@xyflow/react'
 import { findService } from '../services'
 import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, setNoteHeight } from './noteEditContext'
-import { NOTE_MAX, cleanNote, noteParts, INFO_MAX, cleanInfo } from '../note'
+import { NOTE_MAX, cleanNote, noteParts, linkLabel, INFO_MAX, cleanInfo } from '../note'
 import { SUNSET, INK } from '../sunset.js'
 import { FONT_STACK, borderStyleOf } from '../style.js'
 
@@ -105,8 +105,8 @@ function NodeNote({ id, note }) {
         <div title={canEdit ? `${note}\n\nDouble-click to edit` : note} onDoubleClick={canEdit ? startEdit : undefined}
           style={{ ...NOTE_BOX, display: 'inline-block', maxWidth: '100%', cursor: canEdit ? 'text' : 'default', ...CLAMP_10 }}>
           {noteParts(note).map((part, i) => part.url
-            ? <a key={i} href={part.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                style={{ color: '#1d4ed8', textDecoration: 'underline', wordBreak: 'break-all' }}>{part.url}</a>
+            ? <a key={i} href={part.url} title={part.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                style={{ color: '#1d4ed8', textDecoration: 'underline', wordBreak: 'break-all' }}>{linkLabel(part.url)}</a>
             : <span key={i}>{part.text}</span>)}
         </div>
       ) : (
