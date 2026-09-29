@@ -488,6 +488,10 @@ export function GradientEdge({
   const parallel = siblings.length > 1
 
   let path, labelX, labelYRaw
+  // Set when the router draws a straight line on purpose, so an explicit
+  // "step" pick knows it has something to replace. The lane values let the
+  // elbows of parallel siblings keep their own middle leg instead of sharing one.
+  let routedStraight = false, laneShift = 0, laneAlongY = false
   if (parallel) {
     const n = siblings.length
     const idx = siblings.slice().sort((a, b) => (a.id < b.id ? -1 : 1)).findIndex(e => e.id === id)
@@ -529,6 +533,7 @@ export function GradientEdge({
         if (fits(sourceNode, centerOf(sourceNode)[k]) && fits(targetNode, centerOf(targetNode)[k])) { sm[k] = v; tm[k] = v }
       }
       const shift = centered * gap
+      laneShift = shift; laneAlongY = alongY
       sx = alongY ? sm.x : sm.x + shift; sy = alongY ? sm.y + shift : sm.y
       tx = alongY ? tm.x : tm.x + shift; ty = alongY ? tm.y + shift : tm.y
       // A pinned end wins over the lane; the other end keeps its lane shift.
@@ -536,6 +541,7 @@ export function GradientEdge({
       if (endT) { const p = pinnedPoint(targetNode, endT); tx = p.x; ty = p.y }
     }
     path = `M${sx},${sy} L${tx},${ty}`
+    routedStraight = true
     // Stagger each sibling's label to a DIFFERENT point along its line so the
     // badges sit side by side, not on one row.
     // Measured in ONE direction for the whole pair: a request and its reply run
@@ -547,6 +553,7 @@ export function GradientEdge({
   } else if (aligned && !blocks(sx, sy, tx, ty, obstacles)) {
     // Lined up AND nothing in the way: straight line, edge to facing edge.
     path = `M${sx},${sy} L${tx},${ty}`
+    routedStraight = true
     labelX = (sx + tx) / 2
     labelYRaw = (sy + ty) / 2
   } else if (obstacles.length) {
@@ -606,12 +613,23 @@ export function GradientEdge({
       borderRadius: 18,
     })
   }
-  // An arrow type picked in the format panel replaces the routing outright.
-  // "step" IS the routing above, so it is the one that changes nothing; the
-  // other two are the owner saying they would rather have the short line than
-  // the one that dodges the boxes in between.
+  // An arrow type picked in the format panel replaces the routing outright,
+  // the way Excalidraw's arrow type does: the pick is what the line looks
+  // like. Straight and curved are the owner saying they would rather have the
+  // short line than the one that dodges the boxes in between. Step is the
+  // routing above except where the router drew a straight line on purpose (a
+  // lined-up pair, or parallel lanes on a diagonal): a lit step tile over a
+  // diagonal read as a dead control, so there it draws the elbow it promises.
+  // Between level ends that elbow is still a straight line, as it should be.
   const picked = data?.style?.arrow
-  if (!bend && picked === 'straight') {
+  if (!bend && picked === 'step' && routedStraight) {
+    ;[path, labelX, labelYRaw] = getSmoothStepPath({
+      sourceX: sx, sourceY: sy, sourcePosition: sSide,
+      targetX: tx, targetY: ty, targetPosition: tSide,
+      borderRadius: 18,
+      ...(laneShift ? (laneAlongY ? { centerX: (sx + tx) / 2 + laneShift } : { centerY: (sy + ty) / 2 + laneShift }) : {}),
+    })
+  } else if (!bend && picked === 'straight') {
     path = `M${sx},${sy} L${tx},${ty}`
     labelX = (sx + tx) / 2
     labelYRaw = (sy + ty) / 2
@@ -753,14 +771,16 @@ export function GradientEdge({
           which it goes TO; once the owner has chosen a colour, that is the
           statement, and a fade between it and a brand colour says neither. */}
       <BaseEdge id={id} path={path} markerEnd={markerEnd} style={{
-        stroke: st.stroke || `url(#${gid})`,
+        // A line touching a sunset card is the path on its way out: flat, very
+        // light silver at half strength, whatever colour or opacity was picked.
+        stroke: data?.sunsetLine ? SUNSET.line : (st.stroke || `url(#${gid})`),
         // No +1 while selected. The panel is only ever open on a selected line,
         // so thickening it there meant picking 1px painted 2 and picking 2px
         // painted 3 - the one row in the panel that could never show the value
         // it claimed. The halo above already says which line is selected.
         strokeWidth: st.bw || 1.5,
         strokeDasharray: dashArray(st.bs, st.bw || 1.5) || undefined,
-        opacity: st.opacity == null ? undefined : st.opacity / 100,
+        opacity: data?.sunsetLine ? 0.5 : (st.opacity == null ? undefined : st.opacity / 100),
       }} />
         <FlowDot edgeId={id} path={path} color={c1} />
       {(label || hasStep || ((endMovable || bendMovable) && selected)) && (
@@ -803,8 +823,8 @@ export function GradientEdge({
   )
 }
 
-// The red X that marks something outdated: on a sunset card's icon and on the
-// badge of every edge into it. Sits on the top-right corner of its parent.
+// The red X that marks something outdated: on the badge of every edge into a
+// sunset card, never on the card itself. Sits on the top-right corner of its parent.
 export function SunsetX({ size = 16 }) {
   const r = size / 2
   return (
