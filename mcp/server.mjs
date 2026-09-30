@@ -7,7 +7,7 @@
 //
 // Env (from the repo .env): DATABASE_URL, OWNER_USER_ID. Optional:
 // FLOWS_APP_URL (default prod) for the shareable links it returns.
-import { creationTags } from '../lib/linked.js'
+import { creationTags, cleanRepo, repoFromTitle } from '../lib/linked.js'
 import './load-env.mjs' // MUST be first - loads .env before lib/db.js opens the pool
 import { readFile } from 'node:fs/promises'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -249,9 +249,10 @@ server.registerTool(
       description: z.string().max(600).optional().describe('The goal paragraph shown under the pattern, 1-3 sentences on what the design is for.'),
       public: z.boolean().optional().describe('Default true: anyone with the link can open it and the link unfurls with the diagram. false keeps it private (owner only; recipients get a 404 and a generic preview card).'),
       linked: z.boolean().optional().describe('true lists the diagram under the gallery\'s Linked tab (README, PR, repo audit) instead of My Diagrams, so the owner\'s daily list stays their own work. A title that starts with owner/repo is Linked on its own; false keeps it out.'),
+      repo: z.string().max(200).optional().describe('The GitHub repo this diagram serves, owner/name (no URL). Its card shows a GitHub link to it, which is how the owner knows not to delete it. Read off a title that starts with owner/repo when omitted.'),
     },
   },
-  async ({ title, nodes, edges, pattern, description, public: isPublic = true, linked }) => {
+  async ({ title, nodes, edges, pattern, description, public: isPublic = true, linked, repo: repoIn }) => {
     try {
       const gate = logoGate(nodes, edges)
       if (gate) return gate
@@ -261,14 +262,15 @@ server.registerTool(
       if (im.failed.length) return fail(`Could not load the image for node(s): ${im.failed.map(f => `${f.id} (${f.reason})`).join(', ')}.`)
       const o = owner()
       const slug = await uniqueFlowSlug(o, title)
+      const repo = cleanRepo(repoIn) || repoFromTitle(title)
       const storedEdges = toStoredEdges(edges)
       const enforced = enforceStartLeft(toStoredNodes(im.nodes), storedEdges)
       // Born arranged: a new diagram gets the same layout the Arrange button
       // produces, so it never lands on the canvas crammed.
       const storedNodes = arrangeNew(enforced.nodes, storedEdges)
       const { rows } = await db.query(
-        'INSERT INTO flows (user_id, title, slug, nodes, edges, type, tags, is_public, pattern, description) VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6,$7::text[],$8,$9,$10) RETURNING id',
-        [o, title.trim(), slug, JSON.stringify(storedNodes), JSON.stringify(storedEdges), 'flow', creationTags('MCP', title, linked), isPublic, pattern?.trim() || null, description?.trim() || null],
+        'INSERT INTO flows (user_id, title, slug, nodes, edges, type, tags, is_public, pattern, description, repo) VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6,$7::text[],$8,$9,$10,$11) RETURNING id',
+        [o, title.trim(), slug, JSON.stringify(storedNodes), JSON.stringify(storedEdges), 'flow', creationTags('MCP', title, linked, repo), isPublic, pattern?.trim() || null, description?.trim() || null, repo],
       )
       const id = rows[0].id
 

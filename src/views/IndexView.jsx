@@ -232,6 +232,7 @@ export function IndexView({
                 title={d.title}
                 updatedAt={d.updatedAt}
                 tags={d.tags}
+                repo={canAI ? d.repo : null}
                 showBrand
                 difficulty={d.difficulty}
                 onOpen={() => onOpen(d)}

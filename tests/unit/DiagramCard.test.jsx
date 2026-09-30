@@ -77,6 +77,21 @@ describe("private lock", () => {
 // Every flow starts locked, so a padlock on the card would sit on every card
 // and say nothing. A locked card just offers no delete button; the one badge
 // a card can wear is Private, the exception worth seeing.
+// A linked card proves the repo it serves with a GitHub link, so the owner
+// knows not to delete it in a cleanup. The link opens the repo, not the card.
+describe("repo link", () => {
+  it("wears the GitHub mark linking to the repo, and none without one", async () => {
+    const { onOpen } = setup({ repo: "bunlongheng/forensic" });
+    const link = screen.getByRole("link", { name: /Open bunlongheng\/forensic on GitHub/ });
+    expect(link).toHaveAttribute("href", "https://github.com/bunlongheng/forensic");
+    await userEvent.click(link);
+    expect(onOpen).not.toHaveBeenCalled();
+    cleanup();
+    setup();
+    expect(screen.queryByRole("link", { name: /on GitHub/ })).toBeNull();
+  });
+});
+
 describe("locked card", () => {
   it("offers no delete button and wears no padlock when locked", () => {
     setup({ isLocked: true });

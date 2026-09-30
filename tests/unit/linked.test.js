@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isLinkedTitle, creationTags } from "../../lib/linked.js";
+import { isLinkedTitle, creationTags, repoFromTitle, cleanRepo } from "../../lib/linked.js";
 
 // A repo audit or README pass names its diagram "owner/repo - ...", and that
 // diagram belongs under Linked, not My Diagrams.
@@ -17,5 +17,14 @@ describe("linked tag", () => {
     expect(creationTags("API", "bunlongheng/flows - Architecture")).toEqual(["API", "linked"]);
     expect(creationTags("MCP", "Flows Architecture", true)).toEqual(["MCP", "linked"]);
     expect(creationTags("MCP", "bunlongheng/flows - Architecture", false)).toEqual(["MCP"]);
+    expect(creationTags("API", "Forensic - Architecture", undefined, "bunlongheng/forensic")).toEqual(["API", "linked"]);
+  });
+
+  it("names the repo off the title, or takes a clean owner/name from the caller", () => {
+    expect(repoFromTitle("ThryvLabs/ubs-appmarket-poc - Architecture")).toBe("ThryvLabs/ubs-appmarket-poc");
+    expect(repoFromTitle("Forensic - Architecture")).toBeNull();
+    expect(cleanRepo("bunlongheng/forensic")).toBe("bunlongheng/forensic");
+    expect(cleanRepo("https://github.com/bunlongheng/forensic")).toBeNull();
+    expect(cleanRepo("")).toBeNull();
   });
 });
