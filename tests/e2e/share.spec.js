@@ -38,6 +38,8 @@ const DESIGN = {
 // Delete is soft now, so a spec that only DELETEs leaves a row in trash on every
 // run. Purge afterwards so the suite cleans up after itself.
 async function purge(api, id) {
+  // Every flow starts delete-locked; the owner lifts that first.
+  await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } });
   await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
   await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
 }
@@ -162,6 +164,9 @@ test("DELETE moves a design to trash instead of destroying it", async ({ baseURL
   });
   expect((await api.get(`/api/flows/${id}`)).status()).toBe(200);
 
+  // Every flow starts delete-locked: the delete is 409 until the owner lifts it.
+  expect((await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).status()).toBe(409);
+  await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } });
   const del = await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
   expect(del.status()).toBe(200);
   expect((await del.json()).deleted).toBe(true);

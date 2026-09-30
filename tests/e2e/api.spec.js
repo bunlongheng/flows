@@ -80,7 +80,9 @@ test("public round-trip: create -> 201 {url} -> GET renders -> DELETE", async ({
   expect(design.title).toBe(VALID_BODY.title);
   expect(design.nodes.length).toBe(VALID_BODY.nodes.length);
 
-  // Clean up the test artifact (owner-session-gated DELETE).
+  // Clean up the test artifact (owner-session-gated DELETE). Every flow starts
+  // delete-locked, so the owner lifts that first.
+  await request.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } });
   const del = await request.delete(`/api/flows/${id}`, {
     headers: { Cookie: OWNER_COOKIE },
   });

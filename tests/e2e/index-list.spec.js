@@ -81,6 +81,7 @@ test("the index lists, searches and opens, and back gets out again", async ({ pa
     expect(page.url()).toContain("name=");
   } finally {
     for (const id of made) {
+      await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
       await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
       await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     }

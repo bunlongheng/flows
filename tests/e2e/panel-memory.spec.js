@@ -72,6 +72,7 @@ test("Steps survives back-to-gallery and reopen, and off stays off", async ({ pa
     await page.waitForSelector(".react-flow__node", { timeout: 20000 });
     await expect.poll(() => on("Steps"), { timeout: 10000 }).toBe(false);
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
@@ -107,6 +108,7 @@ test("a visitor on a shared link gets the owner's steps but no share panel and n
     await expect(page.locator('header button:has-text("Steps")')).toHaveCount(0);
     await ctx.close();
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
   }
 });

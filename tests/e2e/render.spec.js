@@ -49,6 +49,7 @@ test("the /?id= URL renders the design in the browser", async ({ page, baseURL }
     const nodeCount = await page.locator(".react-flow__node-awsNode").count();
     expect(nodeCount).toBe(DESIGN.nodes.length);
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
@@ -79,6 +80,7 @@ test("the /?name= URL renders the design in the browser", async ({ page, baseURL
     // The param survives the load - a shared link stays shareable.
     expect(page.url()).toContain(`name=${row.slug}`);
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
@@ -120,6 +122,7 @@ test("a phone auto-fits the whole diagram, and re-fits after a rotation", async 
     expect(await allVisible()).toBe(true);
     await ctx.close();
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
   }
 });

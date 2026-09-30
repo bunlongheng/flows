@@ -183,7 +183,7 @@ server.registerTool(
   async () => {
     try {
       const { rows } = await db.query(
-        'SELECT id, title, slug, nodes, edges, locked, created_at FROM flows WHERE user_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 200',
+        'SELECT id, title, slug, nodes, edges, locked, edit_locked, created_at FROM flows WHERE user_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 200',
         [owner()],
       )
       return ok({
@@ -191,7 +191,7 @@ server.registerTool(
         designs: rows.map(r => ({
           id: r.id, title: r.title, slug: r.slug,
           nodes: r.nodes?.length ?? 0, edges: r.edges?.length ?? 0,
-          locked: !!r.locked,
+          locked: !!r.locked, edit_locked: !!r.edit_locked,
           created_at: r.created_at, url: urlFor(r.id),
         })),
       })
@@ -209,7 +209,7 @@ server.registerTool(
   },
   async ({ id }) => {
     try {
-      const { rows } = await db.query('SELECT id, title, slug, nodes, edges, locked, created_at FROM flows WHERE id = $1 AND deleted_at IS NULL', [id])
+      const { rows } = await db.query('SELECT id, title, slug, nodes, edges, locked, edit_locked, created_at FROM flows WHERE id = $1 AND deleted_at IS NULL', [id])
       if (!rows.length) return fail(`No diagram with id ${id}`)
       return ok({ ...rows[0], url: urlFor(id), share_url: shareUrlFor(rows[0].slug), gif_url: gifUrlFor(rows[0].slug), readme: readmeFor(rows[0].title, rows[0].slug) })
     } catch (e) { return fail(`get failed: ${e.message}`) }
@@ -303,7 +303,8 @@ server.registerTool(
       'Modify an existing diagram by id, at any age. Any of title, nodes, or edges you provide replaces that field; ' +
       'omitted fields are left unchanged. ALWAYS prefer this over creating a "v2" of a diagram that already exists - ' +
       'call list_flows to find the id. Backfilling or correcting old diagrams is exactly what this is for. ' +
-      'Every update is kept in history (list_versions / restore_version), so a mistaken rewrite can be pulled back.',
+      'Every update is kept in history (list_versions / restore_version), so a mistaken rewrite can be pulled back. ' +
+      'Refused while the flow is edit-locked, which every flow is until the owner unlocks it in the app - see lock_flow.',
     inputSchema: {
       id: z.string().describe('The diagram id to update'),
       reason: z.string().optional().describe('Optional note on why, e.g. "backfill: correct the Integry decommission date". Recorded on the row as a trail; never required.'),
@@ -323,6 +324,10 @@ server.registerTool(
   },
   async ({ id, reason, title, nodes, edges, public: isPublic }) => {
     try {
+      // Every flow starts edit-locked. Only the owner lifts it, in the app.
+      const { rows: gate } = await db.query('SELECT edit_locked FROM flows WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL', [id, owner()])
+      if (!gate.length) return fail(`No owned diagram with id ${id} (it may be in trash - call list_trash)`)
+      if (gate[0].edit_locked) return fail(`Diagram ${id} is edit-locked, as every flow is until the owner unlocks it in the app. Ask the owner to lift the edit lock; you cannot unlock it from here.`)
       let iconNodes = nodes
       if (nodes) {
         const gate = logoGate(nodes, edges || []); if (gate) return gate
@@ -379,21 +384,23 @@ server.registerTool(
 server.registerTool(
   'lock_flow',
   {
-    title: 'Lock or unlock flow',
+    title: 'Lock flow',
     description:
-      'Lock a diagram that a README or Confluence page embeds: while locked, delete_flow refuses it and the app ' +
-      'hides the Delete button. Editing still works. locked: false lifts it. Locking is the record that a link out ' +
-      'there depends on this diagram, so lock before you paste the readme line somewhere.',
-    inputSchema: { id: z.string(), locked: z.boolean() },
+      'Every flow starts with both locks on. The delete lock (locked) makes delete_flow refuse it; the edit lock ' +
+      '(edit_locked) makes update_flow and restore_version refuse it. This tool can only turn a lock ON; only the ' +
+      'owner turns one off, in the app. If you need to edit or trash a locked flow, stop and ask the owner to unlock it.',
+    inputSchema: { id: z.string(), locked: z.boolean().optional(), edit_locked: z.boolean().optional() },
   },
-  async ({ id, locked }) => {
+  async ({ id, locked, edit_locked }) => {
+    if (locked === false || edit_locked === false) return fail('Only the owner unlocks a flow, in the app. Ask them to lift the lock, then try again.')
+    if (locked !== true && edit_locked !== true) return fail('Pass locked: true and/or edit_locked: true.')
     try {
       const { rows } = await db.query(
-        'UPDATE flows SET locked = $1 WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL RETURNING id, title, locked',
-        [locked, id, owner()],
+        'UPDATE flows SET locked = locked OR $1, edit_locked = edit_locked OR $2 WHERE id = $3 AND user_id = $4 AND deleted_at IS NULL RETURNING id, title, locked, edit_locked',
+        [locked === true, edit_locked === true, id, owner()],
       )
       if (!rows.length) return fail(`No owned diagram with id ${id}`)
-      return ok({ id, title: rows[0].title, locked: rows[0].locked })
+      return ok({ id, title: rows[0].title, locked: rows[0].locked, edit_locked: rows[0].edit_locked })
     } catch (e) { return fail(`lock failed: ${e.message}`) }
   },
 )
@@ -409,7 +416,7 @@ server.registerTool(
     description:
       'Move a diagram to trash by id. This is a soft delete - it disappears from the gallery, the demo list and any ' +
       'shared link, but the row is kept and restore_flow can bring it back. Safe for cleaning up duplicates. ' +
-      'Refused on a locked diagram - see lock_flow.',
+      'Refused on a delete-locked diagram, which every flow is until the owner unlocks it in the app - see lock_flow.',
     inputSchema: {
       id: z.string().describe('The diagram id to move to trash'),
       reason: z.string().optional().describe('Why it is being removed, e.g. "duplicate of v2.2". Recorded on the row.'),
@@ -422,7 +429,7 @@ server.registerTool(
         [id, owner()],
       )
       if (lockRows[0]?.locked) {
-        return fail(`Diagram ${id} is locked: it is embedded in a README or Confluence page and cannot be trashed. Call lock_flow with locked: false first if you really mean it.`)
+        return fail(`Diagram ${id} is locked against delete, as every flow is until the owner unlocks it in the app. Ask the owner; you cannot unlock it from here.`)
       }
 
       const { rows } = await db.query(
@@ -516,10 +523,10 @@ server.registerTool(
   },
   async ({ id, version_id }) => {
     try {
-      const result = await restoreVersion(id, owner(), version_id)
+      const result = await restoreVersion(id, owner(), version_id, { agent: true })
       if (result === null) return fail(`No version ${version_id} on diagram ${id} (or you don't own it)`)
       if (result.locked) {
-        return fail(`Diagram ${id} is locked: it is embedded in a README or Confluence page and cannot be restored. Call lock_flow with locked: false first if you really mean it.`)
+        return fail(`Diagram ${id} is edit-locked, as every flow is until the owner unlocks it in the app. A restore is an edit. Ask the owner; you cannot unlock it from here.`)
       }
       return ok({ id, url: urlFor(id), ...result })
     } catch (e) { return fail(`restore_version failed: ${e.message}`) }

@@ -122,6 +122,7 @@ test("Share on a private diagram publishes it, previews the card, and hands out 
     expect(buf.length).toBeGreaterThan(20000);
     expect(buf.length).not.toBe((await generic).length); // not the fallback
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
@@ -172,6 +173,7 @@ test("a PUBLISHED non-demo design resolves by slug - sharing must not break its 
     expect(await page.locator(".react-flow__node-awsNode").count()).toBe(DESIGN.nodes.length);
     await expect(page.locator("text=Design not found")).toHaveCount(0);
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
@@ -193,6 +195,7 @@ test("a slug for a PRIVATE design stays hidden from a stranger", async ({ baseUR
     // And a slug cannot be used to mutate anything.
     expect((await api.delete(`/api/flows/${slug}`, { headers: { Cookie: OWNER_COOKIE } })).status()).toBe(400);
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
@@ -278,6 +281,7 @@ test("a step badge slides ALONG its edge, persists, and double-click resets it",
     await open();
     expect(dist(await at(), before)).toBeLessThan(10);
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
@@ -333,6 +337,7 @@ test("a visitor cannot move a node on /demo and gets no edit, share or export co
     await expect(page.locator("header")).toHaveCount(0);
     await ctx.close();
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
   }
 });
@@ -380,6 +385,7 @@ test("the info card starts folded on a phone and the badge opens it", async ({ b
     await expect(page.locator(".sd-info-badge")).toHaveCount(1);
     await ctx.close();
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
   }
 });
@@ -442,6 +448,7 @@ test("phone header: matched tiles, finger-sized targets, aligned app logo", asyn
     expect(Math.round(logo.x)).toBe(Math.round(mainPadLeft));
     await ctx.close();
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
   }
 });
@@ -489,6 +496,7 @@ test("phone keeps Fit reachable and never hides a button out of reach", async ({
     expect(Math.abs((await scale()) - fitted)).toBeLessThan(0.05);
     await ctx.close();
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
   }
 });
@@ -534,6 +542,7 @@ test("the owner toolbar fits every viewport instead of scrolling sideways", asyn
       await ctx.close();
     }
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
   }
 });

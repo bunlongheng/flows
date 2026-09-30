@@ -112,6 +112,33 @@ describe("/api/flows/:id", () => {
     expect(query).not.toHaveBeenCalled();
   });
 
+  // Two locks, both on for every flow. Either key alone leaves the other alone,
+  // and the answer carries both so the app can show the pair.
+  it("PATCH edit_locked flips only the edit lock and returns both locks", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: ID, locked: true, edit_locked: false }] });
+    const res = mockRes();
+    const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
+    const r = req("PATCH", ID, undefined, cookie);
+    r.body = { edit_locked: false };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ id: ID, locked: true, edit_locked: false });
+    const [sql, params] = query.mock.calls[0];
+    expect(sql).toMatch(/locked = COALESCE\(\$1, locked\), edit_locked = COALESCE\(\$2, edit_locked\)/);
+    expect(params.slice(0, 2)).toEqual([null, false]);
+  });
+
+  it("PATCH locked flips only the delete lock", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: ID, locked: false, edit_locked: true }] });
+    const res = mockRes();
+    const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
+    const r = req("PATCH", ID, undefined, cookie);
+    r.body = { locked: false };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(query.mock.calls[0][1].slice(0, 2)).toEqual([false, null]);
+  });
+
   it("PATCH view_state keeps the whole set of open panels, not one winner", async () => {
     query.mockResolvedValueOnce({ rows: [{ id: ID }] });
     const res = mockRes();
