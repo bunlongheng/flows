@@ -16,7 +16,6 @@ export function IndexView({
   search, setSearch,
   user, canAI, isDemo, listError,
   galleryTab, setGalleryTab,
-  scope, setScope, scopeCounts,
   showMenu, setShowMenu, menuRef,
   showDocs, setShowDocs,
   copiedLabel, onCopyFormat,
@@ -125,11 +124,13 @@ export function IndexView({
 
           <div style={{ flex: 1 }} />
 
-          {/* Demos / My Diagrams tab toggle - owner only, top-right button group,
-              same header row (no new row). Public /demo never shows it. */}
+          {/* My Diagrams / Linked / Demos tab toggle - owner only, top-right button
+              group, same header row (no new row). Linked holds the diagrams made
+              for a repo (README, PR, audit) so the daily list stays the owner's
+              own work. Public /demo never shows it. */}
           {!isDemo && canAI && (
             <div style={{ display: 'inline-flex', background: '#f0f1f3', borderRadius: 9, padding: 3, flexShrink: 0 }}>
-              {[['mine', 'My Diagrams'], ['demos', 'Demos']].map(([key, label]) => (
+              {[['mine', 'My Diagrams'], ['linked', 'Linked'], ['demos', 'Demos']].map(([key, label]) => (
                 <button key={key} onClick={() => setGalleryTab(key)}
                   style={{
                     padding: '6px 13px', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
@@ -139,28 +140,6 @@ export function IndexView({
                     boxShadow: galleryTab === key ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
                     transition: 'background 0.15s, color 0.15s',
                   }}>{label}</button>
-              ))}
-            </div>
-          )}
-
-          {/* Work vs personal. Owner's own diagrams only - the demo roster is
-              neither, so the filter would just be noise there. */}
-          {!isDemo && canAI && galleryTab !== 'demos' && (
-            <div style={{ display: 'inline-flex', gap: 6, flexShrink: 0, marginRight: 8 }}>
-              {[['all', 'All'], ['work', 'Work'], ['personal', 'Personal']].map(([key, label]) => (
-                <button key={key} onClick={() => setScope(key)}
-                  title={`${scopeCounts?.[key] ?? 0} diagram${(scopeCounts?.[key] ?? 0) === 1 ? '' : 's'}`}
-                  style={{
-                    padding: '5px 11px', fontSize: 12, fontWeight: scope === key ? 700 : 500,
-                    fontFamily: 'inherit', borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap',
-                    border: `1px solid ${scope === key ? '#1c1e21' : '#e4e6e8'}`,
-                    background: scope === key ? '#1c1e21' : '#fff',
-                    color: scope === key ? '#fff' : '#65676b',
-                    transition: 'all 0.12s',
-                  }}>
-                  {label}
-                  <span style={{ marginLeft: 6, opacity: 0.65, fontWeight: 600 }}>{scopeCounts?.[key] ?? 0}</span>
-                </button>
               ))}
             </div>
           )}

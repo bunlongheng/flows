@@ -7,6 +7,7 @@
 //
 // Env (from the repo .env): DATABASE_URL, OWNER_USER_ID. Optional:
 // FLOWS_APP_URL (default prod) for the shareable links it returns.
+import { creationTags } from '../lib/linked.js'
 import './load-env.mjs' // MUST be first - loads .env before lib/db.js opens the pool
 import { readFile } from 'node:fs/promises'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -247,9 +248,10 @@ server.registerTool(
       pattern: z.string().max(200).optional().describe('The one-line "what it tests" shown above the diagram and on the share card, e.g. "Read-heavy KV lookup: cache-first redirects"'),
       description: z.string().max(600).optional().describe('The goal paragraph shown under the pattern, 1-3 sentences on what the design is for.'),
       public: z.boolean().optional().describe('Default true: anyone with the link can open it and the link unfurls with the diagram. false keeps it private (owner only; recipients get a 404 and a generic preview card).'),
+      linked: z.boolean().optional().describe('true lists the diagram under the gallery\'s Linked tab (README, PR, repo audit) instead of My Diagrams, so the owner\'s daily list stays their own work. A title that starts with owner/repo is Linked on its own; false keeps it out.'),
     },
   },
-  async ({ title, nodes, edges, pattern, description, public: isPublic = true }) => {
+  async ({ title, nodes, edges, pattern, description, public: isPublic = true, linked }) => {
     try {
       const gate = logoGate(nodes, edges)
       if (gate) return gate
@@ -266,7 +268,7 @@ server.registerTool(
       const storedNodes = arrangeNew(enforced.nodes, storedEdges)
       const { rows } = await db.query(
         'INSERT INTO flows (user_id, title, slug, nodes, edges, type, tags, is_public, pattern, description) VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6,$7::text[],$8,$9,$10) RETURNING id',
-        [o, title.trim(), slug, JSON.stringify(storedNodes), JSON.stringify(storedEdges), 'flow', ['MCP'], isPublic, pattern?.trim() || null, description?.trim() || null],
+        [o, title.trim(), slug, JSON.stringify(storedNodes), JSON.stringify(storedEdges), 'flow', creationTags('MCP', title, linked), isPublic, pattern?.trim() || null, description?.trim() || null],
       )
       const id = rows[0].id
 

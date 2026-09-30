@@ -238,10 +238,9 @@ export default function App() {
   // Logged-in home has two tabs (top-right button group): 'mine' = my personal
   // (non-demo) diagrams, 'demos' = the 12 curated public demos so the owner can
   // reopen + re-arrange them and have the layout persist. Public /demo ignores this.
-  const [galleryTab, setGalleryTab] = useState('mine') // 'mine' | 'demos'
+  const [galleryTab, setGalleryTab] = useState('mine') // 'mine' | 'linked' | 'demos'
   // Work vs personal. Twenty diagrams in one list meant hunting for the one that
   // matters; this splits the day job from stock bots and practice designs.
-  const [scope, setScope] = useState('all') // 'all' | 'work' | 'personal'
   const [loadingId, setLoadingId] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [listError, setListError] = useState(false) // gallery fetch failed
@@ -1192,17 +1191,12 @@ export default function App() {
     return () => document.removeEventListener('mousedown', h)
   }, [])
 
-  const filtered = diagrams.filter(d => {
-    if (search.trim() && !d.title.toLowerCase().includes(search.toLowerCase())) return false
-    // Scope applies to your OWN diagrams only - the demo roster is neither.
-    if (scope === 'all' || galleryTab === 'demos' || isDemo) return true
-    return (d.tags || []).includes(scope)
-  })
-  const scopeCounts = {
-    all: diagrams.length,
-    work: diagrams.filter(d => (d.tags || []).includes('work')).length,
-    personal: diagrams.filter(d => (d.tags || []).includes('personal')).length,
-  }
+  // My Diagrams and Linked split the owner's own rows on the "linked" tag: a
+  // diagram made for a repo (README, PR, audit) lists under Linked only, so
+  // the daily list is the owner's own work. The demo roster is neither.
+  const showcase = isDemo || galleryTab === 'demos'
+  const own = diagrams.filter(d => showcase || (d.tags || []).includes('linked') === (galleryTab === 'linked'))
+  const filtered = own.filter(d => !search.trim() || d.title.toLowerCase().includes(search.toLowerCase()))
 
   // ── ?id LOADING / ERROR STATES ──────────────────────────────────────────────
   if (loadingId) {
@@ -1261,7 +1255,6 @@ export default function App() {
         search={search} setSearch={setSearch}
         user={user} canAI={canAI} isDemo={isDemo} listError={listError}
         galleryTab={galleryTab} setGalleryTab={setGalleryTab}
-        scope={scope} setScope={setScope} scopeCounts={scopeCounts}
         showMenu={showMenu} setShowMenu={setShowMenu} menuRef={menuRef}
         showDocs={showDocs} setShowDocs={setShowDocs}
         copiedLabel={copiedLabel} onCopyFormat={copyFormat}
