@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "lib", "fonts");
 const out = {};
-for (const f of ["Roboto-Regular.ttf", "Roboto-Bold.ttf"]) {
+for (const f of ["Roboto-Regular.ttf", "Roboto-Bold.ttf", "Inter-Regular.ttf", "Inter-SemiBold.ttf", "Inter-Bold.ttf"]) {
   out[f] = readFileSync(path.join(dir, f)).toString("base64");
 }
 writeFileSync(

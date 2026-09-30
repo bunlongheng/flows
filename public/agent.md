@@ -64,8 +64,8 @@ Every node must render a real logo. There are 3 kinds:
   "share_url": "https://flows-bheng.vercel.app/demo?name=<slug>",
   "visibility": "public",
   "svg_url": "https://flows-bheng.vercel.app/api/flows/<uuid>?format=svg",
-  "gif_url": "https://flows-bheng.vercel.app/api/flows/<slug>?format=gif&w=3200",
-  "readme": "![<title>](https://flows-bheng.vercel.app/api/flows/<slug>?format=gif&w=3200)"
+  "gif_url": "https://flows-bheng.vercel.app/api/flows/<slug>?format=gif&w=1800&frames=20",
+  "readme": "![<title>](https://flows-bheng.vercel.app/api/flows/<slug>?format=gif&w=1800&frames=20)"
 }
 ```
 
@@ -82,7 +82,7 @@ Hand people `share_url`. Paste `readme` into a README or Confluence page as is.
 - `GET /api/flows/<id-or-slug>` JSON.
 - `GET /api/flows/<id-or-slug>?format=svg` static SVG.
 - `GET /api/flows/<id-or-slug>?format=thumb` the gallery tile: the owner's last capture of the real canvas as a JPEG; until they open it, a PNG of the SVG render.
-- `GET /api/flows/<id-or-slug>?format=gif&w=3200` animated GIF. `w` 200 to 3200, `frames` 2 to 30.
+- `GET /api/flows/<id-or-slug>?format=gif&w=1800&frames=20` animated GIF, HD and smooth by default (1800 px, 20 frames, the diagram exactly as the app shows it). `w` 200 to 3200, `frames` 2 to 30; `w=3200` for a full-width wiki page.
 
 ## 4b. Undo a change
 

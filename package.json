@@ -24,6 +24,7 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@resvg/resvg-js": "^2.6.2",
     "@xyflow/react": "^12.10.2",
+    "@xyflow/system": "^0.0.76",
     "canvas-confetti": "^1.9.4",
     "dotenv": "^17.4.2",
     "gifenc": "^1.0.3",

@@ -56,7 +56,7 @@ curl -X POST "$APP/api/ai/flows" \
 Once it is public, the URL is the image - no auth, no browser, animated:
 
 ```markdown
-![Architecture]($APP/api/flows/url-shortener-like-bitly?format=gif&w=3200)
+![Architecture]($APP/api/flows/url-shortener-like-bitly?format=gif&w=1800&frames=20)
 ```
 
 <a href="https://sequences-bheng.vercel.app/s/6b8d7e1e-2028-4941-8f7d-2c75eaa747ea">

@@ -56,7 +56,7 @@ const urlFor = id => `${APP_URL}/?id=${id}`
 const shareUrlFor = slug => `${APP_URL}/demo?name=${encodeURIComponent(slug)}`
 // The animated embed for a README. w=3200 is the widest render, so it stays
 // sharp on a retina screen at any zoom. Public diagrams only.
-const gifUrlFor = slug => `${APP_URL}/api/flows/${encodeURIComponent(slug)}?format=gif&w=3200`
+const gifUrlFor = slug => `${APP_URL}/api/flows/${encodeURIComponent(slug)}?format=gif&w=1800&frames=20`
 const readmeFor = (title, slug) => `![${title}](${gifUrlFor(slug)})`
 const owner = () => {
   const o = ownerId()

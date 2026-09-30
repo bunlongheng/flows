@@ -7,16 +7,26 @@ const NODES = [
 ];
 const EDGES = [{ source: "client", target: "ses", label: "webhook" }];
 
+// The pill is a translated group: the first translate before "Start here".
+function pillAt(svg) {
+  const m = /<g transform="translate\(([-\d.]+),([-\d.]+)\)"><g transform="translate\([^)]*\)"><line/.exec(svg);
+  return m ? { x: Number(m[1]), y: Number(m[2]) } : null;
+}
+
 describe("renderDiagramSvg - placed start", () => {
   it("draws the Start pill at the owner's spot instead of the automatic one", () => {
     const auto = renderDiagramSvg(NODES, EDGES);
-    const placed = renderDiagramSvg(NODES, EDGES, { start: { x: 0, y: 0 } });
+    const placed = renderDiagramSvg(NODES, EDGES, { start: { x: 640, y: 420 } });
     expect(auto).toContain("Start here");
     expect(placed).toContain("Start here");
-    // The connector line coordinates differ between the automatic pill (well
-    // off to the left of the card) and one pinned to the diagram's origin.
-    const line = /<line x1="[^"]+" y1="[^"]+" x2="[^"]+" y2="[^"]+" stroke="#16a34a"/;
-    expect(auto.match(line)?.[0]).not.toEqual(placed.match(line)?.[0]);
+    expect(pillAt(placed)).toEqual({ x: 640, y: 420 });
+    expect(pillAt(auto)).not.toEqual(pillAt(placed));
+  });
+
+  it("puts the automatic pill on the first free face in buildMarkers order", () => {
+    const auto = renderDiagramSvg(NODES, EDGES);
+    // The edge leaves the right face, so the top face is free: x + 6, y - 96.
+    expect(pillAt(auto)).toEqual({ x: 6, y: -96 });
   });
 
   it("ignores an invalid start and falls back to automatic placement", () => {
