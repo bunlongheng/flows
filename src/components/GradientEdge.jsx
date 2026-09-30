@@ -4,6 +4,7 @@ import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteE
 import { subscribe, currentPhase, motionAllowed, offsetFor } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
+import { tagText } from '../tag.js'
 
 // ─── Edge geometry ────────────────────────────────────────────────────────────
 // Edges attach to a face of the box, spread evenly across it and centered: one
@@ -672,6 +673,10 @@ export function GradientEdge({
   const sunset = data?.sunset === true
   const gid = `grad-${id}`
   const hasStep = data?.step != null
+  // The tag reads the label, else the description cut short; the whole
+  // description is the hover (see tag.js).
+  const desc = data?.description || ''
+  const tag = tagText(label, desc)
 
   // Auto-placement gets a badge off its own node, but it cannot know about the
   // OTHER badges, so on a dense diagram two can still land on each other. The
@@ -788,14 +793,15 @@ export function GradientEdge({
         opacity: st.opacity == null ? undefined : st.opacity / 100,
       }} />
         <FlowDot edgeId={id} path={path} color={c1} />
-      {(label || hasStep || ((endMovable || bendMovable) && selected)) && (
+      {(tag || hasStep || ((endMovable || bendMovable) && selected)) && (
         <EdgeLabelRenderer>
-          {(label || hasStep) && (
+          {(tag || hasStep) && (
             <div
               className={`sd-edge-badge nodrag nopan${movable ? ' is-movable' : ''}${dragT != null ? ' is-dragging' : ''}`}
               onPointerDown={startDrag}
               onDoubleClick={movable ? e => { e.stopPropagation(); data.onLabelMove(id, null) } : undefined}
-              title={movable ? 'Drag along the edge to reposition; double-click to reset' : undefined}
+              data-tip={desc || undefined}
+              title={!desc && movable ? 'Drag along the edge to reposition; double-click to reset' : undefined}
               style={{
                 transform: `translate(-50%, -50%) translate(${bx}px, ${by}px)`,
                 '--c1': c1, '--c2': c2,
@@ -804,7 +810,7 @@ export function GradientEdge({
             >
               {sunset && <SunsetX size={12} />}
               {hasStep && <span className="sd-step-chip">{data.step}</span>}
-              {label && <span>{label}</span>}
+              {tag && <span>{tag}</span>}
             </div>
           )}
           {endMovable && selected && [['s', sx, sy, data?.sourceColor], ['t', tx, ty, data?.targetColor]].map(([which, x, y, color]) => (

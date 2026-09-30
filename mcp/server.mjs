@@ -140,6 +140,7 @@ function toStoredEdges(edges) {
     source: e.source,
     target: e.target,
     ...(e.label ? { label: e.label } : {}),
+    ...(e.description ? { description: String(e.description).trim().slice(0, 300) } : {}),
   }))
 }
 // HARD GATE, shared with the API and AI generate (lib/validate-design.js): every
@@ -241,6 +242,7 @@ server.registerTool(
         source: z.string().describe('source node id'),
         target: z.string().describe('target node id'),
         label: z.string().optional().describe('short edge label, e.g. "read/write"'),
+        description: z.string().max(300).optional().describe('Longer text for this line, max 300. The tag on the line reads the label, or this cut short when there is no label; hovering the tag shows the whole of it. Not in the SVG.'),
       })).default([]).describe('Directed connections between node ids, in flow order'),
       pattern: z.string().max(200).optional().describe('The one-line "what it tests" shown above the diagram and on the share card, e.g. "Read-heavy KV lookup: cache-first redirects"'),
       description: z.string().max(600).optional().describe('The goal paragraph shown under the pattern, 1-3 sentences on what the design is for.'),
@@ -318,7 +320,7 @@ server.registerTool(
         info: z.string().max(600).optional().describe('What this thing is and why it is in this diagram, 1-3 sentences. Hidden in the app until the reader hovers or clicks the i badge on the card (1 open at a time), so it never crowds the diagram; not in the SVG. Shown as "<card name> is <text>", so write it to read after "is". Different from note, which is always visible under the card.'),
         sunset: z.boolean().optional().describe('true marks a node that is today\'s path and gets decommissioned. Drawn light silver and dimmed, icon in greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) light silver, immune to any line style; no X on the card. Silver is reserved for this state: never paint a node grey or silver, set sunset instead.'),
       })).optional(),
-      edges: z.array(z.object({ source: z.string(), target: z.string(), label: z.string().optional() })).optional(),
+      edges: z.array(z.object({ source: z.string(), target: z.string(), label: z.string().optional(), description: z.string().max(300).optional() })).optional(),
       public: z.boolean().optional().describe('true publishes (anyone with the link can open it, real preview card); false makes it private again. Omit to leave visibility alone.'),
     },
   },

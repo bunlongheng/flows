@@ -11,6 +11,7 @@ import { rowToDiagram } from './rowToDiagram'
 import { snapAlign } from './snapAlign'
 import { findService } from './services'
 import { SUNSET, INK } from './sunset.js'
+import { cleanDesc } from './tag'
 import { fireflies } from './fireflies'
 
 // Vite exposed import.meta.env.DEV; Next replaces process.env.NODE_ENV at build
@@ -86,6 +87,7 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove) {
       ...(e.ends ? { ends: e.ends } : {}),
       ...(e.bend ? { bend: e.bend } : {}),
       ...(e.style ? { style: e.style } : {}),
+      ...(cleanDesc(e.description) ? { description: cleanDesc(e.description) } : {}),
       ...(onLabelMove ? { onLabelMove } : {}),
       ...(onEndMove ? { onEndMove } : {}),
       ...(onBendMove ? { onBendMove } : {}),

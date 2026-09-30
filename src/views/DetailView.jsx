@@ -1223,6 +1223,19 @@ export function DetailView({
         /* Only the owner's badges take pointer events - a read-only viewer must
            not be able to grab one, and leaving them inert keeps clicks falling
            through to the canvas as before. */
+        /* A tag with a description shows the whole of it on hover, in the
+           app only: the SVG has no hover. The tag takes pointer events so
+           the hover lands; a visitor's other tags stay inert as before. */
+        .sd-edge-badge[data-tip] { pointer-events: auto; }
+        .sd-edge-badge[data-tip]::after {
+          content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 8px);
+          transform: translateX(-50%); width: max-content; max-width: 260px;
+          padding: 8px 10px; border-radius: 8px; background: #1c1e21; color: #fff;
+          font-size: 12px; font-weight: 400; line-height: 1.4; letter-spacing: 0; text-align: left;
+          white-space: normal; text-shadow: none; box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+          opacity: 0; visibility: hidden; transition: opacity 0.12s; pointer-events: none; z-index: 30;
+        }
+        .sd-edge-badge[data-tip]:hover::after { opacity: 1; visibility: visible; }
         .sd-edge-badge.is-movable { pointer-events: auto; cursor: grab; }
         .sd-edge-badge.is-movable:hover { filter: brightness(1.08); }
         .sd-edge-badge.is-dragging { cursor: grabbing; z-index: 20; filter: brightness(1.12); }
