@@ -80,7 +80,7 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove) {
     animated: true,
     data: {
       sourceColor: edgeColor(e.source), targetColor: edgeColor(e.target), step: i + 1,
-      ...(sunsetOf(e.target) ? { sunset: true } : {}),
+      ...(sunsetOf(e.source) || sunsetOf(e.target) ? { sunset: true } : {}),
       ...(sunsetOf(e.source) || sunsetOf(e.target) ? { sunsetLine: true } : {}),
       ...(typeof e.labelT === 'number' ? { labelT: e.labelT } : {}),
       ...(e.ends ? { ends: e.ends } : {}),

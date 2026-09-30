@@ -828,8 +828,8 @@ export function GradientEdge({
   )
 }
 
-// The red X that marks something outdated: on the badge of every edge into a
-// sunset card, never on the card itself. Sits on the top-right corner of its parent.
+// The red X that marks something outdated: on the badge of every edge that
+// touches a sunset card, in or out, never on the card itself. Sits on the top-right corner of its parent.
 export function SunsetX({ size = 16 }) {
   const r = size / 2
   return (
