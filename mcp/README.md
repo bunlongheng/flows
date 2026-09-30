@@ -43,7 +43,9 @@ trash a locked flow, stop and ask.
 A diagram made for a repo (a README, a PR, a repo audit) belongs under the
 gallery's Linked tab, not My Diagrams: pass `linked: true` to `create_flow`, or
 title it `owner/repo - ...` and it is Linked on its own. The row carries a
-`linked` tag.
+`linked` tag and `repo` (owner/name), and its card shows a GitHub link to that
+repo, which is how the owner knows not to delete it. Pass `repo` when the
+title does not name it.
 
 Every `update_flow` (and `restore_version`) keeps the diagram state from
 before that write as a version. `list_versions` shows the history for one

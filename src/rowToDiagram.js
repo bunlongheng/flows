@@ -22,5 +22,7 @@ export function rowToDiagram(r) {
     changedAt: r.updated_at || null,
     updatedAt: r.created_at,
     tags: r.tags || [],
+    // The repo a linked flow serves, owner/name: the card's GitHub link.
+    repo: r.repo || null,
   }
 }
