@@ -1108,6 +1108,9 @@ export default function App() {
         .then(r => (r.ok ? r.json() : null))
         .then(row => { if (row) setDiagrams(ds => ds.map(d => (d.id === savingId ? { ...d, thumbnailAt: row.thumbnail_at } : d))) })
         .catch(() => {})
+      // Warm the README GIF for this version of the flow, so the first fetch
+      // from GitHub or Confluence is a lookup, not a render.
+      fetch(`/api/flows/${savingId}?format=gif`, { cache: 'no-store' }).catch(() => {})
     }, 1500)
     return () => clearTimeout(thumbTimer.current)
   }, [view, canAI, activeDiagram, badgeMode, showNotes])

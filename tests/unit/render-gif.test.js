@@ -60,6 +60,26 @@ describe("renderDiagramSvg dotPhase", () => {
   });
 });
 
+describe("renderDiagramSvg layers", () => {
+  // The GIF rasterises the page and the cards once and only the moving lines
+  // per frame, so the three layers together must be exactly the full picture.
+  it("under + motion + over is the whole frame, in that order", () => {
+    const o = { dotPhase: 0.3 };
+    const body = (svg) => svg.slice(svg.indexOf("</defs>") + 7, svg.lastIndexOf("</svg>"));
+    const full = renderDiagramSvg(NODES, EDGES, o);
+    const under = renderDiagramSvg(NODES, EDGES, { ...o, layer: "under" });
+    const motion = renderDiagramSvg(NODES, EDGES, { ...o, layer: "motion" });
+    const over = renderDiagramSvg(NODES, EDGES, { ...o, layer: "over" });
+    expect(body(under) + body(motion) + body(over)).toBe(body(full));
+    // Same viewBox on every layer, or the composite would not line up.
+    const vb = (svg) => /viewBox="([^"]+)"/.exec(svg)[1];
+    expect(new Set([vb(full), vb(under), vb(motion), vb(over)]).size).toBe(1);
+    expect(under).not.toContain("<path");
+    expect(motion).not.toContain('fill="#ffffff"');
+    expect(over).toContain("Start here");
+  });
+});
+
 describe("renderDiagramGif", () => {
   it("returns a looping GIF89a", () => {
     const buf = renderDiagramGif(NODES, EDGES, { frames: 6, width: 400 });
