@@ -100,7 +100,6 @@ describe("/api/flows/:id", () => {
     await flowById({ ...req("GET", ID), query: { id: ID, format: "gif", frames: "2", w: "300" } }, res2);
     expect(res2.statusCode).toBe(200);
     expect(res2.body.subarray(0, 6).toString("ascii")).toBe("GIF89a");
-    await new Promise((r) => setTimeout(r, 0));
     const insert = query.mock.calls.find((c) => /INSERT INTO flow_renders/.test(c[0]));
     expect(insert[1].slice(0, 2)).toEqual([ID, `${Date.parse(row.updated_at)}-300-2`]);
   });
