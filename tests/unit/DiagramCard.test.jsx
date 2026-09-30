@@ -116,8 +116,8 @@ describe("tile picture", () => {
     expect(img.getAttribute("loading")).toBe("lazy");
   });
 
-  it("draws no picture for a bundled sample, which has no row to fetch", () => {
-    setup({ id: "ifttt" });
+  it("draws no picture for a card without a saved row to fetch", () => {
+    setup({ id: "draft" });
     expect(document.querySelector("img.dc-thumb")).toBeNull();
   });
 });

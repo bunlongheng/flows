@@ -62,6 +62,19 @@ describe("IndexView", () => {
     expect(screen.getByText("Netflix Streaming")).toBeInTheDocument();
   });
 
+  it("shows only the API banner when the list failed, never an empty-state hint or a sample", () => {
+    setup({ filtered: [], listError: true });
+    expect(screen.getByText(/Could not reach the API/)).toBeInTheDocument();
+    expect(screen.queryByText("No diagrams yet")).toBeNull();
+    expect(screen.queryByText(/IFTTT/)).toBeNull();
+  });
+
+  it("shows the empty-state hint when the list is empty and the API answered", () => {
+    setup({ filtered: [], listError: false });
+    expect(screen.getByText("No diagrams yet")).toBeInTheDocument();
+    expect(screen.queryByText(/Could not reach the API/)).toBeNull();
+  });
+
   it("shows the AI affordance when canAI is true", () => {
     setup({ canAI: true });
     expect(screen.getByTitle("Generate with AI")).toBeInTheDocument();

@@ -194,7 +194,7 @@ export function IndexView({
 
       {/* ── Content ── */}
       <main className="sd-main" style={{ padding: isDemo ? '32px 32px 60px' : '32px 32px 100px', maxWidth: 1600, margin: '0 auto', width: '100%', boxSizing: 'border-box', flex: 1 }}>
-        {filtered.length === 0 && (
+        {filtered.length === 0 && !listError && (
           <div style={{ position: 'fixed', inset: 0, top: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', background: '#f4f5f7' }}>
             <div style={{ width: 48, height: 48, borderRadius: 12, background: '#e4e6e8', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
               <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#8a8d91" strokeWidth={1.5} strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/></svg>
@@ -205,8 +205,7 @@ export function IndexView({
         )}
 
         {/* An unreachable API used to look exactly like "you have 1 diagram":
-            it fell through to the bundled sample and said nothing. Now it says
-            so, and the sample below carries no delete button. */}
+            it fell through to a bundled sample and said nothing. Now it says so. */}
         {listError && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16,
@@ -218,7 +217,7 @@ export function IndexView({
               <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
               <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
-            <span>Could not reach the API, so your saved diagrams are not listed. The sample below is bundled with the app, not saved.</span>
+            <span>Could not reach the API, so your saved diagrams are not listed. Reload to try again.</span>
           </div>
         )}
 
@@ -236,7 +235,7 @@ export function IndexView({
                 difficulty={d.difficulty}
                 onOpen={() => onOpen(d)}
                 onViewCode={canAI ? () => onViewCode(d) : undefined}
-                onDelete={canAI && !d.sample ? () => onDeleteDiagram(d.id) : undefined}
+                onDelete={canAI ? () => onDeleteDiagram(d.id) : undefined}
                 isPrivate={canAI && d.is_public === false}
                 isLocked={canAI && !!d.locked}
                 thumbnailAt={d.thumbnailAt}
