@@ -12,6 +12,7 @@ import { snapAlign } from './snapAlign'
 import { findService } from './services'
 import { SUNSET, INK } from './sunset.js'
 import { fireflies } from './fireflies'
+import { makeThumbnail } from './thumbnail'
 
 // Vite exposed import.meta.env.DEV; Next replaces process.env.NODE_ENV at build
 // time, so this compiles to a constant in the client bundle exactly the same way.
@@ -1081,6 +1082,33 @@ export default function App() {
     // listing it would re-subscribe on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // The gallery tile is a capture of this very canvas, taken a beat after the
+  // owner opens a flow or changes anything on it. It rides its own tiny PATCH.
+  // Keyed on the SAVED diagram, not on the live node state: that array is
+  // rebuilt every frame while the canvas animates, and a debounce on it never
+  // settles. Every persisted change lands in activeDiagram, so that is enough.
+  const thumbTimer = useRef(null)
+  const lastThumb = useRef('')
+  useEffect(() => {
+    if (view !== 'detail' || !canAI || !activeDiagram?.id) return
+    clearTimeout(thumbTimer.current)
+    const savingId = activeDiagram.id
+    thumbTimer.current = setTimeout(async () => {
+      const thumbnail = await makeThumbnail(rfInstance.current?.getNodes?.() || [])
+      if (!thumbnail || thumbnail === lastThumb.current) return
+      lastThumb.current = thumbnail
+      fetch(`/api/flows/${savingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ thumbnail }),
+      })
+        .then(r => (r.ok ? r.json() : null))
+        .then(row => { if (row) setDiagrams(ds => ds.map(d => (d.id === savingId ? { ...d, thumbnailAt: row.thumbnail_at } : d))) })
+        .catch(() => {})
+    }, 1500)
+    return () => clearTimeout(thumbTimer.current)
+  }, [view, canAI, activeDiagram, badgeMode, showNotes])
 
   // Save the open panel + badge style back to the row, debounced, owner only.
   // Only ONE panel is ever open, so this collapses to a single value rather than

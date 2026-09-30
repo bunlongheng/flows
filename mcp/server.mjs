@@ -358,6 +358,7 @@ server.registerTool(
            edges = COALESCE($4::jsonb, edges),
            update_reason = COALESCE($5, update_reason),
            is_public = COALESCE($7, is_public),
+           thumbnail = CASE WHEN $3::jsonb IS NULL AND $4::jsonb IS NULL THEN thumbnail END,
            updated_at = now()
          WHERE id = $1 AND user_id = $6 AND deleted_at IS NULL RETURNING id, slug, is_public`,
         [id, title?.trim() ?? null, nextNodes, nextEdges, reason?.trim() ?? null, owner(), isPublic ?? null],

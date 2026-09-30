@@ -260,6 +260,8 @@ export function IndexView({
                 onDelete={canAI && !d.sample ? () => onDeleteDiagram(d.id) : undefined}
                 isPrivate={canAI && d.is_public === false}
                 isLocked={canAI && !!d.locked}
+                thumbnailAt={d.thumbnailAt}
+                changedAt={d.changedAt}
               />
             ))}
           </div>
