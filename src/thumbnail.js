@@ -11,6 +11,7 @@ export const THUMB_W = 448 // the tile is 2:1; captured at 2x so it stays sharp
 export const THUMB_H = 224
 const SCALE = 2
 const PAD = 0.08
+let fontCSS = null
 
 // A JPEG data URL, or null when there is nothing to show: no nodes, canvas not
 // mounted, or the browser refused the export (tainted canvas, detached node).
@@ -26,12 +27,16 @@ export async function makeThumbnail(nodes = []) {
   const vp = getViewportForBounds(bounds, w, h, 0.01, 2, PAD)
   if (!vp) return null
   try {
-    const { toCanvas } = await import('html-to-image')
+    const { toCanvas, getFontEmbedCSS } = await import('html-to-image')
+    // html-to-image refetches every web font on each capture unless handed
+    // the CSS; the fonts never change, so read them once per page.
+    if (fontCSS == null) fontCSS = await getFontEmbedCSS(el).catch(() => '')
     const canvas = await toCanvas(el, {
       backgroundColor: '#ffffff',
       width: w,
       height: h,
       pixelRatio: 1, // already capturing at SCALE via width/height
+      fontEmbedCSS: fontCSS,
       style: { width: `${w}px`, height: `${h}px`, transform: `translate(${vp.x}px, ${vp.y}px) scale(${vp.zoom})` },
     })
     const out = canvas.toDataURL('image/jpeg', 0.8)
