@@ -655,8 +655,8 @@ export function DetailView({
               passed down when you can actually edit, so there is one gate,
               not two. */}
           {/* Lock. Every flow starts delete-locked and open to edits. The delete lock keeps
-              Delete inert until it is turned off - a second, deliberate action.
-              The edit lock keeps agents (MCP, the API) from rewriting the flow;
+              agents (MCP, the API) from deleting it; the owner's own confirmed Delete
+              lifts it on the way. The edit lock keeps agents from rewriting the flow;
               the owner's own edits here never answer to it. The button shows
               the tighter state and opens a menu with one switch per lock. */}
           {onSetLocks && <div ref={lockRef} className="sd-hide-mobile" style={{ position: 'relative', flexShrink: 0 }}>
@@ -681,7 +681,7 @@ export function DetailView({
             </button>
             {lockMenu && <div role="menu" style={{ position: 'fixed', top: lockMenu.top, left: lockMenu.left, zIndex: 1000, minWidth: 250, padding: 4, background: '#fff', border: '1px solid #e4e6e8', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)' }}>
               {[
-                ['locked', 'Delete lock', isLocked, isLocked ? 'On - nobody can delete it, you included, until this is off' : 'Off - you can delete it; agents still cannot'],
+                ['locked', 'Delete lock', isLocked, isLocked ? 'On - agents cannot delete it; your own Delete here still works' : 'Off - agents (MCP, API) can delete it'],
                 ['edit_locked', 'Edit lock', isEditLocked, isEditLocked ? 'On - agents cannot change it; your own edits here still work' : 'Off - agents (MCP, API) can change it'],
               ].map(([key, name, on, sub]) => (
                 <button key={key} role="menuitemcheckbox" aria-checked={on} onClick={() => onSetLocks({ [key]: !on })} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '7px 10px', border: 'none', borderRadius: 7, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}
@@ -700,15 +700,15 @@ export function DetailView({
           </div>}
 
           {onDeleteDiagram && (
-            <button className="sd-hide-mobile" onClick={() => !isLocked && setConfirmDelete(true)} disabled={isLocked}
-              title={isLocked ? 'Delete locked - lift the delete lock under Lock first' : 'Delete this diagram'} style={{
+            <button className="sd-hide-mobile" onClick={() => setConfirmDelete(true)}
+              title="Delete this diagram" style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
-              background: 'transparent', color: isLocked ? '#cbd5e1' : '#dc2626',
-              cursor: isLocked ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 400,
+              background: 'transparent', color: '#dc2626',
+              cursor: 'pointer', fontSize: 13, fontWeight: 400,
               transition: 'all 0.1s', fontFamily: 'inherit', flexShrink: 0,
             }}
-              onMouseEnter={e => { if (!isLocked) e.currentTarget.style.background = '#fef2f2' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
