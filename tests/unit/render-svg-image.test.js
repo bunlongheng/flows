@@ -10,21 +10,21 @@ const NODES = [
 const EDGES = [{ source: "user", target: "shot" }];
 
 describe("renderDiagramSvg - picture nodes", () => {
-  it("draws a 4:3 photo with a slice crop and a 240-wide card", () => {
+  it("draws a photo with a slice crop on a 240 x 225 card", () => {
     const svg = renderDiagramSvg(NODES, EDGES);
     expect(svg).toContain("<image");
     expect(svg).toContain("xMidYMid slice");
-    expect(svg).toContain('width="240"');
+    expect(svg).toContain('<rect width="240" height="225"');
     expect(svg).toContain("Checkout page");
     expect(svg).toContain("What the user sees");
   });
 
-  it("starts the note block below y = cy + 112", () => {
+  it("starts the note block 5 px below the card, where the canvas puts it", () => {
     const svg = renderDiagramSvg(NODES, EDGES);
-    const shotY = 0 + 225 / 2; // stored position.y (0) + card half-height (IH/2)
-    const noteMatch = svg.match(/<g transform="translate\(([\d.]+),([\d.]+)\)">\s*<rect width="240" height="\d+" fill="#ffffff" stroke="#111111"/);
-    expect(noteMatch).toBeTruthy();
-    const noteY = Number(noteMatch[2]);
-    expect(noteY).toBeGreaterThan(shotY + 112);
+    const i = svg.indexOf("The screen where");
+    const before = svg.slice(0, i);
+    const m = [...before.matchAll(/<g transform="translate\(([-\d.]+),([-\d.]+)\)"><rect x="-1" y="0"/g)].pop();
+    expect(m).toBeTruthy();
+    expect(Number(m[2])).toBe(225 + 5);
   });
 });

@@ -58,6 +58,6 @@ describe("the share card's fallback layout survives a loop", () => {
     expect((svg.match(/<g transform="translate\(/g) || []).length).toBeGreaterThanOrEqual(NODES.length);
     for (const label of ["PostgreSQL", "SQS", "FastAPI", "Cyclr", "S3"]) expect(svg).toContain(label);
     // Every edge is drawn, including the one that closes the loop.
-    expect((svg.match(/<line /g) || []).length).toBeGreaterThanOrEqual(EDGES.length);
+    expect((svg.match(/<path d="M[^"]*" fill="none"/g) || []).length).toBeGreaterThanOrEqual(EDGES.length);
   });
 });

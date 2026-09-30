@@ -23,8 +23,23 @@ describe("renderDiagramSvg - node notes", () => {
     const svg = renderDiagramSvg([{ ...NODES[0], note }], []);
     expect(svg).not.toContain("<b>alpha</b>");
     expect(svg).toContain("&lt;b&gt;alpha&lt;/b&gt;");
-    const lines = svg.match(/<text x="6" y="\d+"/g) || [];
+    const lines = svg.match(/<text x="5" y="[\d.]+" font-size="10"/g) || [];
     expect(lines).toHaveLength(10);
     expect(svg).toContain("…");
+  });
+
+  it("renders **bold** runs and a Jira URL as its ticket key, like the canvas", () => {
+    const note = "Waits on **Patrick**. https://thryv.atlassian.net/browse/SHAR-8090 open.";
+    const svg = renderDiagramSvg([{ ...NODES[0], note }], []);
+    expect(svg).toContain('font-weight="700">Patrick</tspan>');
+    expect(svg).toContain('<a href="https://thryv.atlassian.net/browse/SHAR-8090"');
+    expect(svg).toContain('fill="#1d4ed8"');
+    expect(svg).toContain(">SHAR-8090</tspan>");
+  });
+
+  it("hides every note when the saved view has notes off", () => {
+    const svg = renderDiagramSvg(NODES, EDGES, { view: { panels: ["notes-off"] } });
+    expect(svg).not.toContain("A user installs");
+    expect(svg).not.toContain('stroke="#111111"');
   });
 });

@@ -4,7 +4,9 @@ import { renderDiagramSvg } from "../../lib/render-svg.js";
 const EDGES = [{ source: "a", target: "b" }];
 
 describe("renderDiagramSvg - resized nodes", () => {
-  it("draws a wider card rect for a node with a saved size", () => {
+  // Cards are drawn at the canvas's own size, 180 px, so an export never
+  // shrinks what the owner approved on the page.
+  it("draws the default card at 180 and a saved size at its real width", () => {
     const defaultNodes = [
       { id: "a", position: { x: 0, y: 0 } },
       { id: "b", position: { x: 400, y: 0 } },
@@ -15,21 +17,30 @@ describe("renderDiagramSvg - resized nodes", () => {
     ];
     const defaultSvg = renderDiagramSvg(defaultNodes, EDGES);
     const sizedSvg = renderDiagramSvg(sizedNodes, EDGES);
-    expect(defaultSvg).toContain('width="158"'); // default icon card (CW)
-    expect(sizedSvg).toContain('width="316"');    // 360 real px scaled to the drawn card
+    expect(defaultSvg).toContain('<rect width="180" height="180"');
+    expect(defaultSvg).not.toContain('<rect width="360"');
+    expect(sizedSvg).toContain('<rect width="360" height="180"');
   });
 
-  it("draws a node's icon at iconSize scaled by the card's own factor", () => {
-    const CW = 158; // drawn icon card width (mirrors the module's own default)
-    const k = CW / 180;
+  it("draws a node's icon at exactly its iconSize when the card has room", () => {
     const nodes = [
       { id: "user", position: { x: 0, y: 0 }, iconSize: { w: 96, h: 96 } },
       { id: "b", position: { x: 400, y: 0 } },
     ];
     const svg = renderDiagramSvg(nodes, EDGES);
-    const iw = Math.round(96 * k);
-    expect(svg).toContain(`width="${iw}"`);
-    expect(iw).toBeGreaterThan(46); // larger than the unresized default
-    expect(iw).toBeLessThan(158);   // smaller than the card itself (CW)
+    const icon = /<image [^>]*?x="([\d.]+)" y="[\d.]+" width="([\d.]+)" height="([\d.]+)"/.exec(svg);
+    expect(icon).toBeTruthy();
+    expect(Number(icon[2])).toBe(96);
+    expect(Number(icon[3])).toBe(96);
+    expect(Number(icon[1])).toBe(42); // centred in the 160 px inner width
+  });
+
+  it("lets an unsized icon fill the room above the label, like the canvas", () => {
+    const svg = renderDiagramSvg([{ id: "user", position: { x: 0, y: 0 } }, { id: "b", position: { x: 400, y: 0 } }], EDGES);
+    const icon = /<image [^>]*?x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/.exec(svg);
+    expect(Number(icon[1])).toBe(10);   // card padding
+    expect(Number(icon[3])).toBe(160);  // 180 minus 2 x 10 padding
+    expect(Number(icon[4])).toBeGreaterThan(100);
+    expect(Number(icon[4])).toBeLessThan(160);
   });
 });

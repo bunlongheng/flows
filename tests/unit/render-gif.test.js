@@ -82,6 +82,18 @@ describe("renderDiagramGif", () => {
       .toBeGreaterThanOrEqual(2);
   });
 
+  it("writes frames after the first as a transparent diff over the one before", () => {
+    const f = frames(renderDiagramGif(NODES, EDGES, { frames: 6, width: 400 }));
+    const size = (s) => s.split(",").length;
+    // Only the dashes and dots move, so every later frame is a fraction of the first.
+    for (let i = 1; i < f.length; i++) expect(size(f[i])).toBeLessThan(size(f[0]) / 3);
+  });
+
+  it("stays small at the README default, 1800 px and 20 frames", () => {
+    const buf = renderDiagramGif(NODES, EDGES, {});
+    expect(buf.length).toBeLessThan(600 * 1024);
+  });
+
   it("survives a diagram with no edges", () => {
     const buf = renderDiagramGif([NODES[0]], [], { frames: 3, width: 300 });
     expect(buf.subarray(0, 3).toString("ascii")).toBe("GIF");

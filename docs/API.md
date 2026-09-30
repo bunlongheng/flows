@@ -15,7 +15,7 @@ All routes run on the Node runtime, `force-dynamic`. HEAD is accepted wherever G
 ![Architecture](https://flows-bheng.vercel.app/api/flows/my-diagram?format=gif)
 ```
 
-14 frames over one 2.6s loop at 900px by default. `?frames=` (2-30) and `?w=` (200-3200) override that. For a README use `?w=3200`, the widest render: GitHub shows a README 880px wide, so that stays sharp on a retina screen at any zoom. It is the width `gif_url` and `readme` in the create response carry, at about 1MB and a 2 to 8s cold render that the CDN then holds. The response is cached for a CDN (`s-maxage=3600`), because the render is a dozen rasterises and a diagram changes rarely.
+20 frames over one 2.6s loop at 1800px by default, the diagram exactly as the app draws it: the same cards, routing, badges, notes, fonts and dot grid, with the dashes and dots moving along the real path. `?frames=` (2-30) and `?w=` (200-3200) override that; `?w=3200` fills a full-width wiki page. It is the URL `gif_url` and `readme` in the create response carry. Frames after the first are stored as a diff over the one before, so a 16-node design with 3 screenshots is about 500KB at the default and renders in about 5s cold. The response is cached for a CDN (`s-maxage=3600`, an `ETag` from the last update) because the render is 20 rasterises and a diagram changes rarely.
 
 This is the server-side twin of the in-app GIF button. The in-app one captures the live canvas through `html-to-image`; this one rasterises the same SVG the `?format=svg` export uses, so it works headless.
 
@@ -91,8 +91,8 @@ Response `201`:
   "share_url": "https://flows-bheng.vercel.app/demo?name=<slug>",
   "visibility": "public",
   "svg_url": "https://flows-bheng.vercel.app/api/flows/<uuid>?format=svg",
-  "gif_url": "https://flows-bheng.vercel.app/api/flows/<slug>?format=gif&w=3200",
-  "readme": "![<title>](https://flows-bheng.vercel.app/api/flows/<slug>?format=gif&w=3200)"
+  "gif_url": "https://flows-bheng.vercel.app/api/flows/<slug>?format=gif&w=1800&frames=20",
+  "readme": "![<title>](https://flows-bheng.vercel.app/api/flows/<slug>?format=gif&w=1800&frames=20)"
 }
 ```
 
