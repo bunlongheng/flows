@@ -19,13 +19,28 @@ function mockFetch(map) {
 describe('App sign-in gate', () => {
   beforeEach(() => { window.history.replaceState({}, '', '/') })
 
-  it('shows the sign-in screen when signed out', async () => {
+  it('shows the sign-in screen when signed out, in a production build', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    try {
+      mockFetch({
+        '/api/auth/me': { status: 200, json: { authenticated: false } },
+        '/api/flows': { status: 401, json: {} },
+      })
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Continue with Google')).toBeInTheDocument())
+    } finally { vi.unstubAllEnvs() }
+  })
+
+  // Google never sends a browser back to a local origin and the API trusts
+  // localhost, so a local build skips the card and lands on the gallery.
+  it('lands on the gallery signed out in a local build', async () => {
     mockFetch({
       '/api/auth/me': { status: 200, json: { authenticated: false } },
-      '/api/flows': { status: 401, json: {} },
+      '/api/flows': { status: 200, json: [] },
     })
     render(<App />)
-    await waitFor(() => expect(screen.getByText('Continue with Google')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByPlaceholderText(/Search/)).toBeInTheDocument())
+    expect(screen.queryByText('Continue with Google')).toBeNull()
   })
 
   it('shows the gallery (not the sign-in card) when signed in', async () => {

@@ -248,7 +248,11 @@ export default function App() {
   const [authChecked, setAuthChecked] = useState(false)
   // Panel memory waiting for ownership to settle on a cold deep link (see openDiagram).
   const pendingPanels = useRef(null)
-  const [devBypass, setDevBypass] = useState(false)
+  // Local starts past the sign-in card: Google never sends a browser back to
+  // a local origin, and the API already trusts localhost, so the card could
+  // only offer the dev link. Production starts gated as before. Read here,
+  // not from IS_DEV, so a test can stand in a production build.
+  const [devBypass, setDevBypass] = useState(process.env.NODE_ENV !== 'production')
   const canAI = (Boolean(user) || IS_DEV) && !isDemo
   const rfInstance = useRef(null)
   // Snap-align: yellow guides to draw, plus a live "is Cmd/Ctrl down" flag. The
