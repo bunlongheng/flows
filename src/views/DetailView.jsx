@@ -654,7 +654,7 @@ export function DetailView({
               recoverable. Ownership is decided in App: the handler is only
               passed down when you can actually edit, so there is one gate,
               not two. */}
-          {/* Lock. Every flow starts with both locks on. The delete lock keeps
+          {/* Lock. Every flow starts delete-locked and open to edits. The delete lock keeps
               Delete inert until it is turned off - a second, deliberate action.
               The edit lock keeps agents (MCP, the API) from rewriting the flow;
               the owner's own edits here never answer to it. The button shows

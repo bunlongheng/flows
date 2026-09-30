@@ -306,7 +306,8 @@ server.registerTool(
       'omitted fields are left unchanged. ALWAYS prefer this over creating a "v2" of a diagram that already exists - ' +
       'call list_flows to find the id. Backfilling or correcting old diagrams is exactly what this is for. ' +
       'Every update is kept in history (list_versions / restore_version), so a mistaken rewrite can be pulled back. ' +
-      'Refused while the flow is edit-locked, which every flow is until the owner unlocks it in the app - see lock_flow.',
+      'Prefer this over create_flow whenever the diagram already exists: alter it in place, do not make a v2. ' +
+      'Refused only while the owner has turned the edit lock on for this flow, in the app - see lock_flow.',
     inputSchema: {
       id: z.string().describe('The diagram id to update'),
       reason: z.string().optional().describe('Optional note on why, e.g. "backfill: correct the Integry decommission date". Recorded on the row as a trail; never required.'),
@@ -326,10 +327,10 @@ server.registerTool(
   },
   async ({ id, reason, title, nodes, edges, public: isPublic }) => {
     try {
-      // Every flow starts edit-locked. Only the owner lifts it, in the app.
+      // A flow is open to agents unless the owner has edit-locked it, in the app.
       const { rows: gate } = await db.query('SELECT edit_locked FROM flows WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL', [id, owner()])
       if (!gate.length) return fail(`No owned diagram with id ${id} (it may be in trash - call list_trash)`)
-      if (gate[0].edit_locked) return fail(`Diagram ${id} is edit-locked, as every flow is until the owner unlocks it in the app. Ask the owner to lift the edit lock; you cannot unlock it from here.`)
+      if (gate[0].edit_locked) return fail(`Diagram ${id} is edit-locked: the owner turned the edit lock on for it in the app. Ask the owner to lift it; you cannot unlock it from here.`)
       let iconNodes = nodes
       if (nodes) {
         const gate = logoGate(nodes, edges || []); if (gate) return gate
@@ -389,8 +390,8 @@ server.registerTool(
   {
     title: 'Lock flow',
     description:
-      'Every flow starts with both locks on. The delete lock (locked) makes delete_flow refuse it; the edit lock ' +
-      '(edit_locked) makes update_flow and restore_version refuse it. This tool can only turn a lock ON; only the ' +
+      'Every flow starts delete-locked and open to edits. The delete lock (locked) makes delete_flow refuse it; the edit lock ' +
+      '(edit_locked, off unless the owner turns it on) makes update_flow and restore_version refuse it. This tool can only turn a lock ON; only the ' +
       'owner turns one off, in the app. If you need to edit or trash a locked flow, stop and ask the owner to unlock it.',
     inputSchema: { id: z.string(), locked: z.boolean().optional(), edit_locked: z.boolean().optional() },
   },
@@ -529,7 +530,7 @@ server.registerTool(
       const result = await restoreVersion(id, owner(), version_id, { agent: true })
       if (result === null) return fail(`No version ${version_id} on diagram ${id} (or you don't own it)`)
       if (result.locked) {
-        return fail(`Diagram ${id} is edit-locked, as every flow is until the owner unlocks it in the app. A restore is an edit. Ask the owner; you cannot unlock it from here.`)
+        return fail(`Diagram ${id} is edit-locked: the owner turned the edit lock on for it in the app. A restore is an edit. Ask the owner; you cannot unlock it from here.`)
       }
       return ok({ id, url: urlFor(id), ...result })
     } catch (e) { return fail(`restore_version failed: ${e.message}`) }
