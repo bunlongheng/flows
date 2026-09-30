@@ -93,6 +93,7 @@ test("undo and redo cover both dragging and Arrange", async ({ page, context, ba
     await undo.click();
     await expect.poll(() => at(page, "dynamo")).toBe(start);
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
   }

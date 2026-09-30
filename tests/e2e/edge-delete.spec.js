@@ -68,6 +68,7 @@ test("Delete removes the selected line, on the canvas and on the server", async 
     await page.waitForTimeout(1500);
     expect(await page.locator(".react-flow__edge-path").count()).toBe(1);
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();

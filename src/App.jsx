@@ -359,19 +359,23 @@ export default function App() {
     fetch('/api/auth/logout', { method: 'POST' }).then(() => { setUser(null); showToastMsg('Signed out') }).catch(() => showToastMsg('Sign out failed'))
   }
 
-  // A locked diagram refuses to be deleted, server-side. This only flips the
-  // flag; the guard that matters lives in the DELETE handler.
-  async function toggleLock() {
+  // Two locks, both on for every flow until the owner lifts one here. The
+  // delete lock keeps Delete inert, in the app and for agents. The edit lock
+  // keeps agents (MCP, the API) from rewriting the flow; the owner's own
+  // edits in the app never answer to it. This only flips the flags; the
+  // guards that matter live in the handlers and the MCP server.
+  async function setLocks(patch) {
     if (!activeDiagram?.id) return
-    const next = !activeDiagram.locked
     const res = await fetch(`/api/flows/${activeDiagram.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ locked: next }),
+      body: JSON.stringify(patch),
     })
     if (!res.ok) { showToastMsg('Could not change the lock'); return }
-    setActiveDiagram(a => (a ? { ...a, locked: next } : a))
-    showToastMsg(next ? 'Locked - it cannot be deleted' : 'Unlocked')
+    const row = await res.json()
+    setActiveDiagram(a => (a ? { ...a, locked: !!row.locked, editLocked: !!row.edit_locked } : a))
+    if (typeof patch.locked === 'boolean') showToastMsg(patch.locked ? 'Delete locked' : 'Delete unlocked - it can be deleted now')
+    else showToastMsg(patch.edit_locked ? 'Edit locked - agents cannot change it' : 'Edit unlocked - agents can change it now')
   }
 
   function deleteDiagram(id, { thenBack = false } = {}) {
@@ -1506,7 +1510,7 @@ export default function App() {
       steps={steps}
       showSteps={showSteps} setShowSteps={setShowSteps}
       showNotes={showNotes} setShowNotes={setShowNotes}
-      isLocked={!!activeDiagram?.locked} onToggleLock={canAI ? toggleLock : undefined}
+      isLocked={!!activeDiagram?.locked} isEditLocked={!!activeDiagram?.editLocked} onSetLocks={canAI ? setLocks : undefined}
       badgeMode={badgeMode} setBadgeMode={setBadgeMode}
       activeDiagram={activeDiagram}
       detailCodeCopied={detailCodeCopied} setDetailCodeCopied={setDetailCodeCopied}

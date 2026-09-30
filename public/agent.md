@@ -94,5 +94,5 @@ Pull a change back with MCP `list_versions` then `restore_version`, or `GET .../
 
 - Do not send `position`, `type`, `tags` or `difficulty`.
 - Do not send a catalog id with a made-up `icon`. The icon is dropped.
-- Do not try to update or delete through this API. Those need the owner's session. A diagram with `locked: true` is embedded somewhere and refuses delete.
+- Do not try to update or delete through this API. Those need the owner's session. Every flow starts with both locks on: `locked` (nobody deletes it until the owner unlocks it in the app) and `edit_locked` (agents cannot change it until the owner unlocks it in the app). MCP `lock_flow` can turn a lock on, never off. If you need to change or trash a flow, ask the owner to lift the lock.
 - Do not put secrets, tokens or emails in a title, note or description. They are public.

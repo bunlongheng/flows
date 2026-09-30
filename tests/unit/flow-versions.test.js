@@ -111,6 +111,21 @@ describe("flow versions", () => {
     expect(query).toHaveBeenCalledTimes(1);
   });
 
+  // An agent's restore (the MCP server) is an edit and answers to the edit
+  // lock; the owner's own restore above answers to the delete lock as before.
+  it("restoreVersion with agent: true answers to the edit lock, not the delete lock", async () => {
+    const { restoreVersion } = await import("../../lib/versions.js");
+    query.mockResolvedValueOnce({ rows: [{ id: FLOW, locked: false, edit_locked: true }] });
+    expect(await restoreVersion(FLOW, OWNER, VID, { agent: true })).toEqual({ locked: true, edit_locked: true });
+    expect(query).toHaveBeenCalledTimes(1);
+    query.mockClear();
+    // Delete lock on, edit lock off: the agent's restore goes through to the version lookup.
+    query.mockResolvedValueOnce({ rows: [{ id: FLOW, locked: true, edit_locked: false }] });
+    query.mockResolvedValueOnce({ rows: [] });
+    expect(await restoreVersion(FLOW, OWNER, VID, { agent: true })).toBeNull();
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
   it("404s a restore of a version that is not the flow's", async () => {
     query.mockResolvedValueOnce(ownedFlow()).mockResolvedValueOnce({ rows: [] });
     const res = mockRes();

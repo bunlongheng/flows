@@ -15,7 +15,7 @@ immediately. Speaks MCP over stdio; logs go to stderr only.
 | `get_flow` | `id` | `{ id, title, slug, nodes, edges, created_at, url, share_url, gif_url, readme }` - the full structure the app renders. Error if the id is unknown or trashed |
 | `create_flow` | `title`, `nodes[]`, `edges[]` (default `[]`), `public?` (default `true`) | `{ id, url, share_url, gif_url, readme, visibility, share_note?, layout?, warning?, probably_update? }` |
 | `update_flow` | `id`, `reason?`, `title?`, `nodes?`, `edges?`, `public?` | `{ id, url, share_url, gif_url, readme, visibility, updated: { title, nodes, edges, public }, layout?, reason? }` |
-| `lock_flow` | `id`, `locked` | `{ id, title, locked }` |
+| `lock_flow` | `id`, `locked?`, `edit_locked?` (true only) | `{ id, title, locked, edit_locked }` |
 | `delete_flow` | `id`, `reason?` | `{ trashed, title, recoverable: true, restore_with: "restore_flow" }` |
 | `restore_flow` | `id` | `{ restored, title, url }` |
 | `purge_flow` | `id` (must already be trashed) | `{ purged, permanent: true }` |
@@ -32,15 +32,18 @@ the link to hand to people. `gif_url` is the animated diagram as an image,
 wrapped as a Markdown image, ready to paste into a README. Both need the
 diagram to be public. `visibility` is `"public"` or `"private"`.
 
-A locked diagram (embedded in a README or Confluence page) refuses `delete_flow`
-(and the purge) until `lock_flow` unlocks it. Updates still go through.
+Every flow starts with both locks on. The delete lock (`locked`) makes
+`delete_flow` refuse it; the edit lock (`edit_locked`) makes `update_flow` and
+`restore_version` refuse it. `lock_flow` can only turn a lock on. Only the
+owner turns one off, in the app: if you need to change or trash a locked flow,
+stop and ask.
 
 Every `update_flow` (and `restore_version`) keeps the diagram state from
 before that write as a version. `list_versions` shows the history for one
 flow, newest first, with the `reason` that write was given; `get_version`
 pulls one in full; `restore_version` puts it back live and is itself
-versioned, so a restore is always safe to undo. Refused with `locked: true`
-on a locked diagram, same as `delete_flow`.
+versioned, so a restore is always safe to undo. Refused on an edit-locked
+diagram, same as `update_flow`.
 
 ### Node and edge shapes
 

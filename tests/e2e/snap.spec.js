@@ -88,6 +88,7 @@ test("Cmd + drag snaps a node onto its neighbour's line and shows a yellow guide
     expect(await flowY(moving)).toBe(anchorY);
     await expect(page.locator(".sd-snap-guide")).toHaveCount(0);
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();
   }

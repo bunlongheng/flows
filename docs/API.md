@@ -114,13 +114,13 @@ A private create adds `share_note` explaining that recipients get a 404 until it
 | `{ "view_state": { panels, badge, start } }` | Panels from `steps, details, share, code`; badge from `dark, silver, color, plain`; `start: { x, y }` is the owner's hand-placed spot for the "Start here" pill (omit or send `view_state` without it to go back to automatic placement). Returns `{ id, view_state }`. |
 | `{ "is_public": true|false }` | Publishes or hides. Returns `{ id, is_public }`. |
 
-| `{ "locked": true|false }` | Marks the diagram as embedded (README, Confluence). Returns `{ id, locked }`. |
+| `{ "locked": true|false, "edit_locked": true|false }` | Flips either lock (a key left off leaves that lock alone). Returns `{ id, locked, edit_locked }`. Every flow starts with both on. `locked` is the delete lock: while on, delete is `409` for everyone, the owner included. `edit_locked` is the edit lock: while on, agents (MCP `update_flow`, `restore_version`) cannot change the flow; the owner's own edits through this session-gated PATCH never answer to it. Only the owner session flips a lock off; MCP `lock_flow` can only turn one on. |
 
 Anything else is `400`. Trashed rows are `404`.
 
 ### Delete (owner session only)
 
-A locked diagram is `409` until it is unlocked.
+A delete-locked diagram is `409` until the owner unlocks it, which every flow is to begin with.
 
 `DELETE /api/flows/:id` stamps `deleted_at` and returns `{ deleted, recoverable: true }`. The row leaves every list and every shared link but stays in the table. `DELETE /api/flows/:id?purge=1` permanently removes a row that is already in trash and returns `{ purged }`. There is no HTTP restore; use the MCP `restore_flow` tool.
 
@@ -147,7 +147,7 @@ curl -X POST https://flows-bheng.vercel.app/api/flows/<id>/versions/<vid>/restor
   -H "Cookie: sd_session=<session>"
 ```
 
-Puts that version back as the live diagram and returns `{ restored, saved_at, title }`. The write goes through the same versioning as any other, so the state it replaces is kept and a restore can itself be undone. A locked diagram is `409`, same as delete.
+Puts that version back as the live diagram and returns `{ restored, saved_at, title }`. The write goes through the same versioning as any other, so the state it replaces is kept and a restore can itself be undone. A delete-locked diagram is `409`, same as delete (the owner's restore answers to the delete lock; an agent's restore through MCP answers to the edit lock).
 
 All 3 routes `404` on an id that is not the owner's, is in trash, or (for the last 2) a version id that does not belong to the diagram.
 

@@ -129,6 +129,7 @@ test("two edges never share an endpoint, a lane or a label", async ({ page, base
     expect(probe.sameLane).toEqual([]);
     expect(probe.sameLabel).toEqual([]);
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();

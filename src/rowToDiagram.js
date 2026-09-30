@@ -10,6 +10,7 @@ export function rowToDiagram(r) {
     // mapping or the toolbar shows an unlocked padlock over a row the server
     // will refuse to delete.
     locked: !!r.locked,
+    editLocked: !!r.edit_locked,
     title: r.title,
     description: r.description || '',
     pattern: r.pattern || '',

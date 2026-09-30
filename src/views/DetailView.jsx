@@ -41,7 +41,7 @@ export function DetailView({
   rfInstance: rfInstanceRef, flashZoomHud, zoomHudRef,
   showSharePanel, setShowSharePanel,
   showDetailsPanel, setShowDetailsPanel,
-  // Owner only: undefined for anyone else, same as onToggleLock below - one
+  // Owner only: undefined for anyone else, same as onSetLocks below - one
   // gate, not two.
   showHistoryPanel, setShowHistoryPanel, onRestored,
   steps = [],
@@ -61,9 +61,10 @@ export function DetailView({
   onArrange,
   canUndo, canRedo, onUndo, onRedo,
   onDeleteDiagram,
-  // Locked diagrams are the ones embedded in a README - Delete stays inert
-  // until the lock comes off.
-  isLocked, onToggleLock,
+  // Two locks, both on for every flow until the owner lifts one. The delete
+  // lock keeps Delete inert; the edit lock keeps agents from rewriting it.
+  // onSetLocks({ locked } | { edit_locked }) flips one.
+  isLocked, isEditLocked, onSetLocks,
   // (nodeId, note) => void when the owner is signed in; undefined otherwise,
   // which makes every node note read-only (shared links, /demo).
   onNoteChange,
@@ -125,6 +126,15 @@ export function DetailView({
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [arrangeMenu])
+  // The Lock button opens the same kind of menu, one row per lock.
+  const [lockMenu, setLockMenu] = useState(null)
+  const lockRef = useRef(null)
+  useEffect(() => {
+    if (!lockMenu) return
+    const onPointerDown = e => { if (lockRef.current && !lockRef.current.contains(e.target)) setLockMenu(null) }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [lockMenu])
   // The summary card sits over the canvas and covers part of the diagram, so
   // it starts folded to a small badge in the corner on every screen; a click
   // opens it when the reader wants the framing.
@@ -644,33 +654,54 @@ export function DetailView({
               recoverable. Ownership is decided in App: the handler is only
               passed down when you can actually edit, so there is one gate,
               not two. */}
-          {/* Lock. A diagram linked from a README must not vanish because someone
-              tidied the gallery, so the lock makes Delete inert until it is turned
-              off - a second, deliberate action. */}
-          {onToggleLock && (
-            <button className="sd-hide-mobile" onClick={onToggleLock}
-              title={isLocked ? 'Locked - embedded in a README or Confluence page. Click to unlock, then it can be deleted' : 'Lock this diagram so it cannot be deleted - use it when a README or Confluence page embeds it'} style={{
+          {/* Lock. Every flow starts with both locks on. The delete lock keeps
+              Delete inert until it is turned off - a second, deliberate action.
+              The edit lock keeps agents (MCP, the API) from rewriting the flow;
+              the owner's own edits here never answer to it. The button shows
+              the tighter state and opens a menu with one switch per lock. */}
+          {onSetLocks && <div ref={lockRef} className="sd-hide-mobile" style={{ position: 'relative', flexShrink: 0 }}>
+            <button aria-haspopup="menu" aria-expanded={!!lockMenu}
+              onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setLockMenu(lockMenu ? null : { top: r.bottom + 6, left: r.left }) }}
+              title={isLocked || isEditLocked ? 'Locked - open to see which lock is on and lift one' : 'Both locks are off - open to lock delete or edits'} style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
-              background: isLocked ? '#fef3c7' : 'transparent',
-              color: isLocked ? '#92400e' : '#64748b',
-              cursor: 'pointer', fontSize: 13, fontWeight: isLocked ? 600 : 400,
+              background: isLocked || isEditLocked ? '#fef3c7' : 'transparent',
+              color: isLocked || isEditLocked ? '#92400e' : '#64748b',
+              cursor: 'pointer', fontSize: 13, fontWeight: isLocked || isEditLocked ? 600 : 400,
               transition: 'all 0.1s', fontFamily: 'inherit', flexShrink: 0,
             }}
-              onMouseEnter={e => { if (!isLocked) e.currentTarget.style.background = '#f1f5f9' }}
-              onMouseLeave={e => { if (!isLocked) e.currentTarget.style.background = 'transparent' }}
+              onMouseEnter={e => { if (!(isLocked || isEditLocked)) e.currentTarget.style.background = '#f1f5f9' }}
+              onMouseLeave={e => { if (!(isLocked || isEditLocked)) e.currentTarget.style.background = 'transparent' }}
             >
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="11" width="18" height="11" rx="2" />
-                {isLocked ? <path d="M7 11V7a5 5 0 0 1 10 0v4" /> : <path d="M7 11V7a5 5 0 0 1 9.9-1" />}
+                {isLocked || isEditLocked ? <path d="M7 11V7a5 5 0 0 1 10 0v4" /> : <path d="M7 11V7a5 5 0 0 1 9.9-1" />}
               </svg>
-              <span className="sd-btn-label">{isLocked ? 'Locked' : 'Lock'}</span>
+              <span className="sd-btn-label">{isLocked || isEditLocked ? 'Locked' : 'Lock'}</span>
             </button>
-          )}
+            {lockMenu && <div role="menu" style={{ position: 'fixed', top: lockMenu.top, left: lockMenu.left, zIndex: 1000, minWidth: 250, padding: 4, background: '#fff', border: '1px solid #e4e6e8', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)' }}>
+              {[
+                ['locked', 'Delete lock', isLocked, isLocked ? 'On - nobody can delete it, you included, until this is off' : 'Off - you can delete it; agents still cannot'],
+                ['edit_locked', 'Edit lock', isEditLocked, isEditLocked ? 'On - agents cannot change it; your own edits here still work' : 'Off - agents (MCP, API) can change it'],
+              ].map(([key, name, on, sub]) => (
+                <button key={key} role="menuitemcheckbox" aria-checked={on} onClick={() => onSetLocks({ [key]: !on })} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '7px 10px', border: 'none', borderRadius: 7, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                  <span aria-hidden="true" style={{ width: 30, height: 18, borderRadius: 9, flexShrink: 0, background: on ? '#b45309' : '#cbd5e1', position: 'relative', transition: 'background 0.15s' }}>
+                    <span style={{ position: 'absolute', top: 2, left: on ? 14 : 2, width: 14, height: 14, borderRadius: 7, background: '#fff', transition: 'left 0.15s' }} />
+                  </span>
+                  <span>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{name}</div>
+                    <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 1 }}>{sub}</div>
+                  </span>
+                </button>
+              ))}
+            </div>}
+          </div>}
 
           {onDeleteDiagram && (
             <button className="sd-hide-mobile" onClick={() => !isLocked && setConfirmDelete(true)} disabled={isLocked}
-              title={isLocked ? 'Locked - unlock it before deleting' : 'Delete this diagram'} style={{
+              title={isLocked ? 'Delete locked - lift the delete lock under Lock first' : 'Delete this diagram'} style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
               background: 'transparent', color: isLocked ? '#cbd5e1' : '#dc2626',

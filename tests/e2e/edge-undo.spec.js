@@ -78,6 +78,7 @@ test("Cmd+Z undoes a hand-bent line, on the canvas and on the server", async ({ 
     await page.waitForTimeout(1200);
     expect(await pathD(page)).toBe(bent);
   } finally {
+    await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
     await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
     await api.dispose();

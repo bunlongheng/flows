@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import { ReactFlowProvider } from "@xyflow/react";
@@ -64,6 +64,22 @@ function setup(overrides = {}) {
 }
 
 describe("DetailView", () => {
+  // Every flow starts with both locks on. The Lock button opens a menu with
+  // one switch per lock, and each switch asks for just its own lock.
+  it("the Lock button opens a menu with a delete lock and an edit lock", () => {
+    const onSetLocks = vi.fn();
+    setup({ isLocked: true, isEditLocked: true, onSetLocks });
+    fireEvent.click(screen.getByRole("button", { name: /^locked$/i }));
+    const del = screen.getByRole("menuitemcheckbox", { name: /delete lock/i });
+    const edit = screen.getByRole("menuitemcheckbox", { name: /edit lock/i });
+    expect(del).toHaveAttribute("aria-checked", "true");
+    expect(edit).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(edit);
+    expect(onSetLocks).toHaveBeenCalledWith({ edit_locked: false });
+    fireEvent.click(del);
+    expect(onSetLocks).toHaveBeenCalledWith({ locked: false });
+  });
+
   it("renders without crashing and shows the back button", () => {
     setup();
     expect(document.querySelector("header")).toBeInTheDocument();
