@@ -385,7 +385,15 @@ export default function App() {
   }
 
   function deleteDiagram(id, { thenBack = false } = {}) {
-    fetch(`/api/flows/${id}`, { method: 'DELETE' }).then(res => {
+    // Every flow starts delete-locked, and the lock is there to stop agents:
+    // the API refuses to delete a locked flow. The owner's own confirmed Delete
+    // lifts it on the way, which only the owner session can do, so an agent
+    // holding the bearer secret still cannot get here.
+    const row = diagrams.find(d => d.id === id) || (activeDiagram?.id === id ? activeDiagram : null)
+    const unlock = row?.locked
+      ? fetch(`/api/flows/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ locked: false }) })
+      : Promise.resolve({ ok: true })
+    unlock.then(u => (u.ok ? fetch(`/api/flows/${id}`, { method: 'DELETE' }) : u)).then(res => {
       if (!res.ok) { showToastMsg('Delete failed'); return }
       // Measure the card (or the open canvas) BEFORE React drops it, then let
       // the fireflies take its place - once it is unmounted there is nothing

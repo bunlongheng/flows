@@ -10,7 +10,7 @@ import { tierFor } from '../difficulty.js'
 // shareable is obvious before its link goes anywhere.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficulty, onOpen, onViewCode, onDelete, isPrivate, isLocked, thumbnailAt, changedAt }) {
+export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficulty, onOpen, onViewCode, onDelete, isPrivate, thumbnailAt, changedAt }) {
   const brand = showBrand ? brandFor(title) : null
   // The tile is the flow itself: a fit-view capture of the real canvas, or the
   // SVG render until the owner first opens it. Bundled samples have no row.
@@ -129,7 +129,7 @@ export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficul
             <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
           </svg>
         </button>}
-        {onDelete && !isLocked && (confirming ? (
+        {onDelete && (confirming ? (
           <button onClick={handleDeleteClick} onBlur={resetConfirm} title="Confirm delete"
             style={{ height: 26, borderRadius: 7, border: '1px solid #dc2626', background: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px', fontSize: 10, fontWeight: 700, color: '#ffffff', whiteSpace: 'nowrap', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
             Delete?

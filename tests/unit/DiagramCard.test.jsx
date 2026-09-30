@@ -75,13 +75,14 @@ describe("private lock", () => {
 });
 
 // Every flow starts locked, so a padlock on the card would sit on every card
-// and say nothing. A locked card just offers no delete button; the one badge
-// a card can wear is Private, the exception worth seeing.
+// and say nothing. The lock is there to stop agents, so the card still offers
+// the owner Delete (the confirmed click lifts the lock first); the one badge a
+// card can wear is Private, the exception worth seeing.
 describe("locked card", () => {
-  it("offers no delete button and wears no padlock when locked", () => {
+  it("wears no padlock and still offers the owner Delete", () => {
     setup({ isLocked: true });
     expect(screen.queryByTitle(/Locked/)).toBeNull();
-    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
   });
 
   it("wears at most one badge, the private one", () => {
