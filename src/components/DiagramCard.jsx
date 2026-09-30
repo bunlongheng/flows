@@ -13,7 +13,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficulty, onOpen, onViewCode, onDelete, isPrivate, isLocked, thumbnailAt, changedAt }) {
   const brand = showBrand ? brandFor(title) : null
   // The tile is the flow itself: a fit-view capture of the real canvas, or the
-  // SVG render until the owner first opens it. Bundled samples have no row.
+  // SVG render until the owner first opens it.
   const thumbSrc = UUID_RE.test(id || '') ? `/api/flows/${id}?format=thumb&v=${Date.parse(thumbnailAt) || 0}-${Date.parse(changedAt) || 0}` : null
   const tier = tierFor(difficulty)
   const [active, setActive] = useState(false) // hover OR keyboard focus (for the card's own lift)

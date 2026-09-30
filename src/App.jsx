@@ -61,8 +61,8 @@ const edgePins = edges => edges.map((e, i) => ({
 // animated with marching motion. Node id === service key, so we can look up
 // each endpoint's brand color directly.
 // onLabelMove and onEndMove are threaded into every edge's data so a badge or a
-// pinned end can be dragged. Both are omitted for the bundled sample and for a
-// read-only viewer, and the edge renders inert in that case.
+// pinned end can be dragged. Both are omitted for a read-only viewer, and the
+// edge renders inert in that case.
 function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove) {
   // The edge takes its colour from the SOURCE node, and a node that brings its
   // own logo states its colour only in that logo - so the node itself has to be
@@ -187,14 +187,6 @@ const publicOrigin = () => {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-// Sample diagrams for index page (fallback when the API has none saved)
-// Shown only when the gallery has nothing real to show. `sample: true` marks it
-// as NOT a saved row: it has no database record, so it must never offer a delete
-// button - clicking one could only ever fail.
-const SEED = [
-  { id: 'ifttt', title: 'IFTTT Automation', data: diagramData, updatedAt: new Date().toISOString(), tags: ['AWS', 'Architecture'], sample: true },
-]
-
 export default function App() {
   // /demo is a PUBLIC read-only gallery (no sign-in): anyone sees is_public
   // diagrams. The home page ("/") is unchanged - owner-only behind sign-in.
@@ -234,7 +226,7 @@ export default function App() {
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedShare, setCopiedShare] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
-  const [diagrams, setDiagrams] = useState(isDemo ? [] : SEED)
+  const [diagrams, setDiagrams] = useState([])
   // Logged-in home has two tabs (top-right button group): 'mine' = my personal
   // (non-demo) diagrams, 'demos' = the 12 curated public demos so the owner can
   // reopen + re-arrange them and have the layout persist. Public /demo ignores this.
@@ -318,16 +310,15 @@ export default function App() {
     return fetch(showcase ? '/api/flows/public' : '/api/flows')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then(rows => {
-        const mapped = rows.map(rowToDiagram)
-        // Never fall back to the IFTTT SEED sample in a showcase view - only real demos.
         setListError(false)
-        setDiagrams(mapped.length ? mapped : (showcase ? [] : SEED))
+        setDiagrams(rows.map(rowToDiagram))
       })
       .catch(() => {
-        // An unreachable API used to look identical to "you have one diagram":
-        // it fell through to the sample and the gallery said nothing. Say it.
+        // An unreachable API shows the banner and an empty gallery. Nothing is
+        // invented in its place: a bundled sample used to fill the gap and read
+        // as a saved diagram that would not go away.
         setListError(true)
-        setDiagrams(showcase ? [] : SEED)
+        setDiagrams([])
       })
   }, [isDemo, galleryTab])
 
