@@ -78,6 +78,33 @@ describe("/api/flows/:id", () => {
     expect(res.body).toEqual(row);
   });
 
+  it("GET ?format=gif serves a kept render without rendering, and keeps a fresh one", async () => {
+    const row = { id: ID, nodes: [{ id: "user", position: { x: 0, y: 0 } }], edges: [], updated_at: "2026-09-30T12:00:00Z", is_public: true };
+    const kept = Buffer.from("GIF89a-kept");
+    query.mockResolvedValueOnce({ rows: [row] });
+    query.mockResolvedValueOnce({ rows: [{ bytes: kept }] });
+    const res = mockRes();
+    await flowById({ ...req("GET", ID), query: { id: ID, format: "gif" } }, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toBe(kept);
+    expect(res.headers.ETag).toBe(`"${Date.parse(row.updated_at)}-1800-20"`);
+    expect(query.mock.calls[1][0]).toMatch(/SELECT bytes FROM flow_renders/);
+    expect(query).toHaveBeenCalledTimes(2);
+
+    // No kept render: it renders, sends, and stores under the same key.
+    query.mockReset();
+    query.mockResolvedValueOnce({ rows: [row] });
+    query.mockResolvedValueOnce({ rows: [] });
+    query.mockResolvedValue({ rows: [] });
+    const res2 = mockRes();
+    await flowById({ ...req("GET", ID), query: { id: ID, format: "gif", frames: "2", w: "300" } }, res2);
+    expect(res2.statusCode).toBe(200);
+    expect(res2.body.subarray(0, 6).toString("ascii")).toBe("GIF89a");
+    await new Promise((r) => setTimeout(r, 0));
+    const insert = query.mock.calls.find((c) => /INSERT INTO flow_renders/.test(c[0]));
+    expect(insert[1].slice(0, 2)).toEqual([ID, `${Date.parse(row.updated_at)}-300-2`]);
+  });
+
   it("GET returns 404 for a valid uuid that does not exist", async () => {
     query.mockResolvedValueOnce({ rows: [] });
     const res = mockRes();
