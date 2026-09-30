@@ -659,8 +659,8 @@ export function DetailView({
               The edit lock keeps agents (MCP, the API) from rewriting the flow;
               the owner's own edits here never answer to it. The button shows
               the tighter state and opens a menu with one switch per lock. */}
-          {onSetLocks && <div ref={lockRef} style={{ position: 'relative', flexShrink: 0 }}>
-            <button className="sd-hide-mobile" aria-haspopup="menu" aria-expanded={!!lockMenu}
+          {onSetLocks && <div ref={lockRef} className="sd-hide-mobile" style={{ position: 'relative', flexShrink: 0 }}>
+            <button aria-haspopup="menu" aria-expanded={!!lockMenu}
               onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setLockMenu(lockMenu ? null : { top: r.bottom + 6, left: r.left }) }}
               title={isLocked || isEditLocked ? 'Locked - open to see which lock is on and lift one' : 'Both locks are off - open to lock delete or edits'} style={{
               display: 'flex', alignItems: 'center', gap: 6,
