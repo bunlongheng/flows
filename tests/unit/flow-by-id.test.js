@@ -697,14 +697,19 @@ describe("/api/flows/:id", () => {
     expect(res.body.toString()).toBe("not really a jpeg");
   });
 
-  it("GET ?format=thumb falls back to the SVG render when there is no capture yet", async () => {
+  it("GET ?format=thumb rasterises the SVG render once when there is no capture yet, and keeps it", async () => {
     query.mockResolvedValueOnce({ rows: [{ id: ID, nodes: [{ id: "lambda", position: { x: 0, y: 0 } }], edges: [], is_public: true, thumbnail: null }] });
+    query.mockResolvedValueOnce({ rows: [] });
     const res = mockRes();
     await flowById(req("GET", ID, undefined, undefined, { format: "thumb" }), res);
     expect(res.statusCode).toBe(200);
-    expect(res.headers["Content-Type"]).toMatch(/image\/svg\+xml/);
+    expect(res.headers["Content-Type"]).toBe("image/png");
     expect(res.headers["Cache-Control"]).toMatch(/immutable/);
-    expect(String(res.body)).toMatch(/^<svg/);
+    expect(Buffer.isBuffer(res.body) && res.body.slice(1, 4).toString()).toBe("PNG");
+    const [sql, params] = query.mock.calls[1];
+    expect(sql).toMatch(/SET thumbnail = \$1 WHERE id = \$2 AND thumbnail IS NULL/);
+    expect(params[0]).toMatch(/^data:image\/png;base64,/);
+    expect(params[1]).toBe(ID);
   });
 
   it("GET json never carries the capture bytes, only when it was taken", async () => {

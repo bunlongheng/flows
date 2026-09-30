@@ -24,7 +24,7 @@ The app was previously called System Design and these routes lived under `/api/s
 | Route | Auth | Notes |
 |-------|------|-------|
 | `POST /api/ai/flows` | Bearer | Render-only create. 60/min. |
-| `GET /api/flows/:idOrSlug` | Public | JSON, or SVG with `?format=svg`, or an animated GIF with `?format=gif`, or the gallery tile with `?format=thumb` (the app's last capture of the real canvas as a JPEG, else the SVG). Private rows 404 for non-owners. 180/min. |
+| `GET /api/flows/:idOrSlug` | Public | JSON, or SVG with `?format=svg`, or an animated GIF with `?format=gif`, or the gallery tile with `?format=thumb` (the app's last capture of the real canvas as a JPEG; until the owner has opened the flow, a PNG of the SVG render, made once and kept). Private rows 404 for non-owners. 180/min. |
 | `GET /api/flows/public` | Public | The curated `DEMO_SLUGS` roster (12), public + not deleted, by difficulty. 120/min. |
 | `GET /api/flows` | Owner (session, Bearer, or local dev) | Owner's diagrams minus the demo roster, newest first, max 60. 120/min. |
 | `PATCH /api/flows/:id` | Owner session only (Bearer rejected) | 1 of 7 body shapes, uuid only. |
