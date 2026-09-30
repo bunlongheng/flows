@@ -78,7 +78,7 @@ A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, suns
 - `sunset` - a boolean; `true` marks a node that is today's path and gets decommissioned: drawn light silver and dimmed, icon in greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) light silver at 0.75 opacity, immune to any line style. No X on the card itself. Silver is reserved for this; never paint a node grey or silver to mean retired, set `sunset` instead. A node with no colour of its own falls back to black.
 - `x` / `y` - optional. Omit them and the canvas lays the design out left-to-right, which is the wanted look.
 
-Edges are directed `{ source, target, label? }` using node ids, in flow order. Each edge becomes a numbered step in the app.
+Edges are directed `{ source, target, label?, description? }` using node ids, in flow order. Each edge becomes a numbered step in the app. The tag on the line reads the label, or the description (max 300) cut short when there is no label; hovering the tag shows the whole description.
 
 - `pattern` (max 200) and `description` (max 600) are top-level fields on `create_flow`: the one-line "what it tests" and the goal paragraph the detail view and the share card show above the diagram.
 
