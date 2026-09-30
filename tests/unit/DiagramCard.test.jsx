@@ -74,13 +74,20 @@ describe("private lock", () => {
   });
 });
 
-// A locked diagram is embedded in a README or Confluence page, so its card
-// carries a badge and offers no delete button.
-describe("locked badge", () => {
-  it("shows the lock badge and no delete button when locked", () => {
+// Every flow starts locked, so a padlock on the card would sit on every card
+// and say nothing. A locked card just offers no delete button; the one badge
+// a card can wear is Private, the exception worth seeing.
+describe("locked card", () => {
+  it("offers no delete button and wears no padlock when locked", () => {
     setup({ isLocked: true });
-    expect(screen.getByTitle(/Locked: embedded in a README or Confluence page/)).toBeInTheDocument();
+    expect(screen.queryByTitle(/Locked/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+  });
+
+  it("wears at most one badge, the private one", () => {
+    setup({ isLocked: true, isPrivate: true });
+    expect(screen.getByTitle(/Private: only you can open it/)).toBeInTheDocument();
+    expect(document.querySelectorAll(".dc-private, .dc-locked")).toHaveLength(1);
   });
 });
 
