@@ -16,6 +16,10 @@ export function rowToDiagram(r) {
     pattern: r.pattern || '',
     difficulty: r.difficulty ?? null,
     data: { nodes: r.nodes, edges: r.edges },
+    // The tile URL is versioned on both: a new capture, or a content change
+    // that dropped the old one, each mean a new picture.
+    thumbnailAt: r.thumbnail_at || null,
+    changedAt: r.updated_at || null,
     updatedAt: r.created_at,
     tags: r.tags || [],
   }

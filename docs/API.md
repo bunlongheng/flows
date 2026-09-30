@@ -24,10 +24,10 @@ The app was previously called System Design and these routes lived under `/api/s
 | Route | Auth | Notes |
 |-------|------|-------|
 | `POST /api/ai/flows` | Bearer | Render-only create. 60/min. |
-| `GET /api/flows/:idOrSlug` | Public | JSON, or SVG with `?format=svg`, or an animated GIF with `?format=gif`. Private rows 404 for non-owners. 180/min. |
+| `GET /api/flows/:idOrSlug` | Public | JSON, or SVG with `?format=svg`, or an animated GIF with `?format=gif`, or the gallery tile with `?format=thumb` (the app's last capture of the real canvas as a JPEG, else the SVG). Private rows 404 for non-owners. 180/min. |
 | `GET /api/flows/public` | Public | The curated `DEMO_SLUGS` roster (12), public + not deleted, by difficulty. 120/min. |
 | `GET /api/flows` | Owner (session, Bearer, or local dev) | Owner's diagrams minus the demo roster, newest first, max 60. 120/min. |
-| `PATCH /api/flows/:id` | Owner session only (Bearer rejected) | 1 of 5 body shapes, uuid only. |
+| `PATCH /api/flows/:id` | Owner session only (Bearer rejected) | 1 of 7 body shapes, uuid only. |
 | `DELETE /api/flows/:id` | Owner session only (Bearer rejected) | Soft delete; `?purge=1` destroys a trashed row. uuid only. |
 | `GET /api/og?name=<slug>` or `?id=<uuid>` | Public | 1200x630 PNG for a public design, else `302 /og.png` with `no-store`. 120/min. |
 | `POST /api/ai/generate` | Owner session or local dev only | Prompt (max 2000 chars) to Claude, saved private, tags `["AI"]`. `422` if the model's output fails the logo gate. 10/min. |
@@ -113,7 +113,7 @@ A private create adds `share_note` explaining that recipients get a 404 until it
 | `{ "edges": [{ id, labelT, ends, bend }] }` | Moves a step badge along its edge (`labelT`, clamped 0.12..0.88) and pins where the edge meets each box (`ends: { s, t }`, each `{ side: top\|right\|bottom\|left, at: 0.05..0.95 }`; omit a key to go back to automatic). `bend: { t, d }` bends the line through a point `t` (0.1..0.9) along its straight run and `d` (-600..600) off it; omit it for a straight/automatic line. Returns `{ id, moved }`. |
 | `{ "view_state": { panels, badge, start } }` | Panels from `steps, details, share, code`; badge from `dark, silver, color, plain`; `start: { x, y }` is the owner's hand-placed spot for the "Start here" pill (omit or send `view_state` without it to go back to automatic placement). Returns `{ id, view_state }`. |
 | `{ "is_public": true|false }` | Publishes or hides. Returns `{ id, is_public }`. |
-
+| `{ "thumbnail": "data:image/jpeg;base64,..." }` | The app's fit-view capture of the canvas for the gallery tile, under 300 KB. Returns `{ id, thumbnail_at }`. An agent rewrite of nodes or edges drops it until the owner opens the flow again. |
 | `{ "locked": true|false, "edit_locked": true|false }` | Flips either lock (a key left off leaves that lock alone). Returns `{ id, locked, edit_locked }`. Every flow starts with both on. `locked` is the delete lock: while on, delete is `409` for everyone, the owner included. `edit_locked` is the edit lock: while on, agents (MCP `update_flow`, `restore_version`) cannot change the flow; the owner's own edits through this session-gated PATCH never answer to it. Only the owner session flips a lock off; MCP `lock_flow` can only turn one on. |
 
 Anything else is `400`. Trashed rows are `404`.

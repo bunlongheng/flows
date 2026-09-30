@@ -81,6 +81,7 @@ Hand people `share_url`. Paste `readme` into a README or Confluence page as is.
 
 - `GET /api/flows/<id-or-slug>` JSON.
 - `GET /api/flows/<id-or-slug>?format=svg` static SVG.
+- `GET /api/flows/<id-or-slug>?format=thumb` the gallery tile: the owner's last capture of the real canvas as a JPEG, else the SVG.
 - `GET /api/flows/<id-or-slug>?format=gif&w=3200` animated GIF. `w` 200 to 3200, `frames` 2 to 30.
 
 ## 4b. Undo a change

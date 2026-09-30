@@ -94,3 +94,23 @@ describe("view code", () => {
     expect(screen.getByRole("button", { name: /view code/i })).toBeInTheDocument();
   });
 });
+
+// The tile is the flow itself: the app's capture of the real canvas, or the
+// SVG render until the owner first opens it. Both come from the row's thumb
+// route, versioned so a new capture or a content change is a new address.
+describe("tile picture", () => {
+  it("loads the flow's thumb route, versioned on the capture and the content", () => {
+    setup({ id: "11111111-1111-1111-1111-111111111111", thumbnailAt: "2026-09-30T10:00:00.000Z", changedAt: "2026-09-30T09:00:00.000Z" });
+    const img = document.querySelector("img.dc-thumb");
+    expect(img).not.toBeNull();
+    expect(img.getAttribute("src")).toBe(
+      `/api/flows/11111111-1111-1111-1111-111111111111?format=thumb&v=${Date.parse("2026-09-30T10:00:00.000Z")}-${Date.parse("2026-09-30T09:00:00.000Z")}`,
+    );
+    expect(img.getAttribute("loading")).toBe("lazy");
+  });
+
+  it("draws no picture for a bundled sample, which has no row to fetch", () => {
+    setup({ id: "ifttt" });
+    expect(document.querySelector("img.dc-thumb")).toBeNull();
+  });
+});

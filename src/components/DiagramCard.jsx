@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
 import { relativeTime } from '../timeAgo'
-import { DiagramMinimap } from './DiagramMinimap'
 import { brandFor } from '../brands'
 import { tierFor } from '../difficulty.js'
 
@@ -9,8 +8,13 @@ import { tierFor } from '../difficulty.js'
 
 // isPrivate: owner's gallery only - a small lock so a diagram that is not yet
 // shareable is obvious before its link goes anywhere.
-export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficulty, onOpen, onViewCode, onDelete, isPrivate, isLocked }) {
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficulty, onOpen, onViewCode, onDelete, isPrivate, isLocked, thumbnailAt, changedAt }) {
   const brand = showBrand ? brandFor(title) : null
+  // The tile is the flow itself: a fit-view capture of the real canvas, or the
+  // SVG render until the owner first opens it. Bundled samples have no row.
+  const thumbSrc = UUID_RE.test(id || '') ? `/api/flows/${id}?format=thumb&v=${Date.parse(thumbnailAt) || 0}-${Date.parse(changedAt) || 0}` : null
   const tier = tierFor(difficulty)
   const [active, setActive] = useState(false) // hover OR keyboard focus (for the card's own lift)
   const [confirming, setConfirming] = useState(false) // delete: awaiting the confirm click
@@ -115,9 +119,11 @@ export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficul
         )}
       </div>
 
-      {/* Minimap */}
+      {/* The flow, whole, fit to a 2:1 frame */}
       <div style={{ padding: '0 12px 13px' }}>
-        <DiagramMinimap diagram={diagram} />
+        <div style={{ aspectRatio: '2 / 1', borderRadius: 8, background: '#ffffff', border: '1px solid #eef0f3', overflow: 'hidden' }}>
+          {thumbSrc && <img className="dc-thumb" src={thumbSrc} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />}
+        </div>
       </div>
 
       {/* Actions (visibility handled by the CSS above) */}

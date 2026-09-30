@@ -24,6 +24,10 @@ function mockRes() {
     setHeader(k, v) {
       this.headers[k] = v;
     },
+    send(b) {
+      this.body = b;
+      return this;
+    },
   };
 }
 
@@ -676,5 +680,63 @@ describe("/api/flows/:id", () => {
     r.body = { view_state: { panels: ["steps"], badge: "dark" } };
     await flowById(r, res);
     expect(res.statusCode).toBe(200);
+  });
+
+  // The gallery tile route: the app's fit-view capture of the real canvas when
+  // the owner has opened the flow, else the same SVG the share card uses. The
+  // tile URL is versioned by the client, so both answers may be cached for good.
+  it("GET ?format=thumb serves the stored capture as a JPEG with a long cache", async () => {
+    const b64 = Buffer.from("not really a jpeg").toString("base64");
+    query.mockResolvedValueOnce({ rows: [{ id: ID, nodes: [], edges: [], is_public: true, thumbnail: `data:image/jpeg;base64,${b64}` }] });
+    const res = mockRes();
+    await flowById(req("GET", ID, undefined, undefined, { format: "thumb" }), res);
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["Content-Type"]).toBe("image/jpeg");
+    expect(res.headers["Cache-Control"]).toMatch(/immutable/);
+    expect(Buffer.isBuffer(res.body)).toBe(true);
+    expect(res.body.toString()).toBe("not really a jpeg");
+  });
+
+  it("GET ?format=thumb falls back to the SVG render when there is no capture yet", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: ID, nodes: [{ id: "lambda", position: { x: 0, y: 0 } }], edges: [], is_public: true, thumbnail: null }] });
+    const res = mockRes();
+    await flowById(req("GET", ID, undefined, undefined, { format: "thumb" }), res);
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["Content-Type"]).toMatch(/image\/svg\+xml/);
+    expect(res.headers["Cache-Control"]).toMatch(/immutable/);
+    expect(String(res.body)).toMatch(/^<svg/);
+  });
+
+  it("GET json never carries the capture bytes, only when it was taken", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: ID, nodes: [], edges: [], is_public: true, thumbnail: "data:image/jpeg;base64,AAAA", thumbnail_at: "2026-09-30T10:00:00.000Z" }] });
+    const res = mockRes();
+    await flowById(req("GET", ID), res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).not.toHaveProperty("thumbnail");
+    expect(res.body.thumbnail_at).toBe("2026-09-30T10:00:00.000Z");
+  });
+
+  it("PATCH thumbnail stores a JPEG data URL and says when", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: ID, thumbnail_at: "2026-09-30T10:00:00.000Z" }] });
+    const res = mockRes();
+    const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
+    const r = req("PATCH", ID, undefined, cookie);
+    r.body = { thumbnail: "data:image/jpeg;base64,/9j/4AAQ" };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ id: ID, thumbnail_at: "2026-09-30T10:00:00.000Z" });
+    const [sql, params] = query.mock.calls[0];
+    expect(sql).toMatch(/SET thumbnail = \$1, thumbnail_at = now\(\)/);
+    expect(params[0]).toBe("data:image/jpeg;base64,/9j/4AAQ");
+  });
+
+  it("PATCH thumbnail refuses anything that is not a JPEG data URL", async () => {
+    const res = mockRes();
+    const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
+    const r = req("PATCH", ID, undefined, cookie);
+    r.body = { thumbnail: "https://evil.example/x.jpg" };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(400);
+    expect(query).not.toHaveBeenCalled();
   });
 });
