@@ -744,4 +744,15 @@ describe("/api/flows/:id", () => {
     expect(res.statusCode).toBe(400);
     expect(query).not.toHaveBeenCalled();
   });
+
+  it("GET ?format=thumb counts against its own rate bucket, not the flow reads", async () => {
+    const rows = [{ id: ID, nodes: [], edges: [], is_public: true, thumbnail: "data:image/png;base64,iVBORw0KGgo=" }];
+    // 200 tiles in a row from 1 address: past the 180 flow reads would allow.
+    for (let i = 0; i < 200; i++) {
+      query.mockResolvedValueOnce({ rows });
+      const res = mockRes();
+      await flowById(req("GET", ID, undefined, undefined, { format: "thumb" }), res);
+      expect(res.statusCode).toBe(200);
+    }
+  });
 });
