@@ -40,6 +40,11 @@ makes `update_flow` and `restore_version` refuse it. `lock_flow` can only turn
 a lock on. Only the owner turns one off, in the app: if you need to change or
 trash a locked flow, stop and ask.
 
+A diagram made for a repo (a README, a PR, a repo audit) belongs under the
+gallery's Linked tab, not My Diagrams: pass `linked: true` to `create_flow`, or
+title it `owner/repo - ...` and it is Linked on its own. The row carries a
+`linked` tag.
+
 Every `update_flow` (and `restore_version`) keeps the diagram state from
 before that write as a version. `list_versions` shows the history for one
 flow, newest first, with the `reason` that write was given; `get_version`

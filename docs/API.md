@@ -71,6 +71,7 @@ Body fields:
 | `pattern` | Optional string, max 200. The one-line "what it tests" shown above the diagram and on the share card. |
 | `description` | Optional string, max 600. The goal paragraph under it. |
 | `is_public` | Optional boolean, default `false`. `true` makes the link open for anyone and gives it a real card. |
+| `linked` | Optional boolean. `true` lists the diagram under the gallery's Linked tab (README, PR, repo audit) instead of My Diagrams. A title that starts with `owner/repo` is Linked on its own; `false` keeps it out. The row carries a `linked` tag. |
 | `return` / `format` | `"svg"` (or `?format=svg` on the URL) adds the rendered `svg` to the response. |
 
 Rules:

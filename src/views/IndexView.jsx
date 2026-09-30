@@ -125,11 +125,13 @@ export function IndexView({
 
           <div style={{ flex: 1 }} />
 
-          {/* Demos / My Diagrams tab toggle - owner only, top-right button group,
-              same header row (no new row). Public /demo never shows it. */}
+          {/* My Diagrams / Linked / Demos tab toggle - owner only, top-right button
+              group, same header row (no new row). Linked holds the diagrams made
+              for a repo (README, PR, audit) so the daily list stays the owner's
+              own work. Public /demo never shows it. */}
           {!isDemo && canAI && (
             <div style={{ display: 'inline-flex', background: '#f0f1f3', borderRadius: 9, padding: 3, flexShrink: 0 }}>
-              {[['mine', 'My Diagrams'], ['demos', 'Demos']].map(([key, label]) => (
+              {[['mine', 'My Diagrams'], ['linked', 'Linked'], ['demos', 'Demos']].map(([key, label]) => (
                 <button key={key} onClick={() => setGalleryTab(key)}
                   style={{
                     padding: '6px 13px', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
