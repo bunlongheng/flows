@@ -241,7 +241,6 @@ export default function App() {
   const [galleryTab, setGalleryTab] = useState('mine') // 'mine' | 'linked' | 'demos'
   // Work vs personal. Twenty diagrams in one list meant hunting for the one that
   // matters; this splits the day job from stock bots and practice designs.
-  const [scope, setScope] = useState('all') // 'all' | 'work' | 'personal'
   const [loadingId, setLoadingId] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [listError, setListError] = useState(false) // gallery fetch failed
@@ -1197,17 +1196,7 @@ export default function App() {
   // the daily list is the owner's own work. The demo roster is neither.
   const showcase = isDemo || galleryTab === 'demos'
   const own = diagrams.filter(d => showcase || (d.tags || []).includes('linked') === (galleryTab === 'linked'))
-  const filtered = own.filter(d => {
-    if (search.trim() && !d.title.toLowerCase().includes(search.toLowerCase())) return false
-    // Scope applies to your OWN diagrams only - the demo roster is neither.
-    if (scope === 'all' || showcase) return true
-    return (d.tags || []).includes(scope)
-  })
-  const scopeCounts = {
-    all: own.length,
-    work: own.filter(d => (d.tags || []).includes('work')).length,
-    personal: own.filter(d => (d.tags || []).includes('personal')).length,
-  }
+  const filtered = own.filter(d => !search.trim() || d.title.toLowerCase().includes(search.toLowerCase()))
 
   // ── ?id LOADING / ERROR STATES ──────────────────────────────────────────────
   if (loadingId) {
@@ -1266,7 +1255,6 @@ export default function App() {
         search={search} setSearch={setSearch}
         user={user} canAI={canAI} isDemo={isDemo} listError={listError}
         galleryTab={galleryTab} setGalleryTab={setGalleryTab}
-        scope={scope} setScope={setScope} scopeCounts={scopeCounts}
         showMenu={showMenu} setShowMenu={setShowMenu} menuRef={menuRef}
         showDocs={showDocs} setShowDocs={setShowDocs}
         copiedLabel={copiedLabel} onCopyFormat={copyFormat}
