@@ -76,9 +76,10 @@ describe("share-alert", () => {
     expect(await lookupIp("73.159.109.147")).toBeNull();
   });
 
-  it("notifyShareView emails via Resend when RESEND_API_KEY and OWNER_EMAIL are set, and marks the row emailed", async () => {
+  it("notifyShareView emails via Resend and posts the Stickies note when both are configured, and marks the row emailed", async () => {
     process.env.RESEND_API_KEY = "re_test";
     process.env.OWNER_EMAIL = "owner@example.com";
+    process.env.STICKIES_TOKEN = "stickies-token";
     query.mockResolvedValueOnce({ rows: [{ id: "log-1" }] });
     query.mockResolvedValueOnce({ rows: [{ n: 2 }] });
     query.mockResolvedValueOnce({ rows: [] });
@@ -110,10 +111,10 @@ describe("share-alert", () => {
     const emailedCall = query.mock.calls.find((c) => /SET emailed = true/.test(c[0]));
     expect(emailedCall[1]).toEqual(["log-1"]);
     const stickiesCalls = globalThis.fetch.mock.calls.filter((c) => String(c[0]).includes("stickies"));
-    expect(stickiesCalls).toHaveLength(0);
+    expect(stickiesCalls).toHaveLength(1);
   });
 
-  it("notifyShareView posts to Stickies when no RESEND_API_KEY but a Stickies token is set", async () => {
+  it("notifyShareView still posts to Stickies when there is no RESEND_API_KEY", async () => {
     process.env.STICKIES_TOKEN = "stickies-token";
     query.mockResolvedValueOnce({ rows: [{ id: "log-2" }] });
     query.mockResolvedValueOnce({ rows: [{ n: 1 }] });
