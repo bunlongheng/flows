@@ -35,6 +35,7 @@ describe("share-alert", () => {
     expect(isBot("WhatsApp/2.23")).toBe(true);
     expect(isBot("Twitterbot/1.0")).toBe(true);
     expect(isBot("Mozilla/5.0 (compatible; Applebot/0.1)")).toBe(true);
+    expect(isBot("Playwright/1.62.1 (arm64; macOS 26.2) node/22.23")).toBe(true);
     expect(isBot("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15")).toBe(false);
   });
 
