@@ -6,6 +6,11 @@ import { signSession } from "../../lib/auth-session.js";
 const query = vi.fn();
 vi.mock("../../lib/db.js", () => ({ default: { query: (...a) => query(...a) } }));
 
+// The share-view alert is fire-and-forget and has its own unit tests - here we
+// only care whether the handler decided to fire it.
+const notify = vi.fn();
+vi.mock("../../lib/share-alert.js", async (orig) => ({ ...(await orig()), notifyShareView: (...a) => notify(...a) }));
+
 const { default: flowById } = await import("../../lib/handlers/flow-by-id.js");
 
 function mockRes() {
@@ -60,6 +65,7 @@ describe("/api/flows/:id", () => {
     process.env.AUTH_SECRET = "test-auth-secret";
     process.env.OWNER_EMAIL = OWNER_EMAIL;
     query.mockReset();
+    notify.mockReset();
   });
   afterEach(() => {
     process.env.FLOWS_API_SECRET = orig.s;
@@ -780,5 +786,76 @@ describe("/api/flows/:id", () => {
       await flowById(req("GET", ID, undefined, undefined, { format: "thumb" }), res);
       expect(res.statusCode).toBe(200);
     }
+  });
+});
+
+describe("share view alert", () => {
+  const orig = {
+    s: process.env.FLOWS_API_SECRET,
+    o: process.env.OWNER_USER_ID,
+    e: process.env.NODE_ENV,
+    a: process.env.AUTH_SECRET,
+    oe: process.env.OWNER_EMAIL,
+  };
+  beforeEach(() => {
+    process.env.FLOWS_API_SECRET = SECRET;
+    process.env.OWNER_USER_ID = "731ace87-64e5-44db-bf2a-82265f06f4d9";
+    process.env.NODE_ENV = "production";
+    process.env.AUTH_SECRET = "test-auth-secret";
+    process.env.OWNER_EMAIL = OWNER_EMAIL;
+    query.mockReset();
+    notify.mockReset();
+  });
+  afterEach(() => {
+    process.env.FLOWS_API_SECRET = orig.s;
+    process.env.OWNER_USER_ID = orig.o;
+    process.env.NODE_ENV = orig.e;
+    process.env.AUTH_SECRET = orig.a;
+    process.env.OWNER_EMAIL = orig.oe;
+  });
+
+  // No `socket` property -> isLocal() falls through to the false branch, and
+  // NODE_ENV=production keeps the prod gate deterministic.
+  const reqUA = (userAgent, auth, extraQuery = {}) => ({
+    method: "GET",
+    query: { id: ID, ...extraQuery },
+    headers: { host: "flows-bheng.vercel.app", authorization: auth, "user-agent": userAgent },
+  });
+
+  it("human UA on a plain GET fires the alert once", async () => {
+    const row = { id: ID, title: "Netflix", nodes: [], edges: [], is_public: true };
+    query.mockResolvedValueOnce({ rows: [row] });
+    const res = mockRes();
+    await flowById(reqUA("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"), res);
+    expect(res.statusCode).toBe(200);
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(notify.mock.calls[0][0]).toMatchObject({ flowId: ID, kind: "view" });
+  });
+
+  it("a link-preview bot UA does not fire the alert", async () => {
+    const row = { id: ID, title: "Netflix", nodes: [], edges: [], is_public: true };
+    query.mockResolvedValueOnce({ rows: [row] });
+    const res = mockRes();
+    await flowById(reqUA("Slackbot-LinkExpanding 1.0"), res);
+    expect(res.statusCode).toBe(200);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("the owner's own Bearer-authorized GET does not fire the alert", async () => {
+    const row = { id: ID, title: "Netflix", nodes: [], edges: [], is_public: true };
+    query.mockResolvedValueOnce({ rows: [row] });
+    const res = mockRes();
+    await flowById(reqUA("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", `Bearer ${SECRET}`), res);
+    expect(res.statusCode).toBe(200);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("a format=svg export does not fire the alert", async () => {
+    const row = { id: ID, title: "Netflix", nodes: [], edges: [], is_public: true };
+    query.mockResolvedValueOnce({ rows: [row] });
+    const res = mockRes();
+    await flowById(reqUA("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", undefined, { format: "svg" }), res);
+    expect(res.statusCode).toBe(200);
+    expect(notify).not.toHaveBeenCalled();
   });
 });
