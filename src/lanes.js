@@ -30,3 +30,20 @@ export function laneSpan(rects) {
   const minX = Math.min(...rects.map(r => r.x)), maxX = Math.max(...rects.map(r => r.x + r.w))
   return { x: minX - LANE_PAD, w: maxX - minX + 2 * LANE_PAD }
 }
+
+// The React Flow nodes that draw the lanes: 1 per lane, under the cards,
+// never selectable, dragged by the title strip when the owner can edit. `live`
+// holds a lane's y or h mid-drag, before it is saved.
+export function laneNodes(lanes, rects, live, handlers) {
+  const span = laneSpan(rects)
+  return lanes.map(l => {
+    const o = live[l.id] || {}
+    return {
+      // measured as well as width/height: the resize control starts from the
+      // measured size, and a node the app adds on the fly is never measured.
+      id: `__lane_${l.id}`, type: 'lane', position: { x: span.x, y: o.y ?? l.y }, width: span.w, height: o.h ?? l.h, measured: { width: span.w, height: o.h ?? l.h },
+      zIndex: -1, selectable: false, draggable: !!handlers, dragHandle: '.sd-lane-title',
+      data: { title: l.title, color: l.color, ...(handlers ? { onLive: p => handlers.live(l.id, p), onCommit: p => handlers.commit(l.id, p) } : {}) },
+    }
+  })
+}

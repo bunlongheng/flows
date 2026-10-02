@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import * as flowClock from './flowClock'
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react'
 import diagramData from './data/diagram.json'
@@ -10,6 +10,7 @@ import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapAlign } from './snapAlign'
 import { findService } from './services'
+import { laneNodes } from './lanes.js'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
 import { fireflies } from './fireflies'
@@ -204,6 +205,8 @@ export default function App() {
   // The Start pill's live position while it is being dragged - not yet saved,
   // so it has to win over the saved view_state.start until the drag ends.
   const [startDrag, setStartDrag] = useState(null)
+  // A swimlane's y or h while it is being dragged or resized, keyed by lane id.
+  const [laneLive, setLaneLive] = useState({})
   const [nodes, setNodes] = useState(defaultNodes)
   const [edges, setEdges] = useState(defaultEdges)
   const [toast, setToast] = useState({ message: '', visible: false })
@@ -765,10 +768,30 @@ export default function App() {
     patchViewState({
       ...(prev.panels ? { panels: prev.panels } : {}),
       ...(prev.badge ? { badge: prev.badge } : {}),
+      ...(prev.lanes ? { lanes: prev.lanes } : {}),
       start: { x: Math.round(pos.x), y: Math.round(pos.y) },
     })
     setStartDrag(null)
   }, [activeDiagram, patchViewState])
+
+  // The owner moved, resized, renamed, added or removed a swimlane: the whole
+  // list is saved, the rest of the view carried along, as the Start pill does.
+  const saveLanes = useCallback(lanes => {
+    const prev = activeDiagram?.view_state || {}
+    patchViewState({
+      ...(prev.panels ? { panels: prev.panels } : {}),
+      ...(prev.badge ? { badge: prev.badge } : {}),
+      ...(prev.start ? { start: prev.start } : {}),
+      ...(lanes.length ? { lanes } : {}),
+    })
+  }, [activeDiagram, patchViewState])
+  const laneHandlers = useMemo(() => canAI ? {
+    live: (id, p) => setLaneLive(l => ({ ...l, [id]: { ...l[id], ...p } })),
+    commit: (id, p) => {
+      setLaneLive(l => { const { [id]: _gone, ...rest } = l; return rest })
+      saveLanes((activeDiagram?.view_state?.lanes || []).map(x => (x.id === id ? { ...x, ...p } : x)))
+    },
+  } : null, [canAI, activeDiagram, saveLanes])
 
   // The owner dragged a node's resize handle. Store the new size on the node
   // (both top-level, for React Flow's own sizing, and in data, for AwsNode's
@@ -908,6 +931,7 @@ export default function App() {
       patchViewState({
         ...(prev.panels ? { panels: prev.panels } : {}),
         ...(prev.badge ? { badge: prev.badge } : {}),
+        ...(prev.lanes ? { lanes: prev.lanes } : {}),
       })
     }
     setTimeout(() => rfInstance.current?.fitView({ padding: 0.15, duration: 400 }), 60)
@@ -944,6 +968,16 @@ export default function App() {
       // `nodes`, so applyNodeChanges would just drop the change. Instead the
       // live position is tracked while dragging and saved to view_state on
       // release, and it is stripped out here so nothing downstream sees it.
+      // A lane is not in `nodes` either: its drag moves it up or down only
+      // (the span is the cards'), live until release, then saved.
+      const laneChanges = changes.filter(c => typeof c.id === 'string' && c.id.startsWith('__lane_'))
+      if (laneChanges.length) {
+        changes = changes.filter(c => !laneChanges.includes(c))
+        for (const c of laneChanges) {
+          if (c.type !== 'position' || !c.position || !laneHandlers) continue
+          laneHandlers[c.dragging === false ? 'commit' : 'live'](c.id.slice(7), { y: Math.round(c.position.y) })
+        }
+      }
       const startChanges = changes.filter(c => c.type === 'position' && c.position && typeof c.id === 'string' && c.id.startsWith('__start_'))
       if (startChanges.length) {
         changes = changes.filter(c => !startChanges.includes(c))
@@ -993,7 +1027,7 @@ export default function App() {
         dragStartRef.current = null
       }
     },
-    [canAI, activeDiagram, savePositions, pushHistory, saveStart],
+    [canAI, activeDiagram, savePositions, pushHistory, saveStart, laneHandlers],
   )
 
   // Clear the guides whenever the drag (or the modifier) ends.
@@ -1140,7 +1174,7 @@ export default function App() {
       // Carry the owner's Start placement through a plain panel/badge save -
       // this effect only ever meant to touch those two, and rebuilding the
       // object from scratch would otherwise silently clear the placement.
-      const view_state = { panels: panelKey ? panelKey.split(',') : [], badge: badgeMode, ...(prev.start ? { start: prev.start } : {}) }
+      const view_state = { panels: panelKey ? panelKey.split(',') : [], badge: badgeMode, ...(prev.start ? { start: prev.start } : {}), ...(prev.lanes ? { lanes: prev.lanes } : {}) }
       fetch(`/api/flows/${savingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -1518,7 +1552,8 @@ export default function App() {
   // ── DETAIL VIEW ─────────────────────────────────────────────────────────────
   // Start/Destination marker nodes are always shown (auto-detected from edges).
   const markers = buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)
-  const displayNodes = [...nodes, ...markers.nodes]
+  const lanes = laneNodes(activeDiagram?.view_state?.lanes || [], nodes.map(n => ({ x: n.position?.x ?? 0, y: n.position?.y ?? 0, ...sizeOf(n) })), laneLive, laneHandlers)
+  const displayNodes = [...lanes, ...nodes, ...markers.nodes]
   const displayEdges = [...edges, ...markers.edges]
   // Step-by-step walkthrough, derived from the diagram's edges in flow order.
   const steps = (activeDiagram?.data?.edges || []).map((e, i) => ({
