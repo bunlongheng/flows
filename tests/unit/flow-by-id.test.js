@@ -197,6 +197,16 @@ describe("/api/flows/:id", () => {
     expect(res.body.view_state).toEqual({ panels: ["steps"], badge: null });
   });
 
+  it("PATCH view_state keeps clean swimlanes and drops junk ones", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
+    const r = req("PATCH", ID, undefined, cookie);
+    r.body = { view_state: { panels: [], badge: "dark", lanes: [{ id: "apps", title: "Apps on Vercel", y: 100, h: 320 }, { id: "x", y: "no" }] } };
+    await flowById(r, res);
+    expect(res.body.view_state).toEqual({ panels: [], badge: "dark", lanes: [{ id: "apps", title: "Apps on Vercel", y: 100, h: 320 }] });
+  });
+
   it("PATCH view_state keeps a placed start and drops a missing one", async () => {
     query.mockResolvedValueOnce({ rows: [{ id: ID }] });
     const res = mockRes();
