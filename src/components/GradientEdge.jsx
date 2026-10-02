@@ -109,9 +109,9 @@ export function GradientEdge({
   const nodeRects = getNodes()
     .filter(n => n.type === 'awsNode' && n.measured && n.position)
     .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height }))
-  const { path, sx, sy, tx, ty, labelX, labelY } = routeEdge({
+  const { path, drawPath, hideLabel, sx, sy, tx, ty, labelX, labelY } = routeEdge({
     id, source, target, sourceNode, targetNode, nodeOf, edges: allEdges, obstacles, nodeRects,
-    bend, endS, endT, arrow: data?.style?.arrow,
+    bend, endS, endT, arrow: data?.style?.arrow, label, description: data?.description,
     fallback: { sx: sourceX, sy: sourceY, tx: targetX, ty: targetY },
   })
   // The line's look, from the format panel.
@@ -126,7 +126,8 @@ export function GradientEdge({
   // The tag reads the label, else the description cut short; the whole
   // description is the hover (see tag.js).
   const desc = data?.description || ''
-  const tag = tagText(label, desc)
+  // A trunk follower has no badge of its own: the leader's badge is the message.
+  const tag = hideLabel ? '' : tagText(label, desc)
 
   // Auto-placement gets a badge off its own node, but it cannot know about the
   // OTHER badges, so on a dense diagram two can still land on each other. The
@@ -222,12 +223,12 @@ export function GradientEdge({
           <stop offset="100%" stopColor={c2} />
         </linearGradient>
       </defs>
-      {selected && <path className="sd-edge-halo" d={path} fill="none" stroke={c1} strokeWidth={10} strokeOpacity={0.18} strokeLinecap="round" pointerEvents="none" />}
+      {selected && <path className="sd-edge-halo" d={drawPath} fill="none" stroke={c1} strokeWidth={10} strokeOpacity={0.18} strokeLinecap="round" pointerEvents="none" />}
       {/* A picked stroke replaces the gradient outright rather than tinting it.
           The gradient's whole job is to say which node a line came FROM and
           which it goes TO; once the owner has chosen a colour, that is the
           statement, and a fade between it and a brand colour says neither. */}
-      <BaseEdge id={id} path={path} markerEnd={markerEnd} style={data?.sunsetLine ? {
+      <BaseEdge id={id} path={drawPath} markerEnd={hideLabel ? undefined : markerEnd} style={data?.sunsetLine ? {
         // A line touching a sunset card, in or out, is the path on its way out:
         // flat light silver at 3/4 strength, and nothing the panel picked -
         // colour, width, dash or opacity - reaches it. Grey, always.

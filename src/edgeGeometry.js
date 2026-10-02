@@ -9,6 +9,7 @@
 // { x, y } } }) because that is what the canvas has; the server builds the same
 // shape from a stored node's position and size.
 import { Position, getSmoothStepPath, getBezierPath } from '@xyflow/system'
+import { tagText } from './tag.js'
 
 // ─── Edge geometry ────────────────────────────────────────────────────────────
 // Edges attach to a face of the box, spread evenly across it and centered: one
@@ -354,11 +355,59 @@ export function nearestEnd(node, px, py) {
 // card's box with its note, and `nodeRects` every card's box (for the badge
 // nudge). `bend`, `endS`, `endT` and `arrow` are the owner's saved picks.
 // `fallback` is where React Flow put the ends before the nodes were measured.
-export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, edges, obstacles, nodeRects, bend, endS, endT, arrow, fallback = {} }) {
+// Several lines running into ONE face with the SAME tag are one message, so
+// they draw as one trunk: every member shares the target's slot and a bus line
+// halfway to the target, 1 of them (the leader, lowest id) draws the trunk and
+// carries the badge, and the rest stop where they meet the bus. 5 apps posting
+// to 1 relay read as 1 arrow with 1 "POST" on it, not 5 stacked badges. A hand
+// bent, pinned or arrow-styled line never joins a trunk: the owner placed it.
+function fanIn(target, targetNode, id, tag, tSide, edges, nodeOf) {
+  if (!tag) return null
+  const tc = centerOf(targetNode)
+  const members = []
+  for (const e of edges) {
+    if (e.target !== target) continue
+    const d = e.data || {}
+    if (d.bend || d.ends?.s || d.ends?.t || d.style?.arrow) continue
+    if (tagText(e.label, d.description) !== tag) continue
+    const src = nodeOf(e.source)
+    if (!src?.measured?.width || sideFor(tc, centerOf(src)) !== tSide) continue
+    members.push({ id: e.id, source: e.source })
+  }
+  if (members.length < 2 || !members.some(m => m.id === id)) return null
+  members.sort((a, b) => (a.id < b.id ? -1 : 1))
+  return { members, leader: members[0].id, ids: new Set(members.map(m => m.id)) }
+}
+
+// The trunk route for one member: its own stem down (or across) to the bus,
+// along the bus to the trunk, and the trunk into the target. `path` is the
+// whole trip, for the dot; `drawPath` is what this member strokes - the
+// leader strokes everything, a follower stops at the junction. Null when a
+// card sits on the way, and the member then routes on its own.
+function fanInPath({ fan, id, sx, sy, tx, ty, tSide, targetNode, edges, nodeOf, obstacles }) {
+  const vertical = tSide === Position.Top || tSide === Position.Bottom
+  const stems = fan.members.map(m => attachPoint(nodeOf(m.source), m.source, targetNode, m.id, edges, nodeOf))
+  const meanS = stems.reduce((a, p) => a + (vertical ? p.y : p.x), 0) / stems.length
+  const bus = ((vertical ? ty : tx) + meanS) / 2
+  const S = { x: sx, y: sy }, T = { x: tx, y: ty }
+  const C = vertical ? { x: sx, y: bus } : { x: bus, y: sy }
+  const J = vertical ? { x: tx, y: bus } : { x: bus, y: ty }
+  if (!clearPolyline([S, C, J, T], obstacles)) return null
+  const straight = vertical ? sx === tx : sy === ty
+  const stem = straight ? `M${S.x},${S.y} L${J.x},${J.y}` : roundedPath([S, C, J])
+  const path = `${stem} L${T.x},${T.y}`
+  return {
+    path, drawPath: fan.leader === id ? path : stem,
+    labelX: vertical ? tx : (bus + tx) / 2, labelYRaw: vertical ? (bus + ty) / 2 : ty,
+  }
+}
+
+export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, edges, obstacles, nodeRects, bend, endS, endT, arrow, label, description, fallback = {} }) {
   let sx = fallback.sx ?? 0, sy = fallback.sy ?? 0, tx = fallback.tx ?? 0, ty = fallback.ty ?? 0
   let sSide = Position.Right, tSide = Position.Left
   let aligned = false
   let sp2 = null, tp2 = null
+  let fan = null
   const measured = sourceNode?.measured?.width && targetNode?.measured?.width
   if (measured) {
     sp2 = attachPoint(sourceNode, source, targetNode, id, edges, nodeOf)
@@ -367,12 +416,23 @@ export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, 
     tx = tp2.x; ty = tp2.y; tSide = tp2.side
     if (endS) { const p = pinnedPoint(sourceNode, endS); sx = p.x; sy = p.y; sSide = p.side }
     if (endT) { const p = pinnedPoint(targetNode, endT); tx = p.x; ty = p.y; tSide = p.side }
+    // A trunk member takes the slot its leader gets when the other members are
+    // not counted, so all of them meet the target at the one point.
+    if (!bend && !endS && !endT && !arrow) {
+      fan = fanIn(target, targetNode, id, tagText(label, description), tSide, edges, nodeOf)
+      if (fan) {
+        const kept = edges.filter(e => e.id === fan.leader || !fan.ids.has(e.id))
+        const lead = fan.members[0]
+        tp2 = attachPoint(targetNode, target, nodeOf(lead.source), lead.id, kept, nodeOf)
+        tx = tp2.x; ty = tp2.y; tSide = tp2.side
+      }
+    }
 
     // Straight run for a pair that lines up - but only when neither face is
     // sharing slots, otherwise forcing this one to center would collide with a
     // neighbour's slot. A pinned end is where the owner put it, so it never
     // gets snapped back onto an auto-computed line.
-    if (!endS && !endT && sp2.alone && tp2.alone) {
+    if (!fan && !endS && !endT && sp2.alone && tp2.alone) {
       const sc = centerOf(sourceNode), tc = centerOf(targetNode)
       const driftY = Math.abs(sc.y - tc.y), driftX = Math.abs(sc.x - tc.x)
       if (driftX >= driftY && onAxis(driftY, driftX)) {
@@ -387,7 +447,7 @@ export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, 
     }
     // Slots that nearly line up get pulled onto one line. Same proportional
     // rule as the centre test, with a floor wide enough to cover a spread slot.
-    if (!aligned && !endS && !endT) {
+    if (!fan && !aligned && !endS && !endT) {
       const sH = sSide === Position.Left || sSide === Position.Right
       const tH = tSide === Position.Left || tSide === Position.Right
       if (sH && tH && sy !== ty && (Math.abs(ty - sy) <= SNAP_TOL || Math.abs(ty - sy) <= Math.abs(tx - sx) * ALIGN_RATIO)) {
@@ -412,7 +472,12 @@ export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, 
   // "step" pick knows it has something to replace. The lane values let the
   // elbows of parallel siblings keep their own middle leg instead of sharing one.
   let routedStraight = false, laneShift = 0, laneAlongY = false
-  if (parallel) {
+  let drawPath = null, hideLabel = false
+  const trunk = fan && !parallel ? fanInPath({ fan, id, sx, sy, tx, ty, tSide, targetNode, edges, nodeOf, obstacles }) : null
+  if (trunk) {
+    ;({ path, labelX, labelYRaw, drawPath } = trunk)
+    hideLabel = fan.leader !== id
+  } else if (parallel) {
     const n = siblings.length
     const idx = siblings.slice().sort((a, b) => (a.id < b.id ? -1 : 1)).findIndex(e => e.id === id)
     const centered = idx - (n - 1) / 2 // 0-centered rank: -1, 0, +1 ...
@@ -580,7 +645,7 @@ export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, 
       break
     }
   }
-  return { path, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelYRaw }
+  return { path, drawPath: drawPath || path, hideLabel, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelYRaw }
 }
 
 // ─── Measuring a path without a browser ───────────────────────────────────────
