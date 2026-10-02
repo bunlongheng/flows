@@ -14,6 +14,7 @@ import { brandFor } from '../brands'
 import { FormatPanel } from '../components/FormatPanel.jsx'
 import { findService } from '../services.js'
 import { SUNSET, INK } from '../sunset.js'
+import { previewCode } from '../codePreview.js'
 
 
 // History row time: fresh saves read as "4 min ago"; once the wall clock has
@@ -772,7 +773,7 @@ export function DetailView({
               <pre style={{
                 margin: 0, padding: '14px 16px', fontSize: 11, lineHeight: 1.75, color: '#1c1e21',
                 fontFamily: "'JetBrains Mono', 'Fira Code', monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-              }}>{JSON.stringify(activeDiagram?.data || diagramData, null, 2)}</pre>
+              }}>{previewCode(activeDiagram?.data || diagramData)}</pre>
             </div>
           </div>
         )}

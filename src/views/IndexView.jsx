@@ -5,6 +5,7 @@ import { AIThinkingOverlay } from '../components/AIThinkingOverlay'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { usePullToRefresh } from '../usePullToRefresh'
 import { Footer } from '../components/Footer'
+import { previewCode } from '../codePreview.js'
 
 const GITHUB_AVATAR = 'https://avatars.githubusercontent.com/u/11523064?v=4'
 const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input, textarea, select, [tabindex]:not([tabindex="-1"])'
@@ -329,7 +330,7 @@ export function IndexView({
               <pre style={{
                 margin: 0, padding: '16px 20px', fontSize: 12, lineHeight: 1.75, color: '#1c1e21',
                 fontFamily: "'JetBrains Mono', 'Fira Code', monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-              }}>{JSON.stringify(codeDiagram.data, null, 2)}</pre>
+              }}>{previewCode(codeDiagram.data)}</pre>
             </div>
           </div>
         </div>
