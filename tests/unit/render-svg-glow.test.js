@@ -18,8 +18,8 @@ describe("renderDiagramSvg - arrival glow", () => {
     expect(glows).toHaveLength(1); // lambda: a target. user: never a target. s3: sunset, so no glow
     expect(svg).toContain('id="glow-blur"');
   });
-  it("has faded out by the middle of the trip, and never shows on a still page", () => {
-    expect(renderDiagramSvg(NODES, EDGES, { dotPhase: 0.6 })).not.toContain("sd-glow");
+  it("is dark at the middle of the trip, and never shows on a still page", () => {
+    expect(renderDiagramSvg(NODES, EDGES, { dotPhase: 0.5 })).not.toContain("sd-glow");
     expect(renderDiagramSvg(NODES, EDGES)).not.toContain("sd-glow");
   });
 });

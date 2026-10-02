@@ -11,7 +11,7 @@
 // compositor independently. Instead there is one loop here that every edge
 // subscribes to, and it only runs while something is listening.
 
-const PERIOD_MS = 4000 // one full source -> target trip
+const PERIOD_MS = 5000 // one full source -> target trip, and one breath of the glow
 
 const subs = new Set()
 let raf = 0
@@ -126,11 +126,11 @@ export function offsetFor() {
   return 0
 }
 
-// A card lights up the instant the dots reach it and fades out over GLOW_MS.
-// Every dot arrives as the phase wraps to 0 (offsetFor is 0 for all), so the
-// glow is a pure function of the phase: the canvas and a GIF frame agree by
+// A card breathes with the dots: brightest as they land (the phase wraps to
+// 0, offsetFor is 0 for all), dark at mid-trip, and back up as the next ones
+// close in. A raised cosine, so the fade in and the fade out have no corner.
+// A pure function of the phase: the canvas and a GIF frame agree by
 // construction, and 5 dots landing together light the card once.
-export const GLOW_MS = 2000
 export function glowFor(phase) {
-  return Math.max(0, 1 - (phase * PERIOD_MS) / GLOW_MS)
+  return (1 + Math.cos(2 * Math.PI * phase)) / 2
 }

@@ -218,7 +218,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   const [glow, setGlow] = useState(0)
   useEffect(() => {
     if (!isTarget || sunset || !motionAllowed()) return
-    return subscribe(p => setGlow(Math.round(glowFor(p) * 20) / 20))
+    return subscribe(p => setGlow(Math.round(glowFor(p) * 50) / 50))
   }, [isTarget, sunset])
   // A picture node: `image` is always the inlined 640x480 JPEG data URI
   // resolved at create/update time - never a raw path, URL or airclips: ref.
