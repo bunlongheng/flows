@@ -75,13 +75,8 @@ describe("flowClock", () => {
     off();
   });
 
-  it("staggers edges by id, stably, so a diagram flows instead of throbbing", () => {
-    expect(offsetFor("edge-a")).toBe(offsetFor("edge-a"));
-    expect(offsetFor("edge-a")).not.toBe(offsetFor("edge-b"));
-    for (const id of ["e0", "e1", "e2", "some-long-edge-id"]) {
-      expect(offsetFor(id)).toBeGreaterThanOrEqual(0);
-      expect(offsetFor(id)).toBeLessThan(1);
-    }
+  it("sends every dot off on the same beat, so a fan of edges arrives together", () => {
+    for (const id of ["edge-a", "edge-b", "e0", "some-long-edge-id"]) expect(offsetFor(id)).toBe(0);
   });
 
   it("respects prefers-reduced-motion", () => {
