@@ -15,6 +15,7 @@ import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
 import { fireflies } from './fireflies'
 import { makeThumbnail } from './thumbnail'
+import { startNodeIds } from './startNodes.js'
 
 // Vite exposed import.meta.env.DEV; Next replaces process.env.NODE_ENV at build
 // time, so this compiles to a constant in the client bundle exactly the same way.
@@ -97,8 +98,7 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove) {
   }))
 }
 
-// Exactly ONE "Start here" pill per diagram - the source of step 1, which is
-// robust even for closed loops. There is deliberately no Destination pill: it
+// A "Start here" pill on every start card (see startNodeIds), none elsewhere. There is deliberately no Destination pill: it
 // guessed at an endpoint the diagram never claimed, and where a flow BEGINS is
 // the only hint a reader actually needs.
 const NODE_W = 190, NODE_H = 180 // nominal card size, for the free-space check
@@ -108,16 +108,17 @@ const MARKER_GAP = 96            // pill height + connector run
 // otherwise (a picture node, or one never touched).
 const sizeOf = n => ({ w: n.data?.size?.w ?? NODE_W, h: n.data?.size?.h ?? NODE_H })
 
+// 1 pill per start card (startNodeIds). Only the first pill takes the owner's
+// dragged spot and only it can be dragged; the others place themselves.
 function buildMarkers(nodes, edges, override, draggable) {
-  if (!nodes.length) return { nodes: [], edges: [] }
-  const byId = id => nodes.find(n => n.id === id)
-  const hasIncoming = new Set(edges.map(e => e.target))
+  const pills = startNodeIds(nodes, edges).map((id, i) => startMarker(nodes, edges, id, i === 0 ? override : null, i === 0 && draggable))
+  return { nodes: pills.filter(Boolean), edges: [] }
+}
 
-  // Start: source of the first edge; else any node with no incoming edge; else node 0.
-  let startId = edges[0] && edges[0].source && byId(edges[0].source) ? edges[0].source : null
-  if (!startId) startId = (nodes.find(n => !hasIncoming.has(n.id)) || nodes[0]).id
+function startMarker(nodes, edges, startId, override, draggable) {
+  const byId = id => nodes.find(n => n.id === id)
   const s = byId(startId)
-  if (!s) return { nodes: [], edges: [] }
+  if (!s) return null
   const p = s.position || { x: 0, y: 0 }
   const { w: sw, h: sh } = sizeOf(s)
 
@@ -129,10 +130,7 @@ function buildMarkers(nodes, edges, override, draggable) {
     const cardCenter = { x: p.x + sw / 2, y: p.y + sh / 2 }
     const dx = cardCenter.x - pillCenter.x, dy = cardCenter.y - pillCenter.y
     const dir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up')
-    return {
-      nodes: [{ id: `__start_${startId}`, type: 'marker', position: { x: override.x, y: override.y }, width: 132, height: 36, data: { kind: 'start', dir }, draggable: !!draggable, selectable: false }],
-      edges: [],
-    }
+    return { id: `__start_${startId}`, type: 'marker', position: { x: override.x, y: override.y }, width: 132, height: 36, data: { kind: 'start', dir }, draggable: !!draggable, selectable: false }
   }
 
   // The pill must never share a face with an edge - a green arrow landing on the
@@ -167,10 +165,7 @@ function buildMarkers(nodes, edges, override, draggable) {
     left: { pos: { x: p.x - 200, y: p.y + sh / 2 - 18 }, dir: 'right' },
     right: { pos: { x: p.x + 205, y: p.y + sh / 2 - 18 }, dir: 'left' },
   }[side]
-  return {
-    nodes: [{ id: `__start_${startId}`, type: 'marker', position: place.pos, width: 132, height: 36, data: { kind: 'start', dir: place.dir }, draggable: !!draggable, selectable: false }],
-    edges: [],
-  }
+  return { id: `__start_${startId}`, type: 'marker', position: place.pos, width: 132, height: 36, data: { kind: 'start', dir: place.dir }, draggable: !!draggable, selectable: false }
 }
 
 const defaultEdges = buildEdges(diagramData.edges, undefined, diagramData.nodes)

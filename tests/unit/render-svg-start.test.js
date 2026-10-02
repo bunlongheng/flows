@@ -35,3 +35,15 @@ describe("renderDiagramSvg - placed start", () => {
     expect(bad).toEqual(auto);
   });
 });
+
+describe("renderDiagramSvg - 1 pill per start card", () => {
+  const nodes = [{ id: "iphone", position: { x: 0, y: 0 } }, { id: "ipad", position: { x: 300, y: 0 } }, { id: "ses", position: { x: 150, y: 400 } }];
+  it("draws a pill on every source that feeds the same target under the same label", () => {
+    const svg = renderDiagramSvg(nodes, [{ source: "iphone", target: "ses", label: "opens" }, { source: "ipad", target: "ses", label: "opens" }]);
+    expect(svg.match(/Start here/g)).toHaveLength(2);
+  });
+  it("and only 1 when the labels differ", () => {
+    const svg = renderDiagramSvg(nodes, [{ source: "iphone", target: "ses", label: "opens" }, { source: "ipad", target: "ses", label: "reads" }]);
+    expect(svg.match(/Start here/g)).toHaveLength(1);
+  });
+});
