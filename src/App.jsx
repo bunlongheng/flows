@@ -10,7 +10,7 @@ import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapAlign } from './snapAlign'
 import { findService } from './services'
-import { laneNodes } from './lanes.js'
+import { laneNodes, newLane, packLanes } from './lanes.js'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
 import { fireflies } from './fireflies'
@@ -776,7 +776,8 @@ export default function App() {
 
   // The owner moved, resized, renamed, added or removed a swimlane: the whole
   // list is saved, the rest of the view carried along, as the Start pill does.
-  const saveLanes = useCallback(lanes => {
+  const saveLanes = useCallback(raw => {
+    const lanes = packLanes(raw)
     const prev = activeDiagram?.view_state || {}
     patchViewState({
       ...(prev.panels ? { panels: prev.panels } : {}),
@@ -791,7 +792,13 @@ export default function App() {
       setLaneLive(l => { const { [id]: _gone, ...rest } = l; return rest })
       saveLanes((activeDiagram?.view_state?.lanes || []).map(x => (x.id === id ? { ...x, ...p } : x)))
     },
+    rename: (id, title) => saveLanes((activeDiagram?.view_state?.lanes || []).map(x => (x.id === id ? { ...x, title } : x))),
+    remove: id => saveLanes((activeDiagram?.view_state?.lanes || []).filter(x => x.id !== id)),
   } : null, [canAI, activeDiagram, saveLanes])
+  const addLane = useCallback(() => {
+    const lanes = activeDiagram?.view_state?.lanes || []
+    saveLanes([...lanes, newLane(lanes, nodesRef.current.map(n => ({ x: n.position?.x ?? 0, y: n.position?.y ?? 0, ...sizeOf(n) })))])
+  }, [activeDiagram, saveLanes])
 
   // The owner dragged a node's resize handle. Store the new size on the node
   // (both top-level, for React Flow's own sizing, and in data, for AwsNode's
@@ -1593,6 +1600,7 @@ export default function App() {
       isPublic={isDemo}
       saveState={saveState}
       onArrange={autoArrange}
+      onAddLane={canAI ? addLane : undefined}
       onNoteChange={canAI ? onNoteChange : undefined}
       onInfoChange={canAI ? onInfoChange : undefined}
       onStyleChange={canAI ? onStyleChange : undefined}
