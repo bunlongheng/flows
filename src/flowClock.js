@@ -11,7 +11,7 @@
 // compositor independently. Instead there is one loop here that every edge
 // subscribes to, and it only runs while something is listening.
 
-const PERIOD_MS = 2600 // one full source -> target trip
+const PERIOD_MS = 4000 // one full source -> target trip
 
 const subs = new Set()
 let raf = 0
@@ -116,12 +116,12 @@ export function motionAllowed() {
 }
 
 /**
- * Stagger each edge so a diagram does not pulse in lockstep, which reads as a
- * throb rather than as flow. Derived from the edge id so it is stable across
- * re-renders and identical between a live canvas and an exported frame.
+ * Every dot leaves its box on the same beat. They used to be staggered by a
+ * hash of the edge id, but a fan of 5 lines into 1 box then had 5 dots
+ * trickling in one after another, and the owner wants them to set off
+ * together and arrive together (the arrival is what lights the target card).
+ * Kept as a function so the GIF renderer and the canvas keep one answer.
  */
-export function offsetFor(id) {
-  let h = 0
-  for (let i = 0; i < String(id).length; i++) h = (h * 31 + String(id).charCodeAt(i)) >>> 0
-  return (h % 1000) / 1000
+export function offsetFor() {
+  return 0
 }
