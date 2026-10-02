@@ -58,7 +58,8 @@ describe("share-alert", () => {
     expect(html).toContain("&lt;b&gt;My flow&lt;/b&gt;");
     expect(html).toContain("ipinfo.io/");
     expect(html).toContain('href="https://flows-bheng.vercel.app/?name=my-flow"');
-    expect(html).toContain("/icon-96.png");
+    expect(html).toContain("/icon-192.png");
+    expect(html).toContain(">Flows</div>");
   });
 
   it("readVisit links the share page by slug, or by id when there is no slug", () => {
@@ -106,7 +107,7 @@ describe("share-alert", () => {
     expect(resendCalls).toHaveLength(1);
     const body = JSON.parse(resendCalls[0][1].body);
     expect(body.to).toEqual(["owner@example.com"]);
-    expect(body.subject).toBe("Opened: My flow - 73.159.109.147");
+    expect(body.subject).toBe("Flows: My flow - opened by 73.159.109.147");
 
     const emailedCall = query.mock.calls.find((c) => /SET emailed = true/.test(c[0]));
     expect(emailedCall[1]).toEqual(["log-1"]);
@@ -137,8 +138,8 @@ describe("share-alert", () => {
     const body = JSON.parse(stickiesCalls[0][1].body);
     expect(body.type).toBe("html");
     expect(body.folder).toBe("Alerts");
-    expect(body.icon).toBe("__hero:EyeIcon");
-    expect(body.title).toBe("Opened: My flow");
+    expect(body.icon).toBe("__app:flows");
+    expect(body.title).toBe("Flows: My flow - opened");
     const resendCalls = globalThis.fetch.mock.calls.filter((c) => c[0] === "https://api.resend.com/emails");
     expect(resendCalls).toHaveLength(0);
   });
