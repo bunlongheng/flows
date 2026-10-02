@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   subscribe, beginCapture, stepCapture, endCapture,
-  offsetFor, motionAllowed, CAPTURE_PERIOD_MS,
+  offsetFor, motionAllowed, CAPTURE_PERIOD_MS, glowFor, GLOW_MS,
   isPlaying, setPlaying, isFlowing, subscribeFlowing,
 } from "../../src/flowClock.js";
 
@@ -73,6 +73,13 @@ describe("flowClock", () => {
     expect(seen).toHaveLength(2);
     expect(seen.at(-1)).toBeCloseTo(0.25, 5);
     off();
+  });
+
+  it("lights a card fully as the dots land and fades it out over GLOW_MS", () => {
+    expect(glowFor(0)).toBe(1);
+    expect(glowFor((GLOW_MS / 2) / CAPTURE_PERIOD_MS)).toBeCloseTo(0.5, 5);
+    expect(glowFor(GLOW_MS / CAPTURE_PERIOD_MS)).toBe(0);
+    expect(glowFor(0.99)).toBe(0);
   });
 
   it("sends every dot off on the same beat, so a fan of edges arrives together", () => {
