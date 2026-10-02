@@ -14,7 +14,8 @@ import { brandFor } from '../brands'
 import { FormatPanel } from '../components/FormatPanel.jsx'
 import { findService } from '../services.js'
 import { SUNSET, INK } from '../sunset.js'
-import { previewCode } from '../codePreview.js'
+import { CodeBlock } from '../components/CodeBlock.jsx'
+import { PanelResizer } from '../components/PanelResizer.jsx'
 
 
 // History row time: fresh saves read as "4 min ago"; once the wall clock has
@@ -90,6 +91,7 @@ export function DetailView({
   // the preview shows the real card right then - not after Copy link.
   onShareOpen,
 }) {
+  const [codeWidth, setCodeWidth] = useState(340)
   const brand = brandFor(activeDiagram?.title)
   // React Flow already carries selection on the node object, so the format
   // panel needs no state of its own - and cannot drift out of step with the
@@ -750,9 +752,10 @@ export function DetailView({
         {/* Code panel (left, slide-in) */}
         {canEdit && showDetailCode && (
           <div className="sd-code-panel" style={{
-            width: 340, flexShrink: 0, background: '#ffffff', borderRight: '1px solid #e4e6e8',
+            width: codeWidth, flexShrink: 0, background: '#ffffff', borderRight: '1px solid #e4e6e8', position: 'relative',
             display: 'flex', flexDirection: 'column', animation: 'sd-slide-left 0.2s ease-out',
           }}>
+            <PanelResizer width={codeWidth} onWidth={setCodeWidth} />
             <div style={{ padding: '12px 16px', borderBottom: '1px solid #e4e6e8', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#1c1e21" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
@@ -770,10 +773,7 @@ export function DetailView({
               >{detailCodeCopied ? 'Copied!' : 'Copy'}</button>
             </div>
             <div style={{ flex: 1, overflow: 'auto' }}>
-              <pre style={{
-                margin: 0, padding: '14px 16px', fontSize: 11, lineHeight: 1.75, color: '#1c1e21',
-                fontFamily: "'JetBrains Mono', 'Fira Code', monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-              }}>{previewCode(activeDiagram?.data || diagramData)}</pre>
+              <CodeBlock data={activeDiagram?.data || diagramData} fontSize={9} padding="14px 16px" />
             </div>
           </div>
         )}
