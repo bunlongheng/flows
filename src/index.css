@@ -70,3 +70,5 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .sd-lane-title:hover .sd-lane-x, .sd-lane-x:focus { opacity: 0.7; }
 .sd-lane-x:hover { opacity: 1; background: rgba(15, 23, 42, 0.08); }
 .sd-lane-input { position: absolute; left: 12px; top: 5px; width: 220px; padding: 2px 4px; border: 1px solid currentColor; border-radius: 4px; background: #fff; font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 1.3px; text-transform: uppercase; pointer-events: all; outline: none; }
+.sd-panel-resizer { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; cursor: col-resize; z-index: 2; touch-action: none; }
+.sd-panel-resizer:hover, .sd-panel-resizer:active { background: rgba(15, 23, 42, 0.08); }

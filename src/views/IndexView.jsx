@@ -1,11 +1,12 @@
-import { useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Toast } from '../components/Toast'
 import { DiagramCard } from '../components/DiagramCard'
 import { AIThinkingOverlay } from '../components/AIThinkingOverlay'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { usePullToRefresh } from '../usePullToRefresh'
 import { Footer } from '../components/Footer'
-import { previewCode } from '../codePreview.js'
+import { CodeBlock } from '../components/CodeBlock.jsx'
+import { PanelResizer } from '../components/PanelResizer.jsx'
 
 const GITHUB_AVATAR = 'https://avatars.githubusercontent.com/u/11523064?v=4'
 const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input, textarea, select, [tabindex]:not([tabindex="-1"])'
@@ -27,6 +28,7 @@ export function IndexView({
   aiPrompt, setAiPrompt, aiThinking, aiInputRef, submitAI,
   codeDiagram, setCodeDiagram, codeCopied, setCodeCopied,
 }) {
+  const [codeWidth, setCodeWidth] = useState(420)
   const aiDialogRef = useRef(null)
   const aiPreviousFocusRef = useRef(null)
   const { distance: pullDist, refreshing } = usePullToRefresh(onRefresh)
@@ -306,7 +308,7 @@ export function IndexView({
       {codeDiagram && (
         <div onClick={() => { setCodeDiagram(null); setCodeCopied(false); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
           <div onClick={e => e.stopPropagation()} style={{
-            position: 'absolute', left: 0, top: 0, bottom: 0, width: 420, maxWidth: '90vw',
+            position: 'absolute', left: 0, top: 0, bottom: 0, width: codeWidth, maxWidth: '90vw',
             background: '#ffffff', boxShadow: '8px 0 32px rgba(0,0,0,0.12)',
             display: 'flex', flexDirection: 'column',
             animation: 'sd-slide-left 0.2s ease-out',
@@ -326,11 +328,9 @@ export function IndexView({
               >{codeCopied ? 'Copied!' : 'Copy'}</button>
               <button onClick={() => { setCodeDiagram(null); setCodeCopied(false); }} aria-label="Close" style={{ background: 'none', border: 'none', color: '#8a8d91', cursor: 'pointer', fontSize: 18, lineHeight: 1, flexShrink: 0 }}>✕</button>
             </div>
+            <PanelResizer width={codeWidth} onWidth={setCodeWidth} />
             <div style={{ flex: 1, overflow: 'auto', padding: 0 }}>
-              <pre style={{
-                margin: 0, padding: '16px 20px', fontSize: 12, lineHeight: 1.75, color: '#1c1e21',
-                fontFamily: "'JetBrains Mono', 'Fira Code', monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-              }}>{previewCode(codeDiagram.data)}</pre>
+              <CodeBlock data={codeDiagram.data} fontSize={10} padding="16px 20px" />
             </div>
           </div>
         </div>
