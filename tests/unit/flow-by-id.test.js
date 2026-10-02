@@ -829,7 +829,7 @@ describe("share view alert", () => {
     await flowById(reqUA("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"), res);
     expect(res.statusCode).toBe(200);
     expect(notify).toHaveBeenCalledTimes(1);
-    expect(notify.mock.calls[0][0]).toMatchObject({ flowId: ID, kind: "view" });
+    expect(notify.mock.calls[0][0]).toMatchObject({ id: ID, kind: "view", link: `https://flows-bheng.vercel.app/?id=${ID}` });
   });
 
   it("a link-preview bot UA does not fire the alert", async () => {
