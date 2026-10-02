@@ -109,7 +109,7 @@ export function GradientEdge({
   const nodeRects = getNodes()
     .filter(n => n.type === 'awsNode' && n.measured && n.position)
     .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height }))
-  const { path, drawPath, hideLabel, sx, sy, tx, ty, labelX, labelY } = routeEdge({
+  const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, labelX, labelY } = routeEdge({
     id, source, target, sourceNode, targetNode, nodeOf, edges: allEdges, obstacles, nodeRects,
     bend, endS, endT, arrow: data?.style?.arrow, label, description: data?.description,
     fallback: { sx: sourceX, sy: sourceY, tx: targetX, ty: targetY },
@@ -122,7 +122,7 @@ export function GradientEdge({
   // red X, whatever badge style the owner picked, so the outdated route reads.
   const sunset = data?.sunset === true
   const gid = `grad-${id}`
-  const hasStep = data?.step != null
+  const hasStep = !hideLabel && data?.step != null // a trunk follower carries nothing, the leader has the badge
   // The tag reads the label, else the description cut short; the whole
   // description is the hover (see tag.js).
   const desc = data?.description || ''
@@ -228,7 +228,7 @@ export function GradientEdge({
           The gradient's whole job is to say which node a line came FROM and
           which it goes TO; once the owner has chosen a colour, that is the
           statement, and a fade between it and a brand colour says neither. */}
-      <BaseEdge id={id} path={drawPath} markerEnd={hideLabel ? undefined : markerEnd} style={data?.sunsetLine ? {
+      <BaseEdge id={id} path={drawPath} markerEnd={hideArrow ? undefined : markerEnd} style={data?.sunsetLine ? {
         // A line touching a sunset card, in or out, is the path on its way out:
         // flat light silver at 3/4 strength, and nothing the panel picked -
         // colour, width, dash or opacity - reaches it. Grey, always.

@@ -49,3 +49,36 @@ describe("routeEdge - fan-in trunk", () => {
     expect(a.hideLabel).toBe(false);
   });
 });
+
+describe("routeEdge - fan-out trunk", () => {
+  // 1 source above 3 targets in a row, all saying the same thing: 1 trunk out, 1 badge.
+  const fnodes = { v: node("v", 400, -600), a: node("a", 0, 0), b: node("b", 400, 0), c: node("c", 800, 0) };
+  const fedges = [
+    { id: "o-a", source: "v", target: "a", label: "opens" },
+    { id: "o-b", source: "v", target: "b", label: "opens" },
+    { id: "o-c", source: "v", target: "c", label: "opens" },
+  ];
+  const out = (id) => {
+    const e = fedges.find((x) => x.id === id);
+    return routeEdge({
+      id, source: "v", target: e.target, sourceNode: fnodes.v, targetNode: fnodes[e.target],
+      nodeOf: (k) => fnodes[k], edges: fedges, obstacles: [], nodeRects: [], label: e.label,
+    });
+  };
+  it("leaves the source at 1 point, the leader carrying the badge on the trunk", () => {
+    const a = out("o-a"), b = out("o-b"), c = out("o-c");
+    expect([b.sx, c.sx]).toEqual([a.sx, a.sx]);
+    expect([a.sy, b.sy, c.sy]).toEqual([-420, -420, -420]); // the bottom face of v
+    expect(a.hideLabel).toBe(false);
+    expect(a.labelX).toBe(a.sx);
+    expect([b.hideLabel, c.hideLabel]).toEqual([true, true]);
+  });
+  it("strokes a follower from the junction to its own card, arrowhead kept, dot riding the whole way", () => {
+    const c = out("o-c");
+    expect(c.path.startsWith(`M${c.sx},${c.sy}`)).toBe(true);
+    expect(c.drawPath.startsWith(`M${c.sx},${c.sy}`)).toBe(false);
+    expect(c.drawPath.endsWith(`L${c.tx},${c.ty}`)).toBe(true);
+    expect(c.hideArrow).toBe(false);
+    expect(out("o-a").drawPath).toBe(out("o-a").path);
+  });
+});
