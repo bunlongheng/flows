@@ -1558,8 +1558,10 @@ export default function App() {
 
   // ── DETAIL VIEW ─────────────────────────────────────────────────────────────
   // Start/Destination marker nodes are always shown (auto-detected from edges).
-  const markers = buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)
   const lanes = laneNodes(activeDiagram?.view_state?.lanes || [], nodes.map(n => ({ x: n.position?.x ?? 0, y: n.position?.y ?? 0, ...sizeOf(n) })), laneLive, laneHandlers)
+  // Swimlanes already say where a flow begins (the top lane), so a diagram
+  // with lanes draws no Start here pill. Same rule in render-svg.js.
+  const markers = lanes.length ? { nodes: [], edges: [] } : buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)
   const displayNodes = [...lanes, ...nodes, ...markers.nodes]
   const displayEdges = [...edges, ...markers.edges]
   // Step-by-step walkthrough, derived from the diagram's edges in flow order.

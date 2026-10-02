@@ -27,4 +27,9 @@ describe("renderDiagramSvg - swimlanes", () => {
     expect(renderDiagramSvg(NODES, EDGES, { ...opts, layer: "motion" })).not.toContain("sd-lane");
     expect(renderDiagramSvg(NODES, EDGES, { ...opts, layer: "over" })).not.toContain("sd-lane");
   });
+  it("draws no Start pill once a diagram has lanes: the top lane says where it begins", () => {
+    expect(renderDiagramSvg(NODES, EDGES)).toContain("Start here");
+    expect(renderDiagramSvg(NODES, EDGES, { view: { lanes: LANES } })).not.toContain("Start here");
+    expect(renderDiagramSvg(NODES, EDGES, { view: { lanes: LANES }, start: { x: 640, y: 420 } })).not.toContain("Start here");
+  });
 });
