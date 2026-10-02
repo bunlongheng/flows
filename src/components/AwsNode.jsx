@@ -1,10 +1,11 @@
 import { memo, useContext, useEffect, useRef, useState } from 'react'
-import { Handle, Position, NodeResizer, useReactFlow } from '@xyflow/react'
+import { Handle, Position, NodeResizer, useReactFlow, useStore } from '@xyflow/react'
 import { findService } from '../services'
 import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, setNoteHeight } from './noteEditContext'
 import { NOTE_MAX, cleanNote, noteRuns, linkLabel, INFO_MAX, cleanInfo, infoLead } from '../note'
 import { SUNSET, INK } from '../sunset.js'
-import { FONT_STACK, borderStyleOf } from '../style.js'
+import { FONT_STACK, borderStyleOf, hexToRgba } from '../style.js'
+import { subscribe, glowFor, motionAllowed } from '../flowClock'
 
 // An unstretched logo fills whatever the card leaves above its label, about
 // 120px of a 180px card, so it reads as the card's subject even when Fit
@@ -209,6 +210,15 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   const label = svc.label || data.label || data.id
   const sub = svc.sub || data.sub
   const note = cleanNote(data.note)
+  // The arrival glow: a card the dots run INTO lights up in its own border
+  // colour on every beat and fades over 2 s (src/flowClock.js). Only while the
+  // dots flow, never on a sunset card, and never under reduced motion.
+  const isTarget = useStore(s => s.edges.some(e => e.target === data.id))
+  const [glow, setGlow] = useState(0)
+  useEffect(() => {
+    if (!isTarget || sunset || !motionAllowed()) return
+    return subscribe(p => setGlow(Math.round(glowFor(p) * 20) / 20))
+  }, [isTarget, sunset])
   // A picture node: `image` is always the inlined 640x480 JPEG data URI
   // resolved at create/update time - never a raw path, URL or airclips: ref.
   const picture = typeof data.image === 'string' && data.image.startsWith('data:image/') ? data.image : null
@@ -298,7 +308,10 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       padding: 10, boxSizing: 'border-box',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: 6, position: 'relative',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.10)',
+      // The resting shadow, plus the arrival ring and halo while the glow lasts.
+      boxShadow: glow
+        ? `0 1px 3px rgba(0,0,0,0.10), 0 0 0 ${(3 * glow).toFixed(1)}px ${hexToRgba(color, 0.45 * glow)}, 0 0 ${Math.round(22 * glow)}px ${hexToRgba(color, 0.7 * glow)}`
+        : '0 1px 3px rgba(0,0,0,0.10)',
     }}>
       {canResize && <NodeResizer isVisible={selected} minWidth={130} minHeight={130} maxWidth={600} maxHeight={600} keepAspectRatio={!!picture}
         lineStyle={{ borderColor: color, borderWidth: 1 }}

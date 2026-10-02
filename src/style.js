@@ -78,3 +78,11 @@ export function cleanStyle(s) {
   if (Number.isFinite(s.opacity)) out.opacity = Math.max(0, Math.min(100, Math.round(s.opacity)));
   return Object.keys(out).length ? out : null;
 }
+
+// "#B464DC" at a given alpha. Anything that is not 6-digit hex comes back as is.
+export const hexToRgba = (hex, a) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+};

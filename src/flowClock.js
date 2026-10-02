@@ -125,3 +125,12 @@ export function motionAllowed() {
 export function offsetFor() {
   return 0
 }
+
+// A card lights up the instant the dots reach it and fades out over GLOW_MS.
+// Every dot arrives as the phase wraps to 0 (offsetFor is 0 for all), so the
+// glow is a pure function of the phase: the canvas and a GIF frame agree by
+// construction, and 5 dots landing together light the card once.
+export const GLOW_MS = 2000
+export function glowFor(phase) {
+  return Math.max(0, 1 - (phase * PERIOD_MS) / GLOW_MS)
+}
