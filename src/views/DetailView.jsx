@@ -59,6 +59,7 @@ export function DetailView({
   isPublic,
   saveState = 'idle',
   onArrange,
+  onAddLane,
   canUndo, canRedo, onUndo, onRedo,
   onDeleteDiagram,
   // Two locks, both on for every flow until the owner lifts one. The delete
@@ -493,6 +494,24 @@ export function DetailView({
               ))}
             </div>}
           </div>}
+
+          {/* A new swimlane: a band under the cards, dragged, resized and
+              renamed on the canvas itself. */}
+          {canEdit && onAddLane && <button className="sd-hide-mobile sd-hide-tablet" onClick={onAddLane} title="Add a swimlane" style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
+            background: 'transparent', color: '#64748b',
+            cursor: 'pointer', fontSize: 13, fontWeight: 400,
+            transition: 'all 0.1s', fontFamily: 'inherit',
+          }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="5" rx="1"/><rect x="3" y="15" width="18" height="5" rx="1"/><path d="M6 12h4"/>
+            </svg>
+            <span className="sd-btn-label">Lane</span>
+          </button>}
 
           {/* Undo / redo. They appear once there IS something to undo, so a
               freshly opened diagram keeps a clean toolbar, and each button dims

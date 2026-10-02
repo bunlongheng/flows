@@ -67,3 +67,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .sd-lane-title { position: absolute; left: 16px; top: 9px; font-size: 11px; font-weight: 800; letter-spacing: 1.3px; line-height: 1; pointer-events: all; cursor: grab; user-select: none; white-space: nowrap; }
 .react-flow__node-lane.dragging .sd-lane-title { cursor: grabbing; }
 .react-flow__resize-control.line.bottom.sd-lane-resize { pointer-events: all; border: none; background: transparent; height: 10px; bottom: -5px; cursor: ns-resize; }
+.sd-lane-x { display: inline-block; margin-left: 8px; width: 16px; height: 16px; border: none; border-radius: 50%; background: transparent; color: inherit; font: inherit; font-size: 14px; line-height: 16px; text-align: center; padding: 0; cursor: pointer; opacity: 0; transition: opacity 0.1s; pointer-events: all; }
+.sd-lane-title:hover .sd-lane-x, .sd-lane-x:focus { opacity: 0.7; }
+.sd-lane-x:hover { opacity: 1; background: rgba(15, 23, 42, 0.08); }
+.sd-lane-input { position: absolute; left: 12px; top: 5px; width: 220px; padding: 2px 4px; border: 1px solid currentColor; border-radius: 4px; background: #fff; font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 1.3px; text-transform: uppercase; pointer-events: all; outline: none; }

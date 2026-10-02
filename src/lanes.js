@@ -6,6 +6,7 @@
 
 export const LANE_PAD = 100 // past the outermost card on each side
 export const LANE_MIN_H = 80
+export const LANE_GAP = 40 // the 1 vertical gap between lanes, always the same
 export const LANE_MAX = 12
 export const LANE_INK = '#64748b'
 
@@ -21,7 +22,17 @@ export function cleanLanes(raw) {
     if (typeof l.color === 'string' && /^#[0-9a-f]{6}$/i.test(l.color)) lane.color = l.color
     out.push(lane)
   }
-  return out
+  return packLanes(out)
+}
+
+// Lanes are a stack: top to bottom in order of their y, the first where the
+// owner put it, each next one LANE_GAP under the one above. So a drag past a
+// neighbour swaps them, a resize pushes everything below, and the gaps are
+// always equal. Both the canvas and the API pack before saving.
+export function packLanes(lanes) {
+  const sorted = [...lanes].sort((a, b) => a.y - b.y)
+  let y = sorted[0]?.y ?? 0
+  return sorted.map(l => { const out = { ...l, y }; y += l.h + LANE_GAP; return out })
 }
 
 // The horizontal reach shared by every lane: the cards' extent plus padding.
@@ -43,7 +54,17 @@ export function laneNodes(lanes, rects, live, handlers) {
       // measured size, and a node the app adds on the fly is never measured.
       id: `__lane_${l.id}`, type: 'lane', position: { x: span.x, y: o.y ?? l.y }, width: span.w, height: o.h ?? l.h, measured: { width: span.w, height: o.h ?? l.h },
       zIndex: -1, selectable: false, draggable: !!handlers, dragHandle: '.sd-lane-title',
-      data: { title: l.title, color: l.color, ...(handlers ? { onLive: p => handlers.live(l.id, p), onCommit: p => handlers.commit(l.id, p) } : {}) },
+      data: { title: l.title, color: l.color, ...(handlers ? { onLive: p => handlers.live(l.id, p), onCommit: p => handlers.commit(l.id, p), onRename: t => handlers.rename(l.id, t), onRemove: () => handlers.remove(l.id) } : {}) },
     }
   })
+}
+
+// Where a new lane goes: under the lowest lane, or over the top card when it
+// is the first. 300 tall, named by count; the owner renames and resizes it.
+export function newLane(lanes, rects) {
+  const n = lanes.length + 1
+  const y = lanes.length ? Math.max(...lanes.map(l => l.y + l.h)) + LANE_GAP : (rects.length ? Math.min(...rects.map(r => r.y)) : 0) - 60
+  let id = `lane-${n}`
+  while (lanes.some(l => l.id === id)) id += 'x'
+  return { id, title: `Lane ${n}`, y: Math.round(y), h: 300 }
 }
