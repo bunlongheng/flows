@@ -58,3 +58,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   box-shadow: 0 0 3px rgba(239, 68, 68, 0.95), 0 0 6px rgba(239, 68, 68, 0.5);
 }
 @media (prefers-reduced-motion: reduce) { .ff-field { display: none; } }
+
+/* Swimlanes: the band is see-through to the pointer so the canvas still pans
+   and box-selects over it; only the title strip and the bottom edge take events. */
+.react-flow__node-lane { pointer-events: none !important; }
+.sd-lane { position: relative; border-radius: 10px; }
+.sd-lane-rule { position: absolute; left: 10px; right: 10px; top: 0; border-top: 1px solid; }
+.sd-lane-title { position: absolute; left: 16px; top: 9px; font-size: 11px; font-weight: 800; letter-spacing: 1.3px; line-height: 1; pointer-events: all; cursor: grab; user-select: none; white-space: nowrap; }
+.react-flow__node-lane.dragging .sd-lane-title { cursor: grabbing; }
+.react-flow__resize-control.line.bottom.sd-lane-resize { pointer-events: all; border: none; background: transparent; height: 10px; bottom: -5px; cursor: ns-resize; }

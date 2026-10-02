@@ -6,6 +6,7 @@ import { NOTE_MAX, cleanNote, noteRuns, linkLabel, INFO_MAX, cleanInfo, infoLead
 import { SUNSET, INK } from '../sunset.js'
 import { FONT_STACK, borderStyleOf, hexToRgba } from '../style.js'
 import { subscribe, glowFor, motionAllowed } from '../flowClock'
+import { LaneNode } from './LaneNode'
 
 // An unstretched logo fills whatever the card leaves above its label, about
 // 120px of a 180px card, so it reads as the card's subject even when Fit
@@ -415,4 +416,4 @@ export const MarkerNode = memo(function MarkerNode({ data }) {
 })
 
 // eslint-disable-next-line react-refresh/only-export-components -- nodeTypes must live alongside AwsNode for <ReactFlow nodeTypes={nodeTypes}>
-export const nodeTypes = { awsNode: AwsNode, marker: MarkerNode }
+export const nodeTypes = { awsNode: AwsNode, marker: MarkerNode, lane: LaneNode }
