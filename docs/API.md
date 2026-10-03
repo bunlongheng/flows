@@ -166,6 +166,7 @@ All 3 routes `404` on an id that is not the owner's, is in trash, or (for the la
 | `FLOWS_APP_URL` | No | Base for returned `url` / `share_url` / `svg_url` / `gif_url` and `metadataBase`. Defaults to the prod URL. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth for owner sign-in. Redirect URI: `<APP_URL>/api/auth/callback`. |
 | `AUTH_SECRET` | Yes | HMAC key for the `sd_session` cookie (`openssl rand -hex 32`). 7-day sessions. |
+| `AUTH_HOST` | No | Hostname Google has as the redirect URI (`flows-bheng.vercel.app`). A sign in started on another production alias is sent here first, so Google never sees an unregistered `redirect_uri`. |
 | `OWNER_EMAIL` | Yes | The only Google account that gets a session. |
 | `SESSION_MIN_IAT` | No | Unix timestamp; any session issued before it is rejected. Revokes all sessions without a store. |
 | `ANTHROPIC_API_KEY` | No | Only `POST /api/ai/generate` (owner only). Unset means generate fails, nothing else does. |
