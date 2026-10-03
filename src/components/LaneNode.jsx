@@ -10,7 +10,7 @@ export const LaneNode = memo(function LaneNode({ data, width, height }) {
   const ink = data.color || LANE_INK
   return (
     <div className="sd-lane" style={{ width, height, background: hexToRgba(ink, 0.05), borderColor: hexToRgba(ink, 0.35) }}>
-      <div className="sd-lane-title" style={{ color: ink }}>{(data.title || '').toUpperCase()}</div>
+      <div className="sd-lane-title" style={{ color: ink }}>{data.title || ''}</div>
     </div>
   )
 })
