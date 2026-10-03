@@ -1238,6 +1238,10 @@ export function DetailView({
           opacity: 0; visibility: hidden; transition: opacity 0.12s; pointer-events: none; z-index: 30;
         }
         .sd-edge-badge[data-tip]:hover::after { opacity: 1; visibility: visible; }
+        /* The tag layer paints under the cards, so a hovered tag climbs over
+           every card (a selected card sits at 1000) and its tip is never
+           covered by the box next to it. */
+        .sd-edge-badge[data-tip]:hover { z-index: 1001; }
         .sd-edge-badge.is-movable { pointer-events: auto; cursor: grab; }
         .sd-edge-badge.is-movable:hover { filter: brightness(1.08); }
         .sd-edge-badge.is-dragging { cursor: grabbing; z-index: 20; filter: brightness(1.12); }
