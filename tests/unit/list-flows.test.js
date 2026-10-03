@@ -61,6 +61,16 @@ describe("GET /api/flows (list)", () => {
     expect(res.body).toEqual(rows);
   });
 
+  // A diagram opened from the gallery is shown from its list row, so the row
+  // has to carry view_state: without it the swimlanes, the open panels and the
+  // badge style only appeared after a refresh loaded the row by id.
+  it("selects view_state so a gallery open shows the lanes", async () => {
+    const res = mockRes();
+    await listFlows(req("GET"), res);
+    const sql = query.mock.calls[0][0];
+    expect(sql).toMatch(/SELECT[^]*\bview_state\b[^]*FROM flows/);
+  });
+
   it("a non-GET method returns 405", async () => {
     const res = mockRes();
     await listFlows(req("POST"), res);
