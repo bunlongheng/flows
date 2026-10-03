@@ -387,14 +387,21 @@ function fanAt(end, nodeId, node, id, tag, side, edges, nodeOf) {
 // `drawPath` is what this member strokes: the leader strokes everything, a
 // fan-in follower stops at the junction, a fan-out follower starts there. Null
 // when a card sits on the way, and the member then routes on its own.
-function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacles }) {
+function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacles, gaps }) {
   const vertical = side === Position.Top || side === Position.Bottom
   const into = fan.end === 't'
   // The far ends' slots, so the bus sits halfway between the shared face and them.
   const fars = fan.members.map(m => attachPoint(nodeOf(m.far), m.far, node, m.id, edges, nodeOf))
   const meanFar = fars.reduce((a, p) => a + (vertical ? p.y : p.x), 0) / fars.length
   const shared = into ? (vertical ? ty : tx) : (vertical ? sy : sx)
-  const bus = (shared + meanFar) / 2
+  let bus = (shared + meanFar) / 2
+  // With swimlanes the bus moves into the gap between the 2 lanes it crosses,
+  // so the line runs in the clear strip instead of through a lane.
+  if (gaps && gaps.axis === (vertical ? 'y' : 'x')) {
+    const lo = Math.min(shared, meanFar), hi = Math.max(shared, meanFar)
+    const mid = gaps.mids.find(m => m > lo && m < hi)
+    if (mid !== undefined) bus = mid
+  }
   const S = { x: sx, y: sy }, T = { x: tx, y: ty }
   const Cs = vertical ? { x: sx, y: bus } : { x: bus, y: sy } // where the source's stem meets the bus
   const Ct = vertical ? { x: tx, y: bus } : { x: bus, y: ty } // where the target's stem meets the bus
@@ -418,7 +425,7 @@ function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacl
   return { path, drawPath, labelX, labelYRaw, hideArrow: into && !leader }
 }
 
-export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, edges, obstacles, nodeRects, bend, endS, endT, arrow, label, description, fallback = {} }) {
+export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, edges, obstacles, nodeRects, gaps = null, bend, endS, endT, arrow, label, description, fallback = {} }) {
   let sx = fallback.sx ?? 0, sy = fallback.sy ?? 0, tx = fallback.tx ?? 0, ty = fallback.ty ?? 0
   let sSide = Position.Right, tSide = Position.Left
   let aligned = false
@@ -496,7 +503,7 @@ export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, 
   let routedStraight = false, laneShift = 0, laneAlongY = false
   let drawPath = null, hideLabel = false, hideArrow = false
   const trunk = fan && !parallel ? trunkPath({
-    fan, id, sx, sy, tx, ty, edges, nodeOf, obstacles,
+    fan, id, sx, sy, tx, ty, edges, nodeOf, obstacles, gaps,
     side: fan.end === 't' ? tSide : sSide, node: fan.end === 't' ? targetNode : sourceNode,
   }) : null
   if (trunk) {

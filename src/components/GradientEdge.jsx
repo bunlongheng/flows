@@ -5,6 +5,7 @@ import { subscribe, currentPhase, motionAllowed, offsetFor } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
 import { routeEdge, bendPoint, bendFor, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
+import { laneGaps } from '../lanes.js'
 import { tagText } from '../tag.js'
 
 // The routing itself lives in src/edgeGeometry.js, shared with the server
@@ -109,8 +110,10 @@ export function GradientEdge({
   const nodeRects = getNodes()
     .filter(n => n.type === 'awsNode' && n.measured && n.position)
     .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height }))
+  // The strips between swimlanes, where a trunk's bus line runs.
+  const gaps = laneGaps(getNodes().filter(n => n.type === 'lane').map(n => ({ x: n.position.x, y: n.position.y, w: n.width, h: n.height })))
   const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, labelX, labelY } = routeEdge({
-    id, source, target, sourceNode, targetNode, nodeOf, edges: allEdges, obstacles, nodeRects,
+    id, source, target, sourceNode, targetNode, nodeOf, edges: allEdges, obstacles, nodeRects, gaps,
     bend, endS, endT, arrow: data?.style?.arrow, label, description: data?.description,
     fallback: { sx: sourceX, sy: sourceY, tx: targetX, ty: targetY },
   })

@@ -71,3 +71,18 @@ export function laneNodes(lanes, rects) {
     data: { title: r.title, color: r.color },
   }))
 }
+
+// The clear strips between lanes, where a trunk's bus line can run without
+// crossing a lane: the axis the lanes are packed on and the centre of each gap.
+export function laneGaps(rects) {
+  if (rects.length < 2) return null
+  const axis = rects.every(r => r.y === rects[0].y) ? 'x' : 'y'
+  const len = axis === 'x' ? 'w' : 'h'
+  const sorted = [...rects].sort((a, b) => a[axis] - b[axis])
+  const mids = []
+  for (let i = 1; i < sorted.length; i++) {
+    const lo = sorted[i - 1][axis] + sorted[i - 1][len], hi = sorted[i][axis]
+    if (hi > lo) mids.push((lo + hi) / 2)
+  }
+  return { axis, mids }
+}

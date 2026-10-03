@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanLanes, laneSpan, laneNodes, laneRects, packLanes, LANE_PAD, LANE_MIN, LANE_GAP } from "../../src/lanes.js";
+import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, LANE_PAD, LANE_MIN, LANE_GAP } from "../../src/lanes.js";
 
 describe("cleanLanes", () => {
   it("keeps typed, bounded lanes and drops the rest", () => {
@@ -53,5 +53,16 @@ describe("packLanes", () => {
     const packed = packLanes([{ id: "b", y: 500, h: 100 }, { id: "a", y: 0, h: 200 }, { id: "c", y: 330, h: 50 }]);
     expect(packed.map(l => [l.id, l.y])).toEqual([["a", 0], ["c", 200 + LANE_GAP], ["b", 200 + LANE_GAP + 50 + LANE_GAP]]);
     expect(packLanes([])).toEqual([]);
+  });
+});
+
+describe("laneGaps", () => {
+  it("finds the strips between column lanes on the x axis", () => {
+    const rects = [{ x: 0, y: 0, w: 500, h: 900 }, { x: 540, y: 0, w: 300, h: 900 }, { x: 880, y: 0, w: 200, h: 900 }];
+    expect(laneGaps(rects)).toEqual({ axis: "x", mids: [520, 860] });
+  });
+  it("finds row gaps on the y axis and nothing for 1 lane", () => {
+    expect(laneGaps([{ x: 0, y: 0, w: 900, h: 200 }, { x: 0, y: 240, w: 900, h: 200 }])).toEqual({ axis: "y", mids: [220] });
+    expect(laneGaps([{ x: 0, y: 0, w: 900, h: 200 }])).toBeNull();
   });
 });
