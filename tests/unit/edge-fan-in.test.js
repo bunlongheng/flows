@@ -50,6 +50,20 @@ describe("routeEdge - fan-in trunk", () => {
   });
 });
 
+describe("routeEdge - trunk bus between swimlanes", () => {
+  // Sources end at y 180, the target starts at 600: the bus would sit at 390,
+  // inside a lane. With a lane gap centred at 300 the bus moves into the gap.
+  it("runs the bus along the gap between the lanes it crosses", () => {
+    const gaps = { axis: "y", mids: [300] };
+    const b = route("e-b", { gaps });
+    expect(b.drawPath).toMatch(/,300/);
+    expect(route("e-b").drawPath).not.toMatch(/,300/);
+  });
+  it("ignores gaps on the other axis", () => {
+    expect(route("e-b", { gaps: { axis: "x", mids: [300] } }).drawPath).not.toMatch(/,300/);
+  });
+});
+
 describe("routeEdge - fan-out trunk", () => {
   // 1 source above 3 targets in a row, all saying the same thing: 1 trunk out, 1 badge.
   const fnodes = { v: node("v", 400, -600), a: node("a", 0, 0), b: node("b", 400, 0), c: node("c", 800, 0) };
