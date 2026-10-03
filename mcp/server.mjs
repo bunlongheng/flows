@@ -626,6 +626,7 @@ server.registerTool(
       'A node may carry a `note` (max 400 chars, light markdown: **bold**, *italic*, __underline__, ~~strike~~, `code`; a URL becomes a link showing its ticket key): 1-2 sentences on what that step does. It renders under the card, bottom-left, in the app, on every shared link and in the SVG - so put the per-step explanation THERE, not only in the title or edge labels.',
       'A node may also carry a plain-text `info` (max 600 chars): what this thing is and why it is in this diagram, shown only on hover/click of the i badge on the card, and never in the SVG.',
       'A node may carry `sunset: true` to mark it as today\'s path being decommissioned - drawn light silver and dimmed, icon in greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) light silver, immune to any line style; no X on the card. Silver is reserved for this state; never paint a node grey or silver to mean retired, set sunset instead.',
+      'Swimlanes are configuration only, set with update_flow { id, lanes } (never a canvas button): rows [{ id, title, y, h, color? }] for a top-down layout or columns [{ id, title, x, w, color? }] for a left-to-right one, 1 kind per diagram, max 12, thinnest 80, packed with 40 px gaps, each spanning the whole diagram on its other axis. Cards are 190 x 180 plus their note, so size every lane around the cards it holds. [] clears them. With lanes on, no Start pill is drawn.',
     ],
     example: {
       title: 'URL Shortener - Tier 1',

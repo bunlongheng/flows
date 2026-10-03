@@ -53,6 +53,8 @@ curl -X POST "$APP/api/ai/flows" \
                 {"source":"lambda","target":"dynamo"}]}'
 ```
 
+Swimlanes are payload too, never a button: `update_flow { lanes }` or `PATCH { view_state: { lanes } }` with rows `{ id, title, y, h, color? }` or columns `{ id, title, x, w, color? }`. See [`/agent.md`](https://flows-bheng.vercel.app/agent.md) 4c.
+
 Once it is public, the URL is the image - no auth, no browser, animated:
 
 ```markdown
