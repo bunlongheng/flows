@@ -91,6 +91,16 @@ Pass `reason` on `update_flow` so the history reads well; it lands on the versio
 Pull a change back with MCP `list_versions` then `restore_version`, or `GET .../versions` then
 `POST .../versions/:vid/restore`. A restore is itself a version, so it is always safe to undo too.
 
+## 4c. Swimlanes (configuration only)
+
+Lanes are bands under the cards, 1 per layer of the system, with a title and an optional colour. There is no canvas button: an agent sets them with MCP `update_flow { id, lanes }` or `PATCH /api/flows/:id { "view_state": { "lanes": [...] } }`.
+
+- Rows for a top-down layout: `{ "id": "apps", "title": "Sender apps", "y": 120, "h": 580, "color": "#B464DC" }`.
+- Columns for a left-to-right layout: `{ "id": "apps", "title": "Sender apps", "x": 15, "w": 565, "color": "#B464DC" }`.
+- 1 kind per diagram, max 12, thinnest 80, canvas units; lanes pack from the first with equal 40 px gaps and span the whole diagram on their other axis.
+- A card is 190 x 180 plus its note: size the lane so every card stands inside it, never move a card to fit a lane.
+- `lanes: []` removes them; a `view_state` save without a `lanes` key keeps them. With lanes on, no Start pill is drawn.
+
 ## 5. Do not
 
 - Do not send `position`, `type`, `tags` or `difficulty`.
