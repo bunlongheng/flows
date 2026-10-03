@@ -87,6 +87,7 @@ npm run dev                        # http://localhost:5174
 | `DATABASE_URL` | Postgres connection string |
 | `DATABASE_SSL` | `true` for a remote database |
 | `AUTH_SECRET` | Session-cookie secret. `openssl rand -hex 32` |
+| `AUTH_HOST` | The 1 hostname registered with Google. A sign in that starts on any other production alias hops here first. Unset locally. |
 | `GOOGLE_CLIENT_ID` | Google OAuth client |
 | `GOOGLE_CLIENT_SECRET` | Its secret. Callback `/api/auth/callback` |
 | `OWNER_EMAIL` | The 1 account allowed to sign in |

@@ -33,6 +33,37 @@ function req() {
   return { method: "GET", headers: { host: "flows-bheng.vercel.app" } };
 }
 
+describe("GET /api/auth/login on another production alias", () => {
+  const orig = { c: process.env.GOOGLE_CLIENT_ID, h: process.env.AUTH_HOST };
+  beforeEach(() => {
+    process.env.GOOGLE_CLIENT_ID = "test-client-id.apps.googleusercontent.com";
+    process.env.AUTH_HOST = "flows-bheng.vercel.app";
+  });
+  afterEach(() => {
+    process.env.GOOGLE_CLIENT_ID = orig.c;
+    process.env.AUTH_HOST = orig.h;
+  });
+
+  // An old bookmark on system-design-bheng.vercel.app still reaches production,
+  // but Google only knows the flows-bheng host: the sign in moves there first.
+  it("hops to the host Google knows before asking Google", async () => {
+    const r = req();
+    r.headers.host = "system-design-bheng.vercel.app";
+    r.query = { silent: "1" };
+    const res = mockRes();
+    await authLogin(r, res);
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.Location).toBe("https://flows-bheng.vercel.app/api/auth/login?silent=1");
+    expect(res.headers["Set-Cookie"]).toBeUndefined();
+  });
+
+  it("stays put on the host Google knows", async () => {
+    const res = mockRes();
+    await authLogin(req(), res);
+    expect(res.headers.Location).toMatch(/^https:\/\/accounts\.google\.com\//);
+  });
+});
+
 describe("GET /api/auth/login", () => {
   const orig = { c: process.env.GOOGLE_CLIENT_ID };
   beforeEach(() => {
