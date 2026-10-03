@@ -92,15 +92,6 @@ describe("DetailView", () => {
     expect(screen.getByText("Share")).toBeInTheDocument();
   });
 
-  it("offers a Lane button to the owner only, and it adds one", () => {
-    const onAddLane = vi.fn();
-    setup({ canEdit: true, onAddLane });
-    fireEvent.click(screen.getByText("Lane"));
-    expect(onAddLane).toHaveBeenCalledTimes(1);
-    cleanup();
-    setup({ canEdit: false, onAddLane });
-    expect(screen.queryByText("Lane")).toBeNull();
-  });
 
   it("shows the Fit button", () => {
     setup();

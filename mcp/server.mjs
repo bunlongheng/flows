@@ -19,6 +19,7 @@ import { uniqueFlowSlug } from '../lib/slugs.js'
 import { titleBase, MIN_BASE_LEN } from '../lib/title-base.js'
 import { arrangeNew } from '../lib/arrange.js'
 import { ownerId } from '../lib/auth-owner.js'
+import { cleanLanes } from '../src/lanes.js'
 import { SERVICES } from '../src/services.js'
 import { resolveNodeIcons } from '../lib/resolve-icon.js'
 import { resolveNodeImages } from '../lib/resolve-image.js'
@@ -325,9 +326,14 @@ server.registerTool(
       })).optional(),
       edges: z.array(z.object({ source: z.string(), target: z.string(), label: z.string().optional(), description: z.string().max(300).optional() })).optional(),
       public: z.boolean().optional().describe('true publishes (anyone with the link can open it, real preview card); false makes it private again. Omit to leave visibility alone.'),
+      lanes: z.array(z.object({
+        id: z.string().regex(/^[\w-]{1,40}$/), title: z.string().max(40),
+        y: z.number().optional(), h: z.number().min(80).optional(), x: z.number().optional(), w: z.number().min(80).optional(),
+        color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().describe('Hex ink for the band and its title, e.g. #B464DC. Omit for the default slate.'),
+      })).max(12).optional().describe('Swimlanes, configuration only (there is no canvas UI for them): bands under the cards, 1 per layer. Rows { id, title, y, h, color? } for a top-down layout, columns { id, title, x, w, color? } for a left-to-right one; 1 kind per diagram, in canvas units (the cards are 190 wide, 180 tall plus their note). Replaces the whole list; [] removes every lane; omit to leave lanes alone. Lanes pack from the first one with equal 40 px gaps. With lanes on, the Start pill is not drawn.'),
     },
   },
-  async ({ id, reason, title, nodes, edges, public: isPublic }) => {
+  async ({ id, reason, title, nodes, edges, public: isPublic, lanes }) => {
     try {
       // A flow is open to agents unless the owner has edit-locked it, in the app.
       const { rows: gate } = await db.query('SELECT edit_locked FROM flows WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL', [id, owner()])
@@ -369,6 +375,13 @@ server.registerTool(
         [id, title?.trim() ?? null, nextNodes, nextEdges, reason?.trim() ?? null, owner(), isPublic ?? null],
       )
       if (!rows.length) return fail(`No owned diagram with id ${id} (it may be in trash - call list_trash)`)
+      if (lanes) {
+        const clean = cleanLanes(lanes)
+        await db.query(
+          "UPDATE flows SET view_state = (COALESCE(view_state, '{}'::jsonb) - 'lanes') || $2::jsonb WHERE id = $1 AND user_id = $3 AND deleted_at IS NULL",
+          [id, JSON.stringify(clean.length ? { lanes: clean } : {}), owner()],
+        )
+      }
       return ok({
         id,
         url: urlFor(id),
