@@ -1,70 +1,73 @@
-// Swimlanes: horizontal bands the owner lays cards into, 1 per layer of the
-// system (VISITOR, APPS, RELAY, INBOX). Optional, per diagram, saved in
-// view_state.lanes as { id, title, y, h, color? }: a lane spans the whole
-// diagram, so only its top and height are the owner's. The canvas and every
-// export draw them from this 1 file so they match.
+// Swimlanes: bands the cards sit in, 1 per layer of the system (VISITOR,
+// APPS, RELAY, INBOX). Optional, per diagram, configuration only: saved in
+// view_state.lanes over the API (PATCH view_state { lanes }) or the MCP
+// (update_flow lanes), never edited on the canvas. A lane is a row
+// { id, title, y, h, color? } for a top-down layout or a column
+// { id, title, x, w, color? } for a left-to-right one; a diagram has 1 kind,
+// the kind of its first lane. A lane spans the whole diagram on its other
+// axis, so cards fit by where they stand. The canvas and every export draw
+// lanes from this 1 file so they match.
 
 export const LANE_PAD = 100 // past the outermost card on each side
-export const LANE_MIN_H = 80
-export const LANE_GAP = 40 // the 1 vertical gap between lanes, always the same
+export const LANE_MIN = 80 // the thinnest lane
+export const LANE_GAP = 40 // the 1 gap between lanes, always the same
 export const LANE_MAX = 12
 export const LANE_INK = '#64748b'
 
-// What the API keeps of a lanes array: bounded, typed, nothing else.
+// 'row' lanes stack by y and h; 'col' lanes stand side by side by x and w.
+export const laneAxis = lanes => (lanes[0] && 'x' in lanes[0] ? 'col' : 'row')
+
+// What the API keeps of a lanes array: bounded, typed, 1 axis, nothing else.
 export function cleanLanes(raw) {
   if (!Array.isArray(raw)) return []
   const out = []
+  let axis = null
   for (const l of raw) {
     if (!l || typeof l !== 'object' || out.length >= LANE_MAX) continue
     const id = typeof l.id === 'string' && /^[\w-]{1,40}$/.test(l.id) ? l.id : null
-    if (!id || out.some(o => o.id === id) || !Number.isFinite(l.y) || !Number.isFinite(l.h)) continue
-    const lane = { id, title: String(l.title ?? '').trim().slice(0, 40), y: Math.round(l.y), h: Math.max(LANE_MIN_H, Math.round(l.h)) }
+    if (!id || out.some(o => o.id === id)) continue
+    const kind = Number.isFinite(l.x) && Number.isFinite(l.w) ? 'col' : Number.isFinite(l.y) && Number.isFinite(l.h) ? 'row' : null
+    if (!kind || (axis && kind !== axis)) continue
+    axis = kind
+    const lane = { id, title: String(l.title ?? '').trim().slice(0, 40) }
+    if (kind === 'col') { lane.x = Math.round(l.x); lane.w = Math.max(LANE_MIN, Math.round(l.w)) }
+    else { lane.y = Math.round(l.y); lane.h = Math.max(LANE_MIN, Math.round(l.h)) }
     if (typeof l.color === 'string' && /^#[0-9a-f]{6}$/i.test(l.color)) lane.color = l.color
     out.push(lane)
   }
   return packLanes(out)
 }
 
-// Lanes are a stack: top to bottom in order of their y, the first where the
-// owner put it, each next one LANE_GAP under the one above. So a drag past a
-// neighbour swaps them, a resize pushes everything below, and the gaps are
-// always equal. Both the canvas and the API pack before saving.
+// Lanes are a stack along their axis: the first where it was configured, each
+// next one LANE_GAP after the one before, so the gaps are always equal
+// whatever positions come in.
 export function packLanes(lanes) {
-  const sorted = [...lanes].sort((a, b) => a.y - b.y)
-  let y = sorted[0]?.y ?? 0
-  return sorted.map(l => { const out = { ...l, y }; y += l.h + LANE_GAP; return out })
+  const [at, size] = laneAxis(lanes) === 'col' ? ['x', 'w'] : ['y', 'h']
+  const sorted = [...lanes].sort((a, b) => a[at] - b[at])
+  let pos = sorted[0]?.[at] ?? 0
+  return sorted.map(l => { const out = { ...l, [at]: pos }; pos += l[size] + LANE_GAP; return out })
 }
 
-// The horizontal reach shared by every lane: the cards' extent plus padding.
-export function laneSpan(rects) {
-  if (!rects.length) return { x: -LANE_PAD, w: 2 * LANE_PAD }
-  const minX = Math.min(...rects.map(r => r.x)), maxX = Math.max(...rects.map(r => r.x + r.w))
-  return { x: minX - LANE_PAD, w: maxX - minX + 2 * LANE_PAD }
+// The reach shared by every lane on its other axis: the cards' extent plus padding.
+export function laneSpan(rects, axis = 'row') {
+  const [at, size] = axis === 'col' ? ['y', 'h'] : ['x', 'w']
+  if (!rects.length) return { [at]: -LANE_PAD, [size]: 2 * LANE_PAD }
+  const lo = Math.min(...rects.map(r => r[at])), hi = Math.max(...rects.map(r => r[at] + r[size]))
+  return { [at]: lo - LANE_PAD, [size]: hi - lo + 2 * LANE_PAD }
+}
+
+// Where each lane is drawn: { id, title, color, x, y, w, h } in canvas units.
+export function laneRects(lanes, rects) {
+  const span = laneSpan(rects, laneAxis(lanes))
+  return lanes.map(l => ({ id: l.id, title: l.title, color: l.color, ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...span }))
 }
 
 // The React Flow nodes that draw the lanes: 1 per lane, under the cards,
-// never selectable, dragged by the title strip when the owner can edit. `live`
-// holds a lane's y or h mid-drag, before it is saved.
-export function laneNodes(lanes, rects, live, handlers) {
-  const span = laneSpan(rects)
-  return lanes.map(l => {
-    const o = live[l.id] || {}
-    return {
-      // measured as well as width/height: the resize control starts from the
-      // measured size, and a node the app adds on the fly is never measured.
-      id: `__lane_${l.id}`, type: 'lane', position: { x: span.x, y: o.y ?? l.y }, width: span.w, height: o.h ?? l.h, measured: { width: span.w, height: o.h ?? l.h },
-      zIndex: -1, selectable: false, draggable: !!handlers, dragHandle: '.sd-lane-title',
-      data: { title: l.title, color: l.color, ...(handlers ? { onLive: p => handlers.live(l.id, p), onCommit: p => handlers.commit(l.id, p), onRename: t => handlers.rename(l.id, t), onRemove: () => handlers.remove(l.id) } : {}) },
-    }
-  })
-}
-
-// Where a new lane goes: under the lowest lane, or over the top card when it
-// is the first. 300 tall, named by count; the owner renames and resizes it.
-export function newLane(lanes, rects) {
-  const n = lanes.length + 1
-  const y = lanes.length ? Math.max(...lanes.map(l => l.y + l.h)) + LANE_GAP : (rects.length ? Math.min(...rects.map(r => r.y)) : 0) - 60
-  let id = `lane-${n}`
-  while (lanes.some(l => l.id === id)) id += 'x'
-  return { id, title: `Lane ${n}`, y: Math.round(y), h: 300 }
+// never selectable or draggable.
+export function laneNodes(lanes, rects) {
+  return laneRects(lanes, rects).map(r => ({
+    id: `__lane_${r.id}`, type: 'lane', position: { x: r.x, y: r.y }, width: r.w, height: r.h, measured: { width: r.w, height: r.h },
+    zIndex: -1, selectable: false, draggable: false,
+    data: { title: r.title, color: r.color },
+  }))
 }

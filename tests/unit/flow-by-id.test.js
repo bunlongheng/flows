@@ -197,14 +197,25 @@ describe("/api/flows/:id", () => {
     expect(res.body.view_state).toEqual({ panels: ["steps"], badge: null });
   });
 
-  it("PATCH view_state keeps clean swimlanes and drops junk ones", async () => {
-    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+  it("PATCH view_state writes clean swimlanes when a lanes array comes, and keeps the stored ones when none does", async () => {
+    const lanes = [{ id: "apps", title: "Apps on Vercel", y: 100, h: 320 }];
+    query.mockResolvedValueOnce({ rows: [{ id: ID, view_state: { panels: [], badge: "dark", lanes } }] });
     const res = mockRes();
     const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
     const r = req("PATCH", ID, undefined, cookie);
-    r.body = { view_state: { panels: [], badge: "dark", lanes: [{ id: "apps", title: "Apps on Vercel", y: 100, h: 320 }, { id: "x", y: "no" }] } };
+    r.body = { view_state: { panels: [], badge: "dark", lanes: [...lanes, { id: "x", y: "no" }] } };
     await flowById(r, res);
-    expect(res.body.view_state).toEqual({ panels: [], badge: "dark", lanes: [{ id: "apps", title: "Apps on Vercel", y: 100, h: 320 }] });
+    let [sql, params] = query.mock.calls.at(-1);
+    expect(sql).toContain("view_state->'lanes'");
+    expect(params.slice(3)).toEqual([true, JSON.stringify({ lanes })]);
+    expect(res.body.view_state).toEqual({ panels: [], badge: "dark", lanes });
+
+    query.mockResolvedValueOnce({ rows: [{ id: ID, view_state: { panels: ["steps"], badge: null, lanes } }] });
+    const r2 = req("PATCH", ID, undefined, cookie);
+    r2.body = { view_state: { panels: ["steps"] } };
+    await flowById(r2, mockRes());
+    [sql, params] = query.mock.calls.at(-1);
+    expect(params.slice(3)).toEqual([false, "{}"]);
   });
 
   it("PATCH view_state keeps a placed start and drops a missing one", async () => {
