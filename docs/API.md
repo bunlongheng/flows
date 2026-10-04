@@ -73,6 +73,9 @@ Body fields:
 | `is_public` | Optional boolean, default `false`. `true` makes the link open for anyone and gives it a real card. |
 | `linked` | Optional boolean. `true` lists the diagram under the gallery's Linked tab (README, PR, repo audit) instead of My Diagrams. A title that starts with `owner/repo` is Linked on its own; `false` keeps it out. The row carries a `linked` tag. |
 | `return` / `format` | `"svg"` (or `?format=svg` on the URL) adds the rendered `svg` to the response. |
+| `source` | Optional string, max 40. `"repo-audit"` means a repo audit or recon asked: the diagram is rendered and NEVER stored. The response is `200 { stored: false, source, svg }` with no id or url. Every `/repo-audit` call passes it. |
+| `store` | Optional boolean. `false` renders without storing for any caller (`source` becomes `"render-only"`). |
+| `lanes[]` | Optional, render-only calls. Swimlanes for the picture (`{ id, title, x, w }` columns or `{ id, title, y, h }` rows, max 12), since there is no row to patch afterwards. |
 
 Rules:
 

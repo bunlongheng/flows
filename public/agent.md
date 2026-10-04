@@ -45,6 +45,10 @@ Authorization: Bearer <FLOWS_API_SECRET>
 | `position` | Omit it. The layout engine places the nodes. |
 | `return` | `"svg"` to get the rendered SVG back in the same response. |
 
+## 1b. A repo audit gets a picture, not a row
+
+Add `"source": "repo-audit"` to the body above. The API renders the SVG and stores NOTHING: the answer is `200 { "stored": false, "source": "repo-audit", "svg": "<svg ..." }`, with no id, url or gif. Embed the svg in your report; the owner's gallery never sees an audit diagram. Put swimlanes in the same body as `"lanes": [...]` (section 4c), there is no row to patch later. `"store": false` does the same for any other caller that only needs the picture.
+
 ## 2. Pick the node kind
 
 Every node must render a real logo. There are 3 kinds:

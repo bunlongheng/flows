@@ -13,7 +13,7 @@ immediately. Speaks MCP over stdio; logs go to stderr only.
 |------|--------|---------|
 | `list_flows` | none | `{ count, designs: [{ id, title, slug, nodes, edges, created_at, url }] }` - node/edge counts, newest first, max 200, trash excluded |
 | `get_flow` | `id` | `{ id, title, slug, nodes, edges, created_at, url, share_url, gif_url, readme }` - the full structure the app renders. Error if the id is unknown or trashed |
-| `create_flow` | `title`, `nodes[]`, `edges[]` (default `[]`), `public?` (default `true`) | `{ id, url, share_url, gif_url, readme, visibility, share_note?, layout?, warning?, probably_update? }` |
+| `create_flow` | `title`, `nodes[]`, `edges[]` (default `[]`), `public?` (default `true`), `source?` (`"repo-audit"` = render only, nothing stored), `store?`, `lanes?` | `{ id, url, share_url, gif_url, readme, visibility, share_note?, layout?, warning?, probably_update? }` |
 | `update_flow` | `id`, `reason?`, `title?`, `nodes?`, `edges?`, `public?` | `{ id, url, share_url, gif_url, readme, visibility, updated: { title, nodes, edges, public }, layout?, reason? }` |
 | `lock_flow` | `id`, `locked?`, `edit_locked?` (true only) | `{ id, title, locked, edit_locked }` |
 | `delete_flow` | `id`, `reason?` | `{ trashed, title, recoverable: true, restore_with: "restore_flow" }` |

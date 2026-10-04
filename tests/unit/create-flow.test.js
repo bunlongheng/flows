@@ -45,6 +45,28 @@ describe("POST /api/ai/flows (public render-only)", () => {
     process.env.OWNER_USER_ID = orig.o;
   });
 
+  // A repo audit never lands in the gallery: source "repo-audit" renders the
+  // SVG for the report and touches no table (owner rule 2026-10-04).
+  it("renders without storing when the source is a repo audit", async () => {
+    const res = mockRes();
+    await createFlow(good(`Bearer ${SECRET}`, { ...VALID_BODY, source: "repo-audit", lanes: [{ id: "web", title: "Web", x: 0, w: 600 }] }), res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.stored).toBe(false);
+    expect(res.body.source).toBe("repo-audit");
+    expect(res.body.svg).toMatch(/^<svg/);
+    expect(res.body.svg).toContain("WEB");
+    expect(res.body.id).toBeUndefined();
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it("store: false renders without storing for any caller", async () => {
+    const res = mockRes();
+    await createFlow(good(`Bearer ${SECRET}`, { ...VALID_BODY, store: false }), res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.source).toBe("render-only");
+    expect(query).not.toHaveBeenCalled();
+  });
+
   it("401s without a Bearer token", async () => {
     const res = mockRes();
     await createFlow(good(undefined, VALID_BODY), res);
