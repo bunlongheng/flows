@@ -2,8 +2,9 @@
 // APPS, RELAY, INBOX). Optional, per diagram, configuration only: saved in
 // view_state.lanes over the API (PATCH view_state { lanes }) or the MCP
 // (update_flow lanes), never edited on the canvas. A lane is a row
-// { id, title, y, h, color? } for a top-down layout or a column
-// { id, title, x, w, color? } for a left-to-right one; a diagram has 1 kind,
+// { id, title, y, h, color?, size? } for a top-down layout or a column
+// { id, title, x, w, color?, size? } for a left-to-right one; size is the
+// title in px (default LANE_TITLE); a diagram has 1 kind,
 // the kind of its first lane. A lane spans the whole diagram on its other
 // axis, so cards fit by where they stand. The canvas and every export draw
 // lanes from this 1 file so they match.
@@ -13,6 +14,9 @@ export const LANE_MIN = 80 // the thinnest lane
 export const LANE_GAP = 40 // the 1 gap between lanes, always the same
 export const LANE_MAX = 12
 export const LANE_INK = '#64748b'
+export const LANE_TITLE = 13 // title size in px unless the lane says otherwise
+export const LANE_TITLE_MIN = 10
+export const LANE_TITLE_MAX = 40
 
 // 'row' lanes stack by y and h; 'col' lanes stand side by side by x and w.
 export const laneAxis = lanes => (lanes[0] && 'x' in lanes[0] ? 'col' : 'row')
@@ -33,6 +37,7 @@ export function cleanLanes(raw) {
     if (kind === 'col') { lane.x = Math.round(l.x); lane.w = Math.max(LANE_MIN, Math.round(l.w)) }
     else { lane.y = Math.round(l.y); lane.h = Math.max(LANE_MIN, Math.round(l.h)) }
     if (typeof l.color === 'string' && /^#[0-9a-f]{6}$/i.test(l.color)) lane.color = l.color
+    if (Number.isFinite(l.size)) lane.size = Math.min(LANE_TITLE_MAX, Math.max(LANE_TITLE_MIN, Math.round(l.size)))
     out.push(lane)
   }
   return packLanes(out)
@@ -56,10 +61,10 @@ export function laneSpan(rects, axis = 'row') {
   return { [at]: lo - LANE_PAD, [size]: hi - lo + 2 * LANE_PAD }
 }
 
-// Where each lane is drawn: { id, title, color, x, y, w, h } in canvas units.
+// Where each lane is drawn: { id, title, color, size, x, y, w, h } in canvas units.
 export function laneRects(lanes, rects) {
   const span = laneSpan(rects, laneAxis(lanes))
-  return lanes.map(l => ({ id: l.id, title: l.title, color: l.color, ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...span }))
+  return lanes.map(l => ({ id: l.id, title: l.title, color: l.color, size: l.size, ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...span }))
 }
 
 // The React Flow nodes that draw the lanes: 1 per lane, under the cards,
@@ -68,7 +73,7 @@ export function laneNodes(lanes, rects) {
   return laneRects(lanes, rects).map(r => ({
     id: `__lane_${r.id}`, type: 'lane', position: { x: r.x, y: r.y }, width: r.w, height: r.h, measured: { width: r.w, height: r.h },
     zIndex: -1, selectable: false, draggable: false,
-    data: { title: r.title, color: r.color },
+    data: { title: r.title, color: r.color, size: r.size },
   }))
 }
 

@@ -18,6 +18,14 @@ describe("cleanLanes", () => {
     expect(cleanLanes(undefined)).toEqual([]);
     expect(cleanLanes({ id: "a" })).toEqual([]);
   });
+  it("keeps a title size inside 10 to 40 px and drops a size that is not a number", () => {
+    const out = cleanLanes([
+      { id: "a", title: "t", y: 0, h: 100, size: 18.4 },
+      { id: "b", title: "t", y: 200, h: 100, size: 99 },
+      { id: "c", title: "t", y: 400, h: 100, size: "big" },
+    ]);
+    expect(out.map((l) => l.size)).toEqual([18, 40, undefined]);
+  });
   it("keeps columns too, 1 axis per diagram: the first lane's kind wins", () => {
     expect(cleanLanes([{ id: "v", title: "Visitor", x: -960, w: 1040 }, { id: "r", title: "row", y: 0, h: 100 }, { id: "a", title: "Apps", x: 0, w: 50 }]))
       .toEqual([{ id: "v", title: "Visitor", x: -960, w: 1040 }, { id: "a", title: "Apps", x: -960 + 1040 + LANE_GAP, w: LANE_MIN }]);
@@ -40,10 +48,10 @@ describe("laneSpan", () => {
 
 describe("laneNodes", () => {
   const rects = [{ x: 100, y: 0, w: 120, h: 120 }, { x: 700, y: 0, w: 120, h: 120 }];
-  const lanes = [{ id: "a", title: "Apps", y: 40, h: 300, color: "#B464DC" }];
+  const lanes = [{ id: "a", title: "Apps", y: 40, h: 300, color: "#B464DC", size: 18 }];
   it("draws 1 static node per lane under the cards: never selectable or draggable, title and colour passed through", () => {
     const [n] = laneNodes(lanes, rects);
-    expect(n).toMatchObject({ id: "__lane_a", type: "lane", zIndex: -1, selectable: false, draggable: false, position: { x: 100 - LANE_PAD, y: 40 }, height: 300, data: { title: "Apps", color: "#B464DC" } });
+    expect(n).toMatchObject({ id: "__lane_a", type: "lane", zIndex: -1, selectable: false, draggable: false, position: { x: 100 - LANE_PAD, y: 40 }, height: 300, data: { title: "Apps", color: "#B464DC", size: 18 } });
     expect(n.width).toBe(820 + 2 * LANE_PAD - 100);
   });
 });
