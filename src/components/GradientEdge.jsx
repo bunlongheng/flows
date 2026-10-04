@@ -80,7 +80,7 @@ export function GradientEdge({
   const internalById = id => {
     const n = getNodes().find(x => x.id === id)
     return n?.measured?.width
-      ? { measured: n.measured, internals: { positionAbsolute: n.position } }
+      ? { measured: n.measured, internals: { positionAbsolute: n.position }, lane: n.type === 'lane' }
       : null
   }
 

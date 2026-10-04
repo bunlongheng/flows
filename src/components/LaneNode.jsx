@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { Handle, Position } from '@xyflow/react'
 import { LANE_INK, LANE_TITLE } from '../lanes.js'
 import { hexToRgba } from '../style.js'
 
@@ -11,6 +12,9 @@ export const LaneNode = memo(function LaneNode({ data, width, height }) {
   const ink = data.color || LANE_INK
   return (
     <div className="sd-lane" style={{ width, height, background: hexToRgba(ink, 0.05), borderColor: hexToRgba(ink, 0.35) }}>
+      {/* Invisible handles so an edge can end on the lane ("lane:<id>"); GradientEdge routes to the border itself. */}
+      <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: 'none' }} />
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, pointerEvents: 'none' }} />
       <div className="sd-lane-title" style={{ color: ink, fontSize: data.size || LANE_TITLE }}>{data.title || ''}</div>
     </div>
   )

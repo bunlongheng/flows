@@ -10,7 +10,7 @@ import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapAlign } from './snapAlign'
 import { findService } from './services'
-import { laneNodes } from './lanes.js'
+import { laneNodes, laneRef, laneNodeId, LANE_INK } from './lanes.js'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
 import { fireflies } from './fireflies'
@@ -64,7 +64,7 @@ const edgePins = edges => edges.map((e, i) => ({
 // onLabelMove and onEndMove are threaded into every edge's data so a badge or a
 // pinned end can be dragged. Both are omitted for the bundled sample and for a
 // read-only viewer, and the edge renders inert in that case.
-function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove) {
+function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove, lanes = []) {
   // The edge takes its colour from the SOURCE node, and a node that brings its
   // own logo states its colour only in that logo - so the node itself has to be
   // looked up, not just its id. Passing `{ id }` alone matched generic catalog
@@ -73,11 +73,14 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove) {
   // An edge touching a sunset node is a faint silver line at both ends, and an
   // edge INTO one also carries the flag so its badge goes grey with the red X.
   const sunsetOf = id => byId.get(id)?.sunset === true
-  const edgeColor = id => (sunsetOf(id) ? SUNSET.border : findService(byId.get(id) || { id })?.color || INK)
+  // An end on a lane ("lane:<id>") is the lane's React Flow node, in the lane's ink.
+  const laneColor = id => lanes.find(l => l.id === laneRef(id))?.color || LANE_INK
+  const edgeColor = id => (laneRef(id) ? laneColor(id) : sunsetOf(id) ? SUNSET.border : findService(byId.get(id) || { id })?.color || INK)
+  const rfId = id => (laneRef(id) ? laneNodeId(laneRef(id)) : id)
   return rawEdges.map((e, i) => ({
     id: e.id || `e${i}`,
-    source: e.source,
-    target: e.target,
+    source: rfId(e.source),
+    target: rfId(e.target),
     label: e.label,
     type: 'gradient',
     animated: true,
@@ -629,7 +632,7 @@ export default function App() {
     // Carry any custom brand fields (label/icon/color/sub) into node data so a
     // bring-your-own-icon node renders its own logo, not a catalog lookup.
     const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, size: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: nd.position } : {}), ...(nd.size ? { width: nd.size.w, height: nd.size.h } : {}) }))
-    const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined)
+    const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined, d.view_state?.lanes || [])
     return { nodes: hasSaved ? n : layoutFanOut(n, e), edges: e }
   }
 

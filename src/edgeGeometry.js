@@ -44,6 +44,27 @@ export const centerOf = n => ({
   y: n.internals.positionAbsolute.y + n.measured.height / 2,
 })
 
+// A lane end ("lane:<id>"): the line meets the lane's border straight on from
+// its far end, so every lane line drops (or runs) from under its own source
+// and never crowds the band's middle. A row lane is wide, so its faces are top
+// and bottom; a column lane is tall, so left and right.
+const isLane = n => n?.lane === true || n?.type === 'lane'
+const clampTo = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
+function laneFace(node, fc) {
+  const p = node.internals.positionAbsolute, w = node.measured.width, h = node.measured.height
+  const c = { x: p.x + w / 2, y: p.y + h / 2 }
+  if (w >= h) {
+    const side = fc.y < c.y ? Position.Top : Position.Bottom
+    return { x: clampTo(fc.x, p.x + EDGE_MARGIN, p.x + w - EDGE_MARGIN), y: side === Position.Top ? p.y : p.y + h, side, alone: true, gap: 0, half: w / 2, mid: c.x }
+  }
+  const side = fc.x < c.x ? Position.Left : Position.Right
+  return { x: side === Position.Left ? p.x : p.x + w, y: clampTo(fc.y, p.y + EDGE_MARGIN, p.y + h - EDGE_MARGIN), side, alone: true, gap: 0, half: h / 2, mid: c.y }
+}
+// Where a far node sits as seen from `c`: a lane counts as the point on its
+// border straight across from c, so the card attaches on the face that looks
+// at the lane, not at the lane's distant centre.
+const farCenter = (far, c) => (isLane(far) ? (({ x, y }) => ({ x, y }))(laneFace(far, c)) : centerOf(far))
+
 // Which face of `from` faces `to` - the dominant axis between their centers.
 function sideFor(from, to) {
   const dx = to.x - from.x, dy = to.y - from.y
@@ -57,7 +78,8 @@ function sideFor(from, to) {
 // lines never cross on their way in.
 function attachPoint(node, nodeId, otherNode, edgeId, edges, nodeOf) {
   const c = centerOf(node)
-  const side = sideFor(c, centerOf(otherNode))
+  if (isLane(node)) return laneFace(node, centerOf(otherNode))
+  const side = sideFor(c, farCenter(otherNode, c))
   const horizontal = side === Position.Left || side === Position.Right
 
   const peers = []
@@ -66,7 +88,7 @@ function attachPoint(node, nodeId, otherNode, edgeId, edges, nodeOf) {
     if (!farId || farId === nodeId) continue
     const far = nodeOf(farId)
     if (!far?.measured?.width) continue
-    const fc = centerOf(far)
+    const fc = farCenter(far, c)
     if (sideFor(c, fc) !== side) continue
     peers.push({ id: e.id, along: horizontal ? fc.y : fc.x })
   }

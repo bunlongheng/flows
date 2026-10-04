@@ -18,6 +18,13 @@ export const LANE_TITLE = 13 // title size in px unless the lane says otherwise
 export const LANE_TITLE_MIN = 10
 export const LANE_TITLE_MAX = 40
 
+// An edge end may name a lane instead of a card: "lane:<id>". The line stops on
+// the lane's border and reads as 1 line to every card inside it. On the canvas
+// the lane is the React Flow node laneNodeId(id); the API and exports keep the
+// "lane:" form.
+export const laneRef = id => (typeof id === 'string' && id.startsWith('lane:') ? id.slice(5) : null)
+export const laneNodeId = id => `__lane_${id}`
+
 // 'row' lanes stack by y and h; 'col' lanes stand side by side by x and w.
 export const laneAxis = lanes => (lanes[0] && 'x' in lanes[0] ? 'col' : 'row')
 
@@ -71,7 +78,7 @@ export function laneRects(lanes, rects) {
 // never selectable or draggable.
 export function laneNodes(lanes, rects) {
   return laneRects(lanes, rects).map(r => ({
-    id: `__lane_${r.id}`, type: 'lane', position: { x: r.x, y: r.y }, width: r.w, height: r.h, measured: { width: r.w, height: r.h },
+    id: laneNodeId(r.id), type: 'lane', position: { x: r.x, y: r.y }, width: r.w, height: r.h, measured: { width: r.w, height: r.h },
     zIndex: -1, selectable: false, draggable: false,
     data: { title: r.title, color: r.color, size: r.size },
   }))
