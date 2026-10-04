@@ -337,7 +337,10 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
             <img ref={imgRef} src={svc.icon} alt={label} {...(iconBox ? { width: iconBox.w, height: iconBox.h } : {})}
               style={{ ...(iconBox
                 ? { objectFit: 'contain', maxWidth: '100%', maxHeight: '100%' }
-                : { width: 'auto', height: '100%', maxWidth: '100%', objectFit: 'contain', display: 'block' }), ...(sunset ? { filter: 'grayscale(1) opacity(0.55)' } : {}) }} />
+                : { width: 'auto', height: '100%', maxWidth: '100%', objectFit: 'contain', display: 'block' }),
+                // A white-edged tile on the white card: the 1 px grey frame at the iOS corner (lib/icon-frame.js decided it).
+                ...(data.iconFrame ? { borderRadius: '22%', boxShadow: '0 0 0 1px #cfd4da' } : {}),
+                ...(sunset ? { filter: 'grayscale(1) opacity(0.55)' } : {}) }} />
             {iconHandle}
           </span>
         : <span style={{ fontSize: 26, fontWeight: 700, color, marginTop: 2, lineHeight: 1 }}>{label[0]?.toUpperCase()}</span>
