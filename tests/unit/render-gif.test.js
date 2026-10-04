@@ -97,7 +97,7 @@ describe("renderDiagramGif", () => {
 
   it("clamps frames and width so one request cannot ask for an enormous render", () => {
     expect(frames(renderDiagramGif(NODES, EDGES, { frames: 999, width: 400 })).length)
-      .toBeLessThanOrEqual(30);
+      .toBeLessThanOrEqual(250);
     expect(frames(renderDiagramGif(NODES, EDGES, { frames: 1, width: 400 })).length)
       .toBeGreaterThanOrEqual(2);
   });
@@ -109,9 +109,14 @@ describe("renderDiagramGif", () => {
     for (let i = 1; i < f.length; i++) expect(size(f[i])).toBeLessThan(size(f[0]) / 3);
   });
 
-  it("stays small at the README default, 1800 px and 20 frames", () => {
+  it("is full HD at 20 fps by default and still fits a README", () => {
     const buf = renderDiagramGif(NODES, EDGES, {});
-    expect(buf.length).toBeLessThan(600 * 1024);
+    expect(buf.readUInt16LE(6)).toBe(1920);
+    const f = frames(buf);
+    expect(f.length).toBe(100);
+    // Delay is stored in 1/100 s: 50 ms is 5, exactly, so the loop keeps time.
+    expect(buf[buf.indexOf("\x21\xF9\x04", 0, "latin1") + 4]).toBe(5);
+    expect(buf.length).toBeLessThan(4.3e6);
   });
 
   it("survives a diagram with no edges", () => {

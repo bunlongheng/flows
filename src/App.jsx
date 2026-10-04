@@ -1354,11 +1354,32 @@ export default function App() {
   // diagram MOVING, which is the whole reason to pick GIF over PNG: it autoplays
   // in Slack, GitHub and Notion, where a video will not.
   //
-  // The dots are pinned and stepped by hand (see flowClock) so the N frames are
-  // exactly evenly spaced around one period and the loop closes seamlessly.
-  // pixelRatio is 1 and the canvas is capped: a GIF is 256 colours and paletted,
-  // so retina pixels buy nothing but megabytes.
+  // A saved flow downloads the server's render (?format=gif): full HD, 100
+  // frames at 20 fps, the same renderer as the SVG export, and already warmed
+  // at save time. Recording the DOM here managed 20 frames at 1x, which the
+  // owner saw as blurry and jerky (2026-10-04). The recorder below stays for
+  // a flow with no row to render from.
   async function exportGif() {
+    const savedId = activeDiagram?.id && !activeDiagram.sample ? activeDiagram.id : null
+    if (savedId) {
+      showToastMsg('Rendering HD GIF...')
+      try {
+        const r = await fetch(`/api/flows/${savedId}?format=gif`)
+        if (!r.ok) throw new Error(String(r.status))
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(await r.blob())
+        a.download = exportFilename('gif'); a.click()
+        URL.revokeObjectURL(a.href)
+        showToastMsg('GIF saved')
+        return
+      } catch {
+        showToastMsg('Server render failed, recording instead')
+      }
+    }
+    // The dots are pinned and stepped by hand (see flowClock) so the N frames are
+    // exactly evenly spaced around one period and the loop closes seamlessly.
+    // pixelRatio is 1 and the canvas is capped: a GIF is 256 colours and paletted,
+    // so retina pixels buy nothing but megabytes.
     const el = captureSetup()
     if (!el) return
     const FRAMES = 20
