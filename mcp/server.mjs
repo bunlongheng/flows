@@ -94,6 +94,7 @@ function toStoredNodes(nodes) {
     ...(cleanNote(n.note) ? { note: cleanNote(n.note) } : {}),
     ...(cleanInfo(n.info) ? { info: cleanInfo(n.info) } : {}),
     ...(n.sunset === true ? { sunset: true } : {}),
+    ...(n.iconFrame === true ? { iconFrame: true } : {}),
     ...(n.image ? { image: n.image } : {}),
   }))
   return placed
@@ -240,6 +241,7 @@ server.registerTool(
         note: z.string().max(400).optional().describe('Note shown under this node (bottom-left, black text in a black frame) in the app, on every shared link and in the SVG. Light markdown: **bold**, *italic*, __underline__, ~~strike~~, `code`, 1 level. A URL becomes a blue link showing its ticket key (SHAR-7977) or its bare address. 1-2 sentences on what this step does or why it is there, e.g. "Reads the account\'s Recurly subscriptions, looks the user up in MBD, branches per app."'),
         info: z.string().max(600).optional().describe('What this thing is and why it is in this diagram, 1-3 sentences. Hidden in the app until the reader hovers or clicks the i badge on the card (1 open at a time), so it never crowds the diagram; not in the SVG. Shown as "<card name> is <text>", so write it to read after "is". Different from note, which is always visible under the card.'),
         sunset: z.boolean().optional().describe('true marks a node that is today\'s path and gets decommissioned. Drawn light silver and dimmed, icon in greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) light silver, immune to any line style; no X on the card. Silver is reserved for this state: never paint a node grey or silver, set sunset instead.'),
+        iconFrame: z.boolean().optional().describe('true draws a 1 px grey frame around the icon tile. Set by itself when most of a PNG icon\'s outer ring is white (a white tile on a white card has no edge); pass it to force or, with false, to skip.'),
       })).min(1).describe('The services in the diagram'),
       edges: z.array(z.object({
         source: z.string().describe('source node id'),
@@ -333,6 +335,7 @@ server.registerTool(
         note: z.string().max(400).optional().describe('Note under the node, light markdown and links as in create_flow. Omit to leave a node without one.'),
         info: z.string().max(600).optional().describe('What this thing is and why it is in this diagram, 1-3 sentences. Hidden in the app until the reader hovers or clicks the i badge on the card (1 open at a time), so it never crowds the diagram; not in the SVG. Shown as "<card name> is <text>", so write it to read after "is". Different from note, which is always visible under the card.'),
         sunset: z.boolean().optional().describe('true marks a node that is today\'s path and gets decommissioned. Drawn light silver and dimmed, icon in greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) light silver, immune to any line style; no X on the card. Silver is reserved for this state: never paint a node grey or silver, set sunset instead.'),
+        iconFrame: z.boolean().optional().describe('true draws a 1 px grey frame around the icon tile. Set by itself when most of a PNG icon\'s outer ring is white (a white tile on a white card has no edge); pass it to force or, with false, to skip.'),
       })).optional(),
       edges: z.array(z.object({ source: z.string(), target: z.string(), label: z.string().optional(), description: z.string().max(300).optional() })).optional(),
       public: z.boolean().optional().describe('true publishes (anyone with the link can open it, real preview card); false makes it private again. Omit to leave visibility alone.'),

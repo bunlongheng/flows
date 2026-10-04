@@ -34,7 +34,7 @@ Authorization: Bearer <FLOWS_API_SECRET>
 | Field | Rule |
 |-------|------|
 | `title` | Required. Max 200 chars. |
-| `nodes[]` | Required. 1 to 100. Each `{ id, label?, sub?, note?, info?, sunset?, icon?, image?, color?, position?, size?, iconSize? }`. `size` is optional `{ w, h }` 130..600 px, the card size on the canvas; icon cards default to 180x180, picture cards to 240x225. `iconSize` is optional `{ w, h }` 16..600 px, the icon or photo drawn inside the card (default 48x48 icon, photo fills the card). |
+| `nodes[]` | Required. 1 to 100. Each `{ id, label?, sub?, note?, info?, sunset?, iconFrame?, icon?, image?, color?, position?, size?, iconSize? }`. `iconFrame: true` draws a 1 px grey frame around a white-edged icon tile (set by itself on MCP create when most of a PNG icon's outer ring is white). `size` is optional `{ w, h }` 130..600 px, the card size on the canvas; icon cards default to 180x180, picture cards to 240x225. `iconSize` is optional `{ w, h }` 16..600 px, the icon or photo drawn inside the card (default 48x48 icon, photo fills the card). |
 | `edges[]` | Optional. Max 300. Each `{ source, target, label?, description?, animated? }`. Ids must exist in `nodes`. The tag on the line reads `label`, or `description` (max 300) cut short when there is no label; hovering the tag shows the whole description. |
 | `is_public` | Set `true`. A private diagram gives everyone else a 404 and the GIF will not embed. |
 | `pattern` | Optional. Max 200 chars. 1 line shown above the diagram. |
