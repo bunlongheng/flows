@@ -149,7 +149,7 @@ function toStoredEdges(edges) {
 // HARD GATE, shared with the API and AI generate (lib/validate-design.js): every
 // node renders a real logo, icons are well-formed, and the size caps hold.
 // Returns an error result, or null if OK.
-const logoGate = (nodes, edges = []) => {
+const logoGate = (nodes, edges = [], lanes = null) => {
   const invalid = validateDesign({ nodes, edges, lanes: Array.isArray(lanes) ? lanes : null })
   return invalid
     ? fail(`Rejected: ${invalid.error}${invalid.unresolved ? ' Call list_services for valid ids.' : ''}`)
@@ -258,7 +258,7 @@ server.registerTool(
   },
   async ({ title, nodes, edges, pattern, description, public: isPublic = true, linked, source, store, lanes }) => {
     try {
-      const gate = logoGate(nodes, edges)
+      const gate = logoGate(nodes, edges, lanes)
       if (gate) return gate
       const { nodes: iconNodes, failed } = await resolveNodeIcons(nodes)
       if (failed.length) return fail(`Could not fetch the remote icon for node(s): ${failed.join(', ')}. Use an https image URL that returns image/* under 24KB (no redirects), or inline a data:image URI.`)
@@ -352,7 +352,7 @@ server.registerTool(
       if (gate[0].edit_locked) return fail(`Diagram ${id} is edit-locked: the owner turned the edit lock on for it in the app. Ask the owner to lift it; you cannot unlock it from here.`)
       let iconNodes = nodes
       if (nodes) {
-        const gate = logoGate(nodes, edges || []); if (gate) return gate
+        const gate = logoGate(nodes, edges || [], lanes); if (gate) return gate
         const r = await resolveNodeIcons(nodes)
         if (r.failed.length) return fail(`Could not fetch the remote icon for node(s): ${r.failed.join(', ')}.`)
         const im = await resolveNodeImages(r.nodes, imageLoaders)
