@@ -56,7 +56,7 @@ export function DetailView({
   exportPng, exportWebp, exportGif, exportCode, exportJson, copyLink, copiedLink, shareAction, copiedShare, copyCode, copiedCode,
   shareSlug, shareUrl,
   showDocs, setShowDocs, copiedLabel, onCopyFormat,
-  onStyleChange, onEdgeStyleChange,
+  onEdgeStyleChange,
   showToastMsg,
   isPublic,
   saveState = 'idle',
@@ -115,7 +115,6 @@ export function DetailView({
     const n = nodes.find(x => x.id === id)
     return n?.data?.sunset ? SUNSET.border : (findService(n?.data || {})?.color || INK)
   }
-  const cardColor = selectedNode ? colorOf(selectedNode.id) : null
   const [confirmDelete, setConfirmDelete] = useState(false)
   // The Arrange button opens a small style menu instead of arranging directly.
   // Open menu holds the screen spot under the button. It is fixed, not absolute:
@@ -978,19 +977,9 @@ export function DetailView({
           </div>
         )}
 
-        {/* Format panel (right side). Selection is already on the node object
-            React Flow hands back, so the panel needs no state of its own: the
-            card that is selected is the card being styled. */}
-        {canEdit && onStyleChange && selectedNode && (
-          <FormatPanel
-            value={selectedNode.data?.style}
-            stroke={cardColor}
-            fill={`linear-gradient(${cardColor}14, ${cardColor}14), #ffffff`}
-            onChange={(style) => onStyleChange(selectedNode.id, style)}
-            onReset={() => onStyleChange(selectedNode.id, null)}
-          />
-        )}
-
+        {/* Format panel (right side), for a selected LINE only. A clicked card
+            lights its lines instead of opening a panel (owner rule 2026-10-04);
+            a stored card style still renders, it is just not edited here. */}
         {canEdit && onEdgeStyleChange && selectedEdge && (
           <FormatPanel
             target="edge"

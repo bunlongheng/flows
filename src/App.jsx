@@ -590,11 +590,6 @@ export default function App() {
     }, 350)
   }, [activeId, showToastMsg])
 
-  const onStyleChange = useCallback((nodeId, style) => {
-    applyNodeField('style', nodeId, style)
-    sendStyle(`n:${nodeId}`, { notes: [{ id: nodeId, style }] })
-  }, [applyNodeField, sendStyle])
-
   // A line's style has its own PATCH key, not the pins one: that branch wipes
   // every pin it was not sent, so folding style in would make a badge drag and
   // a colour pick able to erase each other.
@@ -1574,7 +1569,6 @@ export default function App() {
       onArrange={autoArrange}
       onNoteChange={canAI ? onNoteChange : undefined}
       onInfoChange={canAI ? onInfoChange : undefined}
-      onStyleChange={canAI ? onStyleChange : undefined}
       onEdgeStyleChange={canAI ? onEdgeStyleChange : undefined}
       onNodeResize={canAI ? onNodeResize : undefined}
       onIconResize={canAI ? onIconResize : undefined}

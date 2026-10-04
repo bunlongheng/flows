@@ -25,7 +25,7 @@ const pick = (page, section, n) => page.evaluate(({ section, n }) => {
   s.lastChild.children[n].click();
 }, { section, n });
 
-test("the format panel styles the selected card and the style survives a reload", async ({ page, baseURL }) => {
+test("a clicked card lights its lines and opens no panel", async ({ page, baseURL }) => {
   const api = await request.newContext({ baseURL });
   const create = await api.post("/api/ai/flows", { headers: { Authorization: `Bearer ${SECRET}` }, data: DESIGN });
   expect(create.status()).toBe(201);
@@ -37,42 +37,22 @@ test("the format panel styles the selected card and the style survives a reload"
     await page.waitForSelector(".react-flow__node");
     await page.waitForTimeout(1500);
 
-    // No selection, no panel: it is not another toggle in the header.
+    // No selection: no panel, no glow.
     expect(await page.$(".sd-format-panel")).toBeNull();
+    expect(await page.locator(".sd-edge-glow").count()).toBe(0);
+
+    // A card click is about the card's traffic, not its styling: every line in
+    // and out of it glows and the panel stays shut (owner rule 2026-10-04).
     await page.click(".react-flow__node");
-    await page.waitForSelector(".sd-format-panel");
+    await expect(page.locator(".sd-edge-glow")).toHaveCount(1);
+    await page.waitForTimeout(400);
+    expect(await page.$(".sd-format-panel")).toBeNull();
 
-    await pick(page, "Stroke", 1);       // #e03131
-    await pick(page, "Background", 4);   // #ffec99
-    await pick(page, "Stroke width", 2); // 4px
-    await pick(page, "Stroke style", 2); // dotted
-    await pick(page, "Edges", 1);        // 12px radius
-    await page.waitForTimeout(1200);
-
-    const card = () => page.$eval(".react-flow__node > div", (e) => {
-      const c = getComputedStyle(e);
-      return { border: c.border, radius: c.borderRadius, bg: c.backgroundColor };
-    });
-    expect(await card()).toEqual({ border: "4px dotted rgb(224, 49, 49)", radius: "12px", bg: "rgb(255, 236, 153)" });
-
-    // The row, not just the DOM: reload and the card comes back styled.
-    const saved = await (await api.get(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
-    const stored = (saved.data?.nodes || saved.nodes).find((n) => n.id === "gateway");
-    expect(stored.style).toEqual({ stroke: "#e03131", bg: "#ffec99", bw: 4, bs: "dotted", radius: 12 });
-
-    await page.reload();
-    await page.waitForSelector(".react-flow__node");
-    await page.waitForTimeout(1500);
-    expect((await card()).border).toBe("4px dotted rgb(224, 49, 49)");
-
-    // Reset puts it back, and clears the key rather than storing a default look.
-    await page.click(".react-flow__node");
-    await page.waitForSelector(".sd-format-panel");
-    await page.click(".sd-format-panel button:has-text('Reset')");
-    await page.waitForTimeout(1200);
-    expect((await card()).border).toBe("1px solid rgb(232, 27, 126)");
-    const after = await (await api.get(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
-    expect((after.data?.nodes || after.nodes).find((n) => n.id === "gateway")).not.toHaveProperty("style");
+    // Clicking empty canvas drops the selection and the glow with it. The left
+    // margin of the pane: a 2-card diagram is fitted big and its note boxes
+    // reach well down the page, so the bottom-right is not empty.
+    await page.locator(".react-flow__pane").click({ position: { x: 20, y: 300 } });
+    await expect(page.locator(".sd-edge-glow")).toHaveCount(0);
   } finally {
     await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
@@ -203,7 +183,7 @@ test("an arrow type picked on a hand-bent line replaces the bend", async ({ page
 // declared inside FormatPanel, so every tile was remounted each animation
 // frame and a real click never fired while the JS click passed. This one
 // presses the mouse the way the owner does.
-test("a real pointer click on a tile changes the card", async ({ page, baseURL }) => {
+test("a real pointer click on a tile changes the line", async ({ page, baseURL }) => {
   const api = await request.newContext({ baseURL });
   const create = await api.post("/api/ai/flows", { headers: { Authorization: `Bearer ${SECRET}` }, data: { ...DESIGN, title: "E2E Real Click" } });
   expect(create.status()).toBe(201);
@@ -214,7 +194,7 @@ test("a real pointer click on a tile changes the card", async ({ page, baseURL }
     await page.goto(`/?id=${id}`);
     await page.waitForSelector(".react-flow__node");
     await page.waitForTimeout(1500);
-    await page.click(".react-flow__node");
+    await clickEdge(page);
     await page.waitForSelector(".sd-format-panel");
     // The panel slides in over 0.2s; a box measured mid-slide is 16px off.
     await page.waitForTimeout(400);
@@ -227,10 +207,10 @@ test("a real pointer click on a tile changes the card", async ({ page, baseURL }
     await page.waitForTimeout(120);
     await page.mouse.up();
 
-    await expect.poll(() => page.$eval(".react-flow__node > div", (e) => getComputedStyle(e).borderWidth)).toBe("4px");
+    await expect.poll(() => page.$eval(".react-flow__edge-path", (e) => e.style.strokeWidth)).toBe("4");
     await page.waitForTimeout(1200);
     const saved = await (await api.get(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).json();
-    expect((saved.data?.nodes || saved.nodes).find((n) => n.id === "gateway").style).toMatchObject({ bw: 4 });
+    expect((saved.data?.edges || saved.edges).find((e) => e.id === "e1").style).toMatchObject({ bw: 4 });
   } finally {
     await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });

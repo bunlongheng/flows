@@ -51,58 +51,6 @@ const drop = async (api, id) => {
   await api.delete(`/api/flows/${id}?purge=1`, { headers: { Cookie: OWNER_COOKIE } });
 };
 
-test("every tile in the card panel moves the card", async ({ page, baseURL }) => {
-  const api = await request.newContext({ baseURL });
-  const id = await make(api, "E2E Card Buttons");
-  try {
-    await open(page, id);
-    await page.click(".react-flow__node");
-    await page.waitForSelector(".sd-format-panel");
-
-    // One read of everything the 8 rows can change, off the rendered card.
-    const drawn = () => page.evaluate(() => {
-      const box = document.querySelector(".react-flow__node > div");
-      const label = box.querySelector("div[title]");
-      const c = getComputedStyle(box), t = getComputedStyle(label.parentElement);
-      return {
-        stroke: c.borderTopColor, bg: c.backgroundColor, bw: c.borderTopWidth, bs: c.borderTopStyle,
-        radius: c.borderTopLeftRadius, align: t.textAlign, font: t.fontFamily,
-        // Chrome re-quotes a font stack with double quotes, so both sides are
-        // normalised rather than the expectation being written to match.
-        fs: getComputedStyle(label).fontSize,
-      };
-    });
-
-    const rows = [
-      ["Stroke", STROKE_PICKS, "stroke", (v) => rgb(v)],
-      // "transparent" still paints white: an opaque card is what keeps a line
-      // from appearing to run through it.
-      ["Background", BG_PICKS, "bg", (v) => (v === "transparent" ? "rgb(255, 255, 255)" : rgb(v))],
-      ["Stroke width", BORDER_WIDTHS, "bw", (v) => `${v}px`],
-      ["Stroke style", BORDER_STYLES, "bs", (v) => v],
-      ["Edges", RADII, "radius", (v) => `${v}px`],
-      // sans is FONT_STACK.sans = "inherit", so its computed value is whatever
-      // the app font resolves to - captured before any pick rather than guessed.
-      ["Font family", FONTS, "font", (v) => (v === "sans" ? baseFont : FONT_STACK[v])],
-      ["Font size", FONT_SIZES, "fs", (v) => `${v}px`],
-      ["Text align", ALIGNS, "align", (v) => v],
-    ];
-
-    const baseFont = (await drawn()).font;
-
-    for (const [section, opts, key, expected] of rows) {
-      for (let i = 0; i < opts.length; i++) {
-        await pick(page, section, i);
-        // Poll: the paint is a React commit away, and the row write is debounced.
-        const norm = (x) => String(x).replace(/["']/g, "");
-        await expect.poll(async () => norm((await drawn())[key]), { timeout: 4000 }).toBe(norm(expected(opts[i])));
-      }
-    }
-  } finally {
-    await drop(api, id);
-    await api.dispose();
-  }
-});
 
 // A line is clicked on its path a third of the way along, not at the midpoint -
 // the draggable step badge sits there and swallows the click.
