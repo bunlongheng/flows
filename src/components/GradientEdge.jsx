@@ -74,6 +74,7 @@ export function GradientEdge({
 }) {
   const sourceNode = useInternalNode(source)
   const targetNode = useInternalNode(target)
+  const lit = !selected && (sourceNode?.selected || targetNode?.selected)
   const { getNodes, getEdges, screenToFlowPosition } = useReactFlow()
   // Stem direction needs the OTHER nodes' geometry, and useInternalNode only
   // covers this edge's two ends, so measured sizes come off the node list.
@@ -231,6 +232,9 @@ export function GradientEdge({
         </linearGradient>
       </defs>
       {selected && <path className="sd-edge-halo" d={drawPath} fill="none" stroke={c1} strokeWidth={10} strokeOpacity={0.18} strokeLinecap="round" pointerEvents="none" />}
+      {/* Clicking a card lights every line in and out of it, so the owner can
+          read a card's traffic at a glance; the glow goes with the selection. */}
+      {lit && <path className="sd-edge-glow" d={drawPath} fill="none" stroke={`url(#${gid})`} strokeWidth={7} strokeOpacity={0.55} strokeLinecap="round" pointerEvents="none" style={{ filter: `drop-shadow(0 0 6px ${c1}) drop-shadow(0 0 6px ${c2})` }} />}
       {/* A picked stroke replaces the gradient outright rather than tinting it.
           The gradient's whole job is to say which node a line came FROM and
           which it goes TO; once the owner has chosen a colour, that is the
