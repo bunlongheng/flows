@@ -81,36 +81,36 @@ describe("renderDiagramSvg layers", () => {
 });
 
 describe("renderDiagramGif", () => {
-  it("returns a looping GIF89a", () => {
-    const buf = renderDiagramGif(NODES, EDGES, { frames: 6, width: 400 });
+  it("returns a looping GIF89a", async () => {
+    const buf = await renderDiagramGif(NODES, EDGES, { frames: 6, width: 400 });
     expect(buf.subarray(0, 6).toString("ascii")).toBe("GIF89a");
     expect(buf.includes(Buffer.from("NETSCAPE2.0"))).toBe(true);
   });
 
-  it("writes the frame count asked for, and they are not all the same", () => {
-    const f = frames(renderDiagramGif(NODES, EDGES, { frames: 8, width: 400 }));
+  it("writes the frame count asked for, and they are not all the same", async () => {
+    const f = frames(await renderDiagramGif(NODES, EDGES, { frames: 8, width: 400 }));
     expect(f).toHaveLength(8);
     // A GIF whose frames are identical is the exact failure this whole approach
     // exists to avoid, so assert motion rather than just a frame count.
     expect(new Set(f).size).toBeGreaterThan(1);
   });
 
-  it("clamps frames and width so one request cannot ask for an enormous render", () => {
-    expect(frames(renderDiagramGif(NODES, EDGES, { frames: 999, width: 400 })).length)
+  it("clamps frames and width so one request cannot ask for an enormous render", async () => {
+    expect(frames(await renderDiagramGif(NODES, EDGES, { frames: 999, width: 400 })).length)
       .toBeLessThanOrEqual(250);
-    expect(frames(renderDiagramGif(NODES, EDGES, { frames: 1, width: 400 })).length)
+    expect(frames(await renderDiagramGif(NODES, EDGES, { frames: 1, width: 400 })).length)
       .toBeGreaterThanOrEqual(2);
   });
 
-  it("writes frames after the first as a transparent diff over the one before", () => {
-    const f = frames(renderDiagramGif(NODES, EDGES, { frames: 6, width: 400 }));
+  it("writes frames after the first as a transparent diff over the one before", async () => {
+    const f = frames(await renderDiagramGif(NODES, EDGES, { frames: 6, width: 400 }));
     const size = (s) => s.split(",").length;
     // Only the dashes and dots move, so every later frame is a fraction of the first.
     for (let i = 1; i < f.length; i++) expect(size(f[i])).toBeLessThan(size(f[0]) / 3);
   });
 
-  it("is full HD at 20 fps by default and still fits a README", () => {
-    const buf = renderDiagramGif(NODES, EDGES, {});
+  it("is full HD at 20 fps by default and still fits a README", async () => {
+    const buf = await renderDiagramGif(NODES, EDGES, {});
     expect(buf.readUInt16LE(6)).toBe(1920);
     const f = frames(buf);
     expect(f.length).toBe(100);
@@ -119,14 +119,14 @@ describe("renderDiagramGif", () => {
     expect(buf.length).toBeLessThan(4.3e6);
   });
 
-  it("survives a diagram with no edges", () => {
-    const buf = renderDiagramGif([NODES[0]], [], { frames: 3, width: 300 });
+  it("survives a diagram with no edges", async () => {
+    const buf = await renderDiagramGif([NODES[0]], [], { frames: 3, width: 300 });
     expect(buf.subarray(0, 3).toString("ascii")).toBe("GIF");
   });
 
-  it("renders a picture node", () => {
+  it("renders a picture node", async () => {
     const img = { id: "shot", position: { x: 0, y: 0 }, image: "data:image/jpeg;base64,/9j/4AAQSkZJRg==", label: "Checkout page" };
-    const buf = renderDiagramGif([img], [], { frames: 3, width: 300 });
+    const buf = await renderDiagramGif([img], [], { frames: 3, width: 300 });
     expect(buf.subarray(0, 4).toString("ascii")).toBe("GIF8");
   });
 });
