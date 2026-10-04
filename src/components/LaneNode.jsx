@@ -1,5 +1,6 @@
-import { memo } from 'react'
-import { Handle, Position } from '@xyflow/react'
+import { memo, useEffect, useState } from 'react'
+import { Handle, Position, useStore } from '@xyflow/react'
+import { subscribe, glowFor, motionAllowed } from '../flowClock'
 import { LANE_INK, LANE_TITLE } from '../lanes.js'
 import { hexToRgba } from '../style.js'
 
@@ -8,10 +9,19 @@ import { hexToRgba } from '../style.js'
 // through (see .react-flow__node-lane), so panning and box selection work over
 // it. Lanes are configuration, so there is nothing to edit here; the title
 // size comes from the payload too (size, px), the same number the SVG uses.
-export const LaneNode = memo(function LaneNode({ data, width, height }) {
+export const LaneNode = memo(function LaneNode({ id, data, width, height }) {
   const ink = data.color || LANE_INK
+  // The arrival glow, as AwsNode paints it: a band the dots run INTO lights up
+  // in its own colour on every beat and fades over 2 s (src/flowClock.js).
+  const isTarget = useStore(s => s.edges.some(e => e.target === id))
+  const [glow, setGlow] = useState(0)
+  useEffect(() => {
+    if (!isTarget || !motionAllowed()) return
+    return subscribe(p => setGlow(Math.round(glowFor(p) * 50) / 50))
+  }, [isTarget])
+  const boxShadow = glow ? `0 0 0 ${(3 * glow).toFixed(1)}px ${hexToRgba(ink, 0.45 * glow)}, 0 0 ${Math.round(22 * glow)}px ${hexToRgba(ink, 0.7 * glow)}` : undefined
   return (
-    <div className="sd-lane" style={{ width, height, background: hexToRgba(ink, 0.05), borderColor: hexToRgba(ink, 0.35) }}>
+    <div className="sd-lane" style={{ width, height, background: hexToRgba(ink, 0.05), borderColor: hexToRgba(ink, 0.35), boxShadow }}>
       {/* Invisible handles so an edge can end on the lane ("lane:<id>"); GradientEdge routes to the border itself. */}
       <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: 'none' }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0, pointerEvents: 'none' }} />

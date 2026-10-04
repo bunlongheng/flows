@@ -24,6 +24,7 @@ export const LANE_TITLE_MAX = 40
 // "lane:" form.
 export const laneRef = id => (typeof id === 'string' && id.startsWith('lane:') ? id.slice(5) : null)
 export const laneNodeId = id => `__lane_${id}`
+export const isLaneNode = id => typeof id === 'string' && id.startsWith('__lane_')
 
 // 'row' lanes stack by y and h; 'col' lanes stand side by side by x and w.
 export const laneAxis = lanes => (lanes[0] && 'x' in lanes[0] ? 'col' : 'row')
