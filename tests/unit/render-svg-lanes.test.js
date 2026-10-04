@@ -49,4 +49,14 @@ describe("renderDiagramSvg - lane edges", () => {
     expect(g[5]).toBe("#dc2626");
     expect(svg).toContain("all of them");
   });
+  it("marks the lane end with a solid port and lights the band when the dots land, like a card", () => {
+    const edges = [{ source: "client", target: "lane:b", label: "all of them" }];
+    const still = renderDiagramSvg(NODES, edges, { view: { lanes: LANES } });
+    expect(still).toContain('<circle cx="90.0" cy="280.0" r="5" fill="#dc2626" stroke="#fff"');
+    expect(still).not.toContain("sd-lane-glow");
+    const landing = renderDiagramSvg(NODES, edges, { view: { lanes: LANES }, dotPhase: 0 });
+    expect(landing.match(/sd-lane-glow/g)).toHaveLength(1); // lane b only, lane a is nobody's target
+    expect(landing).toMatch(/sd-lane-glow"><rect [^>]*stroke="#dc2626"/);
+    expect(renderDiagramSvg(NODES, edges, { view: { lanes: LANES }, dotPhase: 0.5 })).not.toContain("sd-lane-glow"); // mid-trip, nothing lands
+  });
 });

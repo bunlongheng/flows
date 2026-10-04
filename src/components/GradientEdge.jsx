@@ -5,7 +5,7 @@ import { subscribe, currentPhase, motionAllowed, offsetFor } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
 import { routeEdge, bendPoint, bendFor, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
-import { laneGaps } from '../lanes.js'
+import { laneGaps, isLaneNode } from '../lanes.js'
 import { tagText } from '../tag.js'
 
 // The routing itself lives in src/edgeGeometry.js, shared with the server
@@ -121,6 +121,10 @@ export function GradientEdge({
   const st = data?.style || {}
   const c1 = data?.sourceColor || INK
   const c2 = data?.targetColor || INK
+  // A lane end gets a solid port on the border, in the lane's colour: the mark
+  // that this 1 line stands for every card in the band (render-svg.js draws
+  // the same circle, so the exports agree).
+  const port = isLaneNode(source) ? { x: sx, y: sy, c: c1 } : isLaneNode(target) ? { x: tx, y: ty, c: c2 } : null
   // Into a sunset node: the badge drops its style and goes flat silver with a
   // red X, whatever badge style the owner picked, so the outdated route reads.
   const sunset = data?.sunset === true
@@ -246,6 +250,7 @@ export function GradientEdge({
         strokeDasharray: dashArray(st.bs, st.bw || 1.5) || undefined,
         opacity: st.opacity == null ? undefined : st.opacity / 100,
       }} />
+        {port && <circle className="sd-lane-port" cx={port.x} cy={port.y} r={5} fill={port.c} stroke="#fff" strokeWidth={1.5} pointerEvents="none" />}
         <FlowDot edgeId={id} path={path} color={c1} />
       {(tag || hasStep || ((endMovable || bendMovable) && selected)) && (
         <EdgeLabelRenderer>
