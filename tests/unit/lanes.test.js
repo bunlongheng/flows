@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, laneRef, laneNodeId, LANE_PAD, LANE_MIN, LANE_GAP } from "../../src/lanes.js";
+import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, laneRef, laneNodeId, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT } from "../../src/lanes.js";
 
 describe("cleanLanes", () => {
   it("keeps typed, bounded lanes and drops the rest", () => {
@@ -35,8 +35,21 @@ describe("cleanLanes", () => {
 describe("laneRects", () => {
   it("stands a column the full height of the cards plus padding, rows the full width", () => {
     const rects = [{ x: 100, y: 0, w: 120, h: 120 }, { x: 700, y: 400, w: 120, h: 120 }];
-    expect(laneRects([{ id: "v", title: "Visitor", x: 50, w: 300 }], rects)).toEqual([{ id: "v", title: "Visitor", color: undefined, x: 50, w: 300, y: -LANE_PAD, h: 520 + 2 * LANE_PAD }]);
-    expect(laneRects([{ id: "v", title: "Visitor", y: 50, h: 300 }], rects)).toEqual([{ id: "v", title: "Visitor", color: undefined, y: 50, h: 300, x: 100 - LANE_PAD, w: 720 + 2 * LANE_PAD }]);
+    expect(laneRects([{ id: "v", title: "Visitor", x: 50, w: 300 }], rects)).toEqual([{ id: "v", title: "Visitor", color: undefined, size: undefined, x: 50, w: 220 - 50 + LANE_FIT, y: -LANE_PAD, h: 520 + 2 * LANE_PAD }]); // the card at x 100 is inside, so the band ends LANE_FIT past it
+    expect(laneRects([{ id: "v", title: "Visitor", y: 50, h: 300 }], rects)).toEqual([{ id: "v", title: "Visitor", color: undefined, size: undefined, y: 50, h: 300, x: 100 - LANE_PAD, w: 720 + 2 * LANE_PAD }]);
+  });
+});
+
+describe("fitLanes", () => {
+  const lanes = [{ id: "a", y: 0, h: 360 }, { id: "b", y: 400, h: 360 }, { id: "c", y: 800, h: 360 }];
+  it("ends a band LANE_FIT past its last card, note included, and leaves an empty lane alone", () => {
+    const fit = fitLanes(lanes, [{ x: 0, y: 40, w: 180, h: 180 }, { x: 300, y: 40, w: 180, h: 250 }, { x: 0, y: 440, w: 180, h: 180 }]);
+    expect(fit.map(l => [l.id, l.y, l.h])).toEqual([["a", 0, 290 + LANE_FIT], ["b", 400, 220 + LANE_FIT], ["c", 800, 360]]);
+  });
+  it("never grows across the next band and never thins past LANE_MIN", () => {
+    expect(fitLanes(lanes, [{ x: 0, y: 40, w: 180, h: 600 }])[0].h).toBe(400 - LANE_GAP);
+    expect(fitLanes([{ id: "a", y: 0, h: 360 }], [{ x: 0, y: 0, w: 180, h: 10 }])[0].h).toBe(LANE_MIN);
+    expect(fitLanes([{ id: "a", x: 0, w: 500 }], [{ x: 20, y: 0, w: 180, h: 180 }])[0].w).toBe(200 + LANE_FIT);
   });
 });
 
