@@ -15,6 +15,11 @@ describe("renderDiagramSvg - swimlanes", () => {
     expect(svg).toContain(">Visitor</text>");
     expect(svg).toContain('fill="#dc2626">Inbox</text>');
   });
+  it("sizes the title from the lane's size, 13 px when it says nothing", () => {
+    const svg = renderDiagramSvg(NODES, EDGES, { view: { lanes: [LANES[0], { ...LANES[1], size: 20 }] } });
+    expect(svg).toContain('y="-38.0" font-size="13" font-weight="800" letter-spacing="0.2" fill="#64748b">Visitor</text>');
+    expect(svg).toContain('y="309.0" font-size="20" font-weight="800" letter-spacing="0.2" fill="#dc2626">Inbox</text>');
+  });
   it("draws nothing extra without lanes, and the picture grows to hold a lane", () => {
     expect(renderDiagramSvg(NODES, EDGES)).not.toContain("sd-lane");
     const tall = renderDiagramSvg(NODES, EDGES, { view: { lanes: [{ id: "a", title: "t", y: 0, h: 1200 }] } });

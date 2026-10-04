@@ -101,6 +101,7 @@ Lanes are bands under the cards, 1 per layer of the system, with a title and an 
 
 - Rows for a top-down layout: `{ "id": "apps", "title": "Sender apps", "y": 120, "h": 580, "color": "#B464DC" }`.
 - Columns for a left-to-right layout: `{ "id": "apps", "title": "Sender apps", "x": 15, "w": 565, "color": "#B464DC" }`.
+- `size` (optional, 10 to 40) is the title in px, default 13: `{ "id": "apps", "title": "Sender apps", "y": 120, "h": 580, "size": 18 }`. Canvas, SVG and GIF draw the same number.
 - 1 kind per diagram, max 12, thinnest 80, canvas units; lanes pack from the first with equal 40 px gaps and span the whole diagram on their other axis.
 - A card is 190 x 180 plus its note: size the lane so every card stands inside it, never move a card to fit a lane.
 - `lanes: []` removes them; a `view_state` save without a `lanes` key keeps them. With lanes on, no Start pill is drawn.
