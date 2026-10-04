@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderDiagramGif } from "../../lib/render-gif.js";
+import { renderDiagramGif, over } from "../../lib/render-gif.js";
 import { renderDiagramSvg } from "../../lib/render-svg.js";
 
 // The server-side GIF is what an agent or a README gets from ?format=gif. It
@@ -128,5 +128,20 @@ describe("renderDiagramGif", () => {
     const img = { id: "shot", position: { x: 0, y: 0 }, image: "data:image/jpeg;base64,/9j/4AAQSkZJRg==", label: "Checkout page" };
     const buf = renderDiagramGif([img], [], { frames: 3, width: 300 });
     expect(buf.subarray(0, 4).toString("ascii")).toBe("GIF8");
+  });
+});
+
+describe("over", () => {
+  it("keeps the colour of a half-transparent premultiplied pixel instead of darkening it", () => {
+    // Purple #7B61FF at alpha 0.5, as resvg stores it: colour already halved.
+    const src = new Uint8Array([62, 49, 128, 128]);
+    const dst = new Uint8Array([255, 255, 255, 255]);
+    const out = new Uint8Array(4);
+    over(dst, src, 0, out, 0);
+    // Half purple over white is pale purple, blue well above red and green.
+    expect(out[3]).toBe(255);
+    expect(out[2]).toBeGreaterThan(240);
+    expect(out[0]).toBeGreaterThan(180);
+    expect(out[0]).toBeLessThan(200);
   });
 });
