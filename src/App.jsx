@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react'
 import * as flowClock from './flowClock'
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react'
 import diagramData from './data/diagram.json'
@@ -11,6 +11,7 @@ import { rowToDiagram } from './rowToDiagram'
 import { snapAlign } from './snapAlign'
 import { findService } from './services'
 import { laneNodes, laneRef, laneNodeId, LANE_INK } from './lanes.js'
+import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
 import { fireflies } from './fireflies'
@@ -234,6 +235,8 @@ export default function App() {
   const [showSteps, setShowSteps] = useState(false)
   // Notes show unless a diagram has been toggled off - see 'notes-off' below.
   const [showNotes, setShowNotes] = useState(true)
+  // A note growing or shrinking changes how far its lane reaches, so the lanes redraw with the notes.
+  useSyncExternalStore(subscribeNoteHeights, noteHeightsVersion)
   const [badgeMode, setBadgeMode] = useState('dark') // dark | silver | color | plain
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedShare, setCopiedShare] = useState(false)
@@ -1525,7 +1528,7 @@ export default function App() {
   // Start/Destination marker nodes are always shown (auto-detected from edges).
   // Swimlanes are configuration (view_state.lanes, set over the API or MCP),
   // never edited on the canvas: drawn under the cards, nothing more.
-  const lanes = laneNodes(activeDiagram?.view_state?.lanes || [], nodes.map(n => ({ x: n.position?.x ?? 0, y: n.position?.y ?? 0, ...sizeOf(n) })))
+  const lanes = laneNodes(activeDiagram?.view_state?.lanes || [], nodes.map(n => { const s = sizeOf(n); return { x: n.position?.x ?? 0, y: n.position?.y ?? 0, w: s.w, h: s.h + (showNotes ? getNoteHeight(n.id) : 0) } }))
   // Swimlanes already say where a flow begins (the top lane), so a diagram
   // with lanes draws no Start here pill. Same rule in render-svg.js.
   const markers = lanes.length ? { nodes: [], edges: [] } : buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)

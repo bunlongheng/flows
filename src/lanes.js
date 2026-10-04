@@ -13,6 +13,7 @@ export const LANE_PAD = 100 // past the outermost card on each side
 export const LANE_MIN = 80 // the thinnest lane
 export const LANE_GAP = 40 // the 1 gap between lanes, always the same
 export const LANE_MAX = 12
+export const LANE_FIT = 36 // past the last card (and its note) inside a lane
 export const LANE_INK = '#64748b'
 export const LANE_TITLE = 13 // title size in px unless the lane says otherwise
 export const LANE_TITLE_MIN = 10
@@ -70,9 +71,27 @@ export function laneSpan(rects, axis = 'row') {
 }
 
 // Where each lane is drawn: { id, title, color, size, x, y, w, h } in canvas units.
+// A lane's thickness follows its cards: the band ends LANE_FIT past the last
+// card inside it, note included while notes are shown, so hiding the notes
+// tightens every band and showing them opens it back up. The configured h (or
+// w) says which band a card starts in and holds for an empty lane; a band
+// never grows across the next one.
+export function fitLanes(lanes, rects) {
+  const [at, size] = laneAxis(lanes) === 'col' ? ['x', 'w'] : ['y', 'h']
+  const starts = lanes.map(l => l[at]).sort((a, b) => a - b)
+  return lanes.map(l => {
+    const inside = rects.filter(r => r[at] >= l[at] && r[at] < l[at] + l[size])
+    if (!inside.length) return l
+    const end = Math.max(...inside.map(r => r[at] + r[size])) + LANE_FIT
+    const next = starts.find(s => s > l[at])
+    const cap = next === undefined ? Infinity : next - LANE_GAP - l[at]
+    return { ...l, [size]: Math.max(LANE_MIN, Math.min(cap, end - l[at])) }
+  })
+}
+
 export function laneRects(lanes, rects) {
   const span = laneSpan(rects, laneAxis(lanes))
-  return lanes.map(l => ({ id: l.id, title: l.title, color: l.color, size: l.size, ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...span }))
+  return fitLanes(lanes, rects).map(l => ({ id: l.id, title: l.title, color: l.color, size: l.size, ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...span }))
 }
 
 // The React Flow nodes that draw the lanes: 1 per lane, under the cards,
