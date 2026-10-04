@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, LANE_PAD, LANE_MIN, LANE_GAP } from "../../src/lanes.js";
+import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, laneRef, laneNodeId, LANE_PAD, LANE_MIN, LANE_GAP } from "../../src/lanes.js";
 
 describe("cleanLanes", () => {
   it("keeps typed, bounded lanes and drops the rest", () => {
@@ -72,5 +72,14 @@ describe("laneGaps", () => {
   it("finds row gaps on the y axis and nothing for 1 lane", () => {
     expect(laneGaps([{ x: 0, y: 0, w: 900, h: 200 }, { x: 0, y: 240, w: 900, h: 200 }])).toEqual({ axis: "y", mids: [220] });
     expect(laneGaps([{ x: 0, y: 0, w: 900, h: 200 }])).toBeNull();
+  });
+});
+
+describe("laneRef", () => {
+  it("reads the lane id out of a lane edge end and maps it to the canvas node id", () => {
+    expect(laneRef("lane:apps")).toBe("apps");
+    expect(laneRef("apps")).toBeNull();
+    expect(laneRef(undefined)).toBeNull();
+    expect(laneNodeId("apps")).toBe("__lane_apps");
   });
 });

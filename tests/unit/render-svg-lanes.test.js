@@ -38,3 +38,15 @@ describe("renderDiagramSvg - swimlanes", () => {
     expect(renderDiagramSvg(NODES, EDGES, { view: { lanes: LANES }, start: { x: 640, y: 420 } })).not.toContain("Start here");
   });
 });
+
+describe("renderDiagramSvg - lane edges", () => {
+  it("drops a lane-bound line straight from its card onto the lane border, in the lane colour", () => {
+    const svg = renderDiagramSvg(NODES, [{ source: "client", target: "lane:b", label: "all of them" }], { view: { lanes: LANES } });
+    const g = svg.match(/<linearGradient id="grad-0"[^>]*x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"><stop[^>]*\/><stop offset="100%" stop-color="([^"]+)"/);
+    expect(g).not.toBeNull();
+    expect(g[1]).toBe(g[3]); // straight drop: same x at both ends
+    expect(Number(g[4])).toBe(280); // packLanes tucks lane b under a, so its top border is where the line ends
+    expect(g[5]).toBe("#dc2626");
+    expect(svg).toContain("all of them");
+  });
+});

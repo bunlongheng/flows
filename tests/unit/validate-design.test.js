@@ -80,3 +80,19 @@ describe("validateDesign - picture nodes", () => {
     expect(r.error).toMatch(/"shot" has an image that is not a usable source/);
   });
 });
+
+// An edge may end on a lane border ("lane:<id>") so 1 line stands for a whole band.
+describe("validateDesign - lane edges", () => {
+  const nodes = [{ id: "client" }, { id: "ses" }];
+  const lanes = [{ id: "apps", title: "Apps", y: 0, h: 300 }];
+  it("accepts 1 lane end when the lane exists, and skips the check without lanes", () => {
+    expect(validateDesign({ nodes, edges: [{ source: "client", target: "lane:apps" }], lanes })).toBeNull();
+    expect(validateDesign({ nodes, edges: [{ source: "lane:apps", target: "ses" }], lanes })).toBeNull();
+    expect(validateDesign({ nodes, edges: [{ source: "client", target: "lane:zzz" }] })).toBeNull();
+  });
+  it("rejects a lane the diagram does not have, and an edge with lanes at both ends", () => {
+    expect(validateDesign({ nodes, edges: [{ source: "client", target: "lane:zzz" }], lanes }).error).toMatch(/names no lane/);
+    expect(validateDesign({ nodes, edges: [{ source: "lane:apps", target: "lane:apps" }], lanes }).error).toMatch(/not both/);
+    expect(validateDesign({ nodes, edges: [{ source: "client", target: "lane:bad id" }], lanes }).error).toMatch(/not a lane id/);
+  });
+});

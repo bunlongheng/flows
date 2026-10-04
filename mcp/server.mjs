@@ -150,7 +150,7 @@ function toStoredEdges(edges) {
 // node renders a real logo, icons are well-formed, and the size caps hold.
 // Returns an error result, or null if OK.
 const logoGate = (nodes, edges = []) => {
-  const invalid = validateDesign({ nodes, edges })
+  const invalid = validateDesign({ nodes, edges, lanes: Array.isArray(lanes) ? lanes : null })
   return invalid
     ? fail(`Rejected: ${invalid.error}${invalid.unresolved ? ' Call list_services for valid ids.' : ''}`)
     : null
