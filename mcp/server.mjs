@@ -10,6 +10,7 @@
 import { creationTags } from '../lib/linked.js'
 import { renderDiagramSvg } from '../lib/render-svg.js'
 import { cleanLanes } from '../src/lanes.js'
+import { respaceLanes } from '../lib/lane-fit.js'
 import './load-env.mjs' // MUST be first - loads .env before lib/db.js opens the pool
 import { readFile } from 'node:fs/promises'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -396,6 +397,9 @@ server.registerTool(
           [id, JSON.stringify(clean.length ? { lanes: clean } : {}), owner()],
         )
       }
+      // Lanes or cards just changed: give every band the room its cards and
+      // notes take, so a note cannot run out of the bottom of its lane.
+      if (lanes || nodes) await respaceLanes(id, owner())
       return ok({
         id,
         url: urlFor(id),

@@ -205,7 +205,10 @@ describe("/api/flows/:id", () => {
     const r = req("PATCH", ID, undefined, cookie);
     r.body = { view_state: { panels: [], badge: "dark", lanes: [...lanes, { id: "x", y: "no" }] } };
     await flowById(r, res);
-    let [sql, params] = query.mock.calls.at(-1);
+    // The lanes write is followed by a re-fit pass (respaceLanes), so the view_state
+    // write is no longer the last query on the connection.
+    const laneWrite = () => query.mock.calls.findLast((c) => String(c[0]).includes("SET view_state = $1::jsonb"));
+    let [sql, params] = laneWrite();
     expect(sql).toContain("view_state->'lanes'");
     expect(params.slice(3)).toEqual([true, JSON.stringify({ lanes })]);
     expect(res.body.view_state).toEqual({ panels: [], badge: "dark", lanes });
@@ -214,7 +217,7 @@ describe("/api/flows/:id", () => {
     const r2 = req("PATCH", ID, undefined, cookie);
     r2.body = { view_state: { panels: ["steps"] } };
     await flowById(r2, mockRes());
-    [sql, params] = query.mock.calls.at(-1);
+    [sql, params] = laneWrite();
     expect(params.slice(3)).toEqual([false, "{}"]);
   });
 

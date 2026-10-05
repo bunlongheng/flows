@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, laneRef, laneNodeId, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT } from "../../src/lanes.js";
+import { spaceLanes, cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, laneRef, laneNodeId, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT } from "../../src/lanes.js";
 
 describe("cleanLanes", () => {
   it("keeps typed, bounded lanes and drops the rest", () => {
@@ -50,6 +50,25 @@ describe("fitLanes", () => {
     expect(fitLanes(lanes, [{ x: 0, y: 40, w: 180, h: 600 }])[0].h).toBe(400 - LANE_GAP);
     expect(fitLanes([{ id: "a", y: 0, h: 360 }], [{ x: 0, y: 0, w: 180, h: 10 }])[0].h).toBe(LANE_MIN);
     expect(fitLanes([{ id: "a", x: 0, w: 500 }], [{ x: 20, y: 0, w: 180, h: 180 }])[0].w).toBe(200 + LANE_FIT);
+  });
+});
+
+describe("spaceLanes", () => {
+  const lanes = [{ id: "a", y: 0, h: 360 }, { id: "b", y: 400, h: 360 }];
+  // A note hangs under its card, so the rect a lane has to cover is the card
+  // plus its note - that is what spills out of a band fitLanes may not grow.
+  it("gives a band the room its content takes and moves the later bands and their cards down", () => {
+    const rects = [{ id: "n1", x: 0, y: 40, w: 180, h: 500 }, { id: "n2", x: 0, y: 440, w: 180, h: 180 }];
+    const { lanes: out, shift } = spaceLanes(lanes, rects);
+    expect(out.map(l => [l.id, l.y, l.h])).toEqual([["a", 0, 540 + LANE_FIT], ["b", 540 + LANE_FIT + LANE_GAP, 360]]);
+    expect(shift.get("n2")).toBe(140 + LANE_FIT + LANE_GAP);
+    expect(shift.has("n1")).toBe(false);
+  });
+  it("only ever adds room, and running it again changes nothing", () => {
+    const rects = [{ id: "n1", x: 0, y: 40, w: 180, h: 100 }];
+    const once = spaceLanes(lanes, rects);
+    expect(once.lanes).toEqual(lanes);
+    expect(spaceLanes(once.lanes, rects).lanes).toEqual(once.lanes);
   });
 });
 
