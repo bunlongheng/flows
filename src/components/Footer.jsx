@@ -66,10 +66,22 @@ export function Footer({ fixed = false }) {
            portfolio paints its pills. The glyphs are currentColor (the B is a
            mask of it), so 1 colour change flips every one of them. Nothing
            moves or grows. */
-        .sf-ico{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+        .sf-ico{position:relative;overflow:hidden;width:30px;height:30px;border-radius:8px;
+          display:flex;align-items:center;justify-content:center;
           color:#64748b;background:#ffffff;border:1px solid #e6e8ee;text-decoration:none;
-          transition:background .14s,color .14s,border-color .14s}
-        .sf-ico:hover{background:var(--sf-fill);border-color:transparent;color:#ffffff}
+          transition:border-color .4s ease}
+        /* The colour pours in from the bottom over 3s and the white copy of the
+           mark rides inside it, so the glyph turns white exactly as the level
+           passes over it. No line on the surface, no second border: the tile
+           keeps the 1 it always had. It drains in .4s. */
+        .sf-liquid{position:absolute;left:0;right:0;bottom:0;height:0;overflow:hidden;
+          background:var(--sf-fill);pointer-events:none;transition:height .4s ease}
+        .sf-head{position:absolute;left:0;bottom:0;width:100%;height:28px;display:flex;align-items:center;justify-content:center;color:#ffffff}
+        .sf-ico:hover{border-color:transparent;transition:border-color 3s ease}
+        .sf-ico:hover .sf-liquid{height:100%;transition:height 3s cubic-bezier(.3,.05,.3,1)}
+        @media (prefers-reduced-motion:reduce){
+          .sf-liquid,.sf-ico:hover .sf-liquid{transition:none}
+        }
         .sf-sig{display:block;height:28px;width:auto;object-fit:contain;user-select:none}
       `}</style>
       <span style={{ fontSize: 12.5, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -88,6 +100,7 @@ export function Footer({ fixed = false }) {
           <a key={l.label} className="sf-ico" href={l.href} target="_blank" rel="noopener noreferrer" title={l.label} aria-label={l.label}
             style={{ '--sf-fill': l.fill }}>
             {l.icon}
+            <span className="sf-liquid" aria-hidden="true"><span className="sf-head">{l.icon}</span></span>
           </a>
         ))}
       </div>
