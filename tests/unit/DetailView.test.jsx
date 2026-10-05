@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import { ReactFlowProvider } from "@xyflow/react";
@@ -165,14 +165,15 @@ describe("share opens = publish", () => {
 // that only changes what they see and loses every one that changes the diagram.
 describe("read-only demo view", () => {
   const EDIT_ONLY = [/^arrange$/i, /^fit$/i, /^undo$/i, /^redo$/i, /^history$/i, /^lock$/i, /^delete$/i];
-  const KEPT = [/^code$/i, /^play$/i, /^steps$/i, /^notes$/i, /^share$/i];
+  const KEPT = [/^play$/i, /^steps$/i, /^notes$/i, /^share$/i];
 
   it("gives a visitor the reading controls and nothing that edits", () => {
     setup({ canEdit: false, isPublic: true, canUndo: true, canRedo: true, onArrange: vi.fn(), onRestored: vi.fn(), onSetLocks: vi.fn(), onDeleteDiagram: vi.fn(), shareSlug: "x", shareUrl: "u" });
     for (const name of EDIT_ONLY) expect(screen.queryByRole("button", { name }), String(name)).toBeNull();
     for (const name of KEPT) expect(screen.getByRole("button", { name }), String(name)).toBeInTheDocument();
-    // Share already opens the download. A second door to it, and a sign-in
-    // button a reader with no account cannot use, are both off the bar.
+    // The code panel is the owner's. Share already opens the download, and a
+    // sign-in button a reader with no account cannot use is off the bar too.
+    expect(screen.queryByRole("button", { name: /^code$/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /^download png$/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /^sign in$/i })).toBeNull();
     expect(screen.getByRole("link", { name: /flows/i })).toHaveAttribute("href", "/demo");
@@ -182,10 +183,12 @@ describe("read-only demo view", () => {
   // preview and the editable copies stay the owner's.
   it("trims the share panel to the exports a reader can take", () => {
     setup({ canEdit: false, isPublic: true, showSharePanel: true, shareSlug: "x", shareUrl: "u", activeDiagram: { ...sampleDiagram, id: "abc" } });
-    expect(screen.getByRole("button", { name: /^png$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^copy$/i })).toBeInTheDocument();
+    const panel = within(document.querySelector(".sd-share-panel"));
+    for (const name of [/^png$/i, /^webp$/i, /^gif$/i, /^code$/i]) expect(panel.getByRole("button", { name }), String(name)).toBeInTheDocument();
+    // Link, Share and Copy all put the link on the clipboard, and the reader is
+    // standing on it already.
+    for (const name of [/^link$/i, /^share$/i, /^copy$/i, /^json$/i]) expect(panel.queryByRole("button", { name }), String(name)).toBeNull();
     expect(screen.queryByAltText("Share card preview")).toBeNull();
-    expect(screen.queryByRole("button", { name: /^json$/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /excalidraw/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /^miro$/i })).toBeNull();
   });
