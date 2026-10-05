@@ -95,6 +95,7 @@ npm run dev                        # http://localhost:5174
 | `FLOWS_API_SECRET` | Bearer for the API and MCP. Server-only |
 | `ANTHROPIC_API_KEY` | Plain-English generation. Unset disables it |
 | `FLOWS_APP_URL` | Absolute links in responses and share pages |
+| `LOCAL_DEV` | `true` only on a machine serving this app to itself, and only while `npm start` stays bound to loopback (`-H 127.0.0.1`): the peer address then comes from `x-forwarded-for`, which a client can forge, so the port must not be reachable off the machine. A local request then needs no sign-in: the app opens signed in as the owner, as it already does under `npm run dev`. Set it when you serve a production build locally (`next start`, where `NODE_ENV` says production on a build nobody else can reach). NEVER set it on a deployment. |
 
 `lib/env.js` fails the build when a required variable is missing, so a misconfigured deploy never ships a dead API.
 

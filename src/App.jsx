@@ -354,7 +354,7 @@ export default function App() {
       // and a local build never asks: Google only sends a browser back to
       // the deployed origin, and a local owner has the dev bypass.
       const q = new URLSearchParams(window.location.search)
-      const local = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)
+      const local = /^([a-z0-9-]+\.)*(localhost|127\.0\.0\.1)$/i.test(window.location.hostname)
       if (IS_DEV || local || window.location.pathname === '/demo' || !(q.get('id') || q.get('name'))) return
       try {
         if (sessionStorage.getItem('sd_silent_auth')) return
