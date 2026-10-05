@@ -321,6 +321,19 @@ test("a visitor cannot move a node on /demo and gets the reading controls but no
     await page.waitForTimeout(600);
     expect(await node.evaluate((el) => el.style.transform)).toBe(before);
 
+    // Nothing here can be dragged, so nothing offers the hand that says it can.
+    expect(await page.locator(".react-flow__pane").evaluate((el) => getComputedStyle(el).cursor)).toBe("default");
+    expect(await node.evaluate((el) => getComputedStyle(el).cursor)).toBe("default");
+
+    // A reader still selects: clicking a card lights every line in and out of
+    // it, which is how you follow a path on someone else's diagram. The line's
+    // own drag handles stay the owner's.
+    expect(await page.locator(".sd-edge-glow").count()).toBe(0);
+    await page.locator('.react-flow__node[data-id="apigw"]').click();
+    await page.waitForTimeout(400);
+    expect(await page.locator(".sd-edge-glow").count()).toBe(2);
+    expect(await page.locator(".sd-edge-badge.is-movable").count()).toBe(0);
+
     // Nothing that edits, re-lays-out or destroys.
     for (const name of ["Arrange", "Fit", "Undo", "Redo", "History", "Lock", "Delete"]) {
       await expect(page.locator(`header button:has-text("${name}")`)).toHaveCount(0);
