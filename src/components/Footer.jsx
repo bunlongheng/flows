@@ -2,6 +2,12 @@
 // SocialFooter used across the sibling apps. Shown only on public surfaces
 // (demo landing + a demoed diagram), never in the owner's working views.
 
+// The signature that writes itself, the same file the portfolio plays in its
+// About section. It is drawn on white, which is what this footer is, so it needs
+// no mask. It writes once on load and again on hover; the poster is the finished
+// word, which is all a reduced-motion reader ever sees.
+const SIG = '/brand/bunlong-anim'
+
 
 const LINKS = [
   {
@@ -46,11 +52,22 @@ export function Footer({ fixed = false }) {
     <footer style={{
       borderTop: '1px solid #e6e8ee', background: '#ffffff', padding: '9px 24px',
       display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
-      ...(fixed ? { position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 20, paddingBottom: 'env(safe-area-inset-bottom)' } : { marginTop: 'auto' }),
+      ...(fixed ? { position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 20, paddingBottom: 'calc(9px + env(safe-area-inset-bottom))' } : { marginTop: 'auto' }),
     }}>
-      <style>{`.sf-ico{transition:color .12s,border-color .12s,box-shadow .12s,transform .12s}.sf-ico:hover{color:#111827;border-color:#cbd0dc;box-shadow:0 3px 10px rgba(15,23,42,.09);transform:translateY(-1px)}`}</style>
-      <span style={{ fontSize: 12.5, color: '#94a3b8' }}>
-        Built by <a href="https://bunlongheng.com" target="_blank" rel="noopener noreferrer" style={{ color: '#7c3aed', fontWeight: 600, textDecoration: 'none' }}>Bunlong</a>
+      <style>{`
+        .sf-ico{transition:color .12s,border-color .12s,box-shadow .12s,transform .12s}
+        .sf-ico:hover{color:#111827;border-color:#cbd0dc;box-shadow:0 3px 10px rgba(15,23,42,.09);transform:translateY(-1px)}
+        .sf-sig{display:block;height:28px;width:auto;object-fit:contain;user-select:none}
+      `}</style>
+      <span style={{ fontSize: 12.5, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+        Built by
+        <a href="https://bunlongheng.com" target="_blank" rel="noopener noreferrer" aria-label="Bunlong"
+          onMouseEnter={e => { const v = e.currentTarget.querySelector('video'); if (v) { v.currentTime = 0; v.play()?.catch(() => {}) } }}
+          style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+          <video className="sf-sig" autoPlay muted playsInline preload="auto" aria-hidden="true" poster={`${SIG}-poster.webp`}>
+            <source src={`${SIG}.mp4`} type="video/mp4" />
+          </video>
+        </a>
       </span>
 
       <div style={{ display: 'flex', gap: 8 }}>
