@@ -82,7 +82,10 @@ export function Footer({ fixed = false }) {
         @media (prefers-reduced-motion:reduce){
           .sf-liquid,.sf-ico:hover .sf-liquid{transition:none}
         }
-        .sf-sig{display:block;height:28px;width:auto;object-fit:contain;user-select:none}
+        /* The signature is ink on white with no alpha, so it is multiplied into
+           whatever it sits on: white leaves it exactly as drawn, and a tinted
+           page keeps the ink instead of showing a white box around it. */
+        .sf-sig{display:block;height:28px;width:auto;object-fit:contain;user-select:none;mix-blend-mode:multiply}
       `}</style>
       <span style={{ fontSize: 12.5, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
         Built by
