@@ -807,7 +807,7 @@ export function DetailView({
           <NodeResizeContext.Provider value={onNodeResize || null}>
           <IconResizeContext.Provider value={onIconResize || null}>
           <ReactFlow
-            className={`${showSteps ? 'sd-steps-on ' : ''}${flowing ? '' : 'sd-still '}sd-badge-${badgeMode}`}
+            className={`${showSteps ? 'sd-steps-on ' : ''}${flowing ? '' : 'sd-still '}${canEdit ? '' : 'sd-reading '}sd-badge-${badgeMode}`}
             nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
             onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
             onNodeDragStop={onNodeDragStop}
@@ -827,7 +827,11 @@ export function DetailView({
             onMove={(event) => { if (event) setFitted(false) }}
             onMoveEnd={(_, viewport) => flashZoomHud(viewport.zoom)}
             fitView fitViewOptions={{ padding: 0.15 }}
-            nodesDraggable={canEdit} nodesConnectable={false} elementsSelectable={canEdit}
+            /* A reader selects: clicking a card lights every line in and out of
+               it, which is how you follow a path on someone else's diagram.
+               Nothing moves - the drag handles on a line only exist when the
+               owner's onEndMove/onBendMove are threaded into its data. */
+            nodesDraggable={canEdit} nodesConnectable={false} elementsSelectable
             /* 2 fingers on the trackpad pan the canvas in any direction, the way
                Sequences and Mindmaps do; pinch or Cmd + wheel zooms. */
             panOnDrag panOnScroll panOnScrollMode="free" panOnScrollSpeed={1} zoomOnScroll={false} minZoom={0.2} maxZoom={2.5}
@@ -1271,6 +1275,10 @@ export function DetailView({
            every card (a selected card sits at 1000) and its tip is never
            covered by the box next to it. */
         .sd-edge-badge[data-tip]:hover { z-index: 1001; }
+        /* A reader moves nothing, so nothing offers the hand that says they can.
+           The pointer stays the plain arrow over the canvas and over every card. */
+        .sd-reading .react-flow__pane, .sd-reading .react-flow__node,
+        .sd-reading .react-flow__pane.draggable, .sd-reading .sd-edge-badge { cursor: default; }
         .sd-edge-badge.is-movable { pointer-events: auto; cursor: grab; }
         .sd-edge-badge.is-movable:hover { filter: brightness(1.08); }
         .sd-edge-badge.is-dragging { cursor: grabbing; z-index: 20; filter: brightness(1.12); }
