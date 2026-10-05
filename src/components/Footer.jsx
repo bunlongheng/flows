@@ -55,7 +55,9 @@ const LINKS = [
 export function Footer({ fixed = false }) {
   return (
     <footer style={{
-      borderTop: '1px solid #e6e8ee', background: '#ffffff', padding: '9px 24px',
+      // 20px, the gutter the shared header's pill sits in, so the tiles end
+      // exactly where the action button above them ends.
+      borderTop: '1px solid #e6e8ee', background: '#ffffff', padding: '9px 20px',
       display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
       ...(fixed ? { position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 20, paddingBottom: 'calc(9px + env(safe-area-inset-bottom))' } : { marginTop: 'auto' }),
     }}>
