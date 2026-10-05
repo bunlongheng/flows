@@ -71,11 +71,11 @@ export function laneSpan(rects, axis = 'row') {
 }
 
 // Where each lane is drawn: { id, title, color, size, x, y, w, h } in canvas units.
-// A lane's thickness follows its cards: the band ends LANE_FIT past the last
-// card inside it, note included while notes are shown, so hiding the notes
-// tightens every band and showing them opens it back up. The configured h (or
-// w) says which band a card starts in and holds for an empty lane; a band
-// never grows across the next one.
+// A band draws the thickness it is stored with, so the gap to the next band is
+// always the one LANE_GAP and hiding the notes never leaves a short band
+// floating over dead space. It grows when its cards need more room than the
+// stored h (or w) - a hand-configured lane, notes turned on - but never across
+// the next band, and never thins: the stored thickness is the floor.
 export function fitLanes(lanes, rects) {
   const [at, size] = laneAxis(lanes) === 'col' ? ['x', 'w'] : ['y', 'h']
   const starts = lanes.map(l => l[at]).sort((a, b) => a - b)
@@ -85,7 +85,7 @@ export function fitLanes(lanes, rects) {
     const end = Math.max(...inside.map(r => r[at] + r[size])) + LANE_FIT
     const next = starts.find(s => s > l[at])
     const cap = next === undefined ? Infinity : next - LANE_GAP - l[at]
-    return { ...l, [size]: Math.max(LANE_MIN, Math.min(cap, end - l[at])) }
+    return { ...l, [size]: Math.max(LANE_MIN, l[size], Math.min(cap, end - l[at])) }
   })
 }
 
@@ -122,9 +122,9 @@ export function laneGaps(rects) {
 // Lanes stored to fit their content: the SAME pad above the first card
 // and below the last (and its note), so a band never crowds its title and every
 // band is padded alike, each next band LANE_GAP after the one before, and the
-// cards inside a band move with it. fitLanes tightens a band on the canvas when
-// the notes are hidden, but it may never grow one past the next band's start -
-// so the room a note needs has to be in the stored lane. Returns the lanes and,
+// cards inside a band move with it. fitLanes may never grow a band past the next
+// band's start, so the room a note needs has to be in the stored lane - and the
+// band holds that room whether the notes are shown or not. Returns the lanes and,
 // by card id, how far that card moves. Running it twice changes nothing.
 export function spaceLanes(lanes, rects, pad = LANE_FIT) {
   const [at, size] = laneAxis(lanes) === 'col' ? ['x', 'w'] : ['y', 'h']

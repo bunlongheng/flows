@@ -10,7 +10,7 @@ describe("renderDiagramSvg - swimlanes", () => {
   it("draws each lane as a bordered band the width of the cards plus padding, titled as written", () => {
     const svg = renderDiagramSvg(NODES, EDGES, { view: { lanes: LANES } });
     expect(svg.match(/class="sd-lane"/g)).toHaveLength(2);
-    expect(svg).toContain(`<rect x="${-LANE_PAD}.0" y="-60.0" width="${480 + 2 * LANE_PAD}.0" height="276.0" rx="10" fill="#64748b" fill-opacity="0.05" stroke="#64748b" stroke-opacity="0.35" stroke-width="1.5"/>`);
+    expect(svg).toContain(`<rect x="${-LANE_PAD}.0" y="-60.0" width="${480 + 2 * LANE_PAD}.0" height="300.0" rx="10" fill="#64748b" fill-opacity="0.05" stroke="#64748b" stroke-opacity="0.35" stroke-width="1.5"/>`);
     expect(svg).toContain('stroke="#dc2626" stroke-opacity="0.35" stroke-width="1.5"');
     expect(svg).toContain(">Visitor</text>");
     expect(svg).toContain('fill="#dc2626">Inbox</text>');
