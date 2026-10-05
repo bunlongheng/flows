@@ -289,8 +289,10 @@ test("a step badge slides ALONG its edge, persists, and double-click resets it",
 });
 
 // The showcase is locked: a visitor sees the layout the owner set, and dragging
-// a node pans the canvas instead of moving it.
-test("a visitor cannot move a node on /demo and gets no edit, share or export controls", async ({ browser, baseURL }) => {
+// a node pans the canvas instead of moving it. They DO get the reading controls
+// (play/pause, code, steps, notes, the exports under Share) - nothing there
+// changes the diagram.
+test("a visitor cannot move a node on /demo and gets the reading controls but nothing that edits", async ({ browser, baseURL }) => {
   const api = await request.newContext({ baseURL });
   const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
@@ -319,22 +321,33 @@ test("a visitor cannot move a node on /demo and gets no edit, share or export co
     await page.waitForTimeout(600);
     expect(await node.evaluate((el) => el.style.transform)).toBe(before);
 
-    for (const name of ["Arrange", "Share", "Code"]) {
+    // Nothing that edits, re-lays-out or destroys.
+    for (const name of ["Arrange", "Fit", "Undo", "Redo", "History", "Lock", "Delete"]) {
       await expect(page.locator(`header button:has-text("${name}")`)).toHaveCount(0);
     }
-    await expect(page.locator(".sd-share-panel")).toHaveCount(0);
-    // No view controls either: the slim share header carries 1 download and nothing else.
-    await expect(page.locator(".sd-detail-actions")).toHaveCount(0);
+    // Everything that only changes what the reader sees.
+    for (const name of ["Code", "Play", "Steps", "Notes", "Share"]) {
+      await expect(page.locator(`header button:has-text("${name}")`)).toHaveCount(1);
+    }
+    await expect(page.locator(".sd-detail-actions")).toHaveCount(1);
     await expect(page.locator("header.sd-share-header")).toHaveCount(1);
     await expect(page.locator('header button:has-text("Download PNG")')).toHaveCount(1);
     await expect(page.locator('header a[href="/demo"]')).toHaveCount(1);
     // A way back in. Without it an owner whose session ran out lands on this bar
     // with a canvas that answers no click and nothing saying why.
     await expect(page.locator('header a[href="/api/auth/login"]')).toHaveCount(1);
-    // A shared link has no header at all: the diagram is the whole page.
+    // Share opens the export panel, and it holds pictures of the diagram - not
+    // the owner's publish preview, and not the editable copies.
+    await expect(page.locator(".sd-share-panel")).toHaveCount(0);
+    await page.locator('header button:has-text("Share")').click();
+    await expect(page.locator('.sd-share-panel button:has-text("PNG")')).toHaveCount(1);
+    await expect(page.locator('.sd-share-panel a:has-text("Excalidraw")')).toHaveCount(0);
+    await expect(page.locator('.sd-share-panel button:has-text("Miro")')).toHaveCount(0);
+    // A shared link gets the same bar: without it the reader cannot even stop
+    // the dots moving.
     await page.goto(`/?id=${id}`);
     await page.waitForSelector(".react-flow__node", { timeout: 20000 });
-    await expect(page.locator("header")).toHaveCount(0);
+    await expect(page.locator(".sd-detail-actions")).toHaveCount(1);
     await ctx.close();
   } finally {
     await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked

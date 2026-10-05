@@ -161,38 +161,45 @@ describe("share opens = publish", () => {
   });
 });
 
-// A showcase is meant to be read, not rearranged. A visitor keeps the reading
-// aids (Fit, Details, Steps, badge style) and loses everything that changes the
-// diagram or takes a copy of it.
+// A showcase is meant to be read, not rearranged. A visitor keeps every control
+// that only changes what they see and loses every one that changes the diagram.
 describe("read-only demo view", () => {
-  const EDIT_ONLY = [/^code$/i, /^arrange$/i, /^share$/i, /^undo$/i, /^redo$/i];
-  const KEPT = [/^fit$/i, /^details$/i, /^steps$/i];
+  const EDIT_ONLY = [/^arrange$/i, /^fit$/i, /^undo$/i, /^redo$/i, /^history$/i, /^lock$/i, /^delete$/i];
+  const KEPT = [/^code$/i, /^play$/i, /^steps$/i, /^notes$/i, /^share$/i];
 
-  // A visitor sees the diagram as the owner left it: a slim bar with the
-  // wordmark, no view controls at all. On the /demo showcase (isPublic) the
-  // bar also carries 1 download and a way to sign in.
-  it("shows only the wordmark and a download when canEdit is false on /demo", () => {
-    setup({ canEdit: false, isPublic: true, canUndo: true, canRedo: true, onArrange: vi.fn(), showSharePanel: true, showDetailCode: true, shareSlug: "x", shareUrl: "u" });
-    for (const name of [...EDIT_ONLY, ...KEPT]) expect(screen.queryByRole("button", { name }), String(name)).toBeNull();
+  it("gives a visitor the reading controls and nothing that edits", () => {
+    setup({ canEdit: false, isPublic: true, canUndo: true, canRedo: true, onArrange: vi.fn(), onRestored: vi.fn(), onSetLocks: vi.fn(), onDeleteDiagram: vi.fn(), shareSlug: "x", shareUrl: "u" });
+    for (const name of EDIT_ONLY) expect(screen.queryByRole("button", { name }), String(name)).toBeNull();
+    for (const name of KEPT) expect(screen.getByRole("button", { name }), String(name)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^download png$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^sign in$/i })).toHaveAttribute("href", "/api/auth/login");
     expect(screen.getByRole("link", { name: /flows/i })).toHaveAttribute("href", "/demo");
-    // A remembered view_state must not reopen the share panel either.
-    expect(screen.queryByAltText("Share card preview")).toBeNull();
-    expect(screen.queryByRole("button", { name: /^copy$/i })).toBeNull();
   });
 
-  // A shared link has no header at all: the diagram is the whole page.
-  it("draws no header on a shared link", () => {
+  // The export panel a visitor opens holds pictures of the diagram. The publish
+  // preview and the editable copies stay the owner's.
+  it("trims the share panel to the exports a reader can take", () => {
+    setup({ canEdit: false, isPublic: true, showSharePanel: true, shareSlug: "x", shareUrl: "u", activeDiagram: { ...sampleDiagram, id: "abc" } });
+    expect(screen.getByRole("button", { name: /^png$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^copy$/i })).toBeInTheDocument();
+    expect(screen.queryByAltText("Share card preview")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^json$/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /excalidraw/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^miro$/i })).toBeNull();
+  });
+
+  // A shared link gets the same bar as the showcase, minus the showcase's own
+  // 1-click download.
+  it("draws the reading bar on a shared link too", () => {
     setup({ canEdit: false, isPublic: false });
-    expect(document.querySelector("header")).toBeNull();
+    expect(document.querySelector("header")).not.toBeNull();
+    for (const name of KEPT) expect(screen.getByRole("button", { name }), String(name)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^download png$/i })).toBeNull();
-    expect(screen.queryByRole("link", { name: /^sign in$/i })).toBeNull();
   });
 
   it("keeps them for the owner", () => {
     setup({ canEdit: true, canUndo: true, canRedo: true, onArrange: vi.fn() });
-    for (const name of [...EDIT_ONLY, ...KEPT]) expect(screen.getByRole("button", { name }), String(name)).toBeInTheDocument();
+    for (const name of [...KEPT, /^fit$/i, /^details$/i]) expect(screen.getByRole("button", { name }), String(name)).toBeInTheDocument();
   });
 });
 

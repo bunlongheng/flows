@@ -34,6 +34,27 @@ function versionTime(iso) {
   return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${hhmm}`
 }
 
+// One tile in the floating action pill, lit while whatever it opens is open.
+// The owner's bar writes these by hand; the visitor's bar is built from this so
+// a reading control looks and behaves the same for whoever is looking at it.
+function BarButton({ on, label, title, onClick, children }) {
+  return (
+    <button className={on ? 'is-on' : ''} onClick={onClick} title={title} style={{
+      display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+      padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
+      background: on ? '#f1f5f9' : 'transparent', color: on ? '#1e293b' : '#64748b',
+      cursor: 'pointer', fontSize: 13, fontWeight: on ? 600 : 400,
+      transition: 'all 0.1s', fontFamily: 'inherit',
+    }}
+      onMouseEnter={e => { if (!on) e.currentTarget.style.background = '#f1f5f9' }}
+      onMouseLeave={e => { if (!on) e.currentTarget.style.background = 'transparent' }}
+    >
+      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">{children}</svg>
+      <span className="sd-btn-label">{label}</span>
+    </button>
+  )
+}
+
 // ─── Detail (canvas) view ───────────────────────────────────────────────────
 
 export function DetailView({
@@ -292,26 +313,59 @@ export function DetailView({
 
       {/* Header - diagrams-style floating pill toolbar. Scrolls horizontally on
           narrow screens so every action stays reachable instead of clipping. */}
-      {/* A visitor gets the same slim bar Sequences and Mindmaps put over a
-          shared diagram: the wordmark home, one download, nothing else. */}
-      {/* A shared link has no header at all: the diagram is the whole page.
-          The slim bar with the wordmark, Download and Sign in is the /demo
-          showcase's, where the reader is browsing a portfolio. */}
-      {!canEdit ? (isPublic && (
+      {/* A visitor gets the slim bar Sequences and Mindmaps put over a shared
+          diagram - the wordmark home and a way back in - and the reading half
+          of the owner's toolbar with it: the dots played or paused, the code
+          behind the picture, the steps and notes on or off, and the exports
+          under Share. Nothing here changes the diagram; everything that does
+          (Arrange, Fit, Undo, History, Lock, Delete) is still the owner's
+          alone. Without these a shared link is a picture the reader cannot
+          turn the animation off on. */}
+      {!canEdit ? (
       <header className="sd-share-header" style={{
-        height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
         padding: '0 20px', paddingTop: 'env(safe-area-inset-top)', boxSizing: 'content-box', flexShrink: 0,
         background: '#ffffff', borderBottom: '1px solid #e5e7eb',
+        overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch',
       }}>
-        <a href="/demo" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+        <a href="/demo" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
           <img src="/icon-96.png" alt="Flows" width={28} height={28} style={{ borderRadius: 7 }} />
-          <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em', color: '#111827' }}>Flows</span>
+          <span className="sd-hide-mobile" style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em', color: '#111827' }}>Flows</span>
         </a>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-          <button type="button" onClick={exportPng} style={{
+
+        <div className="sd-detail-actions" style={{
+          display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0,
+          background: '#ffffff', border: '1px solid #e4e6e8', borderRadius: 14,
+          boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '4px 6px',
+        }}>
+          <BarButton on={showDetailCode} label="Code" title="The code behind this diagram" onClick={() => setShowDetailCode(v => !v)}>
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </BarButton>
+          <BarButton on={playing} label={playing ? 'Pause' : 'Play'} title={playing ? 'Stop the flowing dots' : 'Play the flowing dots'} onClick={() => setPlaying(!playing)}>
+            {playing ? <><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></>
+                     : <path d="M7 4.5v15l12-7.5z"/>}
+          </BarButton>
+          <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
+          <BarButton on={showSteps} label="Steps" title={showSteps ? 'Hide the step numbers' : 'Number every step'} onClick={() => setShowSteps(v => !v)}>
+            <line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/>
+            <path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>
+          </BarButton>
+          <BarButton on={showNotes} label="Notes" title={showNotes ? 'Hide the note under each node' : 'Show the note under each node'} onClick={() => setShowNotes(v => !v)}>
+            <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>
+            <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
+          </BarButton>
+          <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
+          <BarButton on={showSharePanel} label="Share" title="Download a picture of this diagram, or copy the link" onClick={() => setShowSharePanel(v => !v)}>
+            <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+          </BarButton>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexShrink: 0 }}>
+          {/* The showcase keeps its 1-click download beside the Share panel. */}
+          {isPublic && <button type="button" className="sd-hide-mobile" onClick={exportPng} style={{
             fontSize: 13, fontWeight: 600, color: '#4b5563', background: 'none', border: 'none',
             padding: 0, cursor: 'pointer', fontFamily: 'inherit',
-          }}>Download PNG</button>
+          }}>Download PNG</button>}
           {/* The owner whose session has run out lands on exactly this bar, where
               the canvas answers no click and nothing says why. Without a way back
               in from here the app just reads as broken. The login route takes the
@@ -322,7 +376,7 @@ export function DetailView({
           }}>Sign in</a>
         </div>
       </header>
-      )) : (
+      ) : (
       <header ref={headerRef} className={`sd-detail-header${iconsOnly ? ' sd-icons-only' : ''}`} style={{
         height: 54, background: 'linear-gradient(180deg, #fbfbfc 0%, #eef0f3 100%)', borderBottom: '1px solid #e4e7ea',
         display: 'flex', alignItems: 'center', padding: '0 16px', paddingTop: 'env(safe-area-inset-top)', boxSizing: 'content-box', gap: 10, flexShrink: 0,
@@ -731,7 +785,7 @@ export function DetailView({
       <div style={{ flex: 1, display: 'flex', position: 'relative', overflow: 'hidden' }}>
 
         {/* Code panel (left, slide-in) */}
-        {canEdit && showDetailCode && (
+        {showDetailCode && (
           <div className="sd-code-panel" style={{
             width: codeWidth, flexShrink: 0, background: '#ffffff', borderRight: '1px solid #e4e6e8', position: 'relative',
             display: 'flex', flexDirection: 'column', animation: 'sd-slide-left 0.2s ease-out',
@@ -991,7 +1045,7 @@ export function DetailView({
         )}
 
         {/* Share panel (right side) */}
-        {canEdit && showSharePanel && (
+        {showSharePanel && (
           <div className="sd-share-panel" style={{
             width: 240, flexShrink: 0, background: '#f1f5f9', borderLeft: '1px solid #e2e8f0',
             display: 'flex', flexDirection: 'column', padding: '20px 16px',
@@ -1002,7 +1056,7 @@ export function DetailView({
             {/* Sneak peek: the exact 1200x630 card Slack, iMessage and X will
                 render for this link. Shown only for a saved design with a slug -
                 an unsaved or pasted diagram has no public URL to preview. */}
-            {shareSlug && (
+            {canEdit && shareSlug && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6b7280', marginBottom: 6 }}>Link preview</div>
                 <img
@@ -1046,11 +1100,11 @@ export function DetailView({
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
                 onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
               >{copiedLink ? 'Copied!' : 'Link'}</button>
-              <button onClick={exportJson}
+              {canEdit && <button onClick={exportJson}
                 style={{ background: '#A9DC76', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit' }}
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
                 onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
-              >JSON</button>
+              >JSON</button>}
               <button onClick={shareAction}
                 style={{ background: copiedShare ? '#A9DC76' : '#78DCE8', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit' }}
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
@@ -1066,7 +1120,7 @@ export function DetailView({
                   so it can be opened and kept working on in Excalidraw. Plain
                   link, not a blob - the owner's session cookie rides along on a
                   same-origin navigation and the server does the rendering. */}
-              {activeDiagram?.id && (
+              {canEdit && activeDiagram?.id && (
                 <a href={`/api/flows/${activeDiagram.id}?format=excalidraw`} download
                   title="An editable .excalidraw scene - every card a real shape with its logo, every edge a bound arrow"
                   style={{ background: '#FF6188', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit', textAlign: 'center', textDecoration: 'none' }}
@@ -1077,7 +1131,7 @@ export function DetailView({
               {/* One file, four tools: Lucidchart File > Import takes a draw.io
                   file on any account, and so do draw.io, Confluence and VS Code.
                   Lucid's own .lucid format would need an OAuth'd import API. */}
-              {activeDiagram?.id && (
+              {canEdit && activeDiagram?.id && (
                 <a href={`/api/flows/${activeDiagram.id}?format=drawio`} download
                   title="A .drawio file - import into Lucidchart (File > Import), or open in draw.io, Confluence or VS Code"
                   style={{ background: '#FC9867', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit', textAlign: 'center', textDecoration: 'none' }}
@@ -1085,7 +1139,7 @@ export function DetailView({
                   onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
                 >Lucid / draw.io</a>
               )}
-              {activeDiagram?.id && (
+              {canEdit && activeDiagram?.id && (
                 <button onClick={() => setMiro(m => (m ? null : { token: '', board: '', busy: false, msg: '' }))}
                   title="Push this flow onto a Miro board - real shapes, real connectors, logos included"
                   style={{ background: '#78DCE8', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit' }}
