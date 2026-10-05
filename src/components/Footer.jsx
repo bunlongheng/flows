@@ -70,15 +70,15 @@ export function Footer({ fixed = false }) {
           display:flex;align-items:center;justify-content:center;
           color:#64748b;background:#ffffff;border:1px solid #e6e8ee;text-decoration:none;
           transition:border-color .4s ease}
-        /* The colour pours in from the bottom over 3s and the white copy of the
+        /* The colour pours in from the bottom over 1s and the white copy of the
            mark rides inside it, so the glyph turns white exactly as the level
            passes over it. No line on the surface, no second border: the tile
-           keeps the 1 it always had. It drains in .4s. */
+           keeps the 1 it always had. It drains in .3s. */
         .sf-liquid{position:absolute;left:0;right:0;bottom:0;height:0;overflow:hidden;
-          background:var(--sf-fill);pointer-events:none;transition:height .4s ease}
+          background:var(--sf-fill);pointer-events:none;transition:height .3s ease}
         .sf-head{position:absolute;left:0;bottom:0;width:100%;height:28px;display:flex;align-items:center;justify-content:center;color:#ffffff}
-        .sf-ico:hover{border-color:transparent;transition:border-color 3s ease}
-        .sf-ico:hover .sf-liquid{height:100%;transition:height 3s cubic-bezier(.3,.05,.3,1)}
+        .sf-ico:hover{border-color:transparent;transition:border-color 1s ease}
+        .sf-ico:hover .sf-liquid{height:100%;transition:height 1s cubic-bezier(.3,.05,.3,1)}
         @media (prefers-reduced-motion:reduce){
           .sf-liquid,.sf-ico:hover .sf-liquid{transition:none}
         }
