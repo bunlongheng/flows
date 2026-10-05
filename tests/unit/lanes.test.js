@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { spaceTracks } from "../../src/space.js";
 import { spaceLanes, cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, laneRef, laneNodeId, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT } from "../../src/lanes.js";
 
 describe("cleanLanes", () => {
@@ -57,18 +58,33 @@ describe("spaceLanes", () => {
   const lanes = [{ id: "a", y: 0, h: 360 }, { id: "b", y: 400, h: 360 }];
   // A note hangs under its card, so the rect a lane has to cover is the card
   // plus its note - that is what spills out of a band fitLanes may not grow.
-  it("gives a band the room its content takes and moves the later bands and their cards down", () => {
+  it("pads a band alike top and bottom and moves the later bands and their cards down", () => {
     const rects = [{ id: "n1", x: 0, y: 40, w: 180, h: 500 }, { id: "n2", x: 0, y: 440, w: 180, h: 180 }];
     const { lanes: out, shift } = spaceLanes(lanes, rects);
-    expect(out.map(l => [l.id, l.y, l.h])).toEqual([["a", 0, 540 + LANE_FIT], ["b", 540 + LANE_FIT + LANE_GAP, 360]]);
-    expect(shift.get("n2")).toBe(140 + LANE_FIT + LANE_GAP);
-    expect(shift.has("n1")).toBe(false);
+    expect(out.map(l => [l.id, l.y, l.h])).toEqual([["a", 0, 500 + 2 * LANE_FIT], ["b", 572 + LANE_GAP, 180 + 2 * LANE_FIT]]);
+    expect(shift.get("n1")).toBe(LANE_FIT - 40);
+    expect(shift.get("n2")).toBe(572 + LANE_GAP + LANE_FIT - 440);
   });
-  it("only ever adds room, and running it again changes nothing", () => {
-    const rects = [{ id: "n1", x: 0, y: 40, w: 180, h: 100 }];
-    const once = spaceLanes(lanes, rects);
-    expect(once.lanes).toEqual(lanes);
+  it("leaves a lane that already fits alone, and running it again changes nothing", () => {
+    const rects = [{ id: "n1", x: 0, y: LANE_FIT, w: 180, h: 360 - 2 * LANE_FIT }];
+    const once = spaceLanes([lanes[0]], rects);
+    expect(once.lanes).toEqual([lanes[0]]);
+    expect(once.shift.size).toBe(0);
     expect(spaceLanes(once.lanes, rects).lanes).toEqual(once.lanes);
+  });
+});
+
+describe("spaceTracks", () => {
+  // 2 columns 60 px apart with a 120 px tag between them: the gap opens to 120
+  // and everything from the right column on moves with it. A gap nothing has to
+  // sit in is left exactly as drawn.
+  const rects = [{ id: "a", x: 0, y: 0, w: 180, h: 180 }, { id: "b", x: 240, y: 0, w: 180, h: 180 }, { id: "c", x: 480, y: 0, w: 180, h: 180 }];
+  it("widens only the gaps something has to fit in, and is stable on a second run", () => {
+    const want = (prev, cur) => (prev === 0 && cur === 240 ? 120 : 0);
+    const shift = spaceTracks(rects, "col", want);
+    expect([...shift.entries()]).toEqual([["b", 60], ["c", 60]]);
+    const moved = rects.map(r => ({ ...r, x: r.x + (shift.get(r.id) || 0) }));
+    expect(spaceTracks(moved, "col", want).size).toBe(0);
   });
 });
 

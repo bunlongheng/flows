@@ -119,25 +119,27 @@ export function laneGaps(rects) {
   return { axis, mids }
 }
 
-// Lanes stored to fit their content: a band is as thick as the cards and notes
-// inside it plus LANE_FIT, each next band follows LANE_GAP after it, and the
+// Lanes stored to fit their content: the SAME pad above the first card
+// and below the last (and its note), so a band never crowds its title and every
+// band is padded alike, each next band LANE_GAP after the one before, and the
 // cards inside a band move with it. fitLanes tightens a band on the canvas when
 // the notes are hidden, but it may never grow one past the next band's start -
 // so the room a note needs has to be in the stored lane. Returns the lanes and,
 // by card id, how far that card moves. Running it twice changes nothing.
-export function spaceLanes(lanes, rects) {
+export function spaceLanes(lanes, rects, pad = LANE_FIT) {
   const [at, size] = laneAxis(lanes) === 'col' ? ['x', 'w'] : ['y', 'h']
   const sorted = [...lanes].sort((a, b) => a[at] - b[at])
   const shift = new Map()
   let pos = sorted[0]?.[at] ?? 0
   const out = sorted.map(l => {
     const inside = rects.filter(r => r[at] >= l[at] && r[at] < l[at] + l[size])
-    const need = inside.length ? Math.max(...inside.map(r => r[at] + r[size])) + LANE_FIT - l[at] : l[size]
-    // Only ever more room: a configured band keeps the thickness it was given,
-    // and tightening stays a draw-time thing (fitLanes) so hiding the notes
-    // still pulls a band in without rewriting what the author configured.
-    const span = Math.max(LANE_MIN, l[size], Math.round(need))
-    if (pos !== l[at]) for (const r of inside) shift.set(r.id, pos - l[at])
+    // The cards move so the first one sits `pad` inside the band, wherever
+    // the author happened to start them, and the band ends LANE_FIT past the
+    // last. Both pads are the same number on every lane of every diagram.
+    const d = inside.length ? pos + pad - Math.min(...inside.map(r => r[at])) : 0
+    const end = inside.length ? Math.max(...inside.map(r => r[at] + r[size])) + d + pad - pos : l[size]
+    const span = Math.max(LANE_MIN, Math.round(end))
+    if (d) for (const r of inside) shift.set(r.id, d)
     const lane = { ...l, [at]: pos, [size]: span }
     pos += span + LANE_GAP
     return lane
