@@ -419,8 +419,8 @@ server.registerTool(
   {
     title: 'Lock flow',
     description:
-      'Every flow starts delete-locked and open to edits. The delete lock (locked) makes delete_flow refuse it; the edit lock ' +
-      '(edit_locked, off unless the owner turns it on) makes update_flow and restore_version refuse it. This tool can only turn a lock ON; only the ' +
+      'Both locks are off on a new flow, and the owner turns one on for a flow that must not change. The delete lock (locked) makes delete_flow refuse it; the edit lock ' +
+      '(edit_locked) makes update_flow and restore_version refuse it. This tool can only turn a lock ON; only the ' +
       'owner turns one off, in the app. If you need to edit or trash a locked flow, stop and ask the owner to unlock it.',
     inputSchema: { id: z.string(), locked: z.boolean().optional(), edit_locked: z.boolean().optional() },
   },
@@ -449,7 +449,7 @@ server.registerTool(
     description:
       'Move a diagram to trash by id. This is a soft delete - it disappears from the gallery, the demo list and any ' +
       'shared link, but the row is kept and restore_flow can bring it back. Safe for cleaning up duplicates. ' +
-      'Refused on a delete-locked diagram, which every flow is until the owner unlocks it in the app - see lock_flow.',
+      'Refused only on a delete-locked diagram, which is the handful the owner locked in the app - see lock_flow.',
     inputSchema: {
       id: z.string().describe('The diagram id to move to trash'),
       reason: z.string().optional().describe('Why it is being removed, e.g. "duplicate of v2.2". Recorded on the row.'),
@@ -462,7 +462,7 @@ server.registerTool(
         [id, owner()],
       )
       if (lockRows[0]?.locked) {
-        return fail(`Diagram ${id} is locked against delete, as every flow is until the owner unlocks it in the app. Ask the owner; you cannot unlock it from here.`)
+        return fail(`Diagram ${id} is locked against delete: the owner turned the delete lock on for it in the app. Ask the owner; you cannot unlock it from here.`)
       }
 
       const { rows } = await db.query(

@@ -372,7 +372,7 @@ export default function App() {
     fetch('/api/auth/logout', { method: 'POST' }).then(() => { setUser(null); showToastMsg('Signed out') }).catch(() => showToastMsg('Sign out failed'))
   }
 
-  // Two locks, both on for every flow until the owner lifts one here. The
+  // Two locks, both off on a new flow until the owner turns one on here. The
   // delete lock keeps Delete inert, in the app and for agents. The edit lock
   // keeps agents (MCP, the API) from rewriting the flow; the owner's own
   // edits in the app never answer to it. This only flips the flags; the

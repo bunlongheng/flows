@@ -32,13 +32,13 @@ the link to hand to people. `gif_url` is the animated diagram as an image,
 wrapped as a Markdown image, ready to paste into a README. Both need the
 diagram to be public. `visibility` is `"public"` or `"private"`.
 
-Every flow starts delete-locked and open to edits, so alter an existing
-diagram with `update_flow` instead of creating a v2. The delete lock (`locked`)
-makes `delete_flow` refuse it. The edit lock (`edit_locked`) is off unless the
-owner turns it on in the app for a flow that must not change; while on, it
-makes `update_flow` and `restore_version` refuse it. `lock_flow` can only turn
-a lock on. Only the owner turns one off, in the app: if you need to change or
-trash a locked flow, stop and ask.
+Alter an existing diagram with `update_flow` instead of creating a v2. Both
+locks are off on a new flow, so you can trash one you just created: the owner
+turns a lock on in the app for a flow that must not change. While the delete
+lock (`locked`) is on, `delete_flow` refuses it; while the edit lock
+(`edit_locked`) is on, `update_flow` and `restore_version` refuse it.
+`lock_flow` can only turn a lock on. Only the owner turns one off, in the app:
+if you need to change or trash a locked flow, stop and ask.
 
 A diagram made for a repo (a README, a PR, a repo audit) belongs under the
 gallery's Linked tab, not My Diagrams: pass `linked: true` to `create_flow`, or

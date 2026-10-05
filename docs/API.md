@@ -118,13 +118,13 @@ A private create adds `share_note` explaining that recipients get a 404 until it
 | `{ "view_state": { panels, badge, start } }` | Panels from `steps, details, share, code`; badge from `dark, silver, color, plain`; `start: { x, y }` is the owner's hand-placed spot for the "Start here" pill (omit or send `view_state` without it to go back to automatic placement). Returns `{ id, view_state }`. `lanes` is the swimlane configuration: rows `[{ id, title, y, h, color?, size? }]` or columns `[{ id, title, x, w, color?, size? }]`, 1 kind per diagram, max 12, thinnest 80, packed with 40 px gaps, each band drawn to end 36 px past the last card (and note) inside it so notes on or off always pad nicely, `size` the title in px (10 to 40, default 13); `[]` clears them and a body without the key keeps the stored lanes. With lanes on, no Start pill is drawn. |
 | `{ "is_public": true|false }` | Publishes or hides. Returns `{ id, is_public }`. |
 | `{ "thumbnail": "data:image/jpeg;base64,..." }` | The app's fit-view capture of the canvas for the gallery tile, under 300 KB. Returns `{ id, thumbnail_at }`. An agent rewrite of nodes or edges drops it until the owner opens the flow again. |
-| `{ "locked": true|false, "edit_locked": true|false }` | Flips either lock (a key left off leaves that lock alone). Returns `{ id, locked, edit_locked }`. Every flow starts with the delete lock on and the edit lock off. `locked` is the delete lock: while on, delete is `409` for everyone, the owner included. `edit_locked` is the edit lock: while on, agents (MCP `update_flow`, `restore_version`) cannot change the flow; the owner's own edits through this session-gated PATCH never answer to it. Only the owner session flips a lock off; MCP `lock_flow` can only turn one on. |
+| `{ "locked": true|false, "edit_locked": true|false }` | Flips either lock (a key left off leaves that lock alone). Returns `{ id, locked, edit_locked }`. A new flow starts with both locks off; the owner turns one on for a flow that must not change. `locked` is the delete lock: while on, delete is `409` for everyone, the owner included. `edit_locked` is the edit lock: while on, agents (MCP `update_flow`, `restore_version`) cannot change the flow; the owner's own edits through this session-gated PATCH never answer to it. Only the owner session flips a lock off; MCP `lock_flow` can only turn one on. |
 
 Anything else is `400`. Trashed rows are `404`.
 
 ### Delete (owner session only)
 
-A delete-locked diagram is `409` until the owner unlocks it, which every flow is to begin with.
+A delete-locked diagram is `409` until the owner unlocks it. A new flow is not locked, so an agent can clean up what it just created.
 
 `DELETE /api/flows/:id` stamps `deleted_at` and returns `{ deleted, recoverable: true }`. The row leaves every list and every shared link but stays in the table. `DELETE /api/flows/:id?purge=1` permanently removes a row that is already in trash and returns `{ purged }`. There is no HTTP restore; use the MCP `restore_flow` tool.
 
