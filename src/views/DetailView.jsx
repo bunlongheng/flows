@@ -314,8 +314,8 @@ export function DetailView({
       {/* Header - diagrams-style floating pill toolbar. Scrolls horizontally on
           narrow screens so every action stays reachable instead of clipping. */}
       {/* A visitor gets the slim bar Sequences and Mindmaps put over a shared
-          diagram - the wordmark home and a way back in - and the reading half
-          of the owner's toolbar with it: the dots played or paused, the code
+          diagram - the wordmark home - and the reading half of the owner's
+          toolbar with it: the dots played or paused, the code
           behind the picture, the steps and notes on or off, and the exports
           under Share. Nothing here changes the diagram; everything that does
           (Arrange, Fit, Undo, History, Lock, Delete) is still the owner's
@@ -360,21 +360,10 @@ export function DetailView({
           </BarButton>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexShrink: 0 }}>
-          {/* The showcase keeps its 1-click download beside the Share panel. */}
-          {isPublic && <button type="button" className="sd-hide-mobile" onClick={exportPng} style={{
-            fontSize: 13, fontWeight: 600, color: '#4b5563', background: 'none', border: 'none',
-            padding: 0, cursor: 'pointer', fontFamily: 'inherit',
-          }}>Download PNG</button>}
-          {/* The owner whose session has run out lands on exactly this bar, where
-              the canvas answers no click and nothing says why. Without a way back
-              in from here the app just reads as broken. The login route takes the
-              page you were on from the Referer, so signing in returns you to it. */}
-          <a href="/api/auth/login" style={{
-            fontSize: 13, fontWeight: 600, color: '#111827', textDecoration: 'none',
-            border: '1px solid #e5e7eb', borderRadius: 8, padding: '6px 12px',
-          }}>Sign in</a>
-        </div>
+        {/* Nothing else in this bar. Download PNG was a second door to the one
+            the Share panel already opens, and a Sign in button only asks a
+            reader with no account for something they cannot give. */}
+        <span style={{ flexShrink: 0, width: 28 }} />
       </header>
       ) : (
       <header ref={headerRef} className={`sd-detail-header${iconsOnly ? ' sd-icons-only' : ''}`} style={{

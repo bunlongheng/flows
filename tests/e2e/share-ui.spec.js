@@ -331,11 +331,11 @@ test("a visitor cannot move a node on /demo and gets the reading controls but no
     }
     await expect(page.locator(".sd-detail-actions")).toHaveCount(1);
     await expect(page.locator("header.sd-share-header")).toHaveCount(1);
-    await expect(page.locator('header button:has-text("Download PNG")')).toHaveCount(1);
     await expect(page.locator('header a[href="/demo"]')).toHaveCount(1);
-    // A way back in. Without it an owner whose session ran out lands on this bar
-    // with a canvas that answers no click and nothing saying why.
-    await expect(page.locator('header a[href="/api/auth/login"]')).toHaveCount(1);
+    // Nothing else: Share already hands out the download, and a sign-in button
+    // only asks a reader with no account for something they cannot give.
+    await expect(page.locator('header button:has-text("Download PNG")')).toHaveCount(0);
+    await expect(page.locator('header a[href="/api/auth/login"]')).toHaveCount(0);
     // Share opens the export panel, and it holds pictures of the diagram - not
     // the owner's publish preview, and not the editable copies.
     await expect(page.locator(".sd-share-panel")).toHaveCount(0);

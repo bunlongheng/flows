@@ -171,8 +171,10 @@ describe("read-only demo view", () => {
     setup({ canEdit: false, isPublic: true, canUndo: true, canRedo: true, onArrange: vi.fn(), onRestored: vi.fn(), onSetLocks: vi.fn(), onDeleteDiagram: vi.fn(), shareSlug: "x", shareUrl: "u" });
     for (const name of EDIT_ONLY) expect(screen.queryByRole("button", { name }), String(name)).toBeNull();
     for (const name of KEPT) expect(screen.getByRole("button", { name }), String(name)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^download png$/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /^sign in$/i })).toHaveAttribute("href", "/api/auth/login");
+    // Share already opens the download. A second door to it, and a sign-in
+    // button a reader with no account cannot use, are both off the bar.
+    expect(screen.queryByRole("button", { name: /^download png$/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^sign in$/i })).toBeNull();
     expect(screen.getByRole("link", { name: /flows/i })).toHaveAttribute("href", "/demo");
   });
 
@@ -188,8 +190,7 @@ describe("read-only demo view", () => {
     expect(screen.queryByRole("button", { name: /^miro$/i })).toBeNull();
   });
 
-  // A shared link gets the same bar as the showcase, minus the showcase's own
-  // 1-click download.
+  // A shared link gets the same bar as the showcase.
   it("draws the reading bar on a shared link too", () => {
     setup({ canEdit: false, isPublic: false });
     expect(document.querySelector("header")).not.toBeNull();
