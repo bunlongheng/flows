@@ -164,9 +164,8 @@ test("DELETE moves a design to trash instead of destroying it", async ({ baseURL
   });
   expect((await api.get(`/api/flows/${id}`)).status()).toBe(200);
 
-  // Every flow starts delete-locked: the delete is 409 until the owner lifts it.
-  expect((await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } })).status()).toBe(409);
-  await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } });
+  // A new flow is not delete-locked (#346), so the owner's delete goes straight
+  // through: an agent that creates a diagram can clean it up again.
   const del = await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });
   expect(del.status()).toBe(200);
   expect((await del.json()).deleted).toBe(true);

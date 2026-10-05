@@ -80,9 +80,9 @@ test("Steps survives back-to-gallery and reopen, and off stays off", async ({ pa
 });
 
 // A visitor on a shared link sees the diagram the way the owner left it: the
-// saved Steps state comes through, the share panel never does, and there is no
-// toolbar to change any of it.
-test("a visitor on a shared link gets the owner's steps but no share panel and no toolbar", async ({ browser, baseURL }) => {
+// saved Steps state comes through, and the reading toolbar comes with it - with
+// the share panel closed until they ask for it.
+test("a visitor on a shared link gets the owner's steps, the reading toolbar, and no open share panel", async ({ browser, baseURL }) => {
   const api = await request.newContext({ baseURL });
   const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
@@ -104,8 +104,8 @@ test("a visitor on a shared link gets the owner's steps but no share panel and n
     await page.waitForTimeout(800);
     await expect(page.locator(".sd-share-panel")).toHaveCount(0);
     await expect(page.locator(".react-flow.sd-steps-on")).toHaveCount(1);
-    await expect(page.locator(".sd-detail-actions")).toHaveCount(0);
-    await expect(page.locator('header button:has-text("Steps")')).toHaveCount(0);
+    await expect(page.locator(".sd-detail-actions")).toHaveCount(1);
+    await expect(page.locator('header button:has-text("Steps")')).toHaveCount(1);
     await ctx.close();
   } finally {
     await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
