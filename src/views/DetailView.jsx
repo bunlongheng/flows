@@ -357,10 +357,10 @@ export function DetailView({
           </BarButton>
         </div>
 
-        {/* Nothing else in this bar. Download PNG was a second door to the one
-            the Share panel already opens, and a Sign in button only asks a
+        {/* Nothing follows the pill: it sits against the right edge, the way
+            the owner's own toolbar ends. Download PNG was a second door to the
+            one the Share panel already opens, and a Sign in button only asks a
             reader with no account for something they cannot give. */}
-        <span style={{ flexShrink: 0, width: 28 }} />
       </header>
       ) : (
       <header ref={headerRef} className={`sd-detail-header${iconsOnly ? ' sd-icons-only' : ''}`} style={{
@@ -1317,6 +1317,10 @@ export function DetailView({
           }
           .sd-detail-header .sd-btn-label { display: none; }
           .sd-detail-header .sd-hide-mobile { display: none !important; }
+          /* The reading pill sits against the right edge, so its overflow all
+             falls off that edge: on a phone it drops to icons and fits. */
+          .sd-share-header .sd-btn-label { display: none; }
+          .sd-share-header { padding: 0 10px !important; }
           /* 2 earn their place back on a phone: Fit is the only way home after
              pinching around, and Arrange is the owner's one-tap tidy. Delete
              gives up its seat for them - a destructive tap is the last thing a
