@@ -325,10 +325,13 @@ test("a visitor cannot move a node on /demo and gets the reading controls but no
     for (const name of ["Arrange", "Fit", "Undo", "Redo", "History", "Lock", "Delete"]) {
       await expect(page.locator(`header button:has-text("${name}")`)).toHaveCount(0);
     }
-    // Everything that only changes what the reader sees.
-    for (const name of ["Code", "Play", "Steps", "Notes", "Share"]) {
+    // Everything that only changes what the reader sees. The clock button reads
+    // "Pause" while the dots are moving and "Play" once they stop, so it counts
+    // under either label.
+    for (const name of ["Code", "Steps", "Notes", "Share"]) {
       await expect(page.locator(`header button:has-text("${name}")`)).toHaveCount(1);
     }
+    await expect(page.locator('header button:has-text("Play"), header button:has-text("Pause")')).toHaveCount(1);
     await expect(page.locator(".sd-detail-actions")).toHaveCount(1);
     await expect(page.locator("header.sd-share-header")).toHaveCount(1);
     await expect(page.locator('header a[href="/demo"]')).toHaveCount(1);
