@@ -325,10 +325,11 @@ test("a visitor cannot move a node on /demo and gets the reading controls but no
     for (const name of ["Arrange", "Fit", "Undo", "Redo", "History", "Lock", "Delete"]) {
       await expect(page.locator(`header button:has-text("${name}")`)).toHaveCount(0);
     }
+    await expect(page.locator('header button:has-text("Code")')).toHaveCount(0);
     // Everything that only changes what the reader sees. The clock button reads
     // "Pause" while the dots are moving and "Play" once they stop, so it counts
     // under either label.
-    for (const name of ["Code", "Steps", "Notes", "Share"]) {
+    for (const name of ["Steps", "Notes", "Share"]) {
       await expect(page.locator(`header button:has-text("${name}")`)).toHaveCount(1);
     }
     await expect(page.locator('header button:has-text("Play"), header button:has-text("Pause")')).toHaveCount(1);
@@ -344,6 +345,9 @@ test("a visitor cannot move a node on /demo and gets the reading controls but no
     await expect(page.locator(".sd-share-panel")).toHaveCount(0);
     await page.locator('header button:has-text("Share")').click();
     await expect(page.locator('.sd-share-panel button:has-text("PNG")')).toHaveCount(1);
+    for (const name of ["Link", "Copy", "JSON"]) {
+      await expect(page.locator(`.sd-share-panel button:has-text("${name}")`)).toHaveCount(0);
+    }
     await expect(page.locator('.sd-share-panel a:has-text("Excalidraw")')).toHaveCount(0);
     await expect(page.locator('.sd-share-panel button:has-text("Miro")')).toHaveCount(0);
     // A shared link gets the same bar: without it the reader cannot even stop

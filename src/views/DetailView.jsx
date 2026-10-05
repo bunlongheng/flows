@@ -315,12 +315,12 @@ export function DetailView({
           narrow screens so every action stays reachable instead of clipping. */}
       {/* A visitor gets the slim bar Sequences and Mindmaps put over a shared
           diagram - the wordmark home - and the reading half of the owner's
-          toolbar with it: the dots played or paused, the code
-          behind the picture, the steps and notes on or off, and the exports
-          under Share. Nothing here changes the diagram; everything that does
-          (Arrange, Fit, Undo, History, Lock, Delete) is still the owner's
-          alone. Without these a shared link is a picture the reader cannot
-          turn the animation off on. */}
+          toolbar with it: the dots played or paused, the steps and notes on or
+          off, and the pictures of the diagram under Share. Nothing here changes
+          the diagram; everything that does (Arrange, Fit, Undo, History, Lock,
+          Delete) is still the owner's alone, and so is the code panel. Without
+          these a shared link is a picture the reader cannot turn the animation
+          off on. */}
       {!canEdit ? (
       <header className="sd-share-header" style={{
         height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
@@ -338,9 +338,6 @@ export function DetailView({
           background: '#ffffff', border: '1px solid #e4e6e8', borderRadius: 14,
           boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '4px 6px',
         }}>
-          <BarButton on={showDetailCode} label="Code" title="The code behind this diagram" onClick={() => setShowDetailCode(v => !v)}>
-            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-          </BarButton>
           <BarButton on={playing} label={playing ? 'Pause' : 'Play'} title={playing ? 'Stop the flowing dots' : 'Play the flowing dots'} onClick={() => setPlaying(!playing)}>
             {playing ? <><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></>
                      : <path d="M7 4.5v15l12-7.5z"/>}
@@ -774,7 +771,7 @@ export function DetailView({
       <div style={{ flex: 1, display: 'flex', position: 'relative', overflow: 'hidden' }}>
 
         {/* Code panel (left, slide-in) */}
-        {showDetailCode && (
+        {canEdit && showDetailCode && (
           <div className="sd-code-panel" style={{
             width: codeWidth, flexShrink: 0, background: '#ffffff', borderRight: '1px solid #e4e6e8', position: 'relative',
             display: 'flex', flexDirection: 'column', animation: 'sd-slide-left 0.2s ease-out',
@@ -1084,26 +1081,26 @@ export function DetailView({
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
                 onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
               >Code</button>
-              <button onClick={copyLink}
+              {canEdit && <button onClick={copyLink}
                 style={{ background: copiedLink ? '#A9DC76' : '#FFD866', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit' }}
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
                 onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
-              >{copiedLink ? 'Copied!' : 'Link'}</button>
+              >{copiedLink ? 'Copied!' : 'Link'}</button>}
               {canEdit && <button onClick={exportJson}
                 style={{ background: '#A9DC76', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit' }}
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
                 onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
               >JSON</button>}
-              <button onClick={shareAction}
+              {canEdit && <button onClick={shareAction}
                 style={{ background: copiedShare ? '#A9DC76' : '#78DCE8', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit' }}
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
                 onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
-              >{copiedShare ? 'Shared!' : 'Share'}</button>
-              <button onClick={copyCode}
+              >{copiedShare ? 'Shared!' : 'Share'}</button>}
+              {canEdit && <button onClick={copyCode}
                 style={{ background: copiedCode ? '#A9DC76' : '#AB9DF2', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit' }}
                 onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
                 onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
-              >{copiedCode ? 'Copied!' : 'Copy'}</button>
+              >{copiedCode ? 'Copied!' : 'Copy'}</button>}
               {/* The exports above are pictures of the diagram. This one is the
                   diagram: real shapes and bound arrows with the logos embedded,
                   so it can be opened and kept working on in Excalidraw. Plain
