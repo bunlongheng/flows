@@ -11,7 +11,8 @@ import { hexToRgba } from '../style.js'
 // size comes from the payload too (size, px), the same number the SVG uses.
 export const LaneNode = memo(function LaneNode({ id, data, width, height }) {
   const ink = data.color || LANE_INK
-  // 2 or 3 slices across the band, each its own title and tint (src/lanes.js).
+  // 2 or 3 sections across the band, each its own band with its own title and
+  // tint, LANE_GAP apart for the same visual separation 2 lanes get (src/lanes.js).
   const sections = data.sections || []
   const split = sections.length >= 2
   // The arrival glow, as AwsNode paints it: a band the dots run INTO lights up
@@ -26,25 +27,21 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height }) {
   return (
     <div className="sd-lane" style={{
       width, height, borderColor: hexToRgba(ink, 0.35), boxShadow,
-      // A split band is tinted by its sections, not by itself, so the first
-      // slice is not painted twice. The corners clip them back to the band.
+      // A split band draws nothing of its own: its sections are the bands, so
+      // the space between them reads as a gap and not as a box inside a box.
+      // No border either, or the sections would sit 1.5 px in from the SVG.
       background: split ? 'transparent' : hexToRgba(ink, 0.05),
-      overflow: split ? 'hidden' : undefined,
+      borderWidth: split ? 0 : undefined,
     }}>
       {/* Invisible handles so an edge can end on the lane ("lane:<id>"); GradientEdge routes to the border itself. */}
       <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: 'none' }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0, pointerEvents: 'none' }} />
-      {split ? sections.map((s, i) => {
+      {split ? sections.map(s => {
         const sink = s.color || ink
-        // The divider is 1 dashed rule where the slice begins, on the axis the
-        // band is split across: down the side in a row, across the top in a
-        // column. The first slice begins at the band's own border, so it has none.
-        const rule = i ? `1.5px dashed ${hexToRgba(ink, 0.35)}` : undefined
         return (
-          <div key={s.id} className="sd-lane-section" style={{
-            left: s.x, top: s.y, width: s.w, height: s.h, background: hexToRgba(sink, 0.05),
-            borderLeft: data.axis === 'col' ? undefined : rule,
-            borderTop: data.axis === 'col' ? rule : undefined,
+          <div key={s.id} className="sd-lane sd-lane-section" style={{
+            left: s.x, top: s.y, width: s.w, height: s.h,
+            background: hexToRgba(sink, 0.05), borderColor: hexToRgba(sink, 0.35),
           }}>
             <div className="sd-lane-title" style={{ color: sink, fontSize: data.size || LANE_TITLE }}>{s.title || ''}</div>
           </div>

@@ -119,22 +119,29 @@ describe("sections", () => {
     }
   });
 
-  it("slices the band edge to edge, the first from the band's own edge and the last to its far one", () => {
+  it("leaves a LANE_GAP between sections, the first from the band's own edge and the last to its far one", () => {
     const [r] = laneRects(cleanLanes(split), [{ x: 0, y: 40, w: 190, h: 180 }, { x: 2000, y: 40, w: 190, h: 180 }]);
     const secs = sectionRects(r, "row");
-    expect(secs.map(s => [s.x, s.w])).toEqual([[r.x, 1300 - r.x], [1300, r.x + r.w - 1300]]);
+    expect(secs.map(s => [s.x, s.w])).toEqual([[r.x, 1300 - LANE_GAP - r.x], [1300, r.x + r.w - 1300]]);
+    // The space between 2 sections is the space between 2 lanes.
+    expect(secs[1].x - (secs[0].x + secs[0].w)).toBe(LANE_GAP);
     // Same y and h as the band, and a section with no colour takes the lane's.
     expect(secs.every(s => s.y === r.y && s.h === r.h)).toBe(true);
     expect(secs.map(s => s.color)).toEqual(["#0F766E", "#E650BA"]);
   });
 
-  it("pulls a divider outside the band back inside it, so slices never overlap or escape", () => {
+  it("pulls a section start outside the band back inside it, so sections never overlap or escape", () => {
     const far = [{ id: "a", y: 0, h: 300, sections: [{ id: "l", at: 0 }, { id: "r", at: 99999 }] }];
     const [r] = laneRects(cleanLanes(far), [{ x: 0, y: 40, w: 190, h: 180 }]);
     const secs = sectionRects(r, "row");
     expect(secs[1].x).toBe(r.x + r.w);
     expect(secs[1].w).toBe(0);
-    expect(secs[0].x + secs[0].w).toBe(secs[1].x);
+    expect(secs[0].x + secs[0].w).toBe(secs[1].x - LANE_GAP);
+    // A start so close to the one before it that the gap would eat the section
+    // costs it its width, and never paints backwards.
+    const tight = [{ id: "a", y: 0, h: 300, sections: [{ id: "l", at: -200 }, { id: "r", at: -70 }] }];
+    const [t] = laneRects(cleanLanes(tight), [{ x: 0, y: 40, w: 190, h: 180 }]);
+    expect(sectionRects(t, "row")[0].w).toBe(0);
   });
 
   it("hands LaneNode its slices in the band's own coordinates, and none when there is no split", () => {

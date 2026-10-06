@@ -32,11 +32,12 @@ export const isLaneNode = id => typeof id === 'string' && id.startsWith('__lane_
 export const laneAxis = lanes => (lanes[0] && 'x' in lanes[0] ? 'col' : 'row')
 
 // A lane can be split into 2 or 3 sections side by side ACROSS its own band:
-// the row stays 1 row, and each section takes a slice of it with its own title
-// and tint. `at` is where a section starts on the lane's other axis (x in a row
-// lane, y in a column one); the first section always starts at the band's own
-// edge, so only the dividers really matter. 1 section is not a split, so it is
-// dropped and the lane draws its own title as before.
+// the row stays 1 row, and each section is a band of its own inside it, with
+// its own title and tint and the same LANE_GAP between them that separates 2
+// stacked lanes. `at` is where a section starts on the lane's other axis (x in
+// a row lane, y in a column one); the first always starts at the band's own
+// edge, so only the later ones really matter. 1 section is not a split, so it
+// is dropped and the lane draws its own band and title as before.
 function cleanSections(raw) {
   if (!Array.isArray(raw)) return null
   const out = []
@@ -51,10 +52,13 @@ function cleanSections(raw) {
   return out.length >= 2 ? out.sort((a, b) => a.at - b.at) : null
 }
 
-// Where a laid-out lane's sections are drawn, in canvas units. The first starts
-// at the band's own edge whatever its `at` says, the last runs to the far edge,
-// and a divider outside the band is pulled back inside it, so a section is
-// always a real slice and the slices always cover the whole band.
+// Where a laid-out lane's sections are drawn, in canvas units. A section is a
+// band in its own right, so the 1 gap between 2 of them is the LANE_GAP that
+// sits between 2 stacked lanes: `at` is where a section STARTS, and the one
+// before it ends LANE_GAP short of that. The first starts at the band's own
+// edge whatever its `at` says, the last runs to the far edge, and an `at`
+// outside the band is pulled back inside it, so a bad number costs a section
+// its width and never paints outside the lane.
 export function sectionRects(rect, axis = 'row') {
   const secs = rect.sections || []
   if (secs.length < 2) return []
@@ -62,11 +66,14 @@ export function sectionRects(rect, axis = 'row') {
   const lo = rect[at], hi = rect[at] + rect[size]
   const cuts = secs.map((s, i) => (i === 0 ? lo : Math.min(hi, Math.max(lo, s.at))))
   for (let i = 1; i < cuts.length; i++) if (cuts[i] < cuts[i - 1]) cuts[i] = cuts[i - 1]
-  return secs.map((s, i) => ({
-    id: s.id, title: s.title, color: s.color || rect.color, size: rect.size,
-    x: rect.x, y: rect.y, w: rect.w, h: rect.h,
-    [at]: cuts[i], [size]: (i + 1 < cuts.length ? cuts[i + 1] : hi) - cuts[i],
-  }))
+  return secs.map((s, i) => {
+    const end = i + 1 < cuts.length ? cuts[i + 1] - LANE_GAP : hi
+    return {
+      id: s.id, title: s.title, color: s.color || rect.color, size: rect.size,
+      x: rect.x, y: rect.y, w: rect.w, h: rect.h,
+      [at]: cuts[i], [size]: Math.max(0, end - cuts[i]),
+    }
+  })
 }
 
 // What the API keeps of a lanes array: bounded, typed, 1 axis, nothing else.
