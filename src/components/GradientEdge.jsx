@@ -7,6 +7,7 @@ import { dashArray } from '../style.js'
 import { routeEdge, bendPoint, bendFor, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
 import { laneGaps, isLaneNode } from '../lanes.js'
 import { tagText } from '../tag.js'
+import { EDGE_LABEL_MAX } from '../note.js'
 
 // The routing itself lives in src/edgeGeometry.js, shared with the server
 // renderer so an export is the line the canvas draws. Only the DOM measuring
@@ -149,6 +150,10 @@ export function GradientEdge({
   const [dragT, setDragT] = useState(null)
   const t = dragT ?? savedT
   const movable = typeof data?.onLabelMove === 'function'
+  // The badge text is edited where it is drawn: double-click turns it into an
+  // input, Enter keeps it, Escape drops it. `draft` null means not editing.
+  const editable = typeof data?.onLabelEdit === 'function'
+  const [draft, setDraft] = useState(null)
   const endMovable = typeof data?.onEndMove === 'function'
   const bendMovable = typeof data?.onBendMove === 'function'
 
@@ -195,8 +200,26 @@ export function GradientEdge({
     window.addEventListener('pointerup', up)
   }
 
+  // Double-click the badge to rewrite it. Alt keeps the older gesture, putting
+  // a badge that was dragged along its line back at the computed spot.
+  // Capture phase, not bubble: React Flow's pane stops a dblclick on its way
+  // DOWN (that is how zoom-on-double-click swallows it), so a plain
+  // onDoubleClick on the badge never fires. React's own listener sits above the
+  // pane, so the capture handler still gets there.
+  const startEdit = e => {
+    if (draft != null) return // already typing - the click belongs to the input
+    e.stopPropagation()
+    if (e.altKey || !editable) { if (movable) data.onLabelMove(id, null); return }
+    setDraft(label || tag || '')
+  }
+  const endEdit = keep => {
+    const next = draft
+    setDraft(null)
+    if (keep && next != null && next.trim() !== (label || '')) data.onLabelEdit(id, next.trim())
+  }
+
   const startDrag = e => {
-    if (!movable || e.button !== 0) return
+    if (!movable || e.button !== 0 || draft != null) return
     // The canvas would otherwise pan, and the edge would take the click.
     e.stopPropagation()
     e.preventDefault()
@@ -262,9 +285,9 @@ export function GradientEdge({
             <div
               className={`sd-edge-badge nodrag nopan${movable ? ' is-movable' : ''}${dragT != null ? ' is-dragging' : ''}`}
               onPointerDown={startDrag}
-              onDoubleClick={movable ? e => { e.stopPropagation(); data.onLabelMove(id, null) } : undefined}
-              data-tip={desc || undefined}
-              title={!desc && movable ? 'Drag along the edge to reposition; double-click to reset' : undefined}
+              onDoubleClickCapture={movable || editable ? startEdit : undefined}
+              data-tip={draft == null ? desc || undefined : undefined}
+              title={!desc && (movable || editable) ? 'Double-click to rewrite; drag along the line to move it; alt+double-click puts it back' : undefined}
               style={{
                 transform: `translate(-50%, -50%) translate(${bx}px, ${by}px)`,
                 '--c1': c1, '--c2': c2,
@@ -273,7 +296,20 @@ export function GradientEdge({
             >
               {sunset && <SunsetX size={12} />}
               {hasStep && <span className="sd-step-chip">{data.step}</span>}
-              {tag && <span>{tag}</span>}
+              {draft != null ? (
+                <input
+                  autoFocus className="sd-edge-badge-input" value={draft} maxLength={EDGE_LABEL_MAX}
+                  size={Math.max(6, draft.length + 1)}
+                  onChange={e => setDraft(e.target.value)}
+                  onPointerDown={e => e.stopPropagation()}
+                  onBlur={() => endEdit(true)}
+                  onKeyDown={e => {
+                    e.stopPropagation() // the canvas reads Delete and Cmd+Z
+                    if (e.key === 'Enter') { e.preventDefault(); endEdit(true) }
+                    if (e.key === 'Escape') { e.preventDefault(); endEdit(false) }
+                  }}
+                />
+              ) : tag && <span>{tag}</span>}
             </div>
           )}
           {endMovable && selected && [['s', sx, sy, data?.sourceColor], ['t', tx, ty, data?.targetColor]].map(([which, x, y, color]) => (
@@ -283,7 +319,12 @@ export function GradientEdge({
               style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, width: 14, height: 14, borderRadius: '50%', background: color || '#6b7280', border: '2px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,0.25)', cursor: 'grab', pointerEvents: 'all', zIndex: 2 }} />
           ))}
           {bendMovable && selected && (() => {
-            const h = bend ? bendPoint(sx, sy, tx, ty, bend) : (pointOnPath(path, 0.5) || { x: labelX, y: labelY })
+            const mid = bend ? bendPoint(sx, sy, tx, ty, bend) : (pointOnPath(path, 0.5) || { x: labelX, y: labelY })
+            // Unbent, the handle rests at the midpoint - exactly where the badge
+            // sits, and the 2 swallowed each other's clicks: the dot took the
+            // second click of a double-click, so the badge never saw one. While
+            // there is no bend the dot sits clear below the badge.
+            const h = bend ? mid : { x: mid.x, y: mid.y + 20 }
             return (
               <div className="sd-edge-bend nodrag nopan" onPointerDown={startBendDrag}
                 onDoubleClick={e => { e.stopPropagation(); data.onBendMove(id, null) }}

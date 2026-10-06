@@ -416,6 +416,35 @@ describe("/api/flows/:id", () => {
     expect(JSON.parse(query.mock.calls[1][1][0])[0]).not.toHaveProperty("style");
   });
 
+  // The badge is rewritten where it is drawn, and the text rides the same key
+  // as the style for the same reason: the pins branch would wipe it.
+  it("PATCH edgeStyles rewrites a badge and keeps the line's style", async () => {
+    const stored = [{ id: "a-b", label: "old", style: { stroke: "#e03131" }, labelT: 0.3 }, { id: "b-c", label: "keep" }];
+    query.mockResolvedValueOnce({ rows: [{ edges: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { edgeStyles: [{ id: "a-b", label: "  new\n label  " }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
+    expect(written[0].label).toBe("new label");
+    expect(written[0].style).toEqual({ stroke: "#e03131" });
+    expect(written[0].labelT).toBe(0.3);
+    expect(written[1].label).toBe("keep");
+  });
+
+  it("PATCH edgeStyles { label: '' } takes the badge off the line", async () => {
+    query.mockResolvedValueOnce({ rows: [{ edges: [{ id: "a-b", label: "old" }] }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { edgeStyles: [{ id: "a-b", label: "" }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(query.mock.calls[1][1][0])[0]).not.toHaveProperty("label");
+  });
+
   it("PATCH deleteEdges removes only the lines it names", async () => {
     const stored = [{ id: "a-b", source: "a", target: "b" }, { source: "b", target: "c" }, { id: "c-d" }];
     query.mockResolvedValueOnce({ rows: [{ edges: stored }] });

@@ -1282,6 +1282,13 @@ export function DetailView({
         .sd-edge-badge.is-movable { pointer-events: auto; cursor: grab; }
         .sd-edge-badge.is-movable:hover { filter: brightness(1.08); }
         .sd-edge-badge.is-dragging { cursor: grabbing; z-index: 20; filter: brightness(1.12); }
+        /* Rewriting a badge in place: the input wears the badge, so the pill
+           does not change size or colour while it is being typed into. */
+        .sd-edge-badge-input {
+          font: inherit; letter-spacing: inherit; color: inherit;
+          background: transparent; border: none; outline: none; padding: 0;
+          min-width: 32px; text-align: center; caret-color: currentColor;
+        }
         /* 1) Silver fill + gradient border, dark text (default) */
         .sd-badge-silver .sd-edge-badge {
           color: #1e2733; border: 1.5px solid transparent;

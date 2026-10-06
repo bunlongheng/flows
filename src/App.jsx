@@ -14,6 +14,7 @@ import { laneNodes, laneRef, laneNodeId, LANE_INK } from './lanes.js'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
+import { cleanEdgeLabel } from './note.js'
 import { fireflies } from './fireflies'
 import { makeThumbnail } from './thumbnail'
 
@@ -65,7 +66,7 @@ const edgePins = edges => edges.map((e, i) => ({
 // onLabelMove and onEndMove are threaded into every edge's data so a badge or a
 // pinned end can be dragged. Both are omitted for the bundled sample and for a
 // read-only viewer, and the edge renders inert in that case.
-function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove, lanes = []) {
+function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove, lanes = [], onLabelEdit) {
   // The edge takes its colour from the SOURCE node, and a node that brings its
   // own logo states its colour only in that logo - so the node itself has to be
   // looked up, not just its id. Passing `{ id }` alone matched generic catalog
@@ -95,6 +96,7 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove, lane
       ...(e.style ? { style: e.style } : {}),
       ...(cleanDesc(e.description) ? { description: cleanDesc(e.description) } : {}),
       ...(onLabelMove ? { onLabelMove } : {}),
+      ...(onLabelEdit ? { onLabelEdit } : {}),
       ...(onEndMove ? { onEndMove } : {}),
       ...(onBendMove ? { onBendMove } : {}),
     },
@@ -607,17 +609,40 @@ export default function App() {
     sendStyle(`e:${edgeId}`, { edgeStyles: [{ id: edgeId, style }] })
   }, [activeId, sendStyle, onBendMove])
 
+  // The badge text, rewritten where it is drawn: double-click the badge on the
+  // line, type, Enter. It rides the edgeStyles key for the same reason style
+  // does - the pins branch wipes what it was not sent - and '' drops the badge.
+  const onLabelEdit = useCallback((edgeId, label) => {
+    const text = cleanEdgeLabel(label)
+    setEdges(prev => prev.map(e => (e.id === edgeId ? { ...e, label: text } : e)))
+    const patch = eds => (eds || []).map((ed, i) => {
+      if ((ed.id || `e${i}`) !== edgeId) return ed
+      const { label: _old, ...rest } = ed
+      return text ? { ...rest, label: text } : rest
+    })
+    setActiveDiagram(a => (a ? { ...a, data: { ...a.data, edges: patch(a.data.edges) } } : a))
+    setDiagrams(ds => ds.map(d => (d.id !== activeId ? d : { ...d, data: { ...d.data, edges: patch(d.data.edges) } })))
+    if (!activeId) return
+    fetch(`/api/flows/${activeId}`, {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ edgeStyles: [{ id: edgeId, label: text }] }),
+    })
+      .then(r => showToastMsg(r.ok ? (text ? 'Label saved' : 'Label removed') : 'Could not save (owner only)'))
+      .catch(() => showToastMsg('Could not save'))
+  }, [activeId, showToastMsg])
+
   // A cold ?name= / ?id= load resolves the design BEFORE /api/auth/me answers, so
   // canAI was still false when the edges were built and no badge came out
   // draggable. Re-attach (or strip) the handler whenever ownership settles.
   useEffect(() => {
     if (view !== 'detail') return
     setEdges(prev => prev.map(e => (
-      Boolean(e.data?.onLabelMove) === canAI && Boolean(e.data?.onEndMove) === canAI && Boolean(e.data?.onBendMove) === canAI
+      Boolean(e.data?.onLabelMove) === canAI && Boolean(e.data?.onEndMove) === canAI && Boolean(e.data?.onBendMove) === canAI && Boolean(e.data?.onLabelEdit) === canAI
         ? e
-        : { ...e, data: { ...e.data, onLabelMove: canAI ? onLabelMove : undefined, onEndMove: canAI ? onEndMove : undefined, onBendMove: canAI ? onBendMove : undefined } }
+        : { ...e, data: { ...e.data, onLabelMove: canAI ? onLabelMove : undefined, onEndMove: canAI ? onEndMove : undefined, onBendMove: canAI ? onBendMove : undefined, onLabelEdit: canAI ? onLabelEdit : undefined } }
     )))
-  }, [canAI, view, onLabelMove, onEndMove, onBendMove])
+  }, [canAI, view, onLabelMove, onEndMove, onBendMove, onLabelEdit])
 
   // Node/edge mapping shared by opening a diagram and restoring a history
   // version: carries brand fields into node data, keeps a saved layout as-is,
@@ -630,7 +655,7 @@ export default function App() {
     // Carry any custom brand fields (label/icon/color/sub) into node data so a
     // bring-your-own-icon node renders its own logo, not a catalog lookup.
     const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, iconFrame: nd.iconFrame === true, size: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: nd.position } : {}), ...(nd.size ? { width: nd.size.w, height: nd.size.h } : {}) }))
-    const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined, d.view_state?.lanes || [])
+    const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined, d.view_state?.lanes || [], canAI ? onLabelEdit : undefined)
     return { nodes: hasSaved ? n : layoutFanOut(n, e), edges: e }
   }
 
