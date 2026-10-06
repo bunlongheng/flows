@@ -180,11 +180,12 @@ describe("/api/flows/:id", () => {
     const res = mockRes();
     const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
     const r = req("PATCH", ID, undefined, cookie);
-    r.body = { view_state: { panels: ["details", "steps"], badge: "silver" } };
+    r.body = { view_state: { panels: ["code", "steps"], badge: "silver" } };
     await flowById(r, res);
     expect(res.statusCode).toBe(200);
-    // Order is normalised to the canonical list, and both survive.
-    expect(res.body.view_state).toEqual({ panels: ["steps", "details"], badge: "silver" });
+    // Order is normalised to the canonical list, and both survive. "details" is
+    // no longer a panel, so a row saved before it was removed drops the key.
+    expect(res.body.view_state).toEqual({ panels: ["steps", "code"], badge: "silver" });
   });
 
   it("PATCH view_state drops anything not a real panel or badge", async () => {

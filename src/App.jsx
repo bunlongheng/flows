@@ -232,7 +232,6 @@ export default function App() {
   const [showDetailCode, setShowDetailCode] = useState(false)
   const [detailCodeCopied, setDetailCodeCopied] = useState(false)
   const [showSharePanel, setShowSharePanel] = useState(false)
-  const [showDetailsPanel, setShowDetailsPanel] = useState(false)
   const [showHistoryPanel, setShowHistoryPanel] = useState(false)
   const [showSteps, setShowSteps] = useState(false)
   // Notes show unless a diagram has been toggled off - see 'notes-off' below.
@@ -702,7 +701,6 @@ export default function App() {
 
   function applyPanels(open) {
     setShowSteps(open.includes('steps'))
-    setShowDetailsPanel(open.includes('details'))
     setShowDetailCode(open.includes('code'))
     // Inverted: stored when notes are OFF, so a row that predates the toggle
     // (and every row a visitor loads) still shows the notes its author wrote.
@@ -1152,7 +1150,7 @@ export default function App() {
   // four booleans - a shape the API can validate.
   const viewSaveTimer = useRef(null)
   const openPanels = [
-    showSteps && 'steps', showDetailsPanel && 'details', showDetailCode && 'code',
+    showSteps && 'steps', showDetailCode && 'code',
     !showNotes && 'notes-off',
   ].filter(Boolean)
   const panelKey = openPanels.join(',')
@@ -1575,13 +1573,6 @@ export default function App() {
   const markers = lanes.length ? { nodes: [], edges: [] } : buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)
   const displayNodes = [...lanes, ...nodes, ...markers.nodes]
   const displayEdges = [...edges, ...markers.edges]
-  // Step-by-step walkthrough, derived from the diagram's edges in flow order.
-  const steps = (activeDiagram?.data?.edges || []).map((e, i) => ({
-    n: i + 1,
-    from: findService({ id: e.source })?.label || e.source,
-    to: findService({ id: e.target })?.label || e.target,
-    label: e.label || '',
-  }))
   return (
     <DetailView
       toast={toast} showToastMsg={showToastMsg}
@@ -1589,10 +1580,8 @@ export default function App() {
       showDetailCode={showDetailCode} setShowDetailCode={setShowDetailCode}
       rfInstance={rfInstance} flashZoomHud={flashZoomHud} zoomHudRef={zoomHudRef}
       showSharePanel={showSharePanel} setShowSharePanel={setShowSharePanel}
-      showDetailsPanel={showDetailsPanel} setShowDetailsPanel={setShowDetailsPanel}
       showHistoryPanel={showHistoryPanel} setShowHistoryPanel={setShowHistoryPanel}
       onRestored={canAI && activeDiagram?.id ? onRestored : undefined}
-      steps={steps}
       showSteps={showSteps} setShowSteps={setShowSteps}
       showNotes={showNotes} setShowNotes={setShowNotes}
       isLocked={!!activeDiagram?.locked} isEditLocked={!!activeDiagram?.editLocked} onSetLocks={canAI ? setLocks : undefined}
