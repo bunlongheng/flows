@@ -66,3 +66,4 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .sd-lane-title { position: absolute; left: 16px; top: 9px; font-size: 13px; font-weight: 800; letter-spacing: 0.2px; line-height: 1; user-select: none; white-space: nowrap; }
 .sd-panel-resizer { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; cursor: col-resize; z-index: 2; touch-action: none; }
 .sd-panel-resizer:hover, .sd-panel-resizer:active { background: rgba(15, 23, 42, 0.08); }
+.sd-lane-section { position: absolute; box-sizing: border-box; }
