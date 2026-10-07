@@ -46,14 +46,24 @@ export const centerOf = n => ({
 
 // A lane end ("lane:<id>"): the line meets the lane's border straight on from
 // its far end, so every lane line drops (or runs) from under its own source
-// and never crowds the band's middle. A row lane is wide, so its faces are top
-// and bottom; a column lane is tall, so left and right.
+// and never crowds the band's middle. A row lane is crossed top to bottom, so
+// its faces are top and bottom; a column lane is crossed left to right, so
+// left and right.
+//
+// The lane says which it is (src/lanes.js laneAxis: 'row' or 'col', stamped on
+// the node by laneNodes and by lib/render-svg.js). Guessing it from the rect is
+// the fallback only, and it was wrong whenever the shape disagreed with the
+// axis: a column lane holding 5 columns of cards and 3 rows is WIDER than tall,
+// so w >= h called it a row and the line hooked up over the band's top edge
+// instead of running straight into its side.
 const isLane = n => n?.lane === true || n?.type === 'lane'
+const laneAxisOf = n => n?.axis || n?.data?.axis || null
 const clampTo = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
 function laneFace(node, fc) {
   const p = node.internals.positionAbsolute, w = node.measured.width, h = node.measured.height
   const c = { x: p.x + w / 2, y: p.y + h / 2 }
-  if (w >= h) {
+  const ax = laneAxisOf(node)
+  if (ax ? ax === 'row' : w >= h) {
     const side = fc.y < c.y ? Position.Top : Position.Bottom
     return { x: clampTo(fc.x, p.x + EDGE_MARGIN, p.x + w - EDGE_MARGIN), y: side === Position.Top ? p.y : p.y + h, side, alone: true, gap: 0, half: w / 2, mid: c.x }
   }

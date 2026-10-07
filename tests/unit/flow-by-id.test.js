@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { signSession } from "../../lib/auth-session.js";
+import { createHash } from "node:crypto";
+// The view_state fingerprint in a render key, the same way flow-by-id.js builds it.
+const viewKey = (v) => createHash("sha1").update(JSON.stringify(v ?? null)).digest("hex").slice(0, 10);
 
 // Mock the DB so the by-id handler's validation + auth can be tested without a
 // real Postgres, following the create-flows.test.js pattern.
@@ -93,7 +96,7 @@ describe("/api/flows/:id", () => {
     await flowById({ ...req("GET", ID), query: { id: ID, format: "gif" } }, res);
     expect(res.statusCode).toBe(200);
     expect(res.body).toBe(kept);
-    expect(res.headers.ETag).toBe(`"${Date.parse(row.updated_at)}-1800-20"`);
+    expect(res.headers.ETag).toBe(`"${Date.parse(row.updated_at)}-${viewKey(row.view_state)}-1920-100"`);
     expect(query.mock.calls[1][0]).toMatch(/SELECT bytes FROM flow_renders/);
     expect(query).toHaveBeenCalledTimes(2);
 
@@ -107,7 +110,19 @@ describe("/api/flows/:id", () => {
     expect(res2.statusCode).toBe(200);
     expect(res2.body.subarray(0, 6).toString("ascii")).toBe("GIF89a");
     const insert = query.mock.calls.find((c) => /INSERT INTO flow_renders/.test(c[0]));
-    expect(insert[1].slice(0, 2)).toEqual([ID, `${Date.parse(row.updated_at)}-300-2`]);
+    expect(insert[1].slice(0, 2)).toEqual([ID, `${Date.parse(row.updated_at)}-${viewKey(row.view_state)}-300-2`]);
+  });
+
+  // A notes or Steps toggle is a view_state PATCH that leaves updated_at alone,
+  // so the key has to change on view_state or the old picture keeps being served.
+  it("GET ?format=gif keys the render on view_state too, not only updated_at", async () => {
+    const row = { id: ID, nodes: [], edges: [], updated_at: "2026-09-30T12:00:00Z", is_public: true, view_state: { panels: ["notes-off"], badge: null } };
+    query.mockResolvedValueOnce({ rows: [row] });
+    query.mockResolvedValueOnce({ rows: [{ bytes: Buffer.from("GIF89a-kept") }] });
+    const res = mockRes();
+    await flowById({ ...req("GET", ID), query: { id: ID, format: "gif" } }, res);
+    expect(res.headers.ETag).toBe(`"${Date.parse(row.updated_at)}-${viewKey(row.view_state)}-1920-100"`);
+    expect(viewKey(row.view_state)).not.toBe(viewKey({ panels: [], badge: null }));
   });
 
   it("GET returns 404 for a valid uuid that does not exist", async () => {
