@@ -63,11 +63,9 @@ export function DetailView({
   showDetailCode, setShowDetailCode,
   rfInstance: rfInstanceRef, flashZoomHud, zoomHudRef,
   showSharePanel, setShowSharePanel,
-  showDetailsPanel, setShowDetailsPanel,
   // Owner only: undefined for anyone else, same as onSetLocks below - one
   // gate, not two.
   showHistoryPanel, setShowHistoryPanel, onRestored,
-  steps = [],
   showSteps, setShowSteps,
   showNotes, setShowNotes,
   badgeMode, setBadgeMode,
@@ -104,7 +102,7 @@ export function DetailView({
   // A visitor on /demo or a shared link sees the diagram exactly as the owner
   // left it: nodes are locked, and the tools that change or take a copy of it
   // (Arrange, Undo/Redo, Code, Share, every export) are not rendered. They keep
-  // Fit, Details, Steps and the badge style - reading aids that cannot break
+  // Fit, Steps and the badge style - reading aids that cannot break
   // the layout. Too much freedom on a showcase only makes it look broken.
   canEdit = true,
   // Owner only: publish the moment the Share panel opens, so the pill flips and
@@ -292,7 +290,7 @@ export function DetailView({
     const t = setTimeout(fitNow, 60)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showDetailsPanel, showSteps, showSharePanel, showDetailCode, showHistoryPanel])
+  }, [showSteps, showSharePanel, showDetailCode, showHistoryPanel])
 
   // Push to Miro. Miro has no file import for diagrams at all, so this is the
   // one export that is a request rather than a download: the owner pastes a
@@ -633,24 +631,6 @@ export function DetailView({
 
           <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
 
-          {/* Details (goal + steps) panel toggle */}
-          <button className={`sd-hide-mobile sd-hide-tablet${showDetailsPanel ? ' is-on' : ''}`} onClick={() => setShowDetailsPanel(v => !v)} style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
-            background: showDetailsPanel ? '#f1f5f9' : 'transparent',
-            color: showDetailsPanel ? '#1e293b' : '#64748b',
-            cursor: 'pointer', fontSize: 13, fontWeight: showDetailsPanel ? 600 : 400,
-            transition: 'all 0.1s', fontFamily: 'inherit',
-          }}
-            onMouseEnter={e => { if (!showDetailsPanel) e.currentTarget.style.background = '#f1f5f9' }}
-            onMouseLeave={e => { if (!showDetailsPanel) e.currentTarget.style.background = 'transparent' }}
-          >
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-            </svg>
-            <span className="sd-btn-label">Details</span>
-          </button>
-
           {/* History panel toggle - owner only: onRestored is only ever passed
               for the owner's own session (see App), same single gate the
               Lock and Delete buttons below already use. */}
@@ -976,55 +956,6 @@ export function DetailView({
           }} />
 
         </div>
-
-        {/* Details panel (right side): goal + step-by-step walkthrough */}
-        {showDetailsPanel && (
-          <div className="sd-details-panel" style={{
-            width: 320, flexShrink: 0, background: '#ffffff', borderLeft: '1px solid #e2e8f0',
-            display: 'flex', flexDirection: 'column', overflowY: 'auto',
-            animation: 'sd-slide-right 0.2s ease-out',
-          }}>
-            <div style={{ padding: '18px 18px 6px' }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#1a2129' }}>{activeDiagram?.title || 'Diagram'}</div>
-            </div>
-
-            {/* Pattern - the one-line "what this really tests" (fan-out, idempotency, ...) */}
-            {activeDiagram?.pattern && (
-              <div style={{ padding: '4px 18px 6px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6b7280', marginBottom: 6 }}>What it tests</div>
-                <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.5, color: '#1a1a1a' }}>
-                  {activeDiagram.pattern}
-                </div>
-              </div>
-            )}
-
-            {/* Goal */}
-            <div style={{ padding: '10px 18px 16px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6b7280', marginBottom: 6 }}>Goal</div>
-              <div style={{ fontSize: 13, lineHeight: 1.6, color: '#444' }}>
-                {activeDiagram?.description || 'No description yet for this diagram.'}
-              </div>
-            </div>
-
-            {/* Steps */}
-            {steps.length > 0 && (
-              <div style={{ padding: '0 18px 24px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6b7280', marginBottom: 10 }}>Steps ({steps.length})</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {steps.map(s => (
-                    <div key={s.n} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                      <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 999, background: '#1c1e21', color: '#fff', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{s.n}</span>
-                      <div style={{ fontSize: 12.5, lineHeight: 1.5, color: '#334155' }}>
-                        <span style={{ fontWeight: 700, color: '#1a2129' }}>{s.from} &rarr; {s.to}</span>
-                        {s.label && <span style={{ color: '#64748b' }}>{`  -  ${s.label}`}</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* History panel (right side): every saved version, newest first */}
         {showHistoryPanel && (
@@ -1380,9 +1311,9 @@ export function DetailView({
           color: #1e2733; border: 1.5px solid #c2c6cc; background: #e9ebee;
         }
         /* Phone: the toolbar must fit without scrolling sideways. Labels drop to
-           icons, and the 4 actions with a gesture equivalent (Code, Fit,
-           Arrange, Details) drop out entirely - pinch and drag already cover
-           fit and pan, and the panels are reachable once the canvas is open. */
+           icons, and the 3 actions with a gesture equivalent (Code, Fit,
+           Arrange) drop out entirely - pinch and drag already cover fit and
+           pan, and the panels are reachable once the canvas is open. */
         @media (max-width: 640px) {
           .sd-detail-header {
             /* Scroll rather than hide: on a very small phone the owner's bar is
@@ -1414,10 +1345,10 @@ export function DetailView({
         /* Landscape phone, and a tablet in Split View or Slide Over. The owner's
            full bar measures 1109px, so anything under that scrolled sideways -
            the 1 thing a toolbar must never do. Between the phone tier and that
-           width, the 4 actions that have another way in drop out: Code (the
-           share panel carries the same markup), Arrange (desktop tidy), Details
-           (the info card on the canvas says the same thing) and the badge-style
-           cycle. The visibility pill keeps its globe and loses its word. What is
+           width, the 3 actions that have another way in drop out: Code (the
+           share panel carries the same markup), Arrange (desktop tidy) and the
+           badge-style cycle. The visibility pill keeps its globe and loses its
+           word. What is
            left - Fit, Play, Steps, Notes, Share, Lock, Delete - fits on 1 row. */
         @media (min-width: 641px) and (max-width: 1120px) {
           .sd-detail-header .sd-hide-tablet { display: none !important; }
@@ -1511,7 +1442,7 @@ export function DetailView({
         /* On phones the fixed-width side panels would crush the canvas, so drop
            them to full-width bottom sheets over the canvas instead. */
         @media (max-width: 640px) {
-          .sd-code-panel, .sd-share-panel, .sd-details-panel, .sd-history-panel {
+          .sd-code-panel, .sd-share-panel, .sd-history-panel {
             position: absolute !important; left: 0 !important; right: 0 !important;
             bottom: 0 !important; top: auto !important; width: 100% !important;
             max-height: 60vh; z-index: 20; border: none !important;

@@ -203,7 +203,10 @@ describe("read-only demo view", () => {
 
   it("keeps them for the owner", () => {
     setup({ canEdit: true, canUndo: true, canRedo: true, onArrange: vi.fn() });
-    for (const name of [...KEPT, /^fit$/i, /^details$/i]) expect(screen.getByRole("button", { name }), String(name)).toBeInTheDocument();
+    for (const name of [...KEPT, /^fit$/i]) expect(screen.getByRole("button", { name }), String(name)).toBeInTheDocument();
+    // The Details panel is gone: the info card on the canvas already carries
+    // the pattern and the description, and the Steps tab carries the steps.
+    expect(screen.queryByRole("button", { name: /^details$/i })).toBeNull();
   });
 });
 
