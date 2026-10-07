@@ -536,7 +536,7 @@ export function DetailView({
           {canEdit && <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />}
 
           {/* Fit button */}
-          <button className={`sd-hide-mobile sd-show-mobile${fitted ? ' is-on' : ''}`} onClick={fitNow}
+          <button className={`sd-hide-mobile${fitted ? ' is-on' : ''}`} onClick={fitNow}
             title={fitted ? 'Already fitted to the screen' : 'Fit the diagram to the screen'} style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
@@ -1332,10 +1332,11 @@ export function DetailView({
              falls off that edge: on a phone it drops to icons and fits. */
           .sd-share-header .sd-btn-label { display: none; }
           .sd-share-header { padding: 0 10px !important; }
-          /* 2 earn their place back on a phone: Fit is the only way home after
-             pinching around, and Arrange is the owner's one-tap tidy. Delete
-             gives up its seat for them - a destructive tap is the last thing a
-             crowded phone bar needs, and it is still there on a desktop.
+          /* Play and Arrange earn their place back on a phone. Fit does not:
+             the canvas fits itself on open, a phone is read only until the
+             pencil, and the owner wants the bar short. Delete gives up its
+             seat too - a destructive tap is the last thing a crowded phone bar
+             needs, and it is still there on a desktop.
              The visibility pill drops to its icon: the green globe and the amber
              lock still say which it is, and the label is in its aria-label. */
           .sd-detail-header .sd-hide-mobile.sd-show-mobile { display: flex !important; }
