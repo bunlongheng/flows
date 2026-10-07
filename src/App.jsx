@@ -1162,6 +1162,9 @@ export default function App() {
   // Only ONE panel is ever open, so this collapses to a single value rather than
   // four booleans - a shape the API can validate.
   const viewSaveTimer = useRef(null)
+  // The save waiting on the debounce, so a GIF export can run it first: the
+  // canvas is up to 600 ms ahead of the row, and the export renders the row.
+  const viewSavePending = useRef(null)
   const openPanels = [
     showSteps && 'steps', showDetailCode && 'code',
     !showNotes && 'notes-off',
@@ -1174,14 +1177,16 @@ export default function App() {
     // Cancel first: a state that has come back to what is saved (a deferred
     // restore landing a render later) must not let an older timer save a reset.
     clearTimeout(viewSaveTimer.current)
+    viewSavePending.current = null
     if (prevKey === panelKey && prev.badge === badgeMode) return
     const savingId = activeDiagram.id
-    viewSaveTimer.current = setTimeout(() => {
+    const save = () => {
+      viewSavePending.current = null
       // Carry the owner's Start placement through a plain panel/badge save -
       // this effect only ever meant to touch those two, and rebuilding the
       // object from scratch would otherwise silently clear the placement.
       const view_state = { panels: panelKey ? panelKey.split(',') : [], badge: badgeMode, ...(prev.start ? { start: prev.start } : {}), ...(prev.lanes ? { lanes: prev.lanes } : {}) }
-      fetch(`/api/flows/${savingId}`, {
+      return fetch(`/api/flows/${savingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ view_state }),
@@ -1197,7 +1202,9 @@ export default function App() {
           setDiagrams(ds => ds.map(d => (d.id === savingId ? { ...d, view_state } : d)))
         })
         .catch(() => {})
-    }, 600)
+    }
+    viewSavePending.current = save
+    viewSaveTimer.current = setTimeout(save, 600)
     return () => clearTimeout(viewSaveTimer.current)
   }, [view, canAI, activeDiagram, panelKey, badgeMode])
 
@@ -1400,6 +1407,9 @@ export default function App() {
     if (savedId) {
       showToastMsg('Rendering HD GIF...')
       try {
+        // A notes or Steps toggle saves debounced, so the row can be a beat
+        // behind the canvas. Save it now: the export is what is on screen.
+        if (viewSavePending.current) { clearTimeout(viewSaveTimer.current); await viewSavePending.current() }
         // A fresh URL every time: the render is cached for an hour by the browser
         // and the CDN (lib/handlers/flow-by-id.js), so a plain fetch could hand
         // back the GIF from BEFORE a notes or Steps toggle. The server still
