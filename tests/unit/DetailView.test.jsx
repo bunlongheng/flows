@@ -130,6 +130,12 @@ describe("visibility pill", () => {
     expect(onToggleVisibility).toHaveBeenCalledTimes(1);
   });
 
+  it("a shared link shows the diagram's title in its slim header", () => {
+    setup({ canEdit: false, isPublic: true, shareSlug: "x", shareUrl: "u" });
+    const header = document.querySelector(".sd-share-header");
+    expect(within(header).getByText("IFTTT Automation")).toBeInTheDocument();
+  });
+
   it("shows Public for a public diagram", () => {
     setup({ isDiagramPublic: true, onToggleVisibility: vi.fn() });
     expect(screen.getByRole("switch", { name: /public/i })).toBeInTheDocument();

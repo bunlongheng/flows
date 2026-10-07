@@ -378,6 +378,12 @@ export function DetailView({
           <img src="/icon-96.png" alt="Flows" width={28} height={28} style={{ borderRadius: 7 }} />
           <span className="sd-hide-mobile" style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em', color: '#111827' }}>Flows</span>
         </a>
+        {/* The diagram's own name, so a shared link says what it is before the
+            reader works it out from the cards. Same text and weight as the
+            owner's bar; it ellipsises before the toolbar ever has to. */}
+        <span className="sd-detail-title" title={activeDiagram?.title || ''} style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: '#1c1e21', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {activeDiagram?.title || 'Untitled diagram'}
+        </span>
 
         <div className="sd-detail-actions" style={{
           display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0,
