@@ -1400,7 +1400,11 @@ export default function App() {
     if (savedId) {
       showToastMsg('Rendering HD GIF...')
       try {
-        const r = await fetch(`/api/flows/${savedId}?format=gif`)
+        // A fresh URL every time: the render is cached for an hour by the browser
+        // and the CDN (lib/handlers/flow-by-id.js), so a plain fetch could hand
+        // back the GIF from BEFORE a notes or Steps toggle. The server still
+        // answers from flow_renders, so this costs a lookup, not a render.
+        const r = await fetch(`/api/flows/${savedId}?format=gif&t=${Date.now()}`, { cache: 'no-store' })
         if (!r.ok) throw new Error(String(r.status))
         const a = document.createElement('a')
         a.href = URL.createObjectURL(await r.blob())
