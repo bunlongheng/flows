@@ -11,11 +11,25 @@
 // compositor independently. Instead there is one loop here that every edge
 // subscribes to, and it only runs while something is listening.
 
-const PERIOD_MS = 5000 // one full source -> target trip, and one breath of the glow
+// One step of the current: how long 1 dot takes to cross 1 line. A diagram is
+// 1 cycle of `steps` of these, so a 6 line flow loops in 8.4 s and a 90 line
+// map takes its time - the whole point is to watch 1 step at a time.
+const STEP_MS = 1400
 
 const subs = new Set()
 let raf = 0
-let phase = 0 // 0..1, shared by every edge
+let phase = 0 // 0..1 across the WHOLE cycle, shared by every edge
+let steps = 1 // how many lines the current walks before it starts over
+let periodMs = STEP_MS
+
+/**
+ * How many lines the current has to walk, so the cycle is always 1 slot per
+ * line. The canvas calls this when a diagram loads or a line is added.
+ */
+export function setSteps(n) {
+  steps = Math.max(1, n | 0)
+  periodMs = steps * STEP_MS
+}
 
 // While a GIF is being captured the clock is driven by hand instead of by the
 // wall clock. Frame capture takes a variable 100-300ms, so letting real time
@@ -31,7 +45,7 @@ function tick(now) {
   // pins the phase itself, so it keeps working with the canvas stopped - the
   // GIF export does not need the button pressed.
   if (pinned == null && playing) {
-    phase = (now % PERIOD_MS) / PERIOD_MS
+    phase = (now % periodMs) / periodMs
     emit(phase)
   }
   raf = subs.size && playing ? requestAnimationFrame(tick) : 0
@@ -94,7 +108,8 @@ export function stepCapture(p) { pinned = p; phase = p; emit(p) }
 /** Hand the dots back to the wall clock. */
 export function endCapture() { pinned = null; emitFlowing() }
 
-export const CAPTURE_PERIOD_MS = PERIOD_MS
+/** One whole walk of the diagram, for the GIF's frame delay. */
+export function capturePeriodMs() { return periodMs }
 
 /** Subscribe to the shared phase. Returns an unsubscribe. */
 export function subscribe(fn) {
@@ -116,21 +131,47 @@ export function motionAllowed() {
 }
 
 /**
- * Every dot leaves its box on the same beat. They used to be staggered by a
- * hash of the edge id, but a fan of 5 lines into 1 box then had 5 dots
- * trickling in one after another, and the owner wants them to set off
- * together and arrive together (the arrival is what lights the target card).
- * Kept as a function so the GIF renderer and the canvas keep one answer.
+ * ONE current at a time. Every dot used to set off and land on the same beat,
+ * and the owner could not tell which step a diagram was on - 20 lines firing
+ * together says nothing. The cycle is now cut into 1 slot per line, walked in
+ * the order the lines are numbered, which is the order the Steps badges print.
+ * At any instant exactly 1 line carries a dot and exactly 1 card is lit.
+ *
+ * A pure function of the phase, so a GIF frame and the canvas agree by
+ * construction (see the header, and lib/render-svg.js).
  */
-export function offsetFor() {
-  return 0
+export function stepAt(phase, count) {
+  const n = Math.max(1, count | 0)
+  const p = ((phase % 1) + 1) % 1
+  const index = Math.min(n - 1, Math.floor(p * n))
+  return { index, local: p * n - index, count: n }
 }
 
-// A card breathes with the dots: brightest as they land (the phase wraps to
-// 0, offsetFor is 0 for all), dark at mid-trip, and back up as the next ones
-// close in. A raised cosine, so the fade in and the fade out have no corner.
-// A pure function of the phase: the canvas and a GIF frame agree by
-// construction, and 5 dots landing together light the card once.
-export function glowFor(phase) {
-  return (1 + Math.cos(2 * Math.PI * phase)) / 2
+/** Where line `index` draws its dot, or null while the current is elsewhere. */
+export function dotAt(phase, count, index) {
+  const s = stepAt(phase, count)
+  return s.index === index ? s.local : null
+}
+
+// Smooth at both ends, so a card neither snaps on nor cuts off.
+const ease = t => t * t * (3 - 2 * t)
+
+// How much of the next step the card behind the dot takes to go dark. Short on
+// purpose: the owner wants the light ON the step being crossed, so the hand off
+// has to read as the current moving rather than as 2 cards lit at once.
+const FADE = 0.4
+
+/**
+ * How brightly 1 card lights: up as the live step crosses towards it, full as
+ * the dot lands, then back down while the next step runs. Every other card on
+ * the canvas is 0 - the glow is there to say "the current is HERE".
+ */
+export function glowAt(phase, edges, nodeId) {
+  const list = edges || []
+  const s = stepAt(phase, list.length)
+  const live = list[s.index]
+  if (live && live.target === nodeId) return ease(s.local)
+  const prev = list[(s.index - 1 + s.count) % s.count]
+  if (prev && prev !== live && prev.target === nodeId) return 1 - ease(Math.min(1, s.local / FADE))
+  return 0
 }

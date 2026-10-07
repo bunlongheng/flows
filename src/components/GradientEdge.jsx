@@ -1,7 +1,7 @@
 import { useState, useEffect, useSyncExternalStore } from 'react'
-import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow } from '@xyflow/react'
+import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, useStore } from '@xyflow/react'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteEditContext'
-import { subscribe, currentPhase, motionAllowed, offsetFor } from '../flowClock'
+import { subscribe, currentPhase, motionAllowed, stepAt } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
 import { routeEdge, bendPoint, bendFor, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
@@ -362,17 +362,31 @@ export function SunsetX({ size = 16 }) {
 // can tell at a glance which way a connection runs and what it runs from - the
 // Chrome edge leaves Chrome blue. Small and soft on purpose: this diagram is a
 // technical document, and the dot is here to say "direction", not to decorate.
+// Whether this line is the one carrying the current right now, and how far
+// along it the dot has got. null the rest of the cycle.
+const dotFor = (order, edgeId, p) => {
+  const ids = order ? order.split('\u0000') : []
+  const s = stepAt(p, ids.length)
+  return ids[s.index] === edgeId ? s.local : null
+}
+
+// Only 1 dot is on the canvas at a time: the cycle gives each line its own
+// slot, in the order the Steps badges number them, and this one draws nothing
+// until its slot comes round (src/flowClock.js).
 function FlowDot({ edgeId, path, color }) {
-  const [t, setT] = useState(() => (currentPhase() + offsetFor(edgeId)) % 1)
+  // The line order IS the step order. Pulled out as a stable string because
+  // the edges array itself is rebuilt every frame.
+  const order = useStore(s => s.edges.map(e => e.id).join('\u0000'))
+  const [t, setT] = useState(() => dotFor(order, edgeId, currentPhase()))
 
   useEffect(() => {
     if (!motionAllowed()) return
-    return subscribe(p => setT((p + offsetFor(edgeId)) % 1))
-  }, [edgeId])
+    return subscribe(p => setT(dotFor(order, edgeId, p)))
+  }, [order, edgeId])
 
   // Ease in and out of the endpoints so the dot appears to leave the source box
   // and arrive at the target, rather than popping through both of them.
-  const pt = pointOnPath(path, t)
+  const pt = t == null ? null : pointOnPath(path, t)
   if (!pt) return null
   const fade = Math.min(1, Math.min(t, 1 - t) / 0.12)
 

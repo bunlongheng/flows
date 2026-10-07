@@ -43,9 +43,10 @@ describe("renderDiagramSvg dotPhase", () => {
   it("draws no dot unless a phase is asked for", () => {
     const plain = renderDiagramSvg(NODES, EDGES);
     const dotted = renderDiagramSvg(NODES, EDGES, { dotPhase: 0.4 });
-    // Two circles per edge (glow + core) on top of whatever the plain frame has.
+    // Two circles (glow + core) for the ONE line carrying the current, on top
+    // of whatever the plain frame has - not 2 per edge.
     const n = (s) => (s.match(/<circle/g) || []).length;
-    expect(n(dotted) - n(plain)).toBe(EDGES.length * 2);
+    expect(n(dotted) - n(plain)).toBe(2);
   });
 
   it("moves the dot as the phase advances", () => {
@@ -53,10 +54,15 @@ describe("renderDiagramSvg dotPhase", () => {
       .not.toBe(renderDiagramSvg(NODES, EDGES, { dotPhase: 0.65 }));
   });
 
-  it("staggers edges so a frame reads as flow, not a pulse", () => {
-    const svg = renderDiagramSvg(NODES, EDGES, { dotPhase: 0.3 });
-    const cx = [...svg.matchAll(/<circle cx="([\d.]+)"/g)].map((m) => m[1]);
-    expect(new Set(cx).size).toBeGreaterThan(1);
+  it("puts 1 dot on the frame, so a reader can see which step is live", () => {
+    // Each line gets its own slot in the cycle, walked in the order the Steps
+    // badges number them. Every frame carries exactly 1 dot, whatever the
+    // phase, so nobody has to guess which of 20 lines is the live one.
+    for (const dotPhase of [0.1, 0.4, 0.6, 0.95]) {
+      const svg = renderDiagramSvg(NODES, EDGES, { dotPhase });
+      const dots = svg.match(/<circle cx="[\d.]+" cy="[\d.]+" r="2.4"/g) || [];
+      expect(dots).toHaveLength(1);
+    }
   });
 });
 

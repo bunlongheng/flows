@@ -214,6 +214,10 @@ export default function App() {
   const [nodes, setNodes] = useState(defaultNodes)
   const [edges, setEdges] = useState(defaultEdges)
   const [toast, setToast] = useState({ message: '', visible: false })
+  // One current walks the diagram 1 line at a time, so the cycle is 1 slot per
+  // line and the clock has to know how many there are. Keyed on the COUNT, not
+  // the array: the edges state is rebuilt every frame.
+  useEffect(() => { flowClock.setSteps(edges.length) }, [edges.length])
   // Declared before the effects/callbacks that depend on it - a const useCallback
   // is not hoisted, so referencing it earlier would be a temporal-dead-zone crash.
   const showToastMsg = useCallback(msg => {
@@ -1416,7 +1420,7 @@ export default function App() {
 
       clock.beginCapture()
       const gif = GIFEncoder()
-      const delay = Math.round(clock.CAPTURE_PERIOD_MS / FRAMES)
+      const delay = Math.round(clock.capturePeriodMs() / FRAMES)
       let w = 0, h = 0
 
       for (let i = 0; i < FRAMES; i++) {

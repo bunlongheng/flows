@@ -1,6 +1,6 @@
 import { memo, useEffect, useState } from 'react'
 import { Handle, Position, useStore } from '@xyflow/react'
-import { subscribe, glowFor, motionAllowed } from '../flowClock'
+import { subscribe, glowAt, motionAllowed } from '../flowClock'
 import { LANE_INK, LANE_TITLE } from '../lanes.js'
 import { hexToRgba } from '../style.js'
 
@@ -15,14 +15,17 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height }) {
   // tint, LANE_GAP apart for the same visual separation 2 lanes get (src/lanes.js).
   const sections = data.sections || []
   const split = sections.length >= 2
-  // The arrival glow, as AwsNode paints it: a band the dots run INTO lights up
-  // in its own colour on every beat and fades over 2 s (src/flowClock.js).
-  const isTarget = useStore(s => s.edges.some(e => e.target === id))
+  // The arrival glow, as AwsNode paints it: the band lights only while the
+  // single current is crossing into it, and is dark the rest of the cycle
+  // (src/flowClock.js). The targets come out as a stable string, as AwsNode
+  // does it - the edges array itself is rebuilt every frame.
+  const targets = useStore(s => s.edges.map(e => e.target).join('\u0000'))
   const [glow, setGlow] = useState(0)
   useEffect(() => {
-    if (!isTarget || !motionAllowed()) return
-    return subscribe(p => setGlow(Math.round(glowFor(p) * 50) / 50))
-  }, [isTarget])
+    if (!motionAllowed()) return
+    const list = targets ? targets.split('\u0000').map(target => ({ target })) : []
+    return subscribe(p => setGlow(Math.round(glowAt(p, list, id) * 50) / 50))
+  }, [targets, id])
   // A split band lights its sections 1 by 1, so the gap between them stays dark
   // instead of 1 halo drawn around the whole row.
   const halo = c => (glow ? `0 0 0 ${(3 * glow).toFixed(1)}px ${hexToRgba(c, 0.45 * glow)}, 0 0 ${Math.round(22 * glow)}px ${hexToRgba(c, 0.7 * glow)}` : undefined)

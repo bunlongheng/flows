@@ -5,7 +5,7 @@ import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext,
 import { NOTE_MAX, cleanNote, noteRuns, linkLabel, INFO_MAX, cleanInfo, infoLead } from '../note'
 import { SUNSET, INK } from '../sunset.js'
 import { FONT_STACK, borderStyleOf, hexToRgba } from '../style.js'
-import { subscribe, glowFor, motionAllowed } from '../flowClock'
+import { subscribe, glowAt, motionAllowed } from '../flowClock'
 import { LaneNode } from './LaneNode'
 
 // An unstretched logo fills whatever the card leaves above its label, about
@@ -211,15 +211,20 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   const label = svc.label || data.label || data.id
   const sub = svc.sub || data.sub
   const note = cleanNote(data.note)
-  // The arrival glow: a card the dots run INTO lights up in its own border
-  // colour on every beat and fades over 2 s (src/flowClock.js). Only while the
-  // dots flow, never on a sunset card, and never under reduced motion.
-  const isTarget = useStore(s => s.edges.some(e => e.target === data.id))
+  // The arrival glow: ONE card at a time, the one the single current is
+  // crossing into right now, in its own border colour (src/flowClock.js).
+  // Every other card stays dark - that is the whole point of the single
+  // current. Never on a sunset card, never under reduced motion.
+  // The edges array is rebuilt every frame, so what the clock needs is pulled
+  // out as a stable string: the targets in order, joined. It only changes when
+  // a line is actually added, removed or repointed.
+  const targets = useStore(s => s.edges.map(e => e.target).join('\u0000'))
   const [glow, setGlow] = useState(0)
   useEffect(() => {
-    if (!isTarget || sunset || !motionAllowed()) return
-    return subscribe(p => setGlow(Math.round(glowFor(p) * 50) / 50))
-  }, [isTarget, sunset])
+    if (sunset || !motionAllowed()) return
+    const list = targets ? targets.split('\u0000').map(target => ({ target })) : []
+    return subscribe(p => setGlow(Math.round(glowAt(p, list, data.id) * 50) / 50))
+  }, [targets, sunset, data.id])
   // A picture node: `image` is always the inlined 640x480 JPEG data URI
   // resolved at create/update time - never a raw path, URL or airclips: ref.
   const picture = typeof data.image === 'string' && data.image.startsWith('data:image/') ? data.image : null
