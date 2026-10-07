@@ -54,10 +54,10 @@ describe("renderDiagramSvg - lane edges", () => {
     const still = renderDiagramSvg(NODES, edges, { view: { lanes: LANES } });
     expect(still).toContain('<circle cx="90.0" cy="280.0" r="5" fill="#dc2626" stroke="#fff"');
     expect(still).not.toContain("sd-lane-glow");
-    const landing = renderDiagramSvg(NODES, edges, { view: { lanes: LANES }, dotPhase: 0 });
+    const landing = renderDiagramSvg(NODES, edges, { view: { lanes: LANES }, dotPhase: 0.9 });
     expect(landing.match(/sd-lane-glow/g)).toHaveLength(1); // lane b only, lane a is nobody's target
     expect(landing).toMatch(/sd-lane-glow"><rect [^>]*stroke="#dc2626"/);
-    expect(renderDiagramSvg(NODES, edges, { view: { lanes: LANES }, dotPhase: 0.5 })).not.toContain("sd-lane-glow"); // mid-trip, nothing lands
+    expect(renderDiagramSvg(NODES, edges, { view: { lanes: LANES }, dotPhase: 0 })).not.toContain("sd-lane-glow"); // the current has just set off, nothing has landed
   });
   it("cuts a lane-bound line out of every lane it only passes through, keeping its card's lane and the gaps", () => {
     const lanes = [...LANES, { id: "c", title: "Far", y: 700, h: 300 }];

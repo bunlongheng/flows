@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   subscribe, beginCapture, stepCapture, endCapture,
-  offsetFor, motionAllowed, CAPTURE_PERIOD_MS, glowFor,
+  motionAllowed, capturePeriodMs, setSteps, stepAt, dotAt, glowAt,
   isPlaying, setPlaying, isFlowing, subscribeFlowing,
 } from "../../src/flowClock.js";
 
@@ -20,13 +20,13 @@ const raf = () => {
 
 describe("flowClock", () => {
   let clock;
-  beforeEach(() => { clock = raf(); endCapture(); setPlaying(true); });
+  beforeEach(() => { clock = raf(); endCapture(); setSteps(1); setPlaying(true); });
   afterEach(() => { endCapture(); setPlaying(false); vi.restoreAllMocks(); });
 
   it("drives every subscriber from one loop", () => {
     const a = vi.fn(), b = vi.fn();
     const offA = subscribe(a), offB = subscribe(b);
-    clock.flush(CAPTURE_PERIOD_MS / 2);
+    clock.flush(capturePeriodMs() / 2);
     expect(a).toHaveBeenCalledTimes(1);
     expect(b).toHaveBeenCalledTimes(1);
     expect(a.mock.calls[0][0]).toBeCloseTo(0.5, 5);
@@ -44,7 +44,7 @@ describe("flowClock", () => {
     const seen = [];
     const off = subscribe((p) => seen.push(p));
     beginCapture();
-    clock.flush(CAPTURE_PERIOD_MS * 0.77); // wall time must NOT move the dots now
+    clock.flush(capturePeriodMs() * 0.77); // wall time must NOT move the dots now
     expect(seen).toEqual([]);
     off();
   });
@@ -69,23 +69,79 @@ describe("flowClock", () => {
     const seen = [];
     const off = subscribe((p) => seen.push(p));
     beginCapture(); stepCapture(0.25); endCapture();
-    clock.flush(CAPTURE_PERIOD_MS / 4);
+    clock.flush(capturePeriodMs() / 4);
     expect(seen).toHaveLength(2);
     expect(seen.at(-1)).toBeCloseTo(0.25, 5);
     off();
   });
 
-  it("breathes a card with the dots: full as they land, dark at mid-trip, smooth both ways", () => {
-    expect(glowFor(0)).toBe(1);
-    expect(glowFor(0.25)).toBeCloseTo(0.5, 5);
-    expect(glowFor(0.5)).toBeCloseTo(0, 5);
-    expect(glowFor(1)).toBeCloseTo(1, 5);
-    expect(glowFor(0.1)).toBeCloseTo(glowFor(0.9), 5); // the fade in mirrors the fade out
-    expect(glowFor(0.05) - glowFor(0)).toBeCloseTo(0, 1); // no corner at the peak
+  // ONE current at a time. Every dot used to set off and land together, and the
+  // owner could not tell which step a diagram was on. The cycle now gives each
+  // line its own slot, in the order the Steps badges number them.
+  it("gives each line its own slot, in order, across one cycle", () => {
+    expect(stepAt(0, 4)).toMatchObject({ index: 0 });
+    expect(stepAt(0.24, 4)).toMatchObject({ index: 0 });
+    expect(stepAt(0.26, 4)).toMatchObject({ index: 1 });
+    expect(stepAt(0.51, 4)).toMatchObject({ index: 2 });
+    expect(stepAt(0.99, 4)).toMatchObject({ index: 3 });
+    // The slot is walked end to end, so the dot crosses the whole line.
+    expect(stepAt(0.25, 4).local).toBeCloseTo(0, 5);
+    expect(stepAt(0.49, 4).local).toBeCloseTo(0.96, 5);
   });
 
-  it("sends every dot off on the same beat, so a fan of edges arrives together", () => {
-    for (const id of ["edge-a", "edge-b", "e0", "some-long-edge-id"]) expect(offsetFor(id)).toBe(0);
+  it("wraps the phase and never runs off the end of the list", () => {
+    expect(stepAt(1, 4).index).toBe(0);
+    expect(stepAt(-0.1, 4).index).toBe(3);
+    expect(stepAt(0.5, 0).index).toBe(0); // a diagram with no lines still answers
+  });
+
+  it("puts exactly 1 dot on the canvas at a time", () => {
+    for (const phase of [0.05, 0.3, 0.6, 0.95]) {
+      const live = [0, 1, 2, 3].filter((i) => dotAt(phase, 4, i) != null);
+      expect(live).toHaveLength(1);
+    }
+    expect(dotAt(0.3, 4, 1)).toBeCloseTo(0.2, 5);
+    expect(dotAt(0.3, 4, 0)).toBeNull();
+  });
+
+  // The glow says "the current is HERE" - so it is on 1 card, not 20.
+  const chain = [
+    { id: "e1", source: "a", target: "b" },
+    { id: "e2", source: "b", target: "c" },
+    { id: "e3", source: "c", target: "d" },
+  ];
+
+  it("lights only the card the current is crossing into", () => {
+    const lit = (p) => ["a", "b", "c", "d"].filter((n) => glowAt(p, chain, n) > 0.01);
+    // Mid step 2 of 3: c is coming up and that is the whole canvas. b has
+    // already gone dark behind the dot, a is a source only, d is still to come.
+    expect(lit(0.5)).toEqual(["c"]);
+    expect(glowAt(0.5, chain, "a")).toBe(0);
+    expect(glowAt(0.5, chain, "d")).toBe(0);
+    expect(lit(0.3)).toEqual(["b"]); // late in step 1, where it lands
+    // The hand off is the only moment 2 cards carry any light at all, and the
+    // one being left is already on its way out.
+    expect(glowAt(0.37, chain, "b")).toBeGreaterThan(glowAt(0.37, chain, "c"));
+  });
+
+  it("brings a card up to full as the dot lands, then back down", () => {
+    expect(glowAt(0.001, chain, "b")).toBeLessThan(0.01); // the step has just left a
+    expect(glowAt(0.333, chain, "b")).toBeCloseTo(1, 1); // and lands on b
+    expect(glowAt(0.5, chain, "b")).toBeLessThan(0.01); // gone early into c's step
+    expect(glowAt(0.66, chain, "b")).toBeLessThan(0.01); // and still dark
+  });
+
+  it("holds the glow still when a diagram has a single line", () => {
+    const one = [{ id: "e1", source: "a", target: "b" }];
+    expect(glowAt(0.99, one, "b")).toBeCloseTo(1, 1);
+    expect(glowAt(0.99, one, "a")).toBe(0);
+  });
+
+  it("stretches one cycle to 1 slot per line, so the GIF covers the whole walk", () => {
+    setSteps(1);
+    const one = capturePeriodMs();
+    setSteps(6);
+    expect(capturePeriodMs()).toBe(one * 6);
   });
 
   it("respects prefers-reduced-motion", () => {
@@ -103,12 +159,12 @@ describe("flowClock", () => {
     setPlaying(false);
     const seen = [];
     const off = subscribe((p) => seen.push(p));
-    clock.flush(CAPTURE_PERIOD_MS / 2);
+    clock.flush(capturePeriodMs() / 2);
     expect(seen).toEqual([]);
     expect(isPlaying()).toBe(false);
 
     setPlaying(true);
-    clock.flush(CAPTURE_PERIOD_MS / 2);
+    clock.flush(capturePeriodMs() / 2);
     expect(seen).toHaveLength(1);
     off();
   });
