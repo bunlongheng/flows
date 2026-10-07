@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { renderDiagramGif, over } from "../../lib/render-gif.js";
 import { renderDiagramSvg } from "../../lib/render-svg.js";
+import { STEP_MS } from "../../src/flowClock.js";
 
 // The server-side GIF is what an agent or a README gets from ?format=gif. It
 // exists because the in-app export needs a DOM, html-to-image and an owner
@@ -118,11 +119,28 @@ describe("renderDiagramGif", () => {
   it("is full HD at 20 fps by default and still fits a README", async () => {
     const buf = await renderDiagramGif(NODES, EDGES, {});
     expect(buf.readUInt16LE(6)).toBe(1920);
-    const f = frames(buf);
-    expect(f.length).toBe(100);
     // Delay is stored in 1/100 s: 50 ms is 5, exactly, so the loop keeps time.
     expect(buf[buf.indexOf("\x21\xF9\x04", 0, "latin1") + 4]).toBe(5);
     expect(buf.length).toBeLessThan(4.3e6);
+  });
+
+  // The export exists to show what the canvas shows. src/flowClock.js walks ONE
+  // line per STEP_MS whatever the diagram's size, so the GIF has to as well:
+  // the old code pinned the whole walk to a flat 5 s, which ran an 11 line
+  // diagram 3.1x too fast and a 56 line one 15.7x. Assert the pace, not the
+  // frame count - the budget guards are free to spend frames, never speed.
+  it("walks 1 line per STEP_MS, the same as the canvas clock", async () => {
+    for (const n of [2, 5]) {
+      const edges = Array.from({ length: n }, (_, i) => ({
+        id: `e${i}`, source: NODES[i % 3].id, target: NODES[(i + 1) % 3].id,
+      }));
+      const buf = await renderDiagramGif(NODES, edges, { width: 320 });
+      const f = frames(buf);
+      const cs = buf[buf.indexOf("\x21\xF9\x04", 0, "latin1") + 4];
+      const msPerLine = (f.length * cs * 10) / n;
+      expect(msPerLine).toBeGreaterThan(STEP_MS * 0.9);
+      expect(msPerLine).toBeLessThan(STEP_MS * 1.1);
+    }
   });
 
   it("survives a diagram with no edges", async () => {

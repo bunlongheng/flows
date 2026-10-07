@@ -14,7 +14,9 @@
 // One step of the current: how long 1 dot takes to cross 1 line. A diagram is
 // 1 cycle of `steps` of these, so a 6 line flow loops in 8.4 s and a 90 line
 // map takes its time - the whole point is to watch 1 step at a time.
-const STEP_MS = 1400
+// Exported because lib/render-gif.js builds the GIF's frame delay from it: the
+// export has to walk a line in exactly the time the canvas does.
+export const STEP_MS = 1400
 
 const subs = new Set()
 let raf = 0
