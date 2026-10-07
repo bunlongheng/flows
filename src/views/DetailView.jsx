@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { isPlaying, setPlaying, subscribePlaying, isFlowing, subscribeFlowing } from '../flowClock'
 import { ReactFlow, Background } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
@@ -162,6 +162,27 @@ export function DetailView({
   // it starts folded to a small badge in the corner on every screen; a click
   // opens it when the reader wants the framing.
   const [infoOpen, setInfoOpen] = useState(false)
+  // A phone is about 1/7 as wide as a big diagram, so the desktop zoom floor of
+  // 0.2 stopped the pinch while the board was still wider than the glass. A
+  // narrow screen gets to go all the way out instead.
+  const [narrow, setNarrow] = useState(false)
+  useEffect(() => {
+    const m = window.matchMedia('(max-width: 880px)')
+    const on = () => setNarrow(m.matches)
+    on()
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [])
+  // And on a phone the canvas is a PDF: pinch, pan, nothing else. Every handle
+  // here - a card, a badge, a line end - is smaller than a fingertip, so a
+  // touch meant to zoom kept dragging something instead. The owner still edits
+  // on a real screen; the phone only reads.
+  const viewOnly = narrow
+  const canvasEdges = useMemo(() => (viewOnly
+    ? edges.map(e => (e.data?.onLabelMove || e.data?.onEndMove || e.data?.onBendMove || e.data?.onLabelEdit
+      ? { ...e, data: { ...e.data, onLabelMove: undefined, onEndMove: undefined, onBendMove: undefined, onLabelEdit: undefined } }
+      : e))
+    : edges), [edges, viewOnly])
   // Fit is an ACTION, but it reads as a state on touch (the inline hover
   // background never clears without a mouseleave). So make the state real:
   // lit only while the canvas actually IS the fitted view, cleared the moment
@@ -802,13 +823,13 @@ export function DetailView({
         {/* Canvas */}
         <div style={{ flex: 1, position: 'relative', background: '#ffffff' }}>
           <ShowNotesContext.Provider value={showNotes}>
-          <NoteEditContext.Provider value={onNoteChange || null}>
-          <InfoEditContext.Provider value={onInfoChange || null}>
-          <NodeResizeContext.Provider value={onNodeResize || null}>
-          <IconResizeContext.Provider value={onIconResize || null}>
+          <NoteEditContext.Provider value={viewOnly ? null : onNoteChange || null}>
+          <InfoEditContext.Provider value={viewOnly ? null : onInfoChange || null}>
+          <NodeResizeContext.Provider value={viewOnly ? null : onNodeResize || null}>
+          <IconResizeContext.Provider value={viewOnly ? null : onIconResize || null}>
           <ReactFlow
-            className={`${showSteps ? 'sd-steps-on ' : ''}${flowing ? '' : 'sd-still '}${canEdit ? '' : 'sd-reading '}sd-badge-${badgeMode}`}
-            nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
+            className={`${showSteps ? 'sd-steps-on ' : ''}${flowing ? '' : 'sd-still '}${canEdit && !viewOnly ? '' : 'sd-reading '}sd-badge-${badgeMode}`}
+            nodes={nodes} edges={canvasEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
             onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
             onNodeDragStop={onNodeDragStop}
             /* Cmd/Ctrl is reserved for snap-align while dragging, so additive
@@ -817,7 +838,7 @@ export function DetailView({
             /* Delete as well as Backspace, because Delete is the key people
                reach for and React Flow only listens for Backspace by default.
                A visitor gets neither. */
-            deleteKeyCode={canEdit ? ['Backspace', 'Delete'] : null}
+            deleteKeyCode={canEdit && !viewOnly ? ['Backspace', 'Delete'] : null}
             /* It removes a LINE and only a line. A card dropped here would go
                from the canvas but not from the row, and be back on reload. */
             onBeforeDelete={({ edges: dying }) => Promise.resolve({ nodes: [], edges: dying })}
@@ -830,11 +851,12 @@ export function DetailView({
             /* A reader selects: clicking a card lights every line in and out of
                it, which is how you follow a path on someone else's diagram.
                Nothing moves - the drag handles on a line only exist when the
-               owner's onEndMove/onBendMove are threaded into its data. */
-            nodesDraggable={canEdit} nodesConnectable={false} elementsSelectable
+               owner's onEndMove/onBendMove are threaded into its data. On a
+               phone even selecting is off: a finger is wider than a card. */
+            nodesDraggable={canEdit && !viewOnly} nodesConnectable={false} elementsSelectable={!viewOnly}
             /* 2 fingers on the trackpad pan the canvas in any direction, the way
                Sequences and Mindmaps do; pinch or Cmd + wheel zooms. */
-            panOnDrag panOnScroll panOnScrollMode="free" panOnScrollSpeed={1} zoomOnScroll={false} minZoom={0.2} maxZoom={2.5}
+            panOnDrag panOnScroll panOnScrollMode="free" panOnScrollSpeed={1} zoomOnScroll={false} minZoom={narrow ? 0.04 : 0.2} maxZoom={2.5}
             proOptions={{ hideAttribution: true }}
           >
             <Background variant="dots" gap={24} size={1} color="#e6e8eb" />
@@ -1319,7 +1341,10 @@ export function DetailView({
                wider than the screen, and hiding the overflow put a real button
                out of reach with no sign it was there. */
             overflow-x: auto !important;
-            padding: 0 8px !important;
+            /* The shorthand used to land here as 0 8px, which wiped the
+               inline safe-area top: on a phone the title and the back button
+               sat under the clock and the battery. Keep the inset. */
+            padding: env(safe-area-inset-top) 8px 0 !important;
             gap: 2px !important;
           }
           .sd-detail-header .sd-btn-label { display: none; }
@@ -1361,7 +1386,7 @@ export function DetailView({
            bar is wider than the room, so tighten rather than silently clip
            something off the right edge. */
         @media (max-width: 480px) {
-          .sd-detail-header { padding: 0 6px !important; gap: 0 !important; }
+          .sd-detail-header { padding: env(safe-area-inset-top) 6px 0 !important; gap: 0 !important; }
           .sd-detail-header button { padding: 0 6px !important; min-width: 34px !important; }
           .sd-detail-header .sd-divider-phone { margin: 0 2px !important; }
           /* Dividers separate groups that no longer exist once the labels and
