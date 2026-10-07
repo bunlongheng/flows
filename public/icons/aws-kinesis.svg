@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="256px" height="256px" viewBox="0 0 256 256" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid">
-    <title>AWS Kinesis</title>
-    <defs>
-        <linearGradient x1="0%" y1="100%" x2="100%" y2="0%" id="linearGradient-1">
-            <stop stop-color="#4D27A8" offset="0%"></stop>
-            <stop stop-color="#A166FF" offset="100%"></stop>
-        </linearGradient>
-    </defs>
-    <g>
-        <rect fill="url(#linearGradient-1)" x="0" y="0" width="256" height="256"></rect>
-        <path d="M60.8,198.4 L67.2,198.4 C67.2,171.5008 84.688,144 214.4,144 L214.4,137.6 C79.0496,137.6 60.8,168.3328 60.8,198.4 M80,217.6 L86.4,217.6 C86.4,193.3888 86.4,156.8 214.4,156.8 L214.4,150.4 C155.7216,150.4 117.5296,157.9488 97.632,173.4784 C80,187.2384 80,204.7872 80,217.6 M48,83.2 L41.6,83.2 C41.6,106.8672 73.7248,121.856 137.2576,128 C73.7248,134.144 41.6,149.1328 41.6,172.8 L48,172.8 C48,157.264 69.6192,131.2 214.4,131.2 L214.4,124.8 C69.6192,124.8 48,98.736 48,83.2 M67.2,57.6 L60.8,57.6 C60.8,87.6672 79.0496,118.4 214.4,118.4 L214.4,112 C84.688,112 67.2,84.4992 67.2,57.6 M214.4,99.2 L214.4,105.6 C155.7216,105.6 117.5296,98.0512 97.632,82.5216 C80,68.7616 80,51.2128 80,38.4 L86.4,38.4 C86.4,62.6112 86.4,99.2 214.4,99.2" fill="#FFFFFF"></path>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Icon-Architecture/64/Arch_Amazon-Kinesis_64</title>
+    <g id="Icon-Architecture/64/Arch_Amazon-Kinesis_64" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Icon-Architecture-BG/64/Analytics" fill="#8C4FFF">
+            <rect id="Rectangle" x="0" y="0" width="80" height="80"></rect>
+        </g>
+        <path d="M19,62 L21,62 C21,53.594 26.465,45 67,45 L67,43 C24.703,43 19,52.604 19,62 M25,68 L27,68 C27,60.434 27,49 67,49 L67,47 C48.663,47 36.728,49.359 30.51,54.212 C25,58.512 25,63.996 25,68 M15,26 L13,26 C13,33.396 23.039,38.08 42.893,40 C23.039,41.92 13,46.604 13,54 L15,54 C15,49.145 21.756,41 67,41 L67,39 C21.756,39 15,30.855 15,26 M21,18 L19,18 C19,27.396 24.703,37 67,37 L67,35 C26.465,35 21,26.406 21,18 M67,31 L67,33 C48.663,33 36.728,30.641 30.51,25.788 C25,21.488 25,16.004 25,12 L27,12 C27,19.566 27,31 67,31" id="Amazon-Kinesis_Icon_64_Squid" fill="#FFFFFF"></path>
     </g>
 </svg>
