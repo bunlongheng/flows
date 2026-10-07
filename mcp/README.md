@@ -13,8 +13,8 @@ immediately. Speaks MCP over stdio; logs go to stderr only.
 |------|--------|---------|
 | `list_flows` | none | `{ count, designs: [{ id, title, slug, nodes, edges, created_at, url }] }` - node/edge counts, newest first, max 200, trash excluded |
 | `get_flow` | `id` | `{ id, title, slug, nodes, edges, created_at, url, share_url, gif_url, readme }` - the full structure the app renders. Error if the id is unknown or trashed |
-| `create_flow` | `title`, `nodes[]`, `edges[]` (default `[]`), `public?` (default `true`), `source?` (`"repo-audit"` = render only, nothing stored), `store?`, `lanes?` | `{ id, url, share_url, gif_url, readme, visibility, share_note?, layout?, warning?, probably_update? }` |
-| `update_flow` | `id`, `reason?`, `title?`, `nodes?`, `edges?`, `public?` | `{ id, url, share_url, gif_url, readme, visibility, updated: { title, nodes, edges, public }, layout?, reason? }` |
+| `create_flow` | `title`, `nodes[]`, `edges[]` (default `[]`), `public?` (default `true`), `pattern?`, `description?`, `source?` (`"repo-audit"` = render only, nothing stored), `store?`, `lanes?` | `{ id, url, share_url, gif_url, readme, visibility, share_note?, layout?, warning?, probably_update? }` |
+| `update_flow` | `id`, `reason?`, `title?`, `nodes?`, `edges?`, `public?`, `lanes?`, `view?` | `{ id, url, share_url, gif_url, readme, visibility, updated: { title, nodes, edges, public, lanes, view }, layout?, reason? }` |
 | `lock_flow` | `id`, `locked?`, `edit_locked?` (true only) | `{ id, title, locked, edit_locked }` |
 | `delete_flow` | `id`, `reason?` | `{ trashed, title, recoverable: true, restore_with: "restore_flow" }` |
 | `restore_flow` | `id` | `{ restored, title, url }` |
@@ -74,7 +74,7 @@ diagram, same as `update_flow`.
 }
 ```
 
-A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, sunset? }`:
+A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, sunset?, iconFrame?, size?, iconSize?, style? }`:
 
 - `id` - a service key from `list_services` (e.g. `user`, `apigw`, `lambda`, `dynamo`, `kafka`, `redis`, `s3`), or any unique id when bringing your own icon or image. A key appears at most once per diagram.
 - `icon` - bring-your-own logo: a remote `https` image URL, a `data:image/(png|jpeg|svg+xml|webp|gif)` URI with a real `;base64,` or `,` boundary, or a same-origin image path such as `/brand/foo.svg` (never protocol-relative `//host`). A remote URL is fetched once (https only, no redirects, `image/*`, max 24KB, 5s, private hosts refused, raster logos at least 96px) and inlined so the diagram stays self-contained. If it cannot be fetched the call fails and names the node. An inline `data:` icon is capped at 24KB.
@@ -83,13 +83,66 @@ A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, suns
 - `note` - max 400 chars, 1-2 sentences on what that step does. Light markdown works: `**bold**`, `*italic*`, `__underline__`, `~~strike~~` and `` `code` ``, 1 level, no nesting. Any http(s) URL becomes a blue link that shows its ticket key when the URL has one (SHAR-7977), else the address without scheme and www. It renders under the card, bottom-left, in the app, on every shared link, in the SVG (as typed, marks included) and on the share card. Set it on create, or later with `update_flow` by sending the full `nodes` list with `note` on the ones that need it.
 - `info` - plain text, max 600 chars, 1-3 sentences on what this thing is and why it is in this diagram. Hidden until the reader hovers or clicks the i badge on the card, 1 popover open at a time; not in the SVG. Shown as `<card name> is <text>` with the name in bold, so write it to read after "is" ("the embedded iPaaS behind every rebuilt integration"). Different from `note`, which is always visible.
 - `sunset` - a boolean; `true` marks a node that is today's path and gets decommissioned: drawn light silver and dimmed, icon in greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) light silver at 0.75 opacity, immune to any line style. No X on the card itself. Silver is reserved for this; never paint a node grey or silver to mean retired, set `sunset` instead. A node with no colour of its own falls back to black.
-- `x` / `y` - optional. Omit them and the canvas lays the design out left-to-right, which is the wanted look.
+- `size` - optional `{ w, h }`, clamped 130..600, the card on the canvas. Default 180 x 180, or 240 x 225 for a picture card. A note hangs BELOW the card and is not part of `h`.
+- `iconSize` - optional `{ w, h }`, clamped 16..600, the logo tile inside the card (default 48 x 48). Only for a wide wordmark that is unreadable at the stock tile.
+- `iconFrame` - a boolean; `true` draws a 1 px grey frame at the iOS corner around the icon tile, for a PNG whose outer ring is white (a white tile on a white card has no edge). The create sets it by itself when it detects that.
+- `style` - optional, the same look object the format panel writes, validated by `src/style.js` `cleanStyle`: `stroke` #hex, `bg` #hex or `"transparent"`, `bw` 1/2/4, `bs` solid/dashed/dotted, `radius` 0/12, `font` sans/serif/mono, `fs` 12/14/18/24, `align` left/center/right, `opacity` 0..100. An illegal key or value is dropped, exactly as on a save from the canvas. **Leave it off by default**: a card with no style draws in its own logo colour, which is almost always what you want, so set it only to say something that colour cannot.
+- `color` - leave it off too. The border colour is taken from the icon itself (`src/iconColor.js`), so a Chrome card draws Chrome blue without being told. An explicit colour only wins when it is saturated: a grey or near-black is a guess and is replaced by the logo colour.
+- `x` / `y` - optional. Omit them and the canvas lays the design out left-to-right, which is the wanted look. If you do place cards yourself, match the auto-layout pitch: 190 per card, 150 between columns (a 340 column pitch) and 95 between stacked cards (a 275 row pitch), which is what buys a step chip its 100 px of clear line.
 
-Edges are directed `{ source, target, label?, description? }` using node ids, in flow order. Each edge becomes a numbered step in the app. The tag on the line reads the label, or the description (max 300) cut short when there is no label; hovering the tag shows the whole description.
+Edges are directed `{ source, target, label?, description?, id?, style? }` using node ids. The tag on the line reads the label, or the description (max 300) cut short when there is no label; hovering the tag shows the whole description.
+
+- **The array order IS the diagram.** It numbers the Steps chips 1..N and it is the path the single current walks, 1 line at a time, so order the array the way a reader should read the diagram.
+- **Give every edge a stable `id`** (`"e1"`, `"e2"`, ...). The owner's per-line styling, the step chip they dragged along a line and any hand bend are matched back to a line BY ID. With no id they are matched by array position instead, so inserting a line in the middle silently moves all of that onto the wrong lines. The id also decides which line of a shared trunk is the leader that carries the only badge (lowest id wins).
+- `style` - the look object above. A line reads only `stroke`, `bw`, `bs`, `arrow` (step/curved/straight) and `opacity` from it.
+- When several lines share the same face of the same card, give them the **identical label** and they merge into 1 trunk with 1 badge; put the per-line detail in `description`. A bent, pinned or arrow-styled line never joins a trunk.
 
 - `pattern` (max 200) and `description` (max 600) are top-level fields on `create_flow`: the one-line "what it tests" and the goal paragraph the detail view and the share card show above the diagram.
 
+### How a diagram opens
+
+`update_flow { id, view: { panels, badge } }` saves how the diagram opens, and
+`create_flow` takes the same thing as `view_state`.
+
+- `panels` - any of `steps`, `share`, `code`, `notes-off`. **Turn `steps` on for
+  anything a reader has to follow in order** instead of leaving them to find the
+  button. `notes-off` is inverted on purpose: notes show by default, so the
+  flag's job is to hide them.
+- `badge` - `dark` (default), `silver`, `color` or `plain`, how a step chip is
+  painted.
+- Only the keys you send change. The owner's lanes and hand-placed Start pill
+  are kept. The HTTP `PATCH view_state` behaves differently and replaces the
+  object, because the canvas sends the whole thing on every save.
+
+### Swimlanes
+
+Bands the cards sit in, 1 per layer of the system. Configuration only: there is
+no Lane button on the canvas, so they are set with `update_flow { id, lanes }`
+(or `lanes` on create) and nothing else writes them.
+
+- A lane is a row `{ id, title, y, h, color?, size?, sections? }` for a
+  top-down layout or a column `{ id, title, x, w, ... }` for a left-to-right
+  one. A diagram has 1 kind, the kind of its first lane. Max 12, thinnest 80,
+  packed with equal 40 px gaps, each band ending 36 px past the last card (and
+  its note) inside it.
+- `color` is a hex ink for the band and its title, `size` the title in px
+  (10..40, default 13).
+- `sections` (2 or 3 of `{ id, title, at, color? }`) splits 1 band into titled
+  bands across its other axis instead of stacking 2 lanes. `at` is where a
+  section starts and the one before it ends 40 px short of that, so put `at`
+  140 px past the last card of the section before it. A split lane draws no
+  band of its own: the sections are the bands and carry the titles. Never leave
+  a card straddling a divider.
+- `[]` clears every lane; omitting the key leaves them alone. With lanes on, no
+  Start pill is drawn. An edge to `lane:<id>` collapses a fan into 1 line.
+
 ### Rules the server enforces
+
+- **An update REPLACES the whole array.** `update_flow` with `nodes` or `edges`
+  swaps that list wholesale, so send every node, not only the changed one: one
+  you leave out is GONE. What the owner set by hand and you simply omit (node
+  `size`, `iconSize`, `style`; edge `style`, `labelT`, `bend`) is carried over
+  from the stored row rather than wiped - `lib/owner-work.js`.
 
 - **Logo gate** - every node must render a real logo. A node that is neither a catalog service nor carries a valid `icon` is rejected on create and update, and the error lists the unresolved ids and points at `list_services`. No bare-letter placeholders. The gate is `lib/validate-design.js`, the same policy the HTTP API and AI generate use, so it also enforces the caps: max 100 nodes, max 300 edges, max 24KB per inline icon.
 - **Start-left rule** - a diagram starts on the LEFT and reads left-to-right, never from the bottom, never backward. It is only judged when every node has coordinates: if the start node (the first edge's source, else the first node with no incoming edge) is not in the leftmost column, or sits at the bottom of a layout with vertical spread, all positions are dropped and the canvas auto-lays it out. The response carries a `layout` warning saying why.
