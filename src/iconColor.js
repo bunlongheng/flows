@@ -23,6 +23,19 @@ function isNeutral(hex) {
   return max - min < 18
 }
 
+// Whether a stored colour is grey, black or white: no chroma to speak of. A
+// node carrying one of these is not making a choice - an agent guessed, or the
+// house ink came through - so it never overrules the colour of the node's own
+// logo. ONE function and one threshold, shared by the canvas (src/services.js)
+// and the store path (lib/logo-color.js), so the two can never disagree about
+// what counts as a deliberate colour.
+const CHROMA = 30
+export function isNeutralColor(hex) {
+  if (typeof hex !== 'string' || !/^#[0-9a-f]{6}$/i.test(hex)) return false
+  const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
+  return Math.max(...c) - Math.min(...c) < CHROMA
+}
+
 function decode(icon) {
   const m = /^data:image\/svg\+xml;base64,(.+)$/.exec(icon)
   if (m) {
