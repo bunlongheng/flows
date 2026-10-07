@@ -176,11 +176,35 @@ export function DetailView({
     m.addEventListener('change', on)
     return () => m.removeEventListener('change', on)
   }, [])
-  // And on a phone the canvas is a PDF: pinch, pan, nothing else. Every handle
-  // here - a card, a badge, a line end - is smaller than a fingertip, so a
-  // touch meant to zoom kept dragging something instead. The owner still edits
-  // on a real screen; the phone only reads.
-  const viewOnly = narrow
+  // A finger has no hover and no precision, so every touch screen - iPad as
+  // well as iPhone - opens READ ONLY: the canvas is a PDF, pinch and pan and
+  // nothing else. Width alone was the wrong test; an iPad is wider than the
+  // phone breakpoint and still gets fingers.
+  const [touch, setTouch] = useState(false)
+  useEffect(() => {
+    const m = window.matchMedia?.('(pointer: coarse)')
+    if (!m) return
+    const on = () => setTouch(m.matches)
+    on()
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [])
+  // The pencil is the way in: tap it and the tools appear and the cards move.
+  // It starts off on every touch screen, so looking at a diagram can never
+  // drag a card by accident.
+  const [touchEdit, setTouchEdit] = useState(false)
+  // The edit lock freezes the canvas for EVERYONE, the owner included. It used
+  // to hold only agents back while the owner's own drags still landed, which
+  // read as the lock simply not working.
+  const frozen = !!isEditLocked || ((touch || narrow) && !touchEdit)
+  const viewOnly = frozen
+  // Selecting is reading, not editing: on a desktop a locked diagram still
+  // lights a card's lines when you click it. A finger is the exception - it is
+  // wider than a card, so a tap meant to zoom must land on nothing.
+  const fingerOnly = (touch || narrow) && !touchEdit
+  // The tools that change the layout follow the same rule as the canvas: no
+  // Arrange, no Undo, no Code while the diagram is frozen.
+  const canEditNow = canEdit && !frozen
   const canvasEdges = useMemo(() => (viewOnly
     ? edges.map(e => (e.data?.onLabelMove || e.data?.onEndMove || e.data?.onBendMove || e.data?.onLabelEdit
       ? { ...e, data: { ...e.data, onLabelMove: undefined, onEndMove: undefined, onBendMove: undefined, onLabelEdit: undefined } }
@@ -471,8 +495,29 @@ export function DetailView({
           background: '#ffffff', border: '1px solid #e4e6e8', borderRadius: 14,
           boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '4px 6px',
         }}>
+          {/* The pencil: the only way into edit mode on a touch screen. It is not
+              rendered on a mouse (nothing to unlock there) and not while the
+              edit lock is on, because that lock outranks it. */}
+          {canEdit && (touch || narrow) && !isEditLocked && (
+            <button onClick={() => setTouchEdit(v => !v)} aria-pressed={touchEdit}
+              title={touchEdit ? 'Editing - tap to go back to reading' : 'Reading only - tap to edit'} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
+              background: touchEdit ? '#fef3c7' : 'transparent',
+              color: touchEdit ? '#92400e' : '#64748b',
+              cursor: 'pointer', fontSize: 13, fontWeight: touchEdit ? 600 : 400,
+              transition: 'all 0.1s', fontFamily: 'inherit', flexShrink: 0,
+            }}>
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+              <span className="sd-btn-label">{touchEdit ? 'Editing' : 'Read'}</span>
+            </button>
+          )}
+
           {/* Code toggle */}
-          {canEdit && <button className="sd-hide-mobile sd-hide-tablet" onClick={() => setShowDetailCode(v => !v)} style={{
+          {canEditNow && <button className="sd-hide-mobile sd-hide-tablet" onClick={() => setShowDetailCode(v => !v)} style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
             background: showDetailCode ? '#f1f5f9' : 'transparent',
@@ -532,7 +577,7 @@ export function DetailView({
           {canEdit && <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />}
 
           {/* Auto-arrange: a small menu picks the style, then re-lay-out and fit */}
-          {canEdit && <div ref={arrangeRef} style={{ position: 'relative' }}>
+          {canEditNow && <div ref={arrangeRef} style={{ position: 'relative' }}>
             <button className="sd-hide-mobile sd-show-mobile sd-hide-tablet" onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setArrangeMenu(m => m ? null : { top: r.bottom + 6, left: Math.max(8, Math.min(r.left, window.innerWidth - 226)) }) }} title="Arrange the layout" style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
@@ -564,7 +609,7 @@ export function DetailView({
           {/* Undo / redo. They appear once there IS something to undo, so a
               freshly opened diagram keeps a clean toolbar, and each button dims
               when its own direction is empty. */}
-          {canEdit && (canUndo || canRedo) && [
+          {canEditNow && (canUndo || canRedo) && [
             { key: 'undo', label: 'Undo', on: onUndo, enabled: canUndo, hint: 'Undo (Cmd+Z)', d: 'M3 10h13a5 5 0 0 1 0 10h-1M3 10l4-4M3 10l4 4' },
             { key: 'redo', label: 'Redo', on: onRedo, enabled: canRedo, hint: 'Redo (Cmd+Shift+Z)', d: 'M21 10H8a5 5 0 0 0 0 10h1M21 10l-4-4M21 10l-4 4' },
           ].map(b => (
@@ -723,9 +768,9 @@ export function DetailView({
               not two. */}
           {/* Lock. Both locks are off on a new flow. The delete lock keeps
               Delete inert until it is turned off - a second, deliberate action.
-              The edit lock keeps agents (MCP, the API) from rewriting the flow;
-              the owner's own edits here never answer to it. The button shows
-              the tighter state and opens a menu with one switch per lock. */}
+              The edit lock freezes the flow for everyone - agents over MCP and
+              the API, and the owner's own hands on this canvas. The button
+              shows the tighter state and opens a menu with one switch per lock. */}
           {onSetLocks && <div ref={lockRef} className="sd-hide-mobile" style={{ position: 'relative', flexShrink: 0 }}>
             <button aria-haspopup="menu" aria-expanded={!!lockMenu}
               onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setLockMenu(lockMenu ? null : { top: r.bottom + 6, left: r.left }) }}
@@ -749,7 +794,7 @@ export function DetailView({
             {lockMenu && <div role="menu" style={{ position: 'fixed', top: lockMenu.top, left: lockMenu.left, zIndex: 1000, minWidth: 250, padding: 4, background: '#fff', border: '1px solid #e4e6e8', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)' }}>
               {[
                 ['locked', 'Delete lock', isLocked, isLocked ? 'On - nobody can delete it, you included, until this is off' : 'Off - you can delete it; agents still cannot'],
-                ['edit_locked', 'Edit lock', isEditLocked, isEditLocked ? 'On - agents cannot change it; your own edits here still work' : 'Off - agents (MCP, API) can change it'],
+                ['edit_locked', 'Edit lock', isEditLocked, isEditLocked ? 'On - nothing moves: not agents, not your own drags on this canvas' : 'Off - you and agents (MCP, API) can change it'],
               ].map(([key, name, on, sub]) => (
                 <button key={key} role="menuitemcheckbox" aria-checked={on} onClick={() => onSetLocks({ [key]: !on })} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '7px 10px', border: 'none', borderRadius: 7, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
@@ -856,7 +901,7 @@ export function DetailView({
                Nothing moves - the drag handles on a line only exist when the
                owner's onEndMove/onBendMove are threaded into its data. On a
                phone even selecting is off: a finger is wider than a card. */
-            nodesDraggable={canEdit && !viewOnly} nodesConnectable={false} elementsSelectable={!viewOnly}
+            nodesDraggable={canEdit && !viewOnly} nodesConnectable={false} elementsSelectable={!fingerOnly}
             /* 2 fingers on the trackpad pan the canvas in any direction, the way
                Sequences and Mindmaps do; pinch or Cmd + wheel zooms. */
             panOnDrag panOnScroll panOnScrollMode="free" panOnScrollSpeed={1} zoomOnScroll={false} minZoom={narrow ? 0.04 : 0.2} maxZoom={2.5}
