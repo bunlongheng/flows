@@ -25,6 +25,8 @@ import { SERVICES } from '../src/services.js'
 import { resolveNodeIcons } from '../lib/resolve-icon.js'
 import { resolveNodeImages } from '../lib/resolve-image.js'
 import { cleanNote, cleanInfo } from '../src/note.js'
+import { cleanStyle } from '../src/style.js'
+import { NODE_KEEP, EDGE_KEEP, okBox, roundBox, edgeKey, keepOwnerWork } from '../lib/owner-work.js'
 import { validateDesign, okColor } from '../lib/validate-design.js'
 
 // Picture-node loaders available only here: a file path or an AirClips ref can
@@ -82,6 +84,29 @@ const fail = msg => ({ isError: true, content: [{ type: 'text', text: msg }] })
 // Now: no coordinates means no coordinates, and the canvas applies its canonical
 // left-to-right layout. Coordinates that would break the rule are dropped whole,
 // for the same outcome.
+// The look of a card or a line, exactly as the format panel writes it. The legal
+// values live in ONE place (src/style.js) and `cleanStyle` is what the API
+// validates with, so this takes the object loosely and runs it through the same
+// function rather than restating those lists here and drifting from them.
+const STYLE_KEYS =
+  'stroke #hex, bg #hex or "transparent", bw 1|2|4, bs solid|dashed|dotted, radius 0|12, ' +
+  'font sans|serif|mono, fs 12|14|18|24, align left|center|right, arrow step|curved|straight, ' +
+  'opacity 0-100 (a line uses only stroke, bw, bs, arrow, opacity). ' +
+  'An illegal key or value is dropped, exactly as it is on a save from the canvas.'
+const zStyle = z.record(z.unknown()).optional()
+const zBox = (lo, hi) => z.object({ w: z.number().min(lo).max(hi), h: z.number().min(lo).max(hi) }).optional()
+
+// Shared by create_flow and update_flow, which carried 2 copies of this and drifted.
+const zNodeFields = {
+  size: zBox(130, 600).describe('Card size in canvas units, { w, h }, clamped 130-600. Omit for the default 180 x 180 (240 x 225 for a picture node). A note hangs BELOW the card and is not part of this height.'),
+  iconSize: zBox(16, 600).describe('Logo tile size inside the card, { w, h }, clamped 16-600. Omit unless a wide wordmark is unreadable at the stock tile.'),
+  style: zStyle.describe(`Per-card look: ${STYLE_KEYS} A card with no style draws in its own brand colour, which is almost always what you want - set this only to say something the colour cannot.`),
+}
+const zEdgeFields = {
+  id: z.string().max(60).optional().describe('STABLE id for this line, e.g. "e1". GIVE EVERY EDGE ONE. With no id the identity falls back to the ARRAY INDEX, so inserting a line in the middle silently moves the styling, badge position and step number of every line after it onto the wrong line. It also decides which line of a trunk is the leader that carries the badge (lowest id wins).'),
+  style: zStyle.describe(`Per-line look: ${STYLE_KEYS}`),
+}
+
 function toStoredNodes(nodes) {
   const placed = nodes.map((n) => ({
     id: n.id,
@@ -96,6 +121,11 @@ function toStoredNodes(nodes) {
     ...(n.sunset === true ? { sunset: true } : {}),
     ...(n.iconFrame === true ? { iconFrame: true } : {}),
     ...(n.image ? { image: n.image } : {}),
+    // The 3 the canvas writes and this used to drop on the floor: a resized
+    // card, a stretched logo tile, and the format panel's look.
+    ...(okBox(n.size, 130, 600) ? { size: roundBox(n.size) } : {}),
+    ...(okBox(n.iconSize, 16, 600) ? { iconSize: roundBox(n.iconSize) } : {}),
+    ...(cleanStyle(n.style) ? { style: cleanStyle(n.style) } : {}),
   }))
   return placed
 }
@@ -145,8 +175,10 @@ function toStoredEdges(edges) {
     target: e.target,
     ...(e.label ? { label: e.label } : {}),
     ...(e.description ? { description: String(e.description).trim().slice(0, 300) } : {}),
+    ...(cleanStyle(e.style) ? { style: cleanStyle(e.style) } : {}),
   }))
 }
+
 // HARD GATE, shared with the API and AI generate (lib/validate-design.js): every
 // node renders a real logo, icons are well-formed, and the size caps hold.
 // Returns an error result, or null if OK.
@@ -242,13 +274,15 @@ server.registerTool(
         info: z.string().max(600).optional().describe('What this thing is and why it is in this diagram, 1-3 sentences. Hidden in the app until the reader hovers or clicks the i badge on the card (1 open at a time), so it never crowds the diagram; not in the SVG. Shown as "<card name> is <text>", so write it to read after "is". Different from note, which is always visible under the card.'),
         sunset: z.boolean().optional().describe('true marks a node that is today\'s path and gets decommissioned. Drawn light silver and dimmed, icon in greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) light silver, immune to any line style; no X on the card. Silver is reserved for this state: never paint a node grey or silver, set sunset instead.'),
         iconFrame: z.boolean().optional().describe('true draws a 1 px grey frame around the icon tile. Set by itself when most of a PNG icon\'s outer ring is white (a white tile on a white card has no edge); pass it to force or, with false, to skip.'),
+        ...zNodeFields,
       })).min(1).describe('The services in the diagram'),
       edges: z.array(z.object({
         source: z.string().describe('source node id'),
         target: z.string().describe('target node id'),
         label: z.string().optional().describe('short edge label, e.g. "read/write"'),
         description: z.string().max(300).optional().describe('Longer text for this line, max 300. The tag on the line reads the label, or this cut short when there is no label; hovering the tag shows the whole of it. Not in the SVG.'),
-      })).default([]).describe('Directed connections between node ids, in flow order'),
+        ...zEdgeFields,
+      })).default([]).describe('Directed connections between node ids, IN FLOW ORDER. This order is the diagram: it numbers the Steps badges 1..N and it is the path the single current walks, 1 line at a time. Order the array the way a reader should read the diagram.'),
       pattern: z.string().max(200).optional().describe('The one-line "what it tests" shown above the diagram and on the share card, e.g. "Read-heavy KV lookup: cache-first redirects"'),
       description: z.string().max(600).optional().describe('The goal paragraph shown under the pattern, 1-3 sentences on what the design is for.'),
       public: z.boolean().optional().describe('Default true: anyone with the link can open it and the link unfurls with the diagram. false keeps it private (owner only; recipients get a 404 and a generic preview card).'),
@@ -336,8 +370,13 @@ server.registerTool(
         info: z.string().max(600).optional().describe('What this thing is and why it is in this diagram, 1-3 sentences. Hidden in the app until the reader hovers or clicks the i badge on the card (1 open at a time), so it never crowds the diagram; not in the SVG. Shown as "<card name> is <text>", so write it to read after "is". Different from note, which is always visible under the card.'),
         sunset: z.boolean().optional().describe('true marks a node that is today\'s path and gets decommissioned. Drawn light silver and dimmed, icon in greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) light silver, immune to any line style; no X on the card. Silver is reserved for this state: never paint a node grey or silver, set sunset instead.'),
         iconFrame: z.boolean().optional().describe('true draws a 1 px grey frame around the icon tile. Set by itself when most of a PNG icon\'s outer ring is white (a white tile on a white card has no edge); pass it to force or, with false, to skip.'),
-      })).optional(),
-      edges: z.array(z.object({ source: z.string(), target: z.string(), label: z.string().optional(), description: z.string().max(300).optional() })).optional(),
+        ...zNodeFields,
+      })).optional().describe('Replaces the whole list. A card you leave out is GONE, so send every node, not only the changed one. Anything the owner set by hand that you omit (size, iconSize, style) is carried over from the stored card rather than wiped.'),
+      edges: z.array(z.object({
+        source: z.string(), target: z.string(), label: z.string().optional(),
+        description: z.string().max(300).optional(),
+        ...zEdgeFields,
+      })).optional().describe('Replaces the whole list, in flow order - that order numbers the Steps badges and is the path the single current walks. Give every line a stable id: the owner\'s styling, dragged badge position and hand bends are matched back to it by id, and without one they are matched by array index instead.'),
       public: z.boolean().optional().describe('true publishes (anyone with the link can open it, real preview card); false makes it private again. Omit to leave visibility alone.'),
       lanes: z.array(z.object({
         id: z.string().regex(/^[\w-]{1,40}$/), title: z.string().max(40),
@@ -372,11 +411,21 @@ server.registerTool(
       // correcting old work is the point of this tool, and a time limit only
       // pushed agents into making a "v2" instead. `reason` stays optional and is
       // recorded when given, as a trail rather than a toll.
-      const nextEdges = edges ? JSON.stringify(toStoredEdges(edges)) : null
+      // Read the row BEFORE replacing it, so the owner's hand work survives a
+      // caller that only meant to fix a label (see keepOwnerWork).
+      const { rows: before } = await db.query(
+        'SELECT nodes, edges FROM flows WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL',
+        [id, owner()],
+      )
+      const wasNodes = before[0]?.nodes || []
+      const wasEdges = before[0]?.edges || []
+      const keptEdges = edges ? keepOwnerWork(toStoredEdges(edges), wasEdges, EDGE_KEEP, edgeKey) : null
+      const nextEdges = keptEdges ? JSON.stringify(keptEdges) : null
       let layoutWarning = null
       let nextNodes = null
       if (iconNodes) {
-        const e = enforceStartLeft(toStoredNodes(iconNodes), edges ? toStoredEdges(edges) : [])
+        const kept = keepOwnerWork(toStoredNodes(iconNodes), wasNodes, NODE_KEEP, n => n.id)
+        const e = enforceStartLeft(kept, keptEdges || [])
         layoutWarning = e.warning
         nextNodes = JSON.stringify(e.nodes)
       }
