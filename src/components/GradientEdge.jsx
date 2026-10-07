@@ -5,7 +5,7 @@ import { subscribe, currentPhase, motionAllowed, offsetFor } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
 import { routeEdge, bendPoint, bendFor, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
-import { laneGaps, isLaneNode } from '../lanes.js'
+import { laneGaps, isLaneNode, laneAt, laneClip } from '../lanes.js'
 import { tagText } from '../tag.js'
 import { EDGE_LABEL_MAX } from '../note.js'
 
@@ -113,7 +113,8 @@ export function GradientEdge({
     .filter(n => n.type === 'awsNode' && n.measured && n.position)
     .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height }))
   // The strips between swimlanes, where a trunk's bus line runs.
-  const gaps = laneGaps(getNodes().filter(n => n.type === 'lane').map(n => ({ x: n.position.x, y: n.position.y, w: n.width, h: n.height })))
+  const laneRects = getNodes().filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height }))
+  const gaps = laneGaps(laneRects)
   const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, labelX, labelY } = routeEdge({
     id, source, target, sourceNode, targetNode, nodeOf, edges: allEdges, obstacles, nodeRects, gaps,
     bend, endS, endT, arrow: data?.style?.arrow, label, description: data?.description,
@@ -127,6 +128,9 @@ export function GradientEdge({
   // that this 1 line stands for every card in the band (render-svg.js draws
   // the same circle, so the exports agree).
   const port = isLaneNode(source) ? { x: sx, y: sy, c: c1 } : isLaneNode(target) ? { x: tx, y: ty, c: c2 } : null
+  // A lane edge is drawn only in the gaps and in its card's own lane: the lanes
+  // it passes on the way are cut out, so a band shows no line it is not part of.
+  const clip = port ? laneClip(laneRects, isLaneNode(source) ? [source, laneAt(laneRects, tx, ty)] : [target, laneAt(laneRects, sx, sy)]) : null
   // Into a sunset node: the badge drops its style and goes flat silver with a
   // red X, whatever badge style the owner picked, so the outdated route reads.
   const sunset = data?.sunset === true
@@ -253,7 +257,9 @@ export function GradientEdge({
           <stop offset="0%" stopColor={c1} />
           <stop offset="100%" stopColor={c2} />
         </linearGradient>
+        {clip && <clipPath id={`clip-${id}`}><path d={clip} clipRule="evenodd" /></clipPath>}
       </defs>
+      <g clipPath={clip ? `url(#clip-${id})` : undefined}>
       {selected && <path className="sd-edge-halo" d={drawPath} fill="none" stroke={c1} strokeWidth={10} strokeOpacity={0.18} strokeLinecap="round" pointerEvents="none" />}
       {/* Clicking a card lights every line in and out of it, so the owner can
           read a card's traffic at a glance; the glow goes with the selection. */}
@@ -279,6 +285,7 @@ export function GradientEdge({
       }} />
         {port && <circle className="sd-lane-port" cx={port.x} cy={port.y} r={5} fill={port.c} stroke="#fff" strokeWidth={1.5} pointerEvents="none" />}
         <FlowDot edgeId={id} path={path} color={c1} />
+      </g>
       {(tag || hasStep || ((endMovable || bendMovable) && selected)) && (
         <EdgeLabelRenderer>
           {(tag || hasStep) && (

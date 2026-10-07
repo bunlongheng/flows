@@ -170,3 +170,17 @@ export function laneGaps(rects) {
   }
   return { axis, mids }
 }
+
+// The lane a point stands in, by id, or null in a gap or outside every lane.
+export const laneAt = (rects, x, y) => rects.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)?.id ?? null
+
+// A lane edge stops on its lane's border, so inside the lanes it crosses on
+// the way there is nothing to say: the line shows in the gaps and in the lane
+// its card stands in, and nowhere else. The clip is the whole plane minus
+// every lane not in `keep`, as 1 even-odd path; null when nothing is cut.
+export function laneClip(rects, keep) {
+  const cut = rects.filter(r => !keep.includes(r.id))
+  if (!cut.length) return null
+  const R = 1e5
+  return `M${-R},${-R}H${R}V${R}H${-R}Z` + cut.map(r => `M${r.x},${r.y}h${r.w}v${r.h}h${-r.w}Z`).join('')
+}
