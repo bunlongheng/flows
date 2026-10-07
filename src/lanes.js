@@ -18,6 +18,7 @@ export const LANE_INK = '#64748b'
 export const LANE_TITLE = 13 // title size in px unless the lane says otherwise
 export const LANE_TITLE_MIN = 10
 export const LANE_TITLE_MAX = 40
+export const LANE_SECTIONS_MAX = 3
 
 // An edge end may name a lane instead of a card: "lane:<id>". The line stops on
 // the lane's border and reads as 1 line to every card inside it. On the canvas
@@ -29,6 +30,51 @@ export const isLaneNode = id => typeof id === 'string' && id.startsWith('__lane_
 
 // 'row' lanes stack by y and h; 'col' lanes stand side by side by x and w.
 export const laneAxis = lanes => (lanes[0] && 'x' in lanes[0] ? 'col' : 'row')
+
+// A lane can be split into 2 or 3 sections side by side ACROSS its own band:
+// the row stays 1 row, and each section is a band of its own inside it, with
+// its own title and tint and the same LANE_GAP between them that separates 2
+// stacked lanes. `at` is where a section starts on the lane's other axis (x in
+// a row lane, y in a column one); the first always starts at the band's own
+// edge, so only the later ones really matter. 1 section is not a split, so it
+// is dropped and the lane draws its own band and title as before.
+function cleanSections(raw) {
+  if (!Array.isArray(raw)) return null
+  const out = []
+  for (const s of raw) {
+    if (!s || typeof s !== 'object' || out.length >= LANE_SECTIONS_MAX) continue
+    const id = typeof s.id === 'string' && /^[\w-]{1,40}$/.test(s.id) ? s.id : null
+    if (!id || out.some(o => o.id === id) || !Number.isFinite(s.at)) continue
+    const sec = { id, title: String(s.title ?? '').trim().slice(0, 40), at: Math.round(s.at) }
+    if (typeof s.color === 'string' && /^#[0-9a-f]{6}$/i.test(s.color)) sec.color = s.color
+    out.push(sec)
+  }
+  return out.length >= 2 ? out.sort((a, b) => a.at - b.at) : null
+}
+
+// Where a laid-out lane's sections are drawn, in canvas units. A section is a
+// band in its own right, so the 1 gap between 2 of them is the LANE_GAP that
+// sits between 2 stacked lanes: `at` is where a section STARTS, and the one
+// before it ends LANE_GAP short of that. The first starts at the band's own
+// edge whatever its `at` says, the last runs to the far edge, and an `at`
+// outside the band is pulled back inside it, so a bad number costs a section
+// its width and never paints outside the lane.
+export function sectionRects(rect, axis = 'row') {
+  const secs = rect.sections || []
+  if (secs.length < 2) return []
+  const [at, size] = axis === 'col' ? ['y', 'h'] : ['x', 'w']
+  const lo = rect[at], hi = rect[at] + rect[size]
+  const cuts = secs.map((s, i) => (i === 0 ? lo : Math.min(hi, Math.max(lo, s.at))))
+  for (let i = 1; i < cuts.length; i++) if (cuts[i] < cuts[i - 1]) cuts[i] = cuts[i - 1]
+  return secs.map((s, i) => {
+    const end = i + 1 < cuts.length ? cuts[i + 1] - LANE_GAP : hi
+    return {
+      id: s.id, title: s.title, color: s.color || rect.color, size: rect.size,
+      x: rect.x, y: rect.y, w: rect.w, h: rect.h,
+      [at]: cuts[i], [size]: Math.max(0, end - cuts[i]),
+    }
+  })
+}
 
 // What the API keeps of a lanes array: bounded, typed, 1 axis, nothing else.
 export function cleanLanes(raw) {
@@ -47,6 +93,8 @@ export function cleanLanes(raw) {
     else { lane.y = Math.round(l.y); lane.h = Math.max(LANE_MIN, Math.round(l.h)) }
     if (typeof l.color === 'string' && /^#[0-9a-f]{6}$/i.test(l.color)) lane.color = l.color
     if (Number.isFinite(l.size)) lane.size = Math.min(LANE_TITLE_MAX, Math.max(LANE_TITLE_MIN, Math.round(l.size)))
+    const sections = cleanSections(l.sections)
+    if (sections) lane.sections = sections
     out.push(lane)
   }
   return packLanes(out)
@@ -91,16 +139,20 @@ export function fitLanes(lanes, rects) {
 
 export function laneRects(lanes, rects) {
   const span = laneSpan(rects, laneAxis(lanes))
-  return fitLanes(lanes, rects).map(l => ({ id: l.id, title: l.title, color: l.color, size: l.size, ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...span }))
+  return fitLanes(lanes, rects).map(l => ({ id: l.id, title: l.title, color: l.color, size: l.size, ...(l.sections ? { sections: l.sections } : {}), ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...span }))
 }
 
 // The React Flow nodes that draw the lanes: 1 per lane, under the cards,
 // never selectable or draggable.
 export function laneNodes(lanes, rects) {
+  const axis = laneAxis(lanes)
   return laneRects(lanes, rects).map(r => ({
     id: laneNodeId(r.id), type: 'lane', position: { x: r.x, y: r.y }, width: r.w, height: r.h, measured: { width: r.w, height: r.h },
     zIndex: -1, selectable: false, draggable: false,
-    data: { title: r.title, color: r.color, size: r.size },
+    // Sections come through in the band's own coordinates: the node is already
+    // placed at r.x,r.y, so LaneNode lays them out inside it.
+    data: { title: r.title, color: r.color, size: r.size, axis,
+      sections: sectionRects(r, axis).map(s => ({ id: s.id, title: s.title, color: s.color, x: s.x - r.x, y: s.y - r.y, w: s.w, h: s.h })) },
   }))
 }
 

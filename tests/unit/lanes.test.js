@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, laneRef, laneNodeId, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT } from "../../src/lanes.js";
+import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, laneNodeId, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT } from "../../src/lanes.js";
 
 describe("cleanLanes", () => {
   it("keeps typed, bounded lanes and drops the rest", () => {
@@ -94,5 +94,62 @@ describe("laneRef", () => {
     expect(laneRef("apps")).toBeNull();
     expect(laneRef(undefined)).toBeNull();
     expect(laneNodeId("apps")).toBe("__lane_apps");
+  });
+});
+
+// A lane can be split into 2 or 3 titled slices across its own band, so 2
+// groups share 1 row instead of stacking 2 lanes.
+describe("sections", () => {
+  const split = [{ id: "team", title: "", y: 0, h: 300, color: "#0F766E", sections: [
+    { id: "jobs", title: "Jobs", at: -100 },
+    { id: "work", title: "Work", at: 1300, color: "#E650BA" },
+  ] }];
+
+  it("keeps 2 or 3 typed sections, sorted, and drops a lone or malformed one", () => {
+    expect(cleanLanes(split)[0].sections).toEqual([
+      { id: "jobs", title: "Jobs", at: -100 },
+      { id: "work", title: "Work", at: 1300, color: "#E650BA" },
+    ]);
+    // Out of order comes back in order, and a 4th is cut.
+    const many = [{ id: "a", y: 0, h: 300, sections: [{ id: "c", at: 900 }, { id: "b", at: 100 }, { id: "a", at: 0 }, { id: "d", at: 1200 }] }];
+    expect(cleanLanes(many)[0].sections.map(s => s.id)).toEqual(["a", "b", "c"]);
+    // 1 section is not a split; neither is one with no `at` or a repeated id.
+    for (const bad of [[{ id: "only", at: 0 }], [{ id: "a", at: 0 }, { id: "a", at: 9 }], [{ id: "a" }, { id: "b" }], "no"]) {
+      expect(cleanLanes([{ id: "x", y: 0, h: 300, sections: bad }])[0].sections).toBeUndefined();
+    }
+  });
+
+  it("leaves a LANE_GAP between sections, the first from the band's own edge and the last to its far one", () => {
+    const [r] = laneRects(cleanLanes(split), [{ x: 0, y: 40, w: 190, h: 180 }, { x: 2000, y: 40, w: 190, h: 180 }]);
+    const secs = sectionRects(r, "row");
+    expect(secs.map(s => [s.x, s.w])).toEqual([[r.x, 1300 - LANE_GAP - r.x], [1300, r.x + r.w - 1300]]);
+    // The space between 2 sections is the space between 2 lanes.
+    expect(secs[1].x - (secs[0].x + secs[0].w)).toBe(LANE_GAP);
+    // Same y and h as the band, and a section with no colour takes the lane's.
+    expect(secs.every(s => s.y === r.y && s.h === r.h)).toBe(true);
+    expect(secs.map(s => s.color)).toEqual(["#0F766E", "#E650BA"]);
+  });
+
+  it("pulls a section start outside the band back inside it, so sections never overlap or escape", () => {
+    const far = [{ id: "a", y: 0, h: 300, sections: [{ id: "l", at: 0 }, { id: "r", at: 99999 }] }];
+    const [r] = laneRects(cleanLanes(far), [{ x: 0, y: 40, w: 190, h: 180 }]);
+    const secs = sectionRects(r, "row");
+    expect(secs[1].x).toBe(r.x + r.w);
+    expect(secs[1].w).toBe(0);
+    expect(secs[0].x + secs[0].w).toBe(secs[1].x - LANE_GAP);
+    // A start so close to the one before it that the gap would eat the section
+    // costs it its width, and never paints backwards.
+    const tight = [{ id: "a", y: 0, h: 300, sections: [{ id: "l", at: -200 }, { id: "r", at: -70 }] }];
+    const [t] = laneRects(cleanLanes(tight), [{ x: 0, y: 40, w: 190, h: 180 }]);
+    expect(sectionRects(t, "row")[0].w).toBe(0);
+  });
+
+  it("hands LaneNode its slices in the band's own coordinates, and none when there is no split", () => {
+    const [n] = laneNodes(cleanLanes(split), [{ x: 0, y: 40, w: 190, h: 180 }, { x: 2000, y: 40, w: 190, h: 180 }]);
+    expect(n.data.axis).toBe("row");
+    expect(n.data.sections.map(s => s.x)).toEqual([0, 1300 - n.position.x]);
+    expect(n.data.sections.every(s => s.y === 0 && s.h === n.height)).toBe(true);
+    const [plain] = laneNodes([{ id: "a", title: "Apps", y: 0, h: 300 }], [{ x: 0, y: 40, w: 190, h: 180 }]);
+    expect(plain.data.sections).toEqual([]);
   });
 });
