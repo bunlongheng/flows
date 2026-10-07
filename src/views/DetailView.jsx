@@ -167,7 +167,10 @@ export function DetailView({
   // narrow screen gets to go all the way out instead.
   const [narrow, setNarrow] = useState(false)
   useEffect(() => {
-    const m = window.matchMedia('(max-width: 880px)')
+    // No matchMedia means no window to measure - a test renderer, or a server.
+    // Wide is the right answer there: it is the full canvas, nothing withheld.
+    const m = window.matchMedia?.('(max-width: 880px)')
+    if (!m) return
     const on = () => setNarrow(m.matches)
     on()
     m.addEventListener('change', on)
