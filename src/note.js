@@ -10,6 +10,12 @@ export const cleanNote = v => (typeof v === 'string' ? v.trim().slice(0, NOTE_MA
 export const INFO_MAX = 600
 export const cleanInfo = v => (typeof v === 'string' ? v.trim().slice(0, INFO_MAX) : '')
 
+// An edge label is the badge ON the line: what travels, in a few words. It is
+// drawn on 1 line and never wraps, so it is bounded far shorter than a note and
+// every newline folds to a space. '' removes the badge.
+export const EDGE_LABEL_MAX = 60
+export const cleanEdgeLabel = v => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, EDGE_LABEL_MAX) : '')
+
 // A URL inside a note is drawn as a link (the owner links tickets there), so
 // the text is split into plain runs and links. Only http(s) counts - a bare
 // ticket key has no base to point at. Trailing punctuation stays text, so a
