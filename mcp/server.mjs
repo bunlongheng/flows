@@ -449,7 +449,7 @@ server.registerTool(
            is_public = COALESCE($7, is_public),
            thumbnail = CASE WHEN $3::jsonb IS NULL AND $4::jsonb IS NULL THEN thumbnail END,
            updated_at = now()
-         WHERE id = $1 AND user_id = $6 AND deleted_at IS NULL RETURNING id, slug, is_public`,
+         WHERE id = $1 AND user_id = $6 AND deleted_at IS NULL RETURNING id, slug, title, is_public`,
         [id, title?.trim() ?? null, nextNodes, nextEdges, reason?.trim() ?? null, owner(), isPublic ?? null],
       )
       if (!rows.length) return fail(`No owned diagram with id ${id} (it may be in trash - call list_trash)`)
