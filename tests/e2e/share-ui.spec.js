@@ -486,11 +486,12 @@ test("phone header: matched tiles, finger-sized targets, aligned app logo", asyn
   }
 });
 
-// Fit is the only way back to the fitted view after pinching around, so it has
-// to survive on a phone. Nothing may be clipped out of reach either.
+// Fit left the phone bar in #376: the canvas fits itself on open and the owner
+// wanted the bar short. So a phone is checked for what it DOES promise - it
+// arrives fitted, and nothing is clipped out of reach - while Fit's round trip
+// (pinch away, press Fit, land back) is proven one tier up, where the button is.
 // It builds its own diagram: a fresh CI database has none of the curated demos.
-// Only the owner has Fit now; a visitor gets the diagram already fitted.
-test("phone keeps Fit reachable and never hides a button out of reach", async ({ browser, baseURL }) => {
+test("a phone arrives fitted with nothing out of reach, and Fit round-trips on a tablet", async ({ browser, baseURL }) => {
   const api = await request.newContext({ baseURL });
   const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
@@ -510,24 +511,47 @@ test("phone keeps Fit reachable and never hides a button out of reach", async ({
     await page.waitForSelector(".react-flow__node", { timeout: 20000 });
     await page.waitForTimeout(600);
 
+    // Fit is in the markup at every width, but the phone tier hides it. Hidden,
+    // not deleted, is the whole trick: the same button reappears on a tablet.
     await expect(page.locator('header button:has-text("Fit")')).toHaveCount(1);
+    expect(await page.locator('header button:has-text("Fit")').isVisible()).toBe(false);
     // Overflow may exist on a tiny screen, but it must always be scrollable.
     expect(await page.locator("header").first().evaluate((e) => getComputedStyle(e).overflowX)).not.toBe("hidden");
 
-    // Pinching away and pressing Fit returns to a fitted view.
-    const scale = () => page.locator(".react-flow__viewport").evaluate((el) => Number((/scale\(([\d.]+)\)/.exec(el.style.transform) || [])[1]));
-    const fitted = await scale();
-    await page.mouse.move(195, 400);
-    // macOS reports a trackpad pinch as a wheel event with Ctrl held; a plain wheel pans.
-    await page.keyboard.down("Control");
-    await page.mouse.wheel(0, -60);
-    await page.keyboard.up("Control");
-    await page.waitForTimeout(500);
-    expect(await scale()).not.toBe(fitted);
-    await page.locator('header button:has-text("Fit")').click();
-    await page.waitForTimeout(700);
-    expect(Math.abs((await scale()) - fitted)).toBeLessThan(0.05);
+    const scale = (p) => p.locator(".react-flow__viewport").evaluate((el) => Number((/scale\(([\d.]+)\)/.exec(el.style.transform) || [])[1]));
+    // The phone's promise with no Fit button: every card is already on screen.
+    const clipped = await page.evaluate(() => {
+      // Measured against the canvas pane, not the window: the header owns the
+      // top strip and a card sitting under it would read as fitted otherwise.
+      const pane = document.querySelector(".react-flow").getBoundingClientRect();
+      return [...document.querySelectorAll(".react-flow__node")].filter((n) => {
+        const r = n.getBoundingClientRect();
+        return r.left < pane.left - 1 || r.top < pane.top - 1 || r.right > pane.right + 1 || r.bottom > pane.bottom + 1;
+      }).length;
+    });
+    expect(clipped, "a phone opens with every card on screen").toBe(0);
     await ctx.close();
+
+    // One tier up (an iPad) Fit is on the bar, and pinching away then pressing
+    // it returns to the fitted view.
+    const tab = await browser.newContext({ viewport: { width: 1024, height: 768 } });
+    await tab.addCookies([{ name: "sd_session", value: OWNER_COOKIE.split("=")[1], url: baseURL }]);
+    const wide = await tab.newPage();
+    await wide.goto(`/?id=${id}`);
+    await wide.waitForSelector(".react-flow__node", { timeout: 20000 });
+    await wide.waitForTimeout(600);
+    const fitted = await scale(wide);
+    await wide.mouse.move(512, 400);
+    // macOS reports a trackpad pinch as a wheel event with Ctrl held; a plain wheel pans.
+    await wide.keyboard.down("Control");
+    await wide.mouse.wheel(0, -60);
+    await wide.keyboard.up("Control");
+    await wide.waitForTimeout(500);
+    expect(await scale(wide)).not.toBe(fitted);
+    await wide.locator('header button:has-text("Fit")').click();
+    await wide.waitForTimeout(700);
+    expect(Math.abs((await scale(wide)) - fitted)).toBeLessThan(0.05);
+    await tab.close();
   } finally {
     await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { cookie: OWNER_COOKIE } });
@@ -566,9 +590,10 @@ test("the owner toolbar fits every viewport instead of scrolling sideways", asyn
       const over = await bar.evaluate((e) => e.scrollWidth - e.clientWidth);
       expect(over, `header overflows by ${over}px at ${width}px`).toBeLessThanOrEqual(0);
 
-      // Fitting must not mean an empty bar: reading a diagram still takes Fit,
-      // Steps and Notes at every single width.
-      for (const name of ["Fit", "Steps", "Notes"]) {
+      // Fitting must not mean an empty bar: reading a diagram still takes Steps
+      // and Notes at every single width, and Fit from the tablet tier up - under
+      // 641px it gives up its seat, since the canvas opens fitted anyway (#376).
+      for (const name of width >= 641 ? ["Fit", "Steps", "Notes"] : ["Steps", "Notes"]) {
         const btn = page.locator(`header button[title*="${name}" i], header button:has-text("${name}")`).first();
         expect(await btn.evaluate((e) => e.getBoundingClientRect().width > 0), `${name} missing at ${width}px`).toBe(true);
       }

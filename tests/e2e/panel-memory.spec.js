@@ -13,6 +13,11 @@ const OWNER_COOKIE = `sd_session=${signSession({ email: process.env.OWNER_EMAIL 
 
 test.use({ viewport: { width: 1500, height: 950 } });
 
+// This one walks the gallery and the canvas 3 times over - 6 full page loads,
+// each waiting on the list fetch and then on React Flow - plus 2 PATCH saves.
+// Under a loaded parallel run that overruns the flat 30s on timing alone.
+test.describe.configure({ timeout: 60_000 });
+
 const DESIGN = {
   title: "E2E Panel Memory",
   type: "flows",

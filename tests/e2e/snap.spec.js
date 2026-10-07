@@ -1,10 +1,13 @@
 import { test, expect, request } from "@playwright/test";
 import { signSession } from "../../lib/auth-session.js";
 
-// Browser e2e for Cmd/Ctrl + drag snap-align: prove that holding the modifier
-// while dragging paints the yellow guide AND that the node actually lands on the
-// neighbour's line when released (the release is the part that silently breaks
-// if the snap is applied to the node instead of to the position change).
+// Browser e2e for drag snap-align. Snapping is ON for every drag: a moving card
+// suggests where it lands, and Cmd/Ctrl/Shift SUSPENDS it so the card can be
+// placed by hand. So this proves both halves - the modifier parks a card 5px off
+// the line untouched, and letting it go paints the yellow guide AND actually
+// lands the card on the neighbour's line when released (the release is the part
+// that silently breaks if the snap is applied to the node instead of to the
+// position change).
 const SECRET = process.env.FLOWS_API_SECRET || "e2e-secret";
 const OWNER_COOKIE = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
 
@@ -28,7 +31,7 @@ const flowY = async locator => {
   return Number(t.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/)[2]);
 };
 
-test("Cmd + drag snaps a node onto its neighbour's line and shows a yellow guide", async ({ page, context, baseURL }) => {
+test("a drag snaps a node onto its neighbour's line, and Cmd suspends it", async ({ page, context, baseURL }) => {
   const api = await request.newContext({ baseURL });
   const create = await api.post("/api/ai/flows", {
     headers: { Authorization: `Bearer ${SECRET}` },
@@ -61,28 +64,34 @@ test("Cmd + drag snaps a node onto its neighbour's line and shows a yellow guide
     let px = box.x + box.width / 2;
     let py = box.y + 8;
 
-    // Drag it to 5px shy of the anchor's line WITHOUT the modifier, correcting
-    // from the node's real position each step: React Flow auto-pans near the
-    // canvas edge, so a delta computed up front lands somewhere else.
+    // Hold Cmd for the whole approach: that suspends snapping, which is the only
+    // way to park the card 5px shy of the anchor's line - inside the 10px latch -
+    // and have it stay there. The key goes down AFTER the mouse, so the drag
+    // starts on a plain press and no modifier can be mistaken for a gesture.
+    // Correct from the node's real position each step: React Flow auto-pans near
+    // the canvas edge, so a delta computed up front lands somewhere else.
     await page.mouse.move(px, py);
     await page.mouse.down();
+    await page.keyboard.down("Meta");
     for (let i = 0; i < 12; i++) {
       const off = (await flowY(moving)) - anchorY - 5;
       if (Math.abs(off) < 1) break;
       py -= off * zoom;
       await page.mouse.move(px, py, { steps: 4 });
     }
+    // Suspended means untouched: 5px off the line, and no guide offering help.
     expect(await flowY(moving)).toBeCloseTo(anchorY + 5, 0);
+    await expect(page.locator(".sd-snap-guide")).toHaveCount(0);
 
-    // Now hold Cmd and nudge 1px: close enough to latch on.
-    await page.keyboard.down("Meta");
+    // Let the modifier go and nudge 1px: snapping is back on and 5px is close
+    // enough to latch.
+    await page.keyboard.up("Meta");
     await page.mouse.move(px, py - 1, { steps: 2 });
 
     // The yellow guide is on screen while the snap is engaged.
     await expect(page.locator(".sd-snap-guide")).toHaveCount(1);
 
     await page.mouse.up();
-    await page.keyboard.up("Meta");
 
     // ...and it lands exactly on the anchor's line, then the guide goes away.
     expect(await flowY(moving)).toBe(anchorY);

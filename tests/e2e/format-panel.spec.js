@@ -10,6 +10,14 @@ const OWNER_COOKIE = `sd_session=${signSession({ email: process.env.OWNER_EMAIL 
 
 test.use({ viewport: { width: 1500, height: 950 } });
 
+// 13s of this file's budget is deliberate settle time - a picked colour has to
+// reach the row before the row is read back - and on top of that each test does
+// a full reload and 4 API round trips. That fits the flat 30s alone but not when
+// the whole browser project is hammering one server from several workers, where
+// it times out on timing rather than on anything being wrong. Give it room: the
+// point is to catch a panel that does not persist, not to race a build machine.
+test.describe.configure({ timeout: 60_000 });
+
 const DESIGN = {
   title: "E2E Format Panel",
   type: "flows",
