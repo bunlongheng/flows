@@ -5,6 +5,7 @@ import { AIThinkingOverlay } from '../components/AIThinkingOverlay'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { usePullToRefresh } from '../usePullToRefresh'
 import { Footer } from '../components/Footer'
+import { GallerySkeleton } from '../components/GallerySkeleton'
 import { CodeBlock } from '../components/CodeBlock.jsx'
 import { PanelResizer } from '../components/PanelResizer.jsx'
 
@@ -16,7 +17,7 @@ const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input, textarea, sel
 export function IndexView({
   toast, showToastMsg,
   search, setSearch,
-  user, canAI, isDemo, listError,
+  user, canAI, isDemo, listError, listLoading,
   galleryTab, setGalleryTab,
   showMenu, setShowMenu, menuRef,
   showDocs, setShowDocs,
@@ -197,7 +198,9 @@ export function IndexView({
 
       {/* ── Content ── */}
       <main className="sd-main" style={{ padding: isDemo ? '32px 32px 60px' : '32px 32px 100px', maxWidth: 1600, margin: '0 auto', width: '100%', boxSizing: 'border-box', flex: 1 }}>
-        {filtered.length === 0 && (
+        {listLoading && <GallerySkeleton />}
+
+        {!listLoading && filtered.length === 0 && (
           <div style={{ position: 'fixed', inset: 0, top: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', background: '#f4f5f7' }}>
             <div style={{ width: 48, height: 48, borderRadius: 12, background: '#e4e6e8', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
               <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#8a8d91" strokeWidth={1.5} strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/></svg>
@@ -225,7 +228,7 @@ export function IndexView({
           </div>
         )}
 
-        {filtered.length > 0 && (
+        {!listLoading && filtered.length > 0 && (
           <div className="sd-grid sd-grid-demo" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
             {filtered.map(d => (
               <DiagramCard

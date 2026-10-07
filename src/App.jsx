@@ -242,7 +242,12 @@ export default function App() {
   const [copiedLink, setCopiedLink] = useState(false)
   const [copiedShare, setCopiedShare] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
-  const [diagrams, setDiagrams] = useState(isDemo ? [] : SEED)
+  // The gallery starts EMPTY, never on the bundled sample. Seeding state with
+  // SEED meant every cold load flashed an IFTTT card the owner does not own,
+  // which read as a real diagram appearing and then vanishing. The sample is
+  // still the fallback, but only once the fetch has actually come back empty.
+  const [diagrams, setDiagrams] = useState([])
+  const [listLoading, setListLoading] = useState(true)
   // Logged-in home has two tabs (top-right button group): 'mine' = my personal
   // (non-demo) diagrams, 'demos' = the 12 curated public demos so the owner can
   // reopen + re-arrange them and have the layout persist. Public /demo ignores this.
@@ -339,9 +344,10 @@ export default function App() {
         setListError(true)
         setDiagrams(showcase ? [] : SEED)
       })
+      .finally(() => setListLoading(false))
   }, [isDemo, galleryTab])
 
-  useEffect(() => { loadDiagrams() }, [loadDiagrams])
+  useEffect(() => { setListLoading(true); loadDiagrams() }, [loadDiagrams])
 
   // Owner sign-in state + one-time feedback from the OAuth redirect (?auth=).
   useEffect(() => {
@@ -1287,7 +1293,7 @@ export default function App() {
       <IndexView
         toast={toast} showToastMsg={showToastMsg}
         search={search} setSearch={setSearch}
-        user={user} canAI={canAI} isDemo={isDemo} listError={listError}
+        user={user} canAI={canAI} isDemo={isDemo} listError={listError} listLoading={listLoading}
         galleryTab={galleryTab} setGalleryTab={setGalleryTab}
         showMenu={showMenu} setShowMenu={setShowMenu} menuRef={menuRef}
         showDocs={showDocs} setShowDocs={setShowDocs}
