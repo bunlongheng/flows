@@ -1,4 +1,4 @@
-import { colorFromIcon } from './iconColor.js'
+import { colorFromIcon, isNeutralColor } from './iconColor.js'
 import { INK } from './sunset.js'
 // ─── AWS Service Config ───────────────────────────────────────────────────────
 // A node's colour tints its card and drives the edge gradient, so it has to
@@ -161,7 +161,13 @@ export function findService(data) {
   // when an agent pasted its own icon on it. Agents kept passing a favicon URL
   // for ids like "integry", the server inlined a 16x16 generic PNG, and that
   // junk beat the real /brand logo - the node came in grey with no logo.
-  if (data && SERVICES[data.id]?.icon) return SERVICES[data.id]
+  if (data && SERVICES[data.id]?.icon) {
+    // The catalog owns the LOGO here, but it does not own the colour. A node
+    // that states its own colour keeps it, so a .env card stored yellow is not
+    // repainted Secrets Manager red just because its id matched the catalog.
+    const svc = SERVICES[data.id]
+    return data.color && !isNeutralColor(data.color) ? { ...svc, color: data.color } : svc
+  }
   if (data && typeof data.icon === 'string' && data.icon) {
     // No explicit colour: take it from the logo itself, so a Chrome node draws
     // Chrome blue and a terminal draws terminal green. Grey only when the icon

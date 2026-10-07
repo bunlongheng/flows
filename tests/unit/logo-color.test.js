@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isNeutral, logoColor, fixNeutralColors } from "../../lib/logo-color.js";
+import { isNeutral, logoColor, defaultIconColors } from "../../lib/logo-color.js";
 
 const svg = (fill) =>
   "data:image/svg+xml;base64," +
@@ -24,19 +24,21 @@ describe("logoColor", () => {
   });
 });
 
-describe("fixNeutralColors", () => {
-  it("swaps a near-black on a colourful logo for the logo colour and leaves the rest", async () => {
-    const out = await fixNeutralColors([
-      { id: "a", icon: svg("#ED5524"), color: "#1a1d1f" },
-      { id: "b", icon: svg("#ED5524"), color: "#0f766e" },
-      { id: "c", icon: svg("#191919"), color: "#1a1d1f" },
-      { id: "d", color: "#1a1d1f" },
-      { id: "e", icon: svg("#ED5524") },
+describe("defaultIconColors", () => {
+  it("takes the colour off the icon unless the node carries an explicit one", async () => {
+    const out = await defaultIconColors([
+      { id: "a", icon: svg("#ED5524"), color: "#1a1d1f" }, // near-black loses to the logo
+      { id: "b", icon: svg("#ED5524"), color: "#0f766e" }, // a picked colour wins
+      { id: "c", icon: svg("#191919"), color: "#1a1d1f" }, // a logo with no colour changes nothing
+      { id: "d", color: "#1a1d1f" }, // no icon, nothing to read
+      { id: "e", icon: svg("#ED5524") }, // no colour at all: the icon decides
+      { id: "f", icon: svg("#ECD53F") }, // the .env case: yellow icon, yellow border
     ]);
     expect(out[0].color.toLowerCase()).toBe("#ed5524");
     expect(out[1].color).toBe("#0f766e");
     expect(out[2].color).toBe("#1a1d1f");
     expect(out[3].color).toBe("#1a1d1f");
-    expect(out[4].color).toBeUndefined();
+    expect(out[4].color.toLowerCase()).toBe("#ed5524");
+    expect(out[5].color.toLowerCase()).toBe("#ecd53f");
   });
 });

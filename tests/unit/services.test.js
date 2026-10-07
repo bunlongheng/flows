@@ -2,6 +2,24 @@ import { describe, it, expect } from "vitest";
 import { SERVICES, findService, tagColor } from "../../src/services.js";
 
 describe("findService", () => {
+  // The owner's rule: a node's colour comes off its own icon, and an explicit
+  // colour is an override nothing may overrule - not even a catalog id match.
+  it("keeps a node's own colour when its id happens to match the catalog", () => {
+    expect(findService({ id: "secretsmanager" }).color).toBe(SERVICES.secretsmanager.color);
+    expect(findService({ id: "secretsmanager", color: "#ECD53F" }).color).toBe("#ECD53F");
+    expect(findService({ id: "secretsmanager", color: "#ECD53F" }).icon).toBe(SERVICES.secretsmanager.icon);
+    // A grey is not a choice, it is an agent guessing. The catalog keeps it.
+    expect(findService({ id: "secretsmanager", color: "#9aa0a6" }).color).toBe(SERVICES.secretsmanager.color);
+  });
+
+  it("reads the colour off a bring-your-own icon when the node states none", () => {
+    const yellow = "data:image/svg+xml;base64," + Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" fill="#ECD53F" viewBox="0 0 24 24"><path d="M0 0h24v24H0z"/></svg>'
+    ).toString("base64");
+    expect(findService({ id: "env", icon: yellow }).color.toLowerCase()).toBe("#ecd53f");
+    expect(findService({ id: "env", icon: yellow, color: "#0f766e" }).color).toBe("#0f766e");
+  });
+
   it("resolves a known service id to its icon config", () => {
     const svc = findService({ id: "lambda" });
     expect(svc.label).toBe("Lambda");
