@@ -26,6 +26,7 @@ import { resolveNodeIcons } from '../lib/resolve-icon.js'
 import { resolveNodeImages } from '../lib/resolve-image.js'
 import { cleanNote, cleanInfo } from '../src/note.js'
 import { cleanStyle } from '../src/style.js'
+import { PANELS, BADGES } from '../src/view-state.js'
 import { NODE_KEEP, EDGE_KEEP, okBox, roundBox, edgeKey, keepOwnerWork } from '../lib/owner-work.js'
 import { validateDesign, okColor } from '../lib/validate-design.js'
 
@@ -93,7 +94,11 @@ const STYLE_KEYS =
   'font sans|serif|mono, fs 12|14|18|24, align left|center|right, arrow step|curved|straight, ' +
   'opacity 0-100 (a line uses only stroke, bw, bs, arrow, opacity). ' +
   'An illegal key or value is dropped, exactly as it is on a save from the canvas.'
-const zStyle = z.record(z.unknown()).optional()
+// z.record needs BOTH a key and a value type in zod 4. With 1 argument it still
+// parses, so nothing fails at runtime - but z.toJSONSchema throws on it, which
+// makes tools/list return an error and the whole server look like it has no
+// tools. tests/unit/mcp-schema.test.js guards that.
+const zStyle = z.record(z.string(), z.unknown()).optional()
 const zBox = (lo, hi) => z.object({ w: z.number().min(lo).max(hi), h: z.number().min(lo).max(hi) }).optional()
 
 // Shared by create_flow and update_flow, which carried 2 copies of this and drifted.
@@ -378,6 +383,11 @@ server.registerTool(
         ...zEdgeFields,
       })).optional().describe('Replaces the whole list, in flow order - that order numbers the Steps badges and is the path the single current walks. Give every line a stable id: the owner\'s styling, dragged badge position and hand bends are matched back to it by id, and without one they are matched by array index instead.'),
       public: z.boolean().optional().describe('true publishes (anyone with the link can open it, real preview card); false makes it private again. Omit to leave visibility alone.'),
+      view: z.object({
+        panels: z.array(z.enum(PANELS)).optional()
+          .describe('Which reading aids the diagram OPENS with. "steps" prints a numbered chip on every line, 1..N in edges order - turn it on for anything a reader has to follow in order. "notes-off" HIDES the notes, which show by default, so the key is inverted on purpose. Replaces the whole list; [] is the plain canvas.'),
+        badge: z.enum(BADGES).optional().describe('How a step chip is painted. Omit for dark.'),
+      }).optional().describe('How the diagram opens, saved with it. Only the keys you send change; the owner\'s lanes and hand-placed Start pill are kept. Use it to ship a diagram already readable instead of leaving the reader to find the Steps button.'),
       lanes: z.array(z.object({
         id: z.string().regex(/^[\w-]{1,40}$/), title: z.string().max(40),
         y: z.number().optional(), h: z.number().min(80).optional(), x: z.number().optional(), w: z.number().min(80).optional(),
@@ -388,10 +398,10 @@ server.registerTool(
           at: z.number().describe('Where this section STARTS on the lane\'s OTHER axis: x in a row lane, y in a column one. The section before it ends 40 px short of this, the same gap that separates 2 lanes, so leave room: put this 140 px past the last card of the section before (100 px of padding plus the 40 px gap). The first section always starts at the band edge whatever this says.'),
           color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().describe('Hex ink for this section only. Omit to take the lane colour.'),
         })).min(2).max(3).optional().describe('Split this 1 band into 2 or 3 sections side by side, each drawn as a band of its own with its own title and tint and a 40 px gap between them, instead of stacking 2 lanes. A split lane draws no band of its own: the sections are the bands and they carry the titles.'),
-      })).max(12).optional().describe('Swimlanes, configuration only (there is no canvas UI for them): bands under the cards, 1 per layer. Rows { id, title, y, h, color? } for a top-down layout, columns { id, title, x, w, color? } for a left-to-right one; 1 kind per diagram, in canvas units (the cards are 190 wide, 180 tall plus their note). A lane may carry sections to split its band into 2 or 3 titled bands across its other axis, 40 px apart. Replaces the whole list; [] removes every lane; omit to leave lanes alone. Lanes pack from the first one with equal 40 px gaps. With lanes on, the Start pill is not drawn.'),
+      })).max(12).optional().describe('Swimlanes, configuration only (there is no canvas UI for them): bands under the cards, 1 per layer. Rows { id, title, y, h, color? } for a top-down layout, columns { id, title, x, w, color? } for a left-to-right one; 1 kind per diagram, in canvas units (a card is 180 x 180, a picture card 240 x 225, plus its note below). A lane may carry sections to split its band into 2 or 3 titled bands across its other axis, 40 px apart. Replaces the whole list; [] removes every lane; omit to leave lanes alone. Lanes pack from the first one with equal 40 px gaps. With lanes on, the Start pill is not drawn.'),
     },
   },
-  async ({ id, reason, title, nodes, edges, public: isPublic, lanes }) => {
+  async ({ id, reason, title, nodes, edges, public: isPublic, lanes, view }) => {
     try {
       // A flow is open to agents unless the owner has edit-locked it, in the app.
       const { rows: gate } = await db.query('SELECT edit_locked FROM flows WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL', [id, owner()])
@@ -443,11 +453,20 @@ server.registerTool(
         [id, title?.trim() ?? null, nextNodes, nextEdges, reason?.trim() ?? null, owner(), isPublic ?? null],
       )
       if (!rows.length) return fail(`No owned diagram with id ${id} (it may be in trash - call list_trash)`)
-      if (lanes) {
-        const clean = cleanLanes(lanes)
+      // lanes and view both live in view_state, so they merge key by key: what
+      // the caller states is written, everything else on the row stands. The
+      // API's own PATCH (lib/handlers/flow-by-id.js) replaces the object, which
+      // is right for the canvas (it sends the whole thing) and wrong here.
+      const patch = {}
+      if (lanes) Object.assign(patch, cleanLanes(lanes).length ? { lanes: cleanLanes(lanes) } : {})
+      if (view?.panels) patch.panels = view.panels
+      if (view?.badge) patch.badge = view.badge
+      if (lanes || view) {
         await db.query(
-          "UPDATE flows SET view_state = (COALESCE(view_state, '{}'::jsonb) - 'lanes') || $2::jsonb WHERE id = $1 AND user_id = $3 AND deleted_at IS NULL",
-          [id, JSON.stringify(clean.length ? { lanes: clean } : {}), owner()],
+          `UPDATE flows SET view_state =
+             (COALESCE(view_state, '{}'::jsonb) - ($4::text[])) || $2::jsonb
+           WHERE id = $1 AND user_id = $3 AND deleted_at IS NULL`,
+          [id, JSON.stringify(patch), owner(), [...(lanes ? ['lanes'] : []), ...(view?.panels ? ['panels'] : []), ...(view?.badge ? ['badge'] : [])]],
         )
       }
       return ok({
@@ -457,7 +476,7 @@ server.registerTool(
         gif_url: gifUrlFor(rows[0].slug),
         readme: readmeFor(rows[0].title, rows[0].slug),
         visibility: rows[0].is_public ? 'public' : 'private',
-        updated: { title: title != null, nodes: nodes != null, edges: edges != null, public: isPublic != null },
+        updated: { title: title != null, nodes: nodes != null, edges: edges != null, public: isPublic != null, lanes: lanes != null, view: view != null },
         ...(layoutWarning ? { layout: layoutWarning } : {}),
         ...(reason?.trim() ? { reason: reason.trim() } : {}),
       })
@@ -689,12 +708,17 @@ server.registerTool(
       'A diagram is { title, nodes, edges }.',
       'HARD REQUIREMENT: every node id MUST be a known service key from list_services (each has a logo). Unknown ids are REJECTED - no bare-letter nodes allowed.',
       'A service key can appear at most once per diagram (node ids are unique).',
-      'Edges are directed { source, target, label? } using node ids; order them in execution/flow order.',
-      'Node positions (x,y) are optional - the app auto-layouts on open.',
+      'Edges are directed { source, target, label?, id? } using node ids. THE ARRAY ORDER IS THE DIAGRAM: it numbers the Steps chips 1..N and it is the path the single current walks, 1 line at a time. Order the array the way a reader should read it.',
+      'GIVE EVERY EDGE A STABLE id ("e1", "e2", ...). The owner\'s per-line styling, dragged chip position and hand bends are matched back by id; with no id they are matched by ARRAY INDEX, so inserting a line in the middle silently moves all of that onto the wrong lines. The id also picks the leader that carries the badge when several lines share a card face (lowest id wins).',
+      'Node positions (x,y) are optional - the app auto-layouts on open. If you do place cards by hand, match the auto-layout pitch so nothing crowds: a card is 180 x 180 (a picture card 240 x 225), the layout allows 190 per card, leaves 150 between columns (so a column pitch of 340) and 95 between stacked cards (a row pitch of 275). A step chip needs about 100 px of clear line, which is what those gaps buy.',
+      'A node may carry `size` { w, h } (clamped 130-600) to resize its card, and `iconSize` { w, h } (clamped 16-600) to stretch the logo tile inside it. Omit both unless a wide wordmark is unreadable at the stock tile; a note hangs BELOW the card and is not part of `size`.',
+      'A node or an edge may carry `style`, the same object the format panel writes: stroke #hex, bg #hex or "transparent", bw 1|2|4, bs solid|dashed|dotted, radius 0|12, font sans|serif|mono, fs 12|14|18|24, align left|center|right, arrow step|curved|straight, opacity 0-100. A line uses only stroke, bw, bs, arrow and opacity. An illegal key or value is dropped. Leave `style` off a card unless you need to say something its brand colour cannot: a card with no style draws in its own logo colour, which is almost always right.',
+      'update_flow REPLACES the whole nodes and edges arrays, so send every one, not only the changed one. Anything the owner set by hand that you omit (node size, iconSize, style; edge style, labelT, bend) is carried over from the stored row rather than wiped - but a node or edge you leave out of the array entirely is GONE.',
+      'update_flow { id, view: { panels, badge } } sets how the diagram OPENS. panels is any of ["steps","share","code","notes-off"]: "steps" prints the numbered chip on every line, "notes-off" HIDES the notes (they show by default, so the key is inverted). badge is dark|silver|color|plain, default dark. Turn "steps" on for anything a reader has to follow in order - do not leave them to find the button.',
       'A node may carry a `note` (max 400 chars, light markdown: **bold**, *italic*, __underline__, ~~strike~~, `code`; a URL becomes a link showing its ticket key): 1-2 sentences on what that step does. It renders under the card, bottom-left, in the app, on every shared link and in the SVG - so put the per-step explanation THERE, not only in the title or edge labels.',
       'A node may also carry a plain-text `info` (max 600 chars): what this thing is and why it is in this diagram, shown only on hover/click of the i badge on the card, and never in the SVG.',
       'A node may carry `sunset: true` to mark it as today\'s path being decommissioned - drawn light silver and dimmed, icon in greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) light silver, immune to any line style; no X on the card. Silver is reserved for this state; never paint a node grey or silver to mean retired, set sunset instead.',
-      'Swimlanes are configuration only, set with update_flow { id, lanes } (never a canvas button): rows [{ id, title, y, h, color? }] for a top-down layout or columns [{ id, title, x, w, color? }] for a left-to-right one, 1 kind per diagram, max 12, thinnest 80, packed with 40 px gaps, each spanning the whole diagram on its other axis. Cards are 190 x 180 plus their note, so size every lane around the cards it holds. A lane may carry sections [{ id, title, at, color? }], 2 or 3, to split its 1 band into titled bands across its other axis instead of stacking 2 lanes: at is where a section starts (the x in a row lane) and the one before it ends 40 px short of that, the same gap that separates 2 lanes, so set at 140 px past the last card of the section before it. A split lane draws no band of its own and shows its sections titles, not its own. [] clears them. With lanes on, no Start pill is drawn.',
+      'Swimlanes are configuration only, set with update_flow { id, lanes } (never a canvas button): rows [{ id, title, y, h, color? }] for a top-down layout or columns [{ id, title, x, w, color? }] for a left-to-right one, 1 kind per diagram, max 12, thinnest 80, packed with 40 px gaps, each spanning the whole diagram on its other axis. A card is 180 x 180 (a picture card 240 x 225) plus its note below, so size every lane around the cards it holds. A lane may carry sections [{ id, title, at, color? }], 2 or 3, to split its 1 band into titled bands across its other axis instead of stacking 2 lanes: at is where a section starts (the x in a row lane) and the one before it ends 40 px short of that, the same gap that separates 2 lanes, so set at 140 px past the last card of the section before it. A split lane draws no band of its own and shows its sections titles, not its own. [] clears them. With lanes on, no Start pill is drawn.',
     ],
     example: {
       title: 'URL Shortener - Tier 1',
