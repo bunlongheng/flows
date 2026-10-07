@@ -8,7 +8,7 @@ import { DetailView } from './views/DetailView'
 import { layoutElements } from './layout'
 import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
-import { snapAlign } from './snapAlign'
+import { snapSuggest } from './snapAlign'
 import { findService } from './services'
 import { laneNodes, laneRef, laneNodeId, LANE_INK } from './lanes.js'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
@@ -263,8 +263,10 @@ export default function App() {
   const [devBypass, setDevBypass] = useState(process.env.NODE_ENV !== 'production')
   const canAI = (Boolean(user) || IS_DEV) && !isDemo
   const rfInstance = useRef(null)
-  // Snap-align: yellow guides to draw, plus a live "is Cmd/Ctrl down" flag. The
-  // flag is a ref because it is read inside the drag handler on every frame.
+  // Snap suggestions: the guides to draw, plus a live "is Cmd/Ctrl down" flag.
+  // The modifier SUSPENDS snapping now rather than arming it - suggestions are
+  // the default, and the key is the way to overrule them. The flag is a ref
+  // because it is read inside the drag handler on every frame.
   const [snapGuides, setSnapGuides] = useState([])
   const snapModRef = useRef(false)
   // Arrange is the one destructive click on the canvas - it throws away a
@@ -979,8 +981,9 @@ export default function App() {
           else setStartDrag(c.position)
         }
       }
-      // Cmd/Ctrl held while dragging -> rewrite the drag position so the node
-      // latches onto the closest alignment, and show the yellow guide there.
+      // A moving card suggests where it wants to land: the closest shared edge
+      // or centre line, and failing that the gap the rest of the map already
+      // uses. Hold Cmd/Ctrl/Shift to suspend it and place the card by hand.
       // Rewriting the CHANGE (not the node afterwards) is what makes the snap
       // stick on release: React Flow's own drag position never lands in state.
       let applied = changes
@@ -988,7 +991,7 @@ export default function App() {
       const drag = drags[0]
       // Only a single-node drag snaps. Rewriting one position out of a multi-node
       // drag would shear the selection apart.
-      if (drag && drags.length === 1 && snapModRef.current) {
+      if (drag && drags.length === 1 && !snapModRef.current) {
         const all = rfInstance.current?.getNodes() ?? []
         const dragged = all.find(n => n.id === drag.id)
         // Only real service nodes are snap targets - the Start pill is derived
@@ -996,7 +999,7 @@ export default function App() {
         // save path above, not by snapping against the other cards.
         const targets = all.filter(n => n.type === 'awsNode')
         if (dragged) {
-          const { position, guides } = snapAlign({ ...dragged, position: drag.position }, targets)
+          const { position, guides } = snapSuggest({ ...dragged, position: drag.position }, targets)
           applied = changes.map(c => (c === drag ? { ...c, position } : c))
           setSnapGuides(drag.dragging === false ? [] : guides)
         }
