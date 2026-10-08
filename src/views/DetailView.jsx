@@ -298,13 +298,17 @@ export function DetailView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // The card panel counts as a side panel too (owner rule 2026-10-08: it should
+  // behave like Share): it refits when it opens and when it closes, not when the
+  // reader hops from 1 card to the next inside the same open panel.
   const didMountFit = useRef(false)
+  const cardOpen = !!cardId
   useEffect(() => {
     if (!didMountFit.current) { didMountFit.current = true; return }
     const t = setTimeout(fitNow, 60)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSteps, showSharePanel, showDetailCode, showHistoryPanel])
+  }, [showSteps, showSharePanel, showDetailCode, showHistoryPanel, cardOpen])
 
   // Push to Miro. Miro has no file import for diagrams at all, so this is the
   // one export that is a request rather than a download: the owner pastes a
