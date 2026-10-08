@@ -12,6 +12,7 @@ import { SnapGuides } from '../components/SnapGuides'
 import { Footer } from '../components/Footer'
 import { brandFor } from '../brands'
 import { FormatPanel } from '../components/FormatPanel.jsx'
+import { CardPanel } from '../components/CardPanel.jsx'
 import { findService } from '../services.js'
 import { SUNSET, INK } from '../sunset.js'
 import { CodeBlock } from '../components/CodeBlock.jsx'
@@ -160,6 +161,19 @@ export function DetailView({
   // it starts folded to a small badge in the corner on every screen; a click
   // opens it when the reader wants the framing.
   const [infoOpen, setInfoOpen] = useState(false)
+  // The card panel: a clicked card's id, read back into the live node so a
+  // deleted card closes the panel on its own rather than holding a stale copy.
+  const [cardId, setCardId] = useState(null)
+  const card = cardId ? nodes.find(n => n.id === cardId) : null
+  useEffect(() => { setCardId(null) }, [activeDiagram?.id])
+  // At most 1 extra right panel: Share and History already own that slot.
+  useEffect(() => { if (showSharePanel || showHistoryPanel) setCardId(null) }, [showSharePanel, showHistoryPanel])
+  useEffect(() => {
+    if (!cardId) return
+    const onKeyDown = e => { if (e.key === 'Escape') setCardId(null) }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [cardId])
   // A phone is about 1/7 as wide as a big diagram, so the desktop zoom floor of
   // 0.2 stopped the pinch while the board was still wider than the glass. A
   // narrow screen gets to go all the way out instead.
@@ -860,6 +874,15 @@ export function DetailView({
             nodes={nodes} edges={canvasEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
             onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
             onNodeDragStop={onNodeDragStop}
+            /* A card opens the read-only detail panel - desktop and iPad, never
+               a phone (owner rule 2026-10-08). This fires even when the card
+               itself is not selectable (fingerOnly below): NodeWrapper calls
+               onClick unconditionally, gated only on isSelectable for the
+               SELECTION it also makes (node_modules/@xyflow/react/dist/esm/
+               index.js, onSelectNodeHandler, ~line 2169). Lane and marker
+               nodes are not cards, so they are excluded by type. */
+            onNodeClick={(_e, node) => { if (!narrow && node.type === 'awsNode') setCardId(node.id) }}
+            onPaneClick={() => setCardId(null)}
             /* Cmd/Ctrl is reserved for snap-align while dragging, so additive
                multi-select moves to Shift (box-select already uses Shift). */
             multiSelectionKeyCode="Shift"
@@ -884,7 +907,7 @@ export function DetailView({
             nodesDraggable={canEdit && !viewOnly} nodesConnectable={false} elementsSelectable={!fingerOnly}
             /* 2 fingers on the trackpad pan the canvas in any direction, the way
                Sequences and Mindmaps do; pinch or Cmd + wheel zooms. */
-            panOnDrag panOnScroll panOnScrollMode="free" panOnScrollSpeed={1} zoomOnScroll={false} minZoom={narrow ? 0.04 : 0.2} maxZoom={2.5}
+            panOnDrag panOnScroll panOnScrollMode="free" panOnScrollSpeed={1} zoomOnScroll={false} zoomOnDoubleClick={false} minZoom={narrow ? 0.04 : 0.2} maxZoom={2.5}
             proOptions={{ hideAttribution: true }}
           >
             <Background variant="dots" gap={24} size={1} color="#e6e8eb" />
@@ -1023,8 +1046,9 @@ export function DetailView({
         )}
 
         {/* Format panel (right side), for a selected LINE only. A clicked card
-            lights its lines instead of opening a panel (owner rule 2026-10-04);
-            a stored card style still renders, it is just not edited here. */}
+            lights its lines AND now opens the read-only card panel below
+            (owner rule 2026-10-08); a stored card style still renders, it is
+            just not edited here. */}
         {canEdit && onEdgeStyleChange && selectedEdge && (
           <FormatPanel
             target="edge"
@@ -1033,6 +1057,13 @@ export function DetailView({
             onChange={(style) => onEdgeStyleChange(selectedEdge.id, style)}
             onReset={() => onEdgeStyleChange(selectedEdge.id, null)}
           />
+        )}
+
+        {/* Card panel (right side): a clicked card's name, info, note and
+            every connection, read-only. Desktop and iPad only - never a phone -
+            and never alongside Share or History (owner rule 2026-10-08). */}
+        {card && !narrow && (
+          <CardPanel node={card} nodes={nodes} edges={edges} onPick={setCardId} onClose={() => setCardId(null)} />
         )}
 
         {/* Share panel (right side) */}
