@@ -397,6 +397,22 @@ export function DetailView({
           <span className="sd-hide-mobile" style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em', color: '#111827' }}>Flows</span>
         </a>
 
+        {/* The diagram's own name, with the brand mark the owner's bar and the
+            gallery card carry, so a visitor knows which flow this is without
+            reading the URL. It takes the room between the wordmark and the pill
+            and trims with an ellipsis before anything else gives. */}
+        <div className="sd-share-title" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+          <span aria-hidden="true" style={{ width: 1, height: 22, background: '#e4e6e8', flexShrink: 0, marginRight: 2 }} />
+          {brand && (
+            <span className="sd-brand-tile" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 10, background: '#ffffff', border: '1px solid #e4e6e8', flexShrink: 0 }}>
+              <img src={brand.icon} alt="" width={16} height={16} style={{ objectFit: 'contain' }} />
+            </span>
+          )}
+          <span style={{ fontSize: 15, fontWeight: 700, color: '#1c1e21', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+            {activeDiagram?.title || 'Untitled diagram'}
+          </span>
+        </div>
+
         <div className="sd-detail-actions" style={{
           display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0,
           background: '#ffffff', border: '1px solid #e4e6e8', borderRadius: 14,
