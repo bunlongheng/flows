@@ -52,6 +52,8 @@ export const SERVICES = {
   spark:        { label: 'Apache Spark',    sub: 'Batch Processing',      color: '#f97316', icon: '/icons/gen-spark.svg' },
   ml:           { label: 'ML Platform',     sub: 'Recommendations',       icon: '/icons/sagemaker.svg',   color: '#0aab91' },
   sagemaker:    { label: 'SageMaker',       sub: 'ML Training',           icon: '/icons/sagemaker.svg',   color: '#0aab91' },
+  transcribe:   { label: 'Transcribe',      sub: 'Speech to Text',        icon: '/icons/aws-transcribe.svg', color: '#0aab91' },
+  bedrock:      { label: 'Bedrock',         sub: 'Foundation Models',     icon: '/icons/aws-bedrock.svg', color: '#0aab91' },
   claude:       { label: 'Claude',          sub: 'LLM',                   icon: '/icons/claude.svg',      color: '#D97757' },
   elasticsearch:{ label: 'Elasticsearch',  sub: 'Logs & Search',         icon: '/icons/opensearch.svg',  color: '#8f54ff' },
   opensearch:   { label: 'OpenSearch',      sub: 'Search & Analytics',    icon: '/icons/opensearch.svg',  color: '#8f54ff' },
