@@ -806,7 +806,7 @@ describe("/api/flows/:id", () => {
     expect(res.headers["Cache-Control"]).toMatch(/immutable/);
     expect(Buffer.isBuffer(res.body) && res.body.slice(1, 4).toString()).toBe("PNG");
     const [sql, params] = query.mock.calls[1];
-    expect(sql).toMatch(/SET thumbnail = \$1, thumbnail_at = now\(\) WHERE id = \$2 AND \(thumbnail_at IS NULL OR thumbnail_at < updated_at\)/);
+    expect(sql).toMatch(/SET thumbnail = \$1, thumbnail_at = now\(\) WHERE id = \$2 AND \(thumbnail_at IS NULL OR thumbnail_at \+ \(\$3 \|\| ' milliseconds'\)::interval < updated_at\)/);
     expect(params[0]).toMatch(/^data:image\/png;base64,/);
     expect(params[1]).toBe(ID);
   });
@@ -819,7 +819,17 @@ describe("/api/flows/:id", () => {
     expect(res.statusCode).toBe(200);
     expect(res.headers["Content-Type"]).toBe("image/png");
     const [sql] = query.mock.calls[1];
-    expect(sql).toMatch(/thumbnail_at < updated_at/);
+    expect(sql).toMatch(/thumbnail_at \+ \(\$3 \|\| ' milliseconds'\)::interval < updated_at/);
+  });
+
+  it("GET ?format=thumb keeps a capture the app's own save followed by under a second, with Date stamps", async () => {
+    const b64 = Buffer.from("the real canvas").toString("base64");
+    query.mockResolvedValueOnce({ rows: [{ id: ID, nodes: [], edges: [], is_public: true, thumbnail: `data:image/jpeg;base64,${b64}`, thumbnail_at: new Date("2026-10-08T22:10:09.358Z"), updated_at: new Date("2026-10-08T22:10:09.849Z") }] });
+    const res = mockRes();
+    await flowById(req("GET", ID, undefined, undefined, { format: "thumb" }), res);
+    expect(res.headers["Content-Type"]).toBe("image/jpeg");
+    expect(res.body.toString()).toBe("the real canvas");
+    expect(query).toHaveBeenCalledTimes(1);
   });
 
   it("GET json never carries the capture bytes, only when it was taken", async () => {
