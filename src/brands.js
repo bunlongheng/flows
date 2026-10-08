@@ -15,6 +15,7 @@ export const BRANDS = {
   'claude code - ai coding agent': { icon: '/brand/claude.svg', sub: 'AI Coding Agent' },
   'zapier - workflow automation': { icon: '/brand/zapier.svg', sub: 'Workflow Automation' },
   'email newsletter - 500m subscribers': { icon: '/brand/mailchimp.svg', sub: 'Bulk Email Delivery' },
+  'chatgpt - conversational ai at scale': { icon: '/brand/openai.svg', sub: 'Conversational AI' },
 }
 
 export const brandFor = title => BRANDS[String(title || '').trim().toLowerCase()] || null
