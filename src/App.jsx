@@ -712,7 +712,9 @@ export default function App() {
   }
 
   function applyPanels(open) {
-    setShowSteps(open.includes('steps'))
+    // Every demo diagram opens with its steps numbered (owner rule 2026-10-08):
+    // a reader on /demo is walking the flow, so the order is on from the start.
+    setShowSteps(isDemo || open.includes('steps'))
     setShowDetailCode(open.includes('code'))
     // Inverted: stored when notes are OFF, so a row that predates the toggle
     // (and every row a visitor loads) still shows the notes its author wrote.
