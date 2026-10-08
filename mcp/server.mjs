@@ -110,6 +110,7 @@ const zNodeFields = {
 const zEdgeFields = {
   id: z.string().max(60).optional().describe('STABLE id for this line, e.g. "e1". GIVE EVERY EDGE ONE. With no id the identity falls back to the ARRAY INDEX, so inserting a line in the middle silently moves the styling, badge position and step number of every line after it onto the wrong line. It also decides which line of a trunk is the leader that carries the badge (lowest id wins).'),
   style: zStyle.describe(`Per-line look: ${STYLE_KEYS}`),
+  async: z.boolean().optional().describe('true fires this line on the same beat as the line numbered before it: the current leaves the card on both lines at once and both targets light together. For a fan-out whose lines do not depend on each other (stream the answer, persist it, emit the usage event). Chain it on consecutive lines to fire 3 or more together. The Steps chips keep their own numbers.'),
 }
 
 function toStoredNodes(nodes) {
@@ -181,6 +182,7 @@ function toStoredEdges(edges) {
     ...(e.label ? { label: e.label } : {}),
     ...(e.description ? { description: String(e.description).trim().slice(0, 300) } : {}),
     ...(cleanStyle(e.style) ? { style: cleanStyle(e.style) } : {}),
+    ...(e.async === true ? { async: true } : {}),
   }))
 }
 
@@ -709,6 +711,7 @@ server.registerTool(
       'HARD REQUIREMENT: every node id MUST be a known service key from list_services (each has a logo). Unknown ids are REJECTED - no bare-letter nodes allowed.',
       'A service key can appear at most once per diagram (node ids are unique).',
       'Edges are directed { source, target, label?, id? } using node ids. THE ARRAY ORDER IS THE DIAGRAM: it numbers the Steps chips 1..N and it is the path the single current walks, 1 line at a time. Order the array the way a reader should read it.',
+      'A line may carry `async: true` to fire on the same beat as the line before it: the current leaves the card on both lines at once and both targets light together. Use it for a fan-out whose lines do not depend on each other (stream the answer, persist it, emit the usage event); chain it on consecutive lines to fire 3 or more together. The Steps chips keep their own numbers.',
       'GIVE EVERY EDGE A STABLE id ("e1", "e2", ...). The owner\'s per-line styling, dragged chip position and hand bends are matched back by id; with no id they are matched by ARRAY INDEX, so inserting a line in the middle silently moves all of that onto the wrong lines. The id also picks the leader that carries the badge when several lines share a card face (lowest id wins).',
       'Node positions (x,y) are optional - the app auto-layouts on open. If you do place cards by hand, match the auto-layout pitch so nothing crowds: a card is 180 x 180 (a picture card 240 x 225), the layout allows 190 per card, leaves 150 between columns (so a column pitch of 340) and 95 between stacked cards (a row pitch of 275). A step chip needs about 100 px of clear line, which is what those gaps buy.',
       'A node may carry `size` { w, h } (clamped 130-600) to resize its card, and `iconSize` { w, h } (clamped 16-600) to stretch the logo tile inside it. Omit both unless a wide wordmark is unreadable at the stock tile; a note hangs BELOW the card and is not part of `size`.',

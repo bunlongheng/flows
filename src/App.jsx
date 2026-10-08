@@ -91,6 +91,7 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove, lane
       ...(sunsetOf(e.source) || sunsetOf(e.target) ? { sunset: true } : {}),
       ...(sunsetOf(e.source) || sunsetOf(e.target) ? { sunsetLine: true } : {}),
       ...(typeof e.labelT === 'number' ? { labelT: e.labelT } : {}),
+      ...(e.async === true ? { async: true } : {}),
       ...(e.ends ? { ends: e.ends } : {}),
       ...(e.bend ? { bend: e.bend } : {}),
       ...(e.style ? { style: e.style } : {}),
@@ -214,10 +215,12 @@ export default function App() {
   const [nodes, setNodes] = useState(defaultNodes)
   const [edges, setEdges] = useState(defaultEdges)
   const [toast, setToast] = useState({ message: '', visible: false })
-  // One current walks the diagram 1 line at a time, so the cycle is 1 slot per
-  // line and the clock has to know how many there are. Keyed on the COUNT, not
-  // the array: the edges state is rebuilt every frame.
-  useEffect(() => { flowClock.setSteps(edges.length) }, [edges.length])
+  // One current walks the diagram 1 beat at a time (a line marked async shares
+  // the beat of the line before it), so the cycle is 1 slot per beat and the
+  // clock has to know how many there are. Keyed on the COUNT, not the array:
+  // the edges state is rebuilt every frame.
+  const beatN = flowClock.beatCount(edges)
+  useEffect(() => { flowClock.setSteps(beatN) }, [beatN])
   // Declared before the effects/callbacks that depend on it - a const useCallback
   // is not hoisted, so referencing it earlier would be a temporal-dead-zone crash.
   const showToastMsg = useCallback(msg => {
