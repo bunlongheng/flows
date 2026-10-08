@@ -243,3 +243,89 @@ describe("info card", () => {
     expect(screen.queryByRole("button", { name: /the diagram summary/i })).toBeNull();
   });
 });
+
+// A clicked card opens a read-only right panel with its name, info, note and
+// every connection in and out - desktop and iPad, never a phone.
+describe("card panel", () => {
+  // Custom icon strings (not real files - jsdom never loads them) force the
+  // custom-brand branch of findService, so these labels render exactly as
+  // given instead of fuzzy-matching an unrelated catalog entry by id.
+  const cardNodes = [
+    { id: "user", type: "awsNode", position: { x: 0, y: 0 }, data: { id: "user", label: "User", icon: "/t.svg", info: "The person using the app.", note: "Entry point." } },
+    { id: "api", type: "awsNode", position: { x: 200, y: 0 }, data: { id: "api", label: "API", icon: "/t.svg", info: "Handles requests.", note: "Stateless." } },
+    { id: "db", type: "awsNode", position: { x: 400, y: 0 }, data: { id: "db", label: "DB", icon: "/t.svg", info: "Stores records." } },
+  ];
+  const cardEdges = [
+    { id: "e1", source: "user", target: "api", label: "opens", data: { step: 1 } },
+    { id: "e2", source: "api", target: "db", label: "query", data: { step: 2 } },
+  ];
+
+  function mockMatchMedia(matches) {
+    const prev = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: !!matches[query],
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    return () => { window.matchMedia = prev; };
+  }
+
+  it("opens on a card click with name, info, note and both connection lists", () => {
+    setup({ nodes: cardNodes, edges: cardEdges });
+    fireEvent.click(document.querySelector('.react-flow__node[data-id="api"]'));
+    const panel = within(screen.getByTestId("card-panel"));
+    expect(panel.getByText("API")).toBeInTheDocument();
+    expect(panel.getByText("Handles requests.")).toBeInTheDocument();
+    expect(panel.getByText("Stateless.")).toBeInTheDocument();
+    const out = panel.getByText(/^Connections out/).parentElement;
+    expect(within(out).getByText("DB")).toBeInTheDocument();
+    expect(within(out).getByText("query")).toBeInTheDocument();
+    const into = panel.getByText(/^Connections in/).parentElement;
+    expect(within(into).getByText("User")).toBeInTheDocument();
+    expect(within(into).getByText("opens")).toBeInTheDocument();
+  });
+
+  it("names the lane and section the card sits in, and the status", () => {
+    const lane = { id: "__lane_entry", type: "lane", position: { x: -50, y: -50 }, width: 300, height: 600, selectable: false, draggable: false,
+      data: { title: "1. Entry", axis: "col", sections: [{ id: "a", title: "Entry: target", x: 0, y: 0, w: 300, h: 250 }, { id: "b", title: "Entry: today", x: 0, y: 250, w: 300, h: 350 }] } };
+    setup({ nodes: [lane, ...cardNodes], edges: cardEdges });
+    fireEvent.click(document.querySelector('.react-flow__node[data-id="user"]'));
+    const panel = within(screen.getByTestId("card-panel"));
+    expect(panel.getByText("1. Entry")).toBeInTheDocument();
+    expect(panel.getByText("Entry: target")).toBeInTheDocument();
+    expect(panel.getByText("Active")).toBeInTheDocument();
+    expect(panel.getByText("1 out, 0 in")).toBeInTheDocument();
+  });
+
+  it("clicking a connected name walks to that card", () => {
+    setup({ nodes: cardNodes, edges: cardEdges });
+    fireEvent.click(document.querySelector('.react-flow__node[data-id="api"]'));
+    const panel = screen.getByTestId("card-panel");
+    fireEvent.click(within(panel).getByRole("button", { name: "DB" }));
+    expect(within(screen.getByTestId("card-panel")).getByText("Stores records.")).toBeInTheDocument();
+  });
+
+  it("closes on the X button and on Escape", () => {
+    setup({ nodes: cardNodes, edges: cardEdges });
+    fireEvent.click(document.querySelector('.react-flow__node[data-id="api"]'));
+    fireEvent.click(screen.getByRole("button", { name: /close card panel/i }));
+    expect(screen.queryByTestId("card-panel")).toBeNull();
+
+    fireEvent.click(document.querySelector('.react-flow__node[data-id="api"]'));
+    expect(screen.getByTestId("card-panel")).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByTestId("card-panel")).toBeNull();
+  });
+
+  it("never opens on a phone", () => {
+    const restore = mockMatchMedia({ "(max-width: 880px)": true, "(pointer: coarse)": true });
+    try {
+      setup({ nodes: cardNodes, edges: cardEdges });
+      fireEvent.click(document.querySelector('.react-flow__node[data-id="api"]'));
+      expect(screen.queryByTestId("card-panel")).toBeNull();
+    } finally {
+      restore();
+    }
+  });
+});
