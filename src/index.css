@@ -4,12 +4,12 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: #f4f5f7;
   color: #1c1e21;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 #root {
   width: 100%;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 @keyframes sd-slide-left {

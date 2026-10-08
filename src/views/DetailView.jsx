@@ -354,7 +354,7 @@ export function DetailView({
       .finally(() => setRestoringId(null))
   }
   return (
-    <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+    <div style={{ width: '100vw', height: '100dvh', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
       <Toast message={toast.message} visible={toast.visible} />
 
       {/* Header - diagrams-style floating pill toolbar. Scrolls horizontally on
