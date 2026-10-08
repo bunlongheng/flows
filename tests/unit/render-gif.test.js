@@ -61,7 +61,7 @@ describe("renderDiagramSvg dotPhase", () => {
     // phase, so nobody has to guess which of 20 lines is the live one.
     for (const dotPhase of [0.1, 0.4, 0.6, 0.95]) {
       const svg = renderDiagramSvg(NODES, EDGES, { dotPhase });
-      const dots = svg.match(/<circle cx="[\d.]+" cy="[\d.]+" r="2.4"/g) || [];
+      const dots = svg.match(/<circle cx="[\d.]+" cy="[\d.]+" r="7"/g) || [];
       expect(dots).toHaveLength(1);
     }
   });

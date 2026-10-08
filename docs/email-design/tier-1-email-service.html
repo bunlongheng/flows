@@ -1,0 +1,149 @@
+<div style="max-width:820px;margin:0 auto;padding:16px 14px 14px;background:#eef0f4;border-radius:18px;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:#28303a;line-height:1.55;font-size:15px;">
+
+  <!-- HERO -->
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;background:linear-gradient(135deg,#334155,#64748b);color:#fff;border-radius:18px;padding:22px 24px;margin-bottom:20px;">
+    <div style="display:flex;align-items:center;gap:14px;min-width:0;">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:13px;background:rgba(255,255,255,.94);box-shadow:0 3px 10px rgba(0,0,0,.18);flex-shrink:0;color:#334155;font-weight:800;font-size:22px;">1</span>
+      <div style="min-width:0;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.09em;color:rgba(255,255,255,.8);">SYSTEM DESIGN · TIER 1 (BASELINE)</div>
+        <div style="font-size:26px;font-weight:800;letter-spacing:-.3px;margin-top:2px;">Email Service · 500M Subscribers</div>
+      </div>
+    </div>
+    <div style="text-align:right;flex-shrink:0;">
+      <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.92);">2026-08-26</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.75);margin-top:6px;">"Get it working"</div>
+    </div>
+  </div>
+
+  <!-- INTERPRETATION -->
+  <div style="background:#fff;border:1px solid #e7e9ee;border-left:4px solid #64748b;border-radius:14px;padding:14px 16px;margin-bottom:18px;box-shadow:0 1px 3px rgba(16,24,40,.07);">
+    <div style="font-size:12.5px;color:#5b6673;"><b style="color:#1a2129;">Scope.</b> A bulk + transactional <b>email delivery platform</b> ("email carrier"): a company owns 500M subscribers and sends campaigns (newsletters, marketing), transactional mail (receipts, resets), and tracks opens/clicks/bounces. Tier 1 is the honest MVP that a small team can actually run - it works, it scales vertically + with a few shards, but it has known ceilings called out at the bottom.</div>
+  </div>
+
+  <!-- SCALE STATS -->
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;">
+    <div style="flex:1;min-width:140px;background:#fff;border:1px solid #e7e9ee;border-radius:13px;box-shadow:0 1px 3px rgba(16,24,40,.07);padding:15px 16px;text-align:center;">
+      <div style="font-size:24px;font-weight:800;color:#1a2129;line-height:1;">500M</div>
+      <div style="font-size:10px;letter-spacing:.06em;color:#8e8e93;margin-top:7px;font-weight:700;">SUBSCRIBERS</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:#eef2f7;border-radius:13px;padding:15px 16px;text-align:center;">
+      <div style="font-size:24px;font-weight:800;color:#475569;line-height:1;">~70K/s</div>
+      <div style="font-size:10px;letter-spacing:.06em;color:#475569;margin-top:7px;font-weight:700;">SEND RATE (2h broadcast)</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:#eef2f7;border-radius:13px;padding:15px 16px;text-align:center;">
+      <div style="font-size:24px;font-weight:800;color:#475569;line-height:1;">~1 TB</div>
+      <div style="font-size:10px;letter-spacing:.06em;color:#475569;margin-top:7px;font-weight:700;">PROFILE STORAGE</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:#eef2f7;border-radius:13px;padding:15px 16px;text-align:center;">
+      <div style="font-size:24px;font-weight:800;color:#475569;line-height:1;">~10K/s</div>
+      <div style="font-size:10px;letter-spacing:.06em;color:#475569;margin-top:7px;font-weight:700;">TRACKING EVENTS</div>
+    </div>
+  </div>
+
+  <!-- CAPACITY MATH -->
+  <div style="margin-top:22px;">
+    <div style="display:flex;align-items:center;gap:11px;margin-bottom:10px;">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:#2563eb1c;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>
+      </span>
+      <span style="flex:1;font-size:15px;font-weight:800;color:#1a2129;">Back-of-envelope</span>
+    </div>
+    <div style="border:1px solid #e7e9ee;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.07);">
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="background:#f2f2f7;text-align:left;">
+            <th style="padding:10px 14px;border-bottom:2px solid #e6e8ec;">Quantity</th>
+            <th style="padding:10px 14px;border-bottom:2px solid #e6e8ec;text-align:right;">Value</th>
+            <th style="padding:10px 14px;border-bottom:2px solid #e6e8ec;">How</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;font-weight:600;">Mega-broadcast size</td><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;text-align:right;font-variant-numeric:tabular-nums;">500M</td><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;color:#5b6673;">one send to whole base</td></tr>
+            <tr><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;font-weight:600;">Sustained send rate</td><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;text-align:right;font-variant-numeric:tabular-nums;">~70K/s</td><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;color:#5b6673;">500M ÷ 2h (7,200s)</td></tr>
+            <tr><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;font-weight:600;">Open events (20%)</td><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;text-align:right;font-variant-numeric:tabular-nums;">100M</td><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;color:#5b6673;">tracking-pixel loads</td></tr>
+            <tr><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;font-weight:600;">Peak tracking QPS</td><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;text-align:right;font-variant-numeric:tabular-nums;">~10K/s</td><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;color:#5b6673;">opens+clicks, spread over hours</td></tr>
+            <tr><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;font-weight:600;">Bounces + complaints</td><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;text-align:right;font-variant-numeric:tabular-nums;">~15M</td><td style="padding:9px 14px;border-bottom:1px solid #f0f2f5;color:#5b6673;">~3% of 500M</td></tr>
+            <tr><td style="padding:9px 14px;font-weight:600;">Event log / day</td><td style="padding:9px 14px;text-align:right;font-variant-numeric:tabular-nums;">~0.5 TB</td><td style="padding:9px 14px;color:#5b6673;">~1B events × ~500B</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARCHITECTURE DIAGRAM -->
+  <div style="margin-top:22px;">
+    <div style="display:flex;align-items:center;gap:11px;margin-bottom:10px;">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:#16a34a1c;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      </span>
+      <span style="flex:1;font-size:15px;font-weight:800;color:#1a2129;">Architecture (single region)</span>
+    </div>
+    <div style="border:1px solid #e7e9ee;border-radius:14px;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.07);padding:18px;font-size:12.5px;color:#28303a;">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <span style="flex:1;min-width:150px;text-align:center;background:#eef2f7;border:1px solid #dbe2ea;border-radius:10px;padding:11px;"><b>Campaign / API</b><br><span style="color:#5b6673;">REST · create campaign, enqueue transactional</span></span>
+        </div>
+        <div style="text-align:center;color:#94a3b8;">▼</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <span style="flex:1;min-width:150px;text-align:center;background:#eff6ff;border:1px solid #cfe0fb;border-radius:10px;padding:11px;"><b>Segmenter / Fan-out job</b><br><span style="color:#5b6673;">reads subscriber DB, chunks recipients, pushes to queue</span></span>
+        </div>
+        <div style="text-align:center;color:#94a3b8;">▼</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <span style="flex:1;min-width:150px;text-align:center;background:#fff7ed;border:1px solid #fde4c9;border-radius:10px;padding:11px;"><b>Redis / SQS queue</b><br><span style="color:#5b6673;">"send-message" jobs, at-least-once</span></span>
+        </div>
+        <div style="text-align:center;color:#94a3b8;">▼</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <span style="flex:1;min-width:150px;text-align:center;background:#f0fdf4;border:1px solid #cdeadd;border-radius:10px;padding:11px;"><b>Worker fleet</b><br><span style="color:#5b6673;">render template → hand to MTA, N autoscaled pods</span></span>
+        </div>
+        <div style="text-align:center;color:#94a3b8;">▼</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <span style="flex:1;min-width:130px;text-align:center;background:#faf5ff;border:1px solid #e9dcfb;border-radius:10px;padding:11px;"><b>MTA pool</b><br><span style="color:#5b6673;">Postfix / SES relay, a few warm IPs</span></span>
+          <span style="flex:1;min-width:130px;text-align:center;background:#faf5ff;border:1px solid #e9dcfb;border-radius:10px;padding:11px;"><b>Tracking svc</b><br><span style="color:#5b6673;">open pixel + click redirect → events</span></span>
+        </div>
+        <div style="text-align:center;color:#94a3b8;">▼</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <span style="flex:1;min-width:130px;text-align:center;background:#eef2f7;border:1px solid #dbe2ea;border-radius:10px;padding:11px;"><b>Postgres (sharded ×8)</b><br><span style="color:#5b6673;">subscribers, campaigns, suppression list</span></span>
+          <span style="flex:1;min-width:130px;text-align:center;background:#eef2f7;border:1px solid #dbe2ea;border-radius:10px;padding:11px;"><b>Object store</b><br><span style="color:#5b6673;">event log parquet, templates</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KEY DECISIONS -->
+  <div style="margin-top:22px;">
+    <div style="display:flex;align-items:center;gap:11px;margin-bottom:10px;">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:#16a34a1c;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </span>
+      <span style="flex:1;font-size:15px;font-weight:800;color:#1a2129;">Key decisions</span>
+    </div>
+    <div style="border:1px solid #e7e9ee;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.07);">
+      <div style="display:flex;gap:11px;padding:12px 15px;"><span style="flex-shrink:0;width:7px;height:7px;border-radius:50%;background:#64748b;margin-top:6px;"></span><span style="flex:1;font-size:13px;"><b>Queue-first fan-out.</b> Never send inline in the API request. Segmenter explodes a campaign into millions of small jobs; workers pull at whatever rate the MTA + ISPs tolerate. Backpressure = queue depth.</span></div>
+      <div style="display:flex;gap:11px;padding:12px 15px;border-top:1px solid #f0f2f5;"><span style="flex-shrink:0;width:7px;height:7px;border-radius:50%;background:#64748b;margin-top:6px;"></span><span style="flex:1;font-size:13px;"><b>Sharded Postgres by subscriber_id hash.</b> 500M rows is too much for one node; 8 shards keeps each ~60M and lets segmentation run in parallel per shard.</span></div>
+      <div style="display:flex;gap:11px;padding:12px 15px;border-top:1px solid #f0f2f5;"><span style="flex-shrink:0;width:7px;height:7px;border-radius:50%;background:#64748b;margin-top:6px;"></span><span style="flex:1;font-size:13px;"><b>Suppression list is sacred.</b> Every send checks a bloom-filter + DB of unsubscribes / hard bounces / complaints <i>before</i> handing to the MTA. Sending to these tanks your reputation and breaks the law (CAN-SPAM/GDPR).</span></div>
+      <div style="display:flex;gap:11px;padding:12px 15px;border-top:1px solid #f0f2f5;"><span style="flex-shrink:0;width:7px;height:7px;border-radius:50%;background:#64748b;margin-top:6px;"></span><span style="flex:1;font-size:13px;"><b>At-least-once + idempotency key.</b> Each job carries <code>(campaign_id, subscriber_id)</code>; workers dedupe via a Redis SET so a retried job never double-sends.</span></div>
+      <div style="display:flex;gap:11px;padding:12px 15px;border-top:1px solid #f0f2f5;"><span style="flex-shrink:0;width:7px;height:7px;border-radius:50%;background:#64748b;margin-top:6px;"></span><span style="flex:1;font-size:13px;"><b>DKIM / SPF / DMARC from day 1.</b> Sign every message. Without auth, 500M messages go straight to spam and your domain gets blocklisted.</span></div>
+    </div>
+  </div>
+
+  <!-- LIMITS -->
+  <div style="margin-top:22px;">
+    <div style="display:flex;align-items:center;gap:11px;margin-bottom:10px;">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:#d977061c;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </span>
+      <span style="flex:1;font-size:15px;font-weight:800;color:#1a2129;">Where Tier 1 breaks (why you go to Tier 2)</span>
+    </div>
+    <div style="border:1px solid #fde4c9;border-radius:14px;overflow:hidden;background:#fffbf5;box-shadow:0 1px 3px rgba(16,24,40,.07);">
+      <div style="padding:12px 15px;font-size:13px;">▸ <b>Single region</b> = one datacenter outage stops all mail. No DR.</div>
+      <div style="padding:12px 15px;border-top:1px solid #f6ecdd;font-size:13px;">▸ <b>Redis/SQS as the bus</b> handles jobs but not analytics fan-out; every consumer that wants events (billing, dashboards, ML) hammers the same queue or DB.</div>
+      <div style="padding:12px 15px;border-top:1px solid #f6ecdd;font-size:13px;">▸ <b>No per-ISP throttling.</b> You blast Gmail/Yahoo at one flat rate → deferrals, throttling, reputation damage. Deliverability is left to luck.</div>
+      <div style="padding:12px 15px;border-top:1px solid #f6ecdd;font-size:13px;">▸ <b>Analytics = batch on Postgres.</b> "How's the campaign doing?" is a slow query, not real time.</div>
+      <div style="padding:12px 15px;border-top:1px solid #f6ecdd;font-size:13px;">▸ <b>IP warm-up + reputation is manual.</b> A bad campaign can blocklist a shared IP and hurt every customer.</div>
+    </div>
+  </div>
+
+  <div style="margin-top:18px;background:#fff;border:1px solid #e6e8f5;box-shadow:0 1px 3px rgba(16,24,40,.07);border-left:4px solid #64748b;border-radius:14px;padding:16px 18px;">
+    <div style="font-weight:800;font-size:14px;color:#1a2129;margin-bottom:6px;">Bottom line</div>
+    <div style="font-size:13px;color:#5b6673;">Tier 1 delivers 500M emails reliably with a queue, a worker fleet, sharded Postgres, and disciplined suppression + DKIM. It's the right first system - simple, cheap, one team can operate it - but it's single-region, has no real-time analytics, and treats deliverability as luck. Good enough to launch; it will bottleneck on availability and ISP throttling.</div>
+  </div>
+</div>

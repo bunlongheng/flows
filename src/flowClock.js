@@ -18,6 +18,27 @@
 // export has to walk a line in exactly the time the canvas does.
 export const STEP_MS = 1400
 
+// A line marked `async: true` fires on the same BEAT as the line numbered
+// before it (owner rule 2026-10-08: "if 12 does not rely on 11 or 13, shoot
+// those 3 out of the card at the same time"). The cycle is 1 slot per beat,
+// not per line, so a 15 line flow with 2 async lines walks 13 beats. The flag
+// is read off the stored edge or off the canvas edge's data, whichever it is.
+const isAsync = e => !!e && (e.async === true || e.data?.async === true)
+
+/** The beat (0-based) each line fires on, in line order. The first line always opens beat 0. */
+export function beatsOf(edges) {
+  const out = []
+  let b = -1
+  for (const [i, e] of (edges || []).entries()) { if (i === 0 || !isAsync(e)) b++; out.push(b) }
+  return out
+}
+
+/** How many beats the current walks before it starts over. */
+export function beatCount(edges) {
+  const b = beatsOf(edges)
+  return b.length ? b[b.length - 1] + 1 : 0
+}
+
 const subs = new Set()
 let raf = 0
 let phase = 0 // 0..1 across the WHOLE cycle, shared by every edge
@@ -149,10 +170,15 @@ export function stepAt(phase, count) {
   return { index, local: p * n - index, count: n }
 }
 
-/** Where line `index` draws its dot, or null while the current is elsewhere. */
-export function dotAt(phase, count, index) {
-  const s = stepAt(phase, count)
-  return s.index === index ? s.local : null
+/**
+ * Where line `index` draws its dot, or null while the current is elsewhere.
+ * `edges` is the ordered list (a bare count still works for a diagram with no
+ * async lines): every line on the live beat carries a dot at the same spot.
+ */
+export function dotAt(phase, edges, index) {
+  const list = typeof edges === 'number' ? Array.from({ length: edges }, () => ({})) : (edges || [])
+  const s = stepAt(phase, beatCount(list))
+  return beatsOf(list)[index] === s.index ? s.local : null
 }
 
 // Smooth at both ends, so a card neither snaps on nor cuts off.
@@ -170,10 +196,12 @@ const FADE = 0.4
  */
 export function glowAt(phase, edges, nodeId) {
   const list = edges || []
-  const s = stepAt(phase, list.length)
-  const live = list[s.index]
-  if (live && live.target === nodeId) return ease(s.local)
-  const prev = list[(s.index - 1 + s.count) % s.count]
-  if (prev && prev !== live && prev.target === nodeId) return 1 - ease(Math.min(1, s.local / FADE))
+  const beats = beatsOf(list)
+  const s = stepAt(phase, beatCount(list))
+  // Every line on a beat lands together, so each of their targets lights.
+  const landsOn = b => list.some((e, i) => beats[i] === b && e.target === nodeId)
+  if (landsOn(s.index)) return ease(s.local)
+  const prev = (s.index - 1 + s.count) % s.count
+  if (prev !== s.index && landsOn(prev)) return 1 - ease(Math.min(1, s.local / FADE))
   return 0
 }

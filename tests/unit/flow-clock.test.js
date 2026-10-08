@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   subscribe, beginCapture, stepCapture, endCapture,
-  motionAllowed, capturePeriodMs, setSteps, stepAt, dotAt, glowAt,
+  motionAllowed, capturePeriodMs, setSteps, stepAt, dotAt, glowAt, beatsOf, beatCount,
   isPlaying, setPlaying, isFlowing, subscribeFlowing,
 } from "../../src/flowClock.js";
 
@@ -102,6 +102,31 @@ describe("flowClock", () => {
     }
     expect(dotAt(0.3, 4, 1)).toBeCloseTo(0.2, 5);
     expect(dotAt(0.3, 4, 0)).toBeNull();
+  });
+
+  // A line marked async fires on the beat of the line before it, so a fan-out
+  // of independent lines leaves its card together and lands together.
+  it("fires async lines on the beat of the line before them", () => {
+    const fan = [
+      { id: "e1", source: "a", target: "b" },
+      { id: "e2", source: "b", target: "c" },
+      { id: "e3", source: "b", target: "d", async: true },
+      { id: "e4", source: "b", target: "e", async: true },
+      { id: "e5", source: "e", target: "f" },
+    ];
+    expect(beatsOf(fan)).toEqual([0, 1, 1, 1, 2]);
+    expect(beatCount(fan)).toBe(3);
+    // beat 1 runs from phase 1/3 to 2/3: e2, e3 and e4 all carry a dot, at the same spot
+    expect(fan.map((_, i) => dotAt(0.5, fan, i) != null)).toEqual([false, true, true, true, false]);
+    expect(dotAt(0.5, fan, 2)).toBeCloseTo(0.5, 5);
+    expect(dotAt(0.5, fan, 3)).toBeCloseTo(0.5, 5);
+    // and c, d, e light together as the beat lands, while b stays dark
+    for (const n of ["c", "d", "e"]) expect(glowAt(0.66, fan, n)).toBeGreaterThan(0.9);
+    expect(glowAt(0.66, fan, "b")).toBe(0);
+    // the canvas edge carries the flag under data
+    expect(beatCount([{ id: "e1" }, { id: "e2", data: { async: true } }])).toBe(1);
+    // the first line always opens the cycle: there is nothing before it to join
+    expect(beatsOf([{ id: "e1", async: true }, { id: "e2" }])).toEqual([0, 1]);
   });
 
   // The glow says "the current is HERE" - so it is on 1 card, not 20.

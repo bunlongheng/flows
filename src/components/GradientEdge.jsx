@@ -1,7 +1,7 @@
 import { useState, useEffect, useSyncExternalStore } from 'react'
 import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, useStore } from '@xyflow/react'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteEditContext'
-import { subscribe, currentPhase, motionAllowed, stepAt } from '../flowClock'
+import { subscribe, currentPhase, motionAllowed, dotAt } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
 import { routeEdge, bendPoint, bendFor, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
@@ -360,23 +360,26 @@ export function SunsetX({ size = 16 }) {
 
 // The travelling dot. It carries the SOURCE service's brand colour, so a reader
 // can tell at a glance which way a connection runs and what it runs from - the
-// Chrome edge leaves Chrome blue. Small and soft on purpose: this diagram is a
-// technical document, and the dot is here to say "direction", not to decorate.
+// Chrome edge leaves Chrome blue. A soft halo round a solid white-ringed core,
+// big enough to catch the eye on a full diagram (owner 2026-10-08): the dot is
+// the 1 thing moving, so it has to be the 1 thing you notice.
 // Whether this line is the one carrying the current right now, and how far
 // along it the dot has got. null the rest of the cycle.
 const dotFor = (order, edgeId, p) => {
-  const ids = order ? order.split('\u0000') : []
-  const s = stepAt(p, ids.length)
-  return ids[s.index] === edgeId ? s.local : null
+  const list = order ? order.split('\u0000').map(s => { const a = s.endsWith('\u0001'); return { id: a ? s.slice(0, -1) : s, async: a } }) : []
+  const i = list.findIndex(e => e.id === edgeId)
+  return i < 0 ? null : dotAt(p, list, i)
 }
 
-// Only 1 dot is on the canvas at a time: the cycle gives each line its own
-// slot, in the order the Steps badges number them, and this one draws nothing
-// until its slot comes round (src/flowClock.js).
+// One beat at a time: the cycle gives each beat its own slot, in the order the
+// Steps badges number the lines, and this line draws nothing until its beat
+// comes round. A line marked async shares the beat of the line before it, so
+// a fan-out of independent lines leaves the card together (src/flowClock.js).
 function FlowDot({ edgeId, path, color }) {
-  // The line order IS the step order. Pulled out as a stable string because
-  // the edges array itself is rebuilt every frame.
-  const order = useStore(s => s.edges.map(e => e.id).join('\u0000'))
+  // The line order IS the step order, with a trailing marker on each async
+  // line. Pulled out as a stable string because the edges array itself is
+  // rebuilt every frame.
+  const order = useStore(s => s.edges.map(e => e.id + (e.data?.async ? '\u0001' : '')).join('\u0000'))
   const [t, setT] = useState(() => dotFor(order, edgeId, currentPhase()))
 
   useEffect(() => {
@@ -392,8 +395,8 @@ function FlowDot({ edgeId, path, color }) {
 
   return (
     <g className="sd-flow-dot" pointerEvents="none" opacity={fade}>
-      <circle cx={pt.x} cy={pt.y} r={5} fill={color} opacity={0.18} />
-      <circle cx={pt.x} cy={pt.y} r={2.4} fill={color} />
+      <circle cx={pt.x} cy={pt.y} r={16} fill={color} opacity={0.25} />
+      <circle cx={pt.x} cy={pt.y} r={7} fill={color} stroke="#fff" strokeWidth={2} />
     </g>
   )
 }
