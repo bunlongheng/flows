@@ -13,6 +13,15 @@ function endName(id, nodes) {
   return svc.label || n.data?.label || n.data?.id || id
 }
 
+// The other end's logo, the same pick as the header makes for this card.
+function endIcon(id, nodes) {
+  if (laneRef(id)) return null
+  const d = nodes.find(x => x.id === id)?.data
+  if (!d) return null
+  return (typeof d.image === 'string' && d.image.startsWith('data:') && d.image)
+    || (typeof d.icon === 'string' && d.icon) || findService(d).icon || null
+}
+
 // The lane band and section band a card's centre sits in, by name. Lane nodes
 // ride in the same nodes array (type "lane") with their sections in the band's
 // own coordinates, so no view_state is needed here.
@@ -75,6 +84,7 @@ export function CardPanel({ node, nodes, edges, onPick, onClose }) {
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: sunset ? '#94a3b8' : '#1a2129', borderRadius: 999, padding: '1px 6px', flexShrink: 0 }}>{e.data?.step}</span>
           <span aria-hidden="true" style={{ color: ink }}>{arrow}</span>
+          {endIcon(otherId, nodes) && <img src={endIcon(otherId, nodes)} alt="" width={16} height={16} style={{ flexShrink: 0, objectFit: 'contain', alignSelf: 'center', filter: sunset ? 'grayscale(1)' : undefined }} />}
           {laneRef(otherId)
             ? <span style={{ fontWeight: 600, color: ink }}>{endName(otherId, nodes)}</span>
             : <button type="button" onClick={() => onPick(otherId)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 600, color: ink, cursor: 'pointer', textAlign: 'left' }}>
@@ -99,7 +109,7 @@ export function CardPanel({ node, nodes, edges, onPick, onClose }) {
       animation: 'sd-slide-right 0.2s ease-out', overflowY: 'auto',
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
-        {icon && <img src={icon} alt="" width={28} height={28} style={{ borderRadius: 6, flexShrink: 0, objectFit: 'contain' }} />}
+        {icon && <img src={icon} alt="" width={28} height={28} style={{ flexShrink: 0, objectFit: 'contain' }} />}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2129' }}>{label}</div>
           {sub && <div style={{ fontSize: 11.5, color: '#6b7280' }}>{sub}</div>}
