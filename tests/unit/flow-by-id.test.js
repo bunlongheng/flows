@@ -781,8 +781,9 @@ describe("/api/flows/:id", () => {
   });
 
   // The gallery tile route: the app's fit-view capture of the real canvas when
-  // the owner has opened the flow, else the same SVG the share card uses. The
-  // tile URL is versioned by the client, so both answers may be cached for good.
+  // the owner has opened the flow and the row has not changed since, else the
+  // same SVG the share card uses. The tile URL is versioned by the client, so
+  // both answers may be cached for good.
   it("GET ?format=thumb serves the stored capture as a JPEG with a long cache", async () => {
     const b64 = Buffer.from("not really a jpeg").toString("base64");
     query.mockResolvedValueOnce({ rows: [{ id: ID, nodes: [], edges: [], is_public: true, thumbnail: `data:image/jpeg;base64,${b64}` }] });
@@ -805,9 +806,20 @@ describe("/api/flows/:id", () => {
     expect(res.headers["Cache-Control"]).toMatch(/immutable/);
     expect(Buffer.isBuffer(res.body) && res.body.slice(1, 4).toString()).toBe("PNG");
     const [sql, params] = query.mock.calls[1];
-    expect(sql).toMatch(/SET thumbnail = \$1 WHERE id = \$2 AND thumbnail IS NULL/);
+    expect(sql).toMatch(/SET thumbnail = \$1, thumbnail_at = now\(\) WHERE id = \$2 AND \(thumbnail_at IS NULL OR thumbnail_at < updated_at\)/);
     expect(params[0]).toMatch(/^data:image\/png;base64,/);
     expect(params[1]).toBe(ID);
+  });
+
+  it("GET ?format=thumb re-renders when the row changed after the capture, and replaces it", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: ID, nodes: [{ id: "lambda", position: { x: 0, y: 0 } }], edges: [], is_public: true, thumbnail: "data:image/jpeg;base64,AAAA", thumbnail_at: "2026-10-04T10:00:00.000Z", updated_at: "2026-10-08T10:00:00.000Z" }] });
+    query.mockResolvedValueOnce({ rows: [] });
+    const res = mockRes();
+    await flowById(req("GET", ID, undefined, undefined, { format: "thumb" }), res);
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["Content-Type"]).toBe("image/png");
+    const [sql] = query.mock.calls[1];
+    expect(sql).toMatch(/thumbnail_at < updated_at/);
   });
 
   it("GET json never carries the capture bytes, only when it was taken", async () => {

@@ -59,14 +59,11 @@ describe("renderDiagramSvg - lane edges", () => {
     expect(landing).toMatch(/sd-lane-glow"><rect [^>]*stroke="#dc2626"/);
     expect(renderDiagramSvg(NODES, edges, { view: { lanes: LANES }, dotPhase: 0 })).not.toContain("sd-lane-glow"); // the current has just set off, nothing has landed
   });
-  it("cuts a lane-bound line out of every lane it only passes through, keeping its card's lane and the gaps", () => {
+  it("draws a lane-bound line whole over every lane on the way, never cut out of one", () => {
     const lanes = [...LANES, { id: "c", title: "Far", y: 700, h: 300 }];
     const svg = renderDiagramSvg(NODES, [{ source: "client", target: "lane:c", label: "all of them" }], { view: { lanes } });
-    const clip = svg.match(/<clipPath id="clip-0"><path d="([^"]+)" clip-rule="evenodd"\/>/);
-    expect(clip).not.toBeNull();
-    expect(clip[1].match(/M-?\d+,-?\d+h/g)).toHaveLength(1); // 1 lane cut out: b, the one on the way
-    expect(clip[1]).toContain(",280h"); // lane b starts where its border is
-    expect(svg).toMatch(/<path d="M[^"]*" fill="none"[^>]*clip-path="url\(#clip-0\)"/);
-    expect(renderDiagramSvg(NODES, [{ source: "client", target: "lane:b", label: "x" }], { view: { lanes: LANES } })).not.toContain("clip-path"); // nothing on the way, nothing cut
+    expect(svg).not.toContain("<clipPath id=\"clip-");
+    expect(svg).not.toContain("clip-path=\"url(#clip-");
+    expect(svg).toMatch(/<circle cx="[\d.]+" cy="[\d.]+" r="5" fill="/); // the port on the lane border stays
   });
 });
