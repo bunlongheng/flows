@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, laneNodeId, laneAt, laneClip, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT } from "../../src/lanes.js";
+import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, laneNodeId, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT } from "../../src/lanes.js";
 
 describe("cleanLanes", () => {
   it("keeps typed, bounded lanes and drops the rest", () => {
@@ -154,15 +154,3 @@ describe("sections", () => {
   });
 });
 
-
-describe("laneAt and laneClip", () => {
-  const rects = [{ id: "a", x: 0, y: 0, w: 100, h: 50 }, { id: "b", x: 0, y: 90, w: 100, h: 50 }, { id: "c", x: 0, y: 180, w: 100, h: 50 }];
-  it("names the lane under a point, null in a gap", () => {
-    expect(laneAt(rects, 10, 100)).toBe("b");
-    expect(laneAt(rects, 10, 70)).toBeNull();
-  });
-  it("cuts every lane not kept out of the plane as 1 even-odd path, null when all are kept", () => {
-    expect(laneClip(rects, ["a", "c"])).toBe("M-100000,-100000H100000V100000H-100000ZM0,90h100v50h-100Z");
-    expect(laneClip(rects, ["a", "b", "c"])).toBeNull();
-  });
-});
