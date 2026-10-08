@@ -29,7 +29,7 @@ const CLAMP_10 = { ...CLAMP_2, WebkitLineClamp: 10 }
 
 // The bordered caption hanging off a card's bottom-left corner. Plain black
 // text in a black frame, any URL in it a blue link, clamped to 10 lines with the full note on hover. The
-// owner double-clicks it (or the "+ note" ghost on an empty card) to edit;
+// owner double-clicks it to edit (a card with no note draws nothing under it);
 // everyone else just reads it, so a shared link shows exactly the same note.
 // The gap between the card's bottom edge and the note box (marginTop below),
 // plus the daylight kept UNDER the box. A connector that starts exactly on the
@@ -82,11 +82,10 @@ function NodeNote({ id, note }) {
     return () => { ro.disconnect(); setNoteHeight(id, 0) }
   })
 
-  // Hidden means hidden: the owner's "+ note" ghost goes too, or turning notes
-  // off would still leave a row of empty placeholders under the diagram.
-  // Hooks run first - the early return has to come after them.
-  if (!showNotes) return null
-  if (!note && !canEdit) return null
+  // Hidden means hidden, and a card with no note shows nothing under it: no
+  // ghost, no placeholder (owner rule 2026-10-08). Hooks run first - the early
+  // return has to come after them.
+  if (!showNotes || !note) return null
 
   const startEdit = e => { e.stopPropagation(); cancelled.current = false; setDraft(note); setEditing(true) }
   const commit = () => {
@@ -112,7 +111,7 @@ function NodeNote({ id, note }) {
           }}
           className="sd-note-edit"
           style={{ ...NOTE_BOX, width: '100%', minHeight: 60, resize: 'vertical', outline: 'none', display: 'block' }} />
-      ) : note ? (
+      ) : (
         <div title={canEdit ? `${note}\n\nDouble-click to edit` : note} onDoubleClick={canEdit ? startEdit : undefined}
           style={{ ...NOTE_BOX, display: 'inline-block', maxWidth: '100%', cursor: canEdit ? 'text' : 'default', ...CLAMP_10 }}>
           {noteRuns(note).map((part, i) => part.url
@@ -120,9 +119,6 @@ function NodeNote({ id, note }) {
                 style={{ color: '#1d4ed8', textDecoration: 'underline', whiteSpace: 'nowrap' }}>{linkLabel(part.url)}</a>
             : <span key={i} style={runStyle(part)}>{part.text}</span>)}
         </div>
-      ) : (
-        <button type="button" className="sd-note-add" onClick={startEdit} title="Add a note to this step"
-          style={{ ...NOTE_BOX, color: '#6b7280', borderStyle: 'dashed', borderColor: '#9ca3af', cursor: 'pointer', fontWeight: 600 }}>+ note</button>
       )}
     </div>
   )
