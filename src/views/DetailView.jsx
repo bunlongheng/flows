@@ -14,6 +14,7 @@ import { Footer } from '../components/Footer'
 import { brandFor } from '../brands'
 import { FormatPanel } from '../components/FormatPanel.jsx'
 import { CardPanel } from '../components/CardPanel.jsx'
+import { CurrentPanel } from '../components/CurrentPanel.jsx'
 import { findService } from '../services.js'
 import { SUNSET, INK } from '../sunset.js'
 import { CodeBlock } from '../components/CodeBlock.jsx'
@@ -110,6 +111,10 @@ export function DetailView({
   // Owner only: publish the moment the Share panel opens, so the pill flips and
   // the preview shows the real card right then - not after Copy link.
   onShareOpen,
+  // The current's speed and amount, and a click to change one. onCurrentChange
+  // is undefined for anyone but the owner, which is what hides the panel: a
+  // visitor reads the diagram the way the owner left it running.
+  current, onCurrentChange,
 }) {
   const [codeWidth, setCodeWidth] = useState(340)
   const brand = brandFor(activeDiagram?.title)
@@ -167,14 +172,20 @@ export function DetailView({
   const [cardId, setCardId] = useState(null)
   const card = cardId ? nodes.find(n => n.id === cardId) : null
   useEffect(() => { setCardId(null) }, [activeDiagram?.id])
+  // The current panel, opened by clicking the Start here pill (owner
+  // 2026-10-09). Same slot as the card panel, so opening either closes the other.
+  const [currentOpen, setCurrentOpen] = useState(false)
+  useEffect(() => { setCurrentOpen(false) }, [activeDiagram?.id])
   // At most 1 extra right panel: Share and History already own that slot.
-  useEffect(() => { if (showSharePanel || showHistoryPanel) setCardId(null) }, [showSharePanel, showHistoryPanel])
   useEffect(() => {
-    if (!cardId) return
-    const onKeyDown = e => { if (e.key === 'Escape') setCardId(null) }
+    if (showSharePanel || showHistoryPanel) { setCardId(null); setCurrentOpen(false) }
+  }, [showSharePanel, showHistoryPanel])
+  useEffect(() => {
+    if (!cardId && !currentOpen) return
+    const onKeyDown = e => { if (e.key === 'Escape') { setCardId(null); setCurrentOpen(false) } }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [cardId])
+  }, [cardId, currentOpen])
   // A phone is about 1/7 as wide as a big diagram, so the desktop zoom floor of
   // 0.2 stopped the pinch while the board was still wider than the glass. A
   // narrow screen gets to go all the way out instead.
@@ -309,7 +320,7 @@ export function DetailView({
     const t = setTimeout(fitNow, 60)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSteps, showSharePanel, showDetailCode, showHistoryPanel, cardOpen])
+  }, [showSteps, showSharePanel, showDetailCode, showHistoryPanel, cardOpen, currentOpen])
 
   // Push to Miro. Miro has no file import for diagrams at all, so this is the
   // one export that is a request rather than a download: the owner pastes a
@@ -902,8 +913,14 @@ export function DetailView({
                SELECTION it also makes (node_modules/@xyflow/react/dist/esm/
                index.js, onSelectNodeHandler, ~line 2169). Lane and marker
                nodes are not cards, so they are excluded by type. */
-            onNodeClick={(_e, node) => { if (!narrow && node.type === 'awsNode') setCardId(node.id) }}
-            onPaneClick={() => setCardId(null)}
+            onNodeClick={(_e, node) => {
+              if (narrow) return
+              // The Start pill is the current's own control (owner 2026-10-09):
+              // clicking it opens the speed and amount presets, for the owner only.
+              if (node.type === 'marker') { if (onCurrentChange) { setCardId(null); setCurrentOpen(true) } return }
+              if (node.type === 'awsNode') { setCurrentOpen(false); setCardId(node.id) }
+            }}
+            onPaneClick={() => { setCardId(null); setCurrentOpen(false) }}
             /* Cmd/Ctrl is reserved for snap-align while dragging, so additive
                multi-select moves to Shift (box-select already uses Shift). */
             multiSelectionKeyCode="Shift"
@@ -1081,6 +1098,13 @@ export function DetailView({
             and never alongside Share or History (owner rule 2026-10-08). */}
         {card && !narrow && (
           <CardPanel node={card} nodes={nodes} edges={edges} onPick={setCardId} onClose={() => setCardId(null)} />
+        )}
+
+        {/* Current panel (right side): the speed and the number of small dots,
+            opened by clicking the Start here pill. Owner only, and never
+            alongside Share or History - the same 1 extra panel slot. */}
+        {currentOpen && !card && !narrow && onCurrentChange && (
+          <CurrentPanel value={current} onChange={onCurrentChange} onClose={() => setCurrentOpen(false)} />
         )}
 
         {/* Share panel (right side) */}

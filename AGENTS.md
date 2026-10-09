@@ -26,7 +26,7 @@ to drift:
 | What fields may a node or edge carry, and what are the live rules? | `get_diagram_schema` (MCP tool). Call it first, every time. It returns the rules and a complete worked example. |
 | Is this node allowed at all? | `lib/validate-design.js` - the logo gate, plus the caps (100 nodes, 300 edges, 24 KB an inline icon). Shared by the API, the MCP and AI generate. |
 | What is a legal `style`? | `src/style.js`. `cleanStyle` is the validator; the panel cannot send anything it does not accept. |
-| What is a legal `view_state`? | `src/view-state.js` for `panels` / `badge` / `start`, `src/lanes.js` for `lanes`. |
+| What is a legal `view_state`? | `src/view-state.js` for `panels` / `badge` / `start` / `current`, `src/lanes.js` for `lanes`. |
 | What does the HTTP API take? | `docs/API.md`, and the `400` response itself: it carries `required_fields` and a full `sample_request`. |
 | What does the MCP take? | `mcp/README.md`, and each tool's own parameter descriptions. |
 | What colour is this card? | `src/iconColor.js` `isNeutralColor`. The colour comes off the icon; do not pick one. |
