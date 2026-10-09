@@ -61,7 +61,12 @@ export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficul
       <style>{`
         .dc-card .dc-actions { opacity: 0; pointer-events: none; transition: opacity .12s ease; }
         .dc-card:hover .dc-actions, .dc-card:focus-within .dc-actions { opacity: 1; pointer-events: auto; }
-        @media (hover: none) { .dc-card .dc-actions { opacity: 1; pointer-events: auto; } }
+        @media (hover: none) {
+          .dc-card .dc-actions { opacity: 1; pointer-events: auto; }
+          /* The 2 buttons sit over the top right corner for good, so the title
+             row stops short of them instead of losing its date underneath. */
+          .dc-card .dc-head { padding-right: 76px !important; }
+        }
       `}</style>
 
       {/* Full-bleed transparent overlay button - the actual open control. Sits
@@ -79,7 +84,7 @@ export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficul
       />
 
       {/* Header */}
-      <div style={{ padding: '13px 14px 8px', display: 'flex', alignItems: 'flex-start', gap: 11 }}>
+      <div className="dc-head" style={{ padding: '13px 14px 8px', display: 'flex', alignItems: 'flex-start', gap: 11 }}>
         {brand && (
           <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 42, height: 42, borderRadius: 10, background: '#ffffff', border: '1px solid #e7e9ee', flexShrink: 0 }}>
             <img src={brand.icon} alt="" width={28} height={28} style={{ objectFit: 'contain', display: 'block' }} />
