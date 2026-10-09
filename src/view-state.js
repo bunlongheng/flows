@@ -59,7 +59,7 @@ export const currentOf = (v) => ({
 
 /**
  * `current` for storage, or nothing when it is the default - a row only carries
- * the key once the owner has moved off 1x/10, the same way `start` is omitted
+ * the key once the owner has moved off 1x/20, the same way `start` is omitted
  * until the pill is placed by hand.
  */
 export const cleanCurrent = (v) => {
