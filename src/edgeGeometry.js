@@ -799,9 +799,9 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
 // line (wide badge, steep line) is counted in. The leader runs from the
 // on-path point to the badge's centre; the badge paints over its inner end.
 export const LEAD = 14
-export function badgeShift(off, w, h) {
+export function badgeShift(off, w, h, lead = 0) {
   if (!off) return { dx: 0, dy: 0 }
-  const d = (w / 2) * Math.abs(off.x) + (h / 2) * Math.abs(off.y) + LEAD
+  const d = (w / 2) * Math.abs(off.x) + (h / 2) * Math.abs(off.y) + LEAD + lead
   return { dx: off.x * d, dy: off.y * d }
 }
 
@@ -866,4 +866,30 @@ export function pointAlongPath(d, t) {
     want -= seg[i]
   }
   return pts[pts.length - 1]
+}
+
+// ─── No tag on a tag (owner rule 2026-10-09) ──────────────────────────────────
+// Badges are placed in edges order, like the tracks above. A badge the router
+// placed that would land on an earlier one slides along its OWN line to the
+// first clear spot, so it still reads as that line's. A badge the owner slid
+// by hand stays put but counts as placed. The box is an estimate shared by the
+// canvas and the renderer, so both pick the same spot.
+const BADGE_GAP = 4
+export function badgeBox(tag, step) {
+  let w = 0
+  for (const ch of String(tag || '')) w += ch === ' ' ? 0.28 : /[il.,:;'|!I[\]()jft]/.test(ch) ? 0.3 : /[mwMW@%]/.test(ch) ? 0.9 : /[A-Z]/.test(ch) ? 0.68 : 0.58
+  return { w: 16 + w * 8.5 * 1.06 + (step ? 20 : 0), h: 18 }
+}
+export function clearBadge(path, at, box, off, placed) {
+  const { dx, dy } = badgeShift(off, box.w, box.h)
+  const hit = (p, k = 0) => placed.some(b => Math.abs(p.x + dx + k * (off?.x || 0) - b.x) * 2 < box.w + b.w + BADGE_GAP
+    && Math.abs(p.y + dy + k * (off?.y || 0) - b.y) * 2 < box.h + b.h + BADGE_GAP)
+  if (!hit(at)) return at
+  for (const t of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8, 0.15, 0.85]) {
+    const p = pointAlongPath(path, t)
+    if (p && !hit(p)) return p
+  }
+  // A short paired line with no clear spot: its leader grows instead (`lead`).
+  if (off) for (const k of [12, 24, 36, 48, 60]) if (!hit(at, k)) return { ...at, lead: k }
+  return at
 }
