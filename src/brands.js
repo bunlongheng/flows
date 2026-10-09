@@ -16,7 +16,9 @@ export const BRANDS = {
   'claude code - ai coding agent': { icon: '/brand/claude.svg', sub: 'AI Coding Agent' },
   chatgpt: { icon: '/brand/openai.svg', sub: 'Conversational AI' },
   jarvis: { icon: '/brand/jarvis.svg', sub: 'Voice AI' },
+  zapier: { icon: '/brand/zapier.svg', sub: 'Workflow Automation' },
   'zapier - workflow automation': { icon: '/brand/zapier.svg', sub: 'Workflow Automation' },
+  mailchimp: { icon: '/brand/mailchimp.svg', sub: 'Bulk Email Delivery' },
   'email newsletter - 500m subscribers': { icon: '/brand/mailchimp.svg', sub: 'Bulk Email Delivery' },
   'chatgpt - conversational ai at scale': { icon: '/brand/openai.svg', sub: 'Conversational AI' },
 }
