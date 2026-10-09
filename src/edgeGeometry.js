@@ -807,6 +807,11 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
 // line (wide badge, steep line) is counted in. The leader runs from the
 // on-path point to the badge's centre; the badge paints over its inner end.
 export const LEAD = 14
+// A tag the owner hung off its line by hand (edge `labelSide`), as the unit
+// direction badgeShift takes. Beats the routing's own pair offset.
+export const TAG_SIDES = { left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, up: { x: 0, y: -1 }, down: { x: 0, y: 1 } }
+export const sideOff = (s) => TAG_SIDES[s] || null
+
 export function badgeShift(off, w, h, lead = 0) {
   if (!off) return { dx: 0, dy: 0 }
   const d = (w / 2) * Math.abs(off.x) + (h / 2) * Math.abs(off.y) + LEAD + lead

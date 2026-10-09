@@ -4,7 +4,7 @@ import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteE
 import { subscribe, currentPhase, motionAllowed, dotAt, ambientAt } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
-import { routeEdge, badgeShift, badgeBox, clearBadge, pointAlongPath, bendPoint, bendFor, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
+import { routeEdge, badgeShift, sideOff, badgeBox, clearBadge, pointAlongPath, bendPoint, bendFor, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
 import { laneGaps, isLaneNode } from '../lanes.js'
 import { tagText } from '../tag.js'
 import { EDGE_LABEL_MAX } from '../note.js'
@@ -126,9 +126,9 @@ function takenBefore(id, nodes, edges) {
       const box = badgeBox(tagText(e.label, e.data?.description), true)
       const at = hand
         ? pointAlongPath(r.path, Math.min(T_MAX, Math.max(T_MIN, e.data.labelT))) || { x: r.labelX, y: r.labelY }
-        : clearBadge(r.path, { x: r.labelX, y: r.labelY }, box, r.labelOff, badges)
+        : clearBadge(r.path, { x: r.labelX, y: r.labelY }, box, sideOff(e.data?.labelSide) || r.labelOff, badges)
       badgeAt.set(e.id, at)
-      const s = badgeShift(r.labelOff, box.w, box.h, at.lead)
+      const s = badgeShift(sideOff(e.data?.labelSide) || r.labelOff, box.w, box.h, at.lead)
       badges.push({ ...box, x: at.x + s.dx, y: at.y + s.dy })
     }
     takenCache = { nodes, edges, notes, before, badgeAt }
@@ -220,6 +220,9 @@ export function GradientEdge({
   // fraction along it does not.
   const savedT = typeof data?.labelT === 'number' ? data.labelT : null
   const [dragT, setDragT] = useState(null)
+  // While dragging: the side the tag hangs off, null on the line, undefined
+  // when not dragging (the saved `labelSide` shows).
+  const [dragSide, setDragSide] = useState(undefined)
   const t = dragT ?? savedT
   const movable = typeof data?.onLabelMove === 'function'
   // The badge text is edited where it is drawn: double-click turns it into an
@@ -295,18 +298,28 @@ export function GradientEdge({
     // The canvas would otherwise pan, and the edge would take the click.
     e.stopPropagation()
     e.preventDefault()
-    let last = t
+    let last = t, side = data?.labelSide || null, moved = false
+    const x0 = e.clientX, y0 = e.clientY
     const move = ev => {
+      if (!moved && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return
+      moved = true
       const f = screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
       last = nearestTOnPath(path, f.x, f.y)
+      // Pulled more than 40 px off the line, the tag hangs on that side on a
+      // leader, so it never sits across a neighbouring line.
+      const p = pointOnPath(path, last), dx = f.x - (p?.x ?? f.x), dy = f.y - (p?.y ?? f.y)
+      side = Math.hypot(dx, dy) < 40 ? null : Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up')
       setDragT(last)
+      setDragSide(side)
     }
     const up = () => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
       setDragT(null)
-      // A plain click should not dirty the diagram.
-      if (last != null && Math.abs(last - (savedT ?? -1)) > 0.001) data.onLabelMove(id, last)
+      setDragSide(undefined)
+      // A plain click opens the Tag panel and does not dirty the diagram.
+      if (!moved) { window.dispatchEvent(new CustomEvent('sd-tag-click', { detail: id })); return }
+      if (last != null && (Math.abs(last - (savedT ?? -1)) > 0.001 || side !== (data?.labelSide || null))) data.onLabelMove(id, last, side)
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
@@ -322,7 +335,8 @@ export function GradientEdge({
   // outside. The shift uses the same estimated box as the placement pass and
   // render-svg.js, so the canvas and the export put every badge in 1 spot.
   const box = badgeBox(tag, true)
-  const { dx, dy } = badgeShift(labelOff, box.w, box.h, onPath ? 0 : auto?.lead)
+  const off = (dragSide !== undefined ? sideOff(dragSide) : sideOff(data?.labelSide)) || labelOff
+  const { dx, dy } = badgeShift(off, box.w, box.h, onPath ? 0 : auto?.lead)
   const bx = ax + dx
   const by = ay + dy
   const lineStroke = data?.sunsetLine ? SUNSET.line : (st.stroke || `url(#${gid})`)
@@ -364,7 +378,7 @@ export function GradientEdge({
         strokeDasharray: dashArray(st.bs, st.bw || 1.5) || undefined,
         opacity: st.opacity == null ? undefined : st.opacity / 100,
       }} />
-        {labelOff && (tag || hasStep) && <line className="sd-edge-lead" x1={ax} y1={ay} x2={bx} y2={by} stroke={lineStroke} strokeWidth={1} strokeOpacity={0.7} pointerEvents="none" />}
+        {off && (tag || hasStep) && <line className="sd-edge-lead" x1={ax} y1={ay} x2={bx} y2={by} stroke={lineStroke} strokeWidth={1} strokeOpacity={0.7} pointerEvents="none" />}
         {port && <circle className="sd-lane-port" cx={port.x} cy={port.y} r={5} fill={port.c} stroke="#fff" strokeWidth={1.5} pointerEvents="none" />}
         <FlowDot edgeId={id} path={path} color={c1} />
       </g>
@@ -374,9 +388,12 @@ export function GradientEdge({
             <div
               className={`sd-edge-badge nodrag nopan${movable ? ' is-movable' : ''}${dragT != null ? ' is-dragging' : ''}`}
               onPointerDown={startDrag}
+              // A tag click is the tag's (its own panel), never the line's: React
+              // bubbles it through the portal to the edge, which would select it.
+              onClick={movable ? e => e.stopPropagation() : undefined}
               onDoubleClickCapture={movable || editable ? startEdit : undefined}
               data-tip={draft == null ? desc || undefined : undefined}
-              title={!desc && (movable || editable) ? 'Double-click to rewrite; drag along the line to move it; alt+double-click puts it back' : undefined}
+              title={!desc && (movable || editable) ? 'Click for tag settings; double-click to rewrite; drag along the line, or off it to hang it left or right; alt+double-click puts it back' : undefined}
               style={{
                 transform: `translate(-50%, -50%) translate(${bx}px, ${by}px)`,
                 '--c1': c1, '--c2': c2,

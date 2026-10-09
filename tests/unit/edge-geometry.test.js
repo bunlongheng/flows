@@ -175,3 +175,14 @@ describe('no tag on a tag', () => {
     expect(at.lead).toBeGreaterThan(0)
   })
 })
+
+describe("tag side", () => {
+  it("hangs a tag off its line on the side the owner picked", async () => {
+    const { sideOff, badgeShift } = await import("../../src/edgeGeometry.js");
+    expect(sideOff("right")).toEqual({ x: 1, y: 0 });
+    expect(sideOff("sideways")).toBeNull();
+    const { dx, dy } = badgeShift(sideOff("left"), 100, 18);
+    expect(dx).toBeLessThan(-50);
+    expect(dy).toBe(0);
+  });
+});
