@@ -71,7 +71,12 @@ to drift:
   answers `200` without touching an icon or a label, so a branding change that
   goes through it is silently a no-op. Use the MCP, then read the row back.
 - **AWS icons** come from <https://aws-icons.com/> (the official AWS
-  Architecture set) and nowhere else.
+  Architecture set) and nowhere else. `node scripts/sync-aws-icons.mjs` reports
+  any file that has drifted from what the site serves, `--write` pulls the
+  artwork in, and `tests/unit/aws-icons-source.test.js` fails the build when an
+  AWS icon has no source. An AWS logo also stands for an AWS SERVICE and
+  nothing else: PostgreSQL, MySQL, Cassandra, Elasticsearch and Kafka draw
+  their own marks, never RDS / Keyspaces / Amazon OpenSearch Service / MSK.
 
 ## Before you claim it works
 
