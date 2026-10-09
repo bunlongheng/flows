@@ -456,6 +456,8 @@ const dotsFor = (order, edgeId, p) => {
 // Steps badges number the lines, and this line draws nothing until its beat
 // comes round. A line marked async shares the beat of the line before it, so
 // a fan-out of independent lines leaves the card together (src/flowClock.js).
+const NO_DASH = { strokeDasharray: 'none', animation: 'none' }
+
 function FlowDot({ edgeId, path, color }) {
   // The line order IS the step order, with a trailing marker on each async
   // line. Pulled out as a stable string because the edges array itself is
@@ -496,8 +498,10 @@ function FlowDot({ edgeId, path, color }) {
           else d += `M${sp.x.toFixed(1)} ${sp.y.toFixed(1)}h0`
         })
         return <>
-          {d && <path d={d} stroke={color} strokeWidth={10} strokeLinecap="round" opacity={0.18} fill="none" />}
-          {d && <path d={d} stroke={color} strokeWidth={4.8} strokeLinecap="round" fill="none" />}
+          {/* Inline, to beat React Flow's dash on every path of an animated
+              edge: dashed, most of the zero-length dots would vanish. */}
+          {d && <path d={d} stroke={color} strokeWidth={10} strokeLinecap="round" opacity={0.18} fill="none" style={NO_DASH} />}
+          {d && <path d={d} stroke={color} strokeWidth={4.8} strokeLinecap="round" fill="none" style={NO_DASH} />}
           {fading}
         </>
       })()}
