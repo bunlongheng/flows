@@ -108,10 +108,14 @@ export function GradientEdge({
   const bend = dragBend || data?.bend
   const endS = dragEnd?.which === 's' ? dragEnd : data?.ends?.s
   const endT = dragEnd?.which === 't' ? dragEnd : data?.ends?.t
-  // Every card's box, for the badge nudge that keeps a label off a node.
+  // Every card's box WITH its note, for the badge nudge that keeps a label off
+  // a node. The note is opaque and paints over the line, so a badge left on
+  // that strip is simply invisible - the nudge has to step past the note, not
+  // past the card. A hidden note publishes height 0, so toggling Notes moves
+  // the badges back on its own.
   const nodeRects = getNodes()
     .filter(n => n.type === 'awsNode' && n.measured && n.position)
-    .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height }))
+    .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
   // The strips between swimlanes, where a trunk's bus line runs.
   const laneRects = getNodes().filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height }))
   const gaps = laneGaps(laneRects)
