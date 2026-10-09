@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { routeEdge, pointAlongPath, flattenPath, bendPoint, T_MIN, T_MAX } from "../../src/edgeGeometry.js";
+import { routeEdge, badgeShift, LEAD, pointAlongPath, flattenPath, bendPoint, T_MIN, T_MAX } from "../../src/edgeGeometry.js";
 
 // The same module routes the canvas (GradientEdge) and the server export, so
 // a line the owner sees on the page is the line a README gets.
@@ -70,5 +70,40 @@ describe("pointAlongPath", () => {
     expect(T_MAX).toBeLessThan(1);
     const mid = bendPoint(0, 0, 100, 0, { t: 0.5, d: 0 });
     expect(mid).toEqual({ x: 50, y: 0 });
+  });
+});
+
+describe("routeEdge - a pair of lines between the same 2 cards", () => {
+  const a = node("a", 0, 0), b = node("b", 400, 0);
+  const nodes = { a, b };
+  const edges = [{ id: "e0", source: "a", target: "b" }, { id: "e1", source: "b", target: "a" }];
+  const go = (id, s, t) => routeEdge({
+    id, source: s, target: t, sourceNode: nodes[s], targetNode: nodes[t],
+    nodeOf: (k) => nodes[k], edges, obstacles: [], nodeRects: [],
+  });
+
+  it("sends each badge off its line, away from the other line", () => {
+    const r0 = go("e0", "a", "b"), r1 = go("e1", "b", "a");
+    expect(r0.labelOff).toBeTruthy();
+    expect(r1.labelOff).toBeTruthy();
+    // A level pair: the offsets are vertical and opposite.
+    expect(Math.abs(r0.labelOff.x)).toBeLessThan(0.01);
+    expect(Math.abs(r1.labelOff.x)).toBeLessThan(0.01);
+    expect(Math.sign(r0.labelOff.y)).toBe(-Math.sign(r1.labelOff.y));
+    // Each points to the outside: the upper lane's badge goes up.
+    expect(Math.sign(r0.labelOff.y)).toBe(Math.sign(r0.sy - r1.sy));
+  });
+
+  it("leaves a lone line's badge on the line", () => {
+    expect(route().labelOff).toBeNull();
+  });
+
+  it("badgeShift clears the line by the badge's extent across it plus the lead", () => {
+    const up = badgeShift({ x: 0, y: -1 }, 80, 20);
+    expect(up.dx).toBeCloseTo(0);
+    expect(up.dy).toBeCloseTo(-(10 + LEAD));
+    const right = badgeShift({ x: 1, y: 0 }, 80, 20);
+    expect(right.dx).toBeCloseTo(40 + LEAD);
+    expect(badgeShift(null, 80, 20)).toEqual({ dx: 0, dy: 0 });
   });
 });

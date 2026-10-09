@@ -529,6 +529,8 @@ export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, 
   const parallel = siblings.length > 1
 
   let path, labelX, labelYRaw
+  // A paired line's badge leaves the line (see badgeShift); null for a line on its own.
+  let labelOff = null
   // Set when the router draws a straight line on purpose, so an explicit
   // "step" pick knows it has something to replace. The lane values let the
   // elbows of parallel siblings keep their own middle leg instead of sharing one.
@@ -599,6 +601,15 @@ export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, 
     const t = source < target ? t0 : 1 - t0
     labelX = sx + (tx - sx) * t
     labelYRaw = sy + (ty - sy) * t
+    // The badge itself goes OFF the line, on the pair's outside, at the end
+    // of a short leader: 2 lanes 36 px apart leave a badge nowhere to sit but
+    // on the other lane. This is the unit direction away from the sibling;
+    // the canvas and the renderer size the shift by the badge they draw.
+    const len = Math.hypot(tx - sx, ty - sy) || 1
+    const px = -(ty - sy) / len, py = (tx - sx) / len
+    const outward = laneAlongY ? py * laneShift : px * laneShift
+    const sign = outward ? Math.sign(outward) : (centered < 0 ? -1 : 1)
+    labelOff = { x: px * sign, y: py * sign }
   } else if (aligned && !blocks(sx, sy, tx, ty, obstacles)) {
     // Lined up AND nothing in the way: straight line, edge to facing edge.
     path = `M${sx},${sy} L${tx},${ty}`
@@ -709,7 +720,19 @@ export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, 
       break
     }
   }
-  return { path, drawPath: drawPath || path, hideLabel, hideArrow, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelYRaw }
+  return { path, drawPath: drawPath || path, hideLabel, hideArrow, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelYRaw, labelOff }
+}
+
+// Where a paired line's badge sits: `off` is routeEdge's unit direction away
+// from the sibling line, w and h the badge's box. The badge clears its own
+// line by LEAD px whatever the line's angle, so the box's extent across the
+// line (wide badge, steep line) is counted in. The leader runs from the
+// on-path point to the badge's centre; the badge paints over its inner end.
+export const LEAD = 14
+export function badgeShift(off, w, h) {
+  if (!off) return { dx: 0, dy: 0 }
+  const d = (w / 2) * Math.abs(off.x) + (h / 2) * Math.abs(off.y) + LEAD
+  return { dx: off.x * d, dy: off.y * d }
 }
 
 // ─── Measuring a path without a browser ───────────────────────────────────────
