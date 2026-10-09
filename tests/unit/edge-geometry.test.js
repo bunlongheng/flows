@@ -40,6 +40,34 @@ describe("routeEdge", () => {
     expect(route({ arrow: "curved" }).path).toMatch(/C/);
   });
 
+  // Owner 2026-10-09: "if 1 line going in pls going in center not off center".
+  // The hub's face carries 3 lines so its slots are spread; the card at the
+  // other end carries 1, and that one enters dead centre however far the hub's
+  // slot sits from it. Straightening used to drag the lone end instead,
+  // because an empty face has nothing to collide with.
+  it("takes a lone line into the middle of the face, whatever the other end does", () => {
+    const hub = node("hub", 0, 0);
+    // near sits 30 px off the hub's top slot: close enough that the router
+    // wants 1 straight line, too far for the hub's own slot to give way.
+    const near = node("near", 400, -14), mid = node("mid", 400, 150), far = node("far", 400, 330);
+    const nodes = { hub, near, mid, far };
+    const edges = [
+      { id: "e0", source: "hub", target: "near" },
+      { id: "e1", source: "hub", target: "mid" },
+      { id: "e2", source: "hub", target: "far" },
+    ];
+    const one = (id, target) => routeEdge({
+      id, source: "hub", target, sourceNode: hub, targetNode: nodes[target],
+      nodeOf: (k) => nodes[k], edges, obstacles: [], nodeRects: [],
+    });
+    for (const [id, target] of [["e0", "near"], ["e1", "mid"], ["e2", "far"]]) {
+      const r = one(id, target);
+      expect(r.ty, `${id} enters ${target}`).toBe(nodes[target].internals.positionAbsolute.y + 90);
+    }
+    // The hub's own 3 slots stay spread, so the lines do not pile onto 1 pixel.
+    expect(new Set([one("e0", "near").sy, one("e1", "mid").sy, one("e2", "far").sy]).size).toBe(3);
+  });
+
   it("falls back to the given ends when a node is not measured yet", () => {
     const r = routeEdge({
       id: "e0", source: "a", target: "b", sourceNode: { id: "a" }, targetNode: { id: "b" },

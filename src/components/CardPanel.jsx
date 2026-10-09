@@ -52,8 +52,9 @@ const Section = ({ title, children }) => (
 )
 
 // Read-only card detail panel, the reading twin of FormatPanel's line editor:
-// a clicked card, in 5 blocks - the card's facts, what it is, its note, and
-// every line into it (top) and out of it (bottom). Same look as the Share panel
+// a clicked card, in 5 blocks - the card's facts, what it is, its note, then
+// every line into it and out of it, the 2 lists together at the foot of the
+// panel. Same look as the Share panel
 // (DetailView.jsx) - width, background, border, slide-in - a different body.
 export function CardPanel({ node, nodes, edges, onPick, onClose }) {
   const data = node.data || {}
@@ -115,12 +116,6 @@ export function CardPanel({ node, nodes, edges, onPick, onClose }) {
         <button type="button" onClick={onClose} aria-label="Close card panel" style={PANEL_CLOSE}>✕</button>
       </div>
 
-      {/* In at the top, out at the bottom: a reader thinks in, then out
-          (owner 2026-10-09), so the card's own facts sit between the 2. */}
-      <Section title={`Connections in (${into.length})`}>
-        {list(into, e => e.source, '←')}
-      </Section>
-
       <Section title="Card">
         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', rowGap: 6, columnGap: 12 }}>
           {facts.map(([k, v]) => [<span key={k + 'k'} style={key}>{k}</span>, <span key={k + 'v'} style={val}>{v}</span>])}
@@ -139,6 +134,16 @@ export function CardPanel({ node, nodes, edges, onPick, onClose }) {
               : <span key={i} style={runStyle(part)}>{part.text}</span>)}
           </div>
         ) : <div style={empty}>No notes</div>}
+      </Section>
+
+      {/* The 2 connection lists sit together under the note (owner 2026-10-09:
+          "connection in and out should next to each other in the details panel,
+          below notes"). In first, then out - a reader thinks in, then out - and
+          both below the card's own facts, which is what you came to read. They
+          are also the longest blocks, so the short ones are not pushed off the
+          top of the panel by a card with 9 lines. */}
+      <Section title={`Connections in (${into.length})`}>
+        {list(into, e => e.source, '←')}
       </Section>
 
       <Section title={`Connections out (${out.length})`}>
