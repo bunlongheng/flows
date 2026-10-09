@@ -35,7 +35,7 @@ function Row({ caption: title, values, value, format, onPick, hint: text }) {
   return (
     <section style={block}>
       <div style={caption}>{title}</div>
-      {/* A fixed 4 column grid, not a flex row: 7 amounts do not fit on 1 line
+      {/* A fixed 4 column grid, not a flex row: 8 amounts do not fit on 1 line
           of a 280 px panel, and wrapping them into equal cells keeps the chips
           the same size whichever row they land on. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>

@@ -40,14 +40,15 @@ export const cleanStart = (v) =>
 // Speed stops at 2x and goes DOWN to half, in half steps (owner, same day:
 // "speed 2x max, pls do in between .5 1.5"): past 2x the dots are a blur and
 // the diagram stops being readable, while 0.5x is the setting for watching a
-// dense map. Amount runs to 500 for a big map that wants to look busy.
+// dense map. Amount runs 20 to 5000 (owner, same day: "add 1000, 2000 and
+// 5000, remove 5, remove 10"), the top end for a big map that wants to look busy.
 //
 // Amount is a total, not a per-line count: the same number reads the same on a
 // 6 line flow and on a 50 line map, which is the whole point - 1 dot a line put
 // 41 of them on BC Integrations and the owner called it "a bit too much".
 export const SPEEDS = [0.5, 1, 1.5, 2];
-export const AMOUNTS = [5, 10, 20, 50, 100, 200, 500];
-export const CURRENT_DEFAULT = { speed: 1, amount: 10 };
+export const AMOUNTS = [20, 50, 100, 200, 500, 1000, 2000, 5000];
+export const CURRENT_DEFAULT = { speed: 1, amount: 20 };
 
 /** The current's settings from a view_state, defaults filled in. Always both keys. */
 export const currentOf = (v) => ({

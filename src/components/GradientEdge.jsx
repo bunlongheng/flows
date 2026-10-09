@@ -36,15 +36,31 @@ function pathEl(d) {
   return measurePath
 }
 
-// The point a fraction t along the path.
-function pointOnPath(d, t) {
+// The point a fraction t along the path. Each path is sampled once into 256
+// evenly spaced points and read back by interpolation: thousands of current
+// dots a frame cannot each pay for a getPointAtLength.
+const lutCache = new Map()
+function lutOf(d) {
+  let lut = lutCache.get(d)
+  if (lut !== undefined) return lut
+  lut = null
   try {
     const el = pathEl(d)
     const len = el.getTotalLength()
-    if (!len) return null
-    const p = el.getPointAtLength(Math.min(1, Math.max(0, t)) * len)
-    return { x: p.x, y: p.y }
-  } catch { return null }
+    if (len) {
+      lut = new Float64Array(514)
+      for (let i = 0; i <= 256; i++) { const p = el.getPointAtLength(len * i / 256); lut[2 * i] = p.x; lut[2 * i + 1] = p.y }
+    }
+  } catch { lut = null }
+  if (lutCache.size > 2000) lutCache.clear()
+  lutCache.set(d, lut)
+  return lut
+}
+function pointOnPath(d, t) {
+  const lut = lutOf(d)
+  if (!lut) return null
+  const f = Math.min(1, Math.max(0, t)) * 256, i = Math.min(255, Math.floor(f)), r = f - i
+  return { x: lut[2 * i] + (lut[2 * i + 2] - lut[2 * i]) * r, y: lut[2 * i + 1] + (lut[2 * i + 3] - lut[2 * i + 1]) * r }
 }
 
 // The fraction along the path closest to (x, y). Coarse sweep, then a local
@@ -461,15 +477,30 @@ function FlowDot({ edgeId, path, color }) {
     <g className="sd-flow-dot" pointerEvents="none">
       {/* The ambient current: small and soft, the look every line had before
           the single step dot, under it so the big one always reads on top. */}
-      {small.map((a, k) => {
-        const sp = pointOnPath(path, a)
-        return sp && (
-          <g key={k} opacity={fadeAt(a)}>
-            <circle cx={sp.x} cy={sp.y} r={5} fill={color} opacity={0.18} />
-            <circle cx={sp.x} cy={sp.y} r={2.4} fill={color} />
-          </g>
-        )
-      })}
+      {/* Every fully lit dot of the line rides in 1 halo path and 1 core
+          path (round caps on zero-length moves), so 5000 dots stay 2 nodes a
+          line instead of 10000 circles; only the few fading in or out at
+          the cards keep a circle of their own. */}
+      {(() => {
+        let d = ''
+        const fading = []
+        small.forEach((a, k) => {
+          const sp = pointOnPath(path, a)
+          if (!sp) return
+          if (fadeAt(a) < 1) fading.push(
+            <g key={k} opacity={fadeAt(a)}>
+              <circle cx={sp.x} cy={sp.y} r={5} fill={color} opacity={0.18} />
+              <circle cx={sp.x} cy={sp.y} r={2.4} fill={color} />
+            </g>
+          )
+          else d += `M${sp.x.toFixed(1)} ${sp.y.toFixed(1)}h0`
+        })
+        return <>
+          {d && <path d={d} stroke={color} strokeWidth={10} strokeLinecap="round" opacity={0.18} fill="none" />}
+          {d && <path d={d} stroke={color} strokeWidth={4.8} strokeLinecap="round" fill="none" />}
+          {fading}
+        </>
+      })()}
       {pt && (
         <g opacity={fadeAt(t)}>
           <circle cx={pt.x} cy={pt.y} r={16} fill={color} opacity={0.25} />
