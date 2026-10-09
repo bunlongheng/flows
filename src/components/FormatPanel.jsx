@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { STROKE_PICKS, BG_PICKS, BORDER_WIDTHS, BORDER_STYLES, RADII, FONTS, FONT_SIZES, ALIGNS, ARROWS, STYLE_DEFAULTS } from '../style.js'
 import { PANEL, PANEL_CAPTION } from '../panel.js'
 
@@ -192,6 +193,42 @@ export function FormatPanel({ value, onChange, onReset, target = 'node', stroke,
           style={{ width: '100%', accentColor: ACTIVE, cursor: 'pointer' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: 10, color: '#6b7280' }}>
           <span>0</span><span>100</span>
+        </div>
+      </Section>
+    </div>
+  )
+}
+
+// A clicked tag's own settings (owner 2026-10-09): which side of its line it
+// hangs off on a leader, so it never sits across a neighbouring line, and how
+// far along the line it sits. `t` null and `side` null is the computed spot.
+const TAG_SIDE_PICKS = [[null, 'On line', '•'], ['left', 'Left', '←'], ['right', 'Right', '→'], ['up', 'Above', '↑'], ['down', 'Below', '↓']]
+
+export function TagPanel({ step, text, t, side, onChange }) {
+  // The slider moves freely and saves once, on release: 1 undo step, 1 save.
+  const [pos, setPos] = useState(null)
+  const commit = () => { if (pos != null) { onChange(pos / 100, side || null); setPos(null) } }
+  return (
+    <div className="sd-format-panel sd-tag-panel" style={PANEL}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={PANEL_CAPTION}>Tag</div>
+        <button type="button" onClick={() => onChange(null, null)} title="Back to the computed spot"
+          style={{ border: 'none', background: 'none', color: '#6b7280', fontSize: 11, cursor: 'pointer', padding: 0 }}>Reset</button>
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: '#1a2129', marginBottom: 16 }}>{[step, text].filter(Boolean).join('  ')}</div>
+      <Section label="Side">
+        {TAG_SIDE_PICKS.map(([s, title, glyph]) => (
+          <Tile key={title} on={(side || null) === s} onPick={() => onChange(t, s)} title={title}>
+            <span style={{ fontSize: 16, fontWeight: 600 }}>{glyph}</span>
+          </Tile>
+        ))}
+      </Section>
+      <Section label="Position along the line">
+        <input type="range" min={12} max={88} step={1} value={pos ?? Math.round((t ?? 0.5) * 100)}
+          onChange={(e) => setPos(Number(e.target.value))} onPointerUp={commit} onKeyUp={commit}
+          style={{ width: '100%', accentColor: ACTIVE, cursor: 'pointer' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: 10, color: '#6b7280' }}>
+          <span>Source</span><span>Target</span>
         </div>
       </Section>
     </div>

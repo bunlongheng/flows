@@ -12,7 +12,7 @@ import { Toast } from '../components/Toast'
 import { SnapGuides } from '../components/SnapGuides'
 import { Footer } from '../components/Footer'
 import { brandFor } from '../brands'
-import { FormatPanel } from '../components/FormatPanel.jsx'
+import { FormatPanel, TagPanel } from '../components/FormatPanel.jsx'
 import { CardPanel } from '../components/CardPanel.jsx'
 import { CurrentPanel } from '../components/CurrentPanel.jsx'
 import { findService } from '../services.js'
@@ -181,7 +181,17 @@ export function DetailView({
   useEffect(() => { setCurrentOpen(false) }, [activeDiagram?.id])
   // Never 2 panels at once (owner rule 2026-10-09): opening one closes whichever
   // was open, so the latest opened is the only one on screen.
-  const openPanels = { share: showSharePanel, history: showHistoryPanel, code: showDetailCode, card: !!cardId, current: currentOpen }
+  // The Tag panel: a clicked tag's side and position (owner 2026-10-09). The
+  // tag dispatches sd-tag-click on a plain click (GradientEdge.jsx).
+  const [tagId, setTagId] = useState(null)
+  useEffect(() => { setTagId(null) }, [activeDiagram?.id])
+  useEffect(() => {
+    const on = e => setTagId(e.detail)
+    window.addEventListener('sd-tag-click', on)
+    return () => window.removeEventListener('sd-tag-click', on)
+  }, [])
+  const tagEdge = tagId && edges.find(e => e.id === tagId)
+  const openPanels = { share: showSharePanel, history: showHistoryPanel, code: showDetailCode, card: !!cardId, current: currentOpen, tag: !!tagId }
   const prevPanels = useRef(openPanels)
   useEffect(() => {
     const prev = prevPanels.current
@@ -194,12 +204,13 @@ export function DetailView({
     if (keep !== 'code' && showDetailCode) setShowDetailCode(false)
     if (keep !== 'card' && cardId) setCardId(null)
     if (keep !== 'current' && currentOpen) setCurrentOpen(false)
+    if (keep !== 'tag' && tagId) setTagId(null)
     // Reacts to a panel opening, nothing else; the setters are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSharePanel, showHistoryPanel, showDetailCode, cardId, currentOpen])
+  }, [showSharePanel, showHistoryPanel, showDetailCode, cardId, currentOpen, tagId])
   useEffect(() => {
     if (!cardId && !currentOpen) return
-    const onKeyDown = e => { if (e.key === 'Escape') { setCardId(null); setCurrentOpen(false) } }
+    const onKeyDown = e => { if (e.key === 'Escape') { setCardId(null); setCurrentOpen(false); setTagId(null) } }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [cardId, currentOpen])
@@ -921,7 +932,8 @@ export function DetailView({
               if (node.type === 'marker') { if (onCurrentChange) { setCardId(null); setCurrentOpen(true) } return }
               if (node.type === 'awsNode') { setCurrentOpen(false); setCardId(node.id) }
             }}
-            onPaneClick={() => { setCardId(null); setCurrentOpen(false) }}
+            onPaneClick={() => { setCardId(null); setCurrentOpen(false); setTagId(null) }}
+            onEdgeClick={() => setTagId(null)}
             /* Cmd/Ctrl is reserved for snap-align while dragging, so additive
                multi-select moves to Shift (box-select already uses Shift). */
             multiSelectionKeyCode="Shift"
@@ -1092,7 +1104,12 @@ export function DetailView({
             lights its lines AND now opens the read-only card panel below
             (owner rule 2026-10-08); a stored card style still renders, it is
             just not edited here. */}
-        {canEdit && onEdgeStyleChange && selectedEdge && (
+        {tagEdge?.data?.onLabelMove && (
+          <TagPanel step={tagEdge.data.step} text={tagEdge.label || tagEdge.data.description}
+            t={tagEdge.data.labelT ?? null} side={tagEdge.data.labelSide ?? null}
+            onChange={(t, side) => tagEdge.data.onLabelMove(tagEdge.id, t, side)} />
+        )}
+        {!tagEdge && canEdit && onEdgeStyleChange && selectedEdge && (
           <FormatPanel
             target="edge"
             value={edgeStyleShown}

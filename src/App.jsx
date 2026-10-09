@@ -54,6 +54,7 @@ const positionsOf = nds => nds
 const pinsOf = eds => eds.map(e => ({
   id: e.id,
   labelT: e.data?.labelT,
+  labelSide: e.data?.labelSide,
   ends: e.data?.ends,
   bend: e.data?.bend,
 }))
@@ -64,6 +65,7 @@ const pinsOf = eds => eds.map(e => ({
 const edgePins = edges => edges.map((e, i) => ({
   id: e.id || `e${i}`,
   ...(typeof e.labelT === 'number' ? { labelT: e.labelT } : {}),
+  ...(e.labelSide ? { labelSide: e.labelSide } : {}),
   ...(e.ends ? { ends: e.ends } : {}),
   ...(e.bend ? { bend: e.bend } : {}),
 }))
@@ -99,6 +101,7 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove, lane
       ...(sunsetOf(e.source) || sunsetOf(e.target) ? { sunset: true } : {}),
       ...(sunsetOf(e.source) || sunsetOf(e.target) ? { sunsetLine: true } : {}),
       ...(typeof e.labelT === 'number' ? { labelT: e.labelT } : {}),
+      ...(e.labelSide ? { labelSide: e.labelSide } : {}),
       ...(e.async === true ? { async: true } : {}),
       ...(e.ends ? { ends: e.ends } : {}),
       ...(e.bend ? { bend: e.bend } : {}),
@@ -498,16 +501,18 @@ export default function App() {
   // badges, so on a dense diagram two can still overlap - this is the manual
   // override. `t` is a 0..1 distance along the edge; null (double-click) puts
   // it back to the computed spot.
-  const onLabelMove = useCallback((edgeId, t) => {
+  // `side` hangs the tag off its line on a leader: left, right, up or down.
+  const onLabelMove = useCallback((edgeId, t, side) => {
     pushHistory(positionsOf(nodesRef.current), 'edge')
     const labelT = typeof t === 'number' ? t : undefined
+    const labelSide = side || undefined
     setEdges(prev => prev.map(e => (e.id === edgeId
-      ? { ...e, data: { ...e.data, labelT } }
+      ? { ...e, data: { ...e.data, labelT, labelSide } }
       : e)))
     setActiveDiagram(a => {
       if (!a) return a
       const data = { ...a.data, edges: (a.data.edges || []).map((e, i) => ((e.id || `e${i}`) === edgeId
-        ? { ...e, labelT }
+        ? { ...e, labelT, labelSide }
         : e)) }
       // Saved on DROP, not debounced. A drop is one discrete action, and a debounce
       // meant dragging a badge then immediately navigating threw the move away.
@@ -899,7 +904,7 @@ export default function App() {
   const restorePins = useCallback(pins => {
     const byId = Object.fromEntries(pins.map(p => [p.id, p]))
     setEdges(prev => prev.map(e => (byId[e.id]
-      ? { ...e, data: { ...e.data, labelT: byId[e.id].labelT, ends: byId[e.id].ends, bend: byId[e.id].bend } }
+      ? { ...e, data: { ...e.data, labelT: byId[e.id].labelT, labelSide: byId[e.id].labelSide, ends: byId[e.id].ends, bend: byId[e.id].bend } }
       : e)))
     setActiveDiagram(a => {
       if (!a) return a
@@ -907,7 +912,7 @@ export default function App() {
         const p = byId[e.id || `e${i}`]
         if (!p) return e
         const next = { ...e }
-        for (const k of ['labelT', 'ends', 'bend']) {
+        for (const k of ['labelT', 'labelSide', 'ends', 'bend']) {
           if (p[k] === undefined) delete next[k]
           else next[k] = p[k]
         }
