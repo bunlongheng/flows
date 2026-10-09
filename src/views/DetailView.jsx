@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { PANEL, PANEL_CAPTION, PANEL_CLOSE } from '../panel.js'
 import { isPlaying, setPlaying, subscribePlaying, isFlowing, subscribeFlowing } from '../flowClock'
 import { ReactFlow, Background } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
@@ -1002,39 +1003,35 @@ export function DetailView({
 
         {/* History panel (right side): every saved version, newest first */}
         {showHistoryPanel && (
-          <div className="sd-history-panel" style={{
-            width: 320, flexShrink: 0, background: '#ffffff', borderLeft: '1px solid #e2e8f0',
-            display: 'flex', flexDirection: 'column', overflowY: 'auto',
-            animation: 'sd-slide-right 0.2s ease-out',
-          }}>
-            <div style={{ padding: '18px 18px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#1a2129' }}>History</div>
-              <button onClick={() => setShowHistoryPanel(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: '#8a8d91', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>✕</button>
+          <div className="sd-history-panel" style={PANEL}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={PANEL_CAPTION}>History</div>
+              <button onClick={() => setShowHistoryPanel(false)} aria-label="Close" style={PANEL_CLOSE}>✕</button>
             </div>
 
             {historyLoading && (
-              <div style={{ padding: '4px 18px 16px', fontSize: 13, color: '#6b7280' }}>Loading...</div>
+              <div style={{ padding: '0 0 16px', fontSize: 13, color: '#6b7280' }}>Loading...</div>
             )}
 
             {!historyLoading && historyError && (
-              <div style={{ padding: '4px 18px 16px', fontSize: 13, color: '#dc2626' }}>{historyError}</div>
+              <div style={{ padding: '0 0 16px', fontSize: 13, color: '#dc2626' }}>{historyError}</div>
             )}
 
             {!historyLoading && !historyError && versions.length === 0 && (
-              <div style={{ padding: '4px 18px 16px', fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
+              <div style={{ padding: '0 0 16px', fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
                 No versions yet. Every change from here on is kept.
               </div>
             )}
 
             {!historyLoading && !historyError && restoreError && (
-              <div style={{ padding: '0 18px 12px', fontSize: 12, color: '#dc2626', lineHeight: 1.5 }}>{restoreError}</div>
+              <div style={{ padding: '0 0 12px', fontSize: 12, color: '#dc2626', lineHeight: 1.5 }}>{restoreError}</div>
             )}
 
             {!historyLoading && versions.map(v => {
               const isLayout = v.kind === 'layout'
               const showTitle = v.title && v.title !== activeDiagram?.title
               return (
-                <div key={v.id} style={{ padding: '12px 18px', borderTop: '1px solid #f1f5f9' }}>
+                <div key={v.id} style={{ padding: '12px 0', borderTop: '1px solid #e2e8f0' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: '#1a2129' }}>{versionTime(v.saved_at)}</span>
                     <span style={{
@@ -1088,12 +1085,8 @@ export function DetailView({
 
         {/* Share panel (right side) */}
         {showSharePanel && (
-          <div className="sd-share-panel" style={{
-            width: 240, flexShrink: 0, background: '#f1f5f9', borderLeft: '1px solid #e2e8f0',
-            display: 'flex', flexDirection: 'column', padding: '20px 16px',
-            animation: 'sd-slide-right 0.2s ease-out',
-          }}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6b7280', marginBottom: 16 }}>Export & Share</div>
+          <div className="sd-share-panel" style={PANEL}>
+            <div style={{ ...PANEL_CAPTION, marginBottom: 16 }}>Export & Share</div>
 
             {/* Sneak peek: the exact 1200x630 card Slack, iMessage and X will
                 render for this link. Shown only for a saved design with a slug -

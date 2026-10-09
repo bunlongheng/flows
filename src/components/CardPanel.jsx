@@ -1,6 +1,8 @@
 import { findService } from '../services.js'
-import { cleanNote } from '../note.js'
+import { cleanNote, noteRuns, linkLabel } from '../note.js'
+import { runStyle } from './AwsNode'
 import { laneRef } from '../lanes.js'
+import { PANEL, PANEL_CAPTION, PANEL_CLOSE } from '../panel.js'
 
 // A connection's other end has no node of its own when it is a lane (its id
 // is "lane:<id>"), so it is named directly rather than looked up.
@@ -35,7 +37,7 @@ function placeOf(node, nodes) {
   return { lane: lane.data?.title || '', section: section?.title || '' }
 }
 
-const caption = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6b7280', marginBottom: 8 }
+const caption = { ...PANEL_CAPTION, marginBottom: 8 }
 const body = { fontSize: 12.5, lineHeight: 1.5, color: '#1a2129', whiteSpace: 'pre-wrap' }
 const block = { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }
 const key = { fontSize: 11, color: '#6b7280' }
@@ -103,18 +105,14 @@ export function CardPanel({ node, nodes, edges, onPick, onClose }) {
     : <div style={empty}>None</div>)
 
   return (
-    <aside className="sd-card-panel" data-testid="card-panel" style={{
-      width: 280, flexShrink: 0, background: '#f1f5f9', borderLeft: '1px solid #e2e8f0',
-      display: 'flex', flexDirection: 'column', padding: '20px 16px',
-      animation: 'sd-slide-right 0.2s ease-out', overflowY: 'auto',
-    }}>
+    <aside className="sd-card-panel" data-testid="card-panel" style={PANEL}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
         {icon && <img src={icon} alt="" width={28} height={28} style={{ flexShrink: 0, objectFit: 'contain' }} />}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2129' }}>{label}</div>
           {sub && <div style={{ fontSize: 11.5, color: '#6b7280' }}>{sub}</div>}
         </div>
-        <button type="button" onClick={onClose} aria-label="Close card panel" style={{ background: 'none', border: 'none', color: '#8a8d91', cursor: 'pointer', fontSize: 18, lineHeight: 1, flexShrink: 0 }}>✕</button>
+        <button type="button" onClick={onClose} aria-label="Close card panel" style={PANEL_CLOSE}>✕</button>
       </div>
 
       <Section title="Card">
@@ -128,7 +126,13 @@ export function CardPanel({ node, nodes, edges, onPick, onClose }) {
       </Section>
 
       <Section title="Notes">
-        {note ? <div style={body}>{note}</div> : <div style={empty}>No notes</div>}
+        {note ? (
+          <div style={body}>
+            {noteRuns(note).map((part, i) => part.url
+              ? <a key={i} href={part.url} title={part.url} target="_blank" rel="noopener noreferrer" style={{ color: '#1d4ed8', textDecoration: 'underline' }}>{linkLabel(part.url)}</a>
+              : <span key={i} style={runStyle(part)}>{part.text}</span>)}
+          </div>
+        ) : <div style={empty}>No notes</div>}
       </Section>
 
       <Section title={`Connections out (${out.length})`}>

@@ -1,4 +1,5 @@
 import { STROKE_PICKS, BG_PICKS, BORDER_WIDTHS, BORDER_STYLES, RADII, FONTS, FONT_SIZES, ALIGNS, ARROWS, STYLE_DEFAULTS } from '../style.js'
+import { PANEL, PANEL_CAPTION } from '../panel.js'
 
 // The properties panel, modelled on Excalidraw's. Its metrics are Excalidraw's
 // too - 36px square buttons, 8px radius, #e0dfff behind the active one, #6965db
@@ -124,13 +125,9 @@ export function FormatPanel({ value, onChange, onReset, target = 'node', stroke,
   const tile = (k, pick) => ({ on: cur(k) === pick, onPick: () => set(k)(pick) })
 
   return (
-    <div className="sd-format-panel" style={{
-      width: 240, flexShrink: 0, background: '#f1f5f9', borderLeft: '1px solid #e2e8f0',
-      display: 'flex', flexDirection: 'column', padding: '20px 16px', overflowY: 'auto',
-      animation: 'sd-slide-right 0.2s ease-out',
-    }}>
+    <div className="sd-format-panel" style={PANEL}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6b7280' }}>{isNode ? 'Card' : 'Line'}</div>
+        <div style={PANEL_CAPTION}>{isNode ? 'Card' : 'Line'}</div>
         <button type="button" onClick={onReset} title="Back to the default look"
           style={{ border: 'none', background: 'none', color: '#6b7280', fontSize: 11, cursor: 'pointer', padding: 0 }}>Reset</button>
       </div>

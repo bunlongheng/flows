@@ -1,10 +1,10 @@
-import { useState, useEffect, useSyncExternalStore } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react'
 import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, useStore } from '@xyflow/react'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteEditContext'
 import { subscribe, currentPhase, motionAllowed, dotAt } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
-import { routeEdge, bendPoint, bendFor, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
+import { routeEdge, badgeShift, bendPoint, bendFor, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
 import { laneGaps, isLaneNode } from '../lanes.js'
 import { tagText } from '../tag.js'
 import { EDGE_LABEL_MAX } from '../note.js'
@@ -115,7 +115,7 @@ export function GradientEdge({
   // The strips between swimlanes, where a trunk's bus line runs.
   const laneRects = getNodes().filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height }))
   const gaps = laneGaps(laneRects)
-  const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, labelX, labelY } = routeEdge({
+  const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, labelX, labelY, labelOff } = routeEdge({
     id, source, target, sourceNode, targetNode, nodeOf, edges: allEdges, obstacles, nodeRects, gaps,
     bend, endS, endT, arrow: data?.style?.arrow, label, description: data?.description,
     fallback: { sx: sourceX, sy: sourceY, tx: targetX, ty: targetY },
@@ -244,8 +244,22 @@ export function GradientEdge({
   // Where the badge actually sits: on the path when it has been placed, else the
   // computed spot with its node-avoidance nudge.
   const onPath = t == null ? null : pointOnPath(path, t)
-  const bx = onPath ? onPath.x : labelX
-  const by = onPath ? onPath.y : labelY
+  const ax = onPath ? onPath.x : labelX
+  const ay = onPath ? onPath.y : labelY
+  // A paired line's badge hangs off the line on a short leader, on the pair's
+  // outside. The shift needs the badge's real box, read back after it paints.
+  const badgeRef = useRef(null)
+  const [box, setBox] = useState({ w: 84, h: 22 })
+  useLayoutEffect(() => {
+    const el = badgeRef.current
+    if (!el || !labelOff) return
+    const w = el.offsetWidth, h = el.offsetHeight
+    if (w && h && (w !== box.w || h !== box.h)) setBox({ w, h })
+  })
+  const { dx, dy } = badgeShift(labelOff, box.w, box.h)
+  const bx = ax + dx
+  const by = ay + dy
+  const lineStroke = data?.sunsetLine ? SUNSET.line : (st.stroke || `url(#${gid})`)
 
   return (
     <>
@@ -279,6 +293,7 @@ export function GradientEdge({
         strokeDasharray: dashArray(st.bs, st.bw || 1.5) || undefined,
         opacity: st.opacity == null ? undefined : st.opacity / 100,
       }} />
+        {labelOff && (tag || hasStep) && <line className="sd-edge-lead" x1={ax} y1={ay} x2={bx} y2={by} stroke={lineStroke} strokeWidth={1} strokeOpacity={0.7} pointerEvents="none" />}
         {port && <circle className="sd-lane-port" cx={port.x} cy={port.y} r={5} fill={port.c} stroke="#fff" strokeWidth={1.5} pointerEvents="none" />}
         <FlowDot edgeId={id} path={path} color={c1} />
       </g>
@@ -286,6 +301,7 @@ export function GradientEdge({
         <EdgeLabelRenderer>
           {(tag || hasStep) && (
             <div
+              ref={badgeRef}
               className={`sd-edge-badge nodrag nopan${movable ? ' is-movable' : ''}${dragT != null ? ' is-dragging' : ''}`}
               onPointerDown={startDrag}
               onDoubleClickCapture={movable || editable ? startEdit : undefined}
