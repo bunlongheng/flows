@@ -1,9 +1,16 @@
 import { colorFromIcon, isNeutralColor } from './iconColor.js'
 import { INK } from './sunset.js'
-// ─── AWS Service Config ───────────────────────────────────────────────────────
+// ─── Service Config ───────────────────────────────────────────────────────────
 // A node's colour tints its card and drives the edge gradient, so it has to
 // match the ICON it wraps. The AWS database glyphs are blue; several were tinted
 // magenta, which read as a pink card around a blue icon.
+//
+// An AWS logo belongs to an AWS service and to nothing else (owner rule
+// 2026-10-09). PostgreSQL, MySQL, Cassandra, Elasticsearch and Kafka are their
+// own products, so they draw their own marks, not RDS / Keyspaces / Amazon
+// OpenSearch Service / Amazon MSK. The managed AWS wrappers keep their own
+// keys next to them: rds, keyspaces, opensearch, msk, elasticache.
+// tests/unit/aws-icons-source.test.js holds that line.
 
 export const SERVICES = {
   apigw:        { label: 'API Gateway',       sub: 'External Trigger',   icon: '/icons/apigateway.svg',    color: '#e81b7e' },
@@ -31,18 +38,18 @@ export const SERVICES = {
   microservices:{ label: 'Microservices',     sub: 'Business Logic',      color: '#F7DF1E', icon: '/icons/gen-microservices.svg' },
   service:      { label: 'Service',           sub: 'Microservice',        color: '#339933', icon: '/icons/gen-service.svg' },
   encoder:      { label: 'Encoding Pipeline', sub: 'Media Processing',    color: '#f97316', icon: '/icons/gen-encoder.svg' },
-  cassandra:    { label: 'Cassandra',         sub: 'NoSQL DB',            icon: '/icons/keyspaces.svg',   color: '#4050d0' },
+  cassandra:    { label: 'Cassandra',         sub: 'NoSQL DB',            icon: '/icons/cassandra-si.svg', color: '#1287B1' },
   keyspaces:    { label: 'Keyspaces',         sub: 'Cassandra-compat',    icon: '/icons/keyspaces.svg',   color: '#4050d0' },
-  postgres:     { label: 'PostgreSQL',        sub: 'Relational DB',       icon: '/icons/rds.svg',         color: '#4060e0' },
-  mysql:        { label: 'MySQL',             sub: 'Relational DB',       icon: '/icons/rds.svg',         color: '#4060e0' },
+  postgres:     { label: 'PostgreSQL',        sub: 'Relational DB',       icon: '/icons/postgresql-si.svg', color: '#4169E1' },
+  mysql:        { label: 'MySQL',             sub: 'Relational DB',       icon: '/icons/mysql-si.svg',    color: '#4479A1' },
   rds:          { label: 'RDS',               sub: 'Relational DB',       icon: '/icons/rds.svg',         color: '#4060e0' },
   mongodb:      { label: 'MongoDB',           sub: 'Document DB',         icon: '/icons/mongodb.svg',  color: '#22c55e' },
   redis:        { label: 'Redis',             sub: 'Cache / Session',     icon: '/icons/redis-2026.svg',  color: '#FF4438' },
-  memcached:    { label: 'Memcached',         sub: 'EVCache',             icon: '/icons/elasticache.svg', color: '#cb2cd2' },
+  memcached:    { label: 'Memcached',         sub: 'EVCache',             icon: '/icons/elasticache.svg', color: '#cb2cd2' }, // no published Memcached mark; drawn as the AWS cache it usually runs as
   elasticache:  { label: 'ElastiCache',       sub: 'Cache Layer',         icon: '/icons/elasticache.svg', color: '#cb2cd2' },
   s3:           { label: 'S3',               sub: 'Object Storage',       icon: '/icons/s3.svg',          color: '#688724' },
   storage:      { label: 'Storage',          sub: 'Object Store',         color: '#16a34a', icon: '/icons/gen-storage.svg' },
-  kafka:        { label: 'Kafka',            sub: 'Event Streaming',      icon: '/icons/kafka.svg',       color: '#8f54ff' },
+  kafka:        { label: 'Kafka',            sub: 'Event Streaming',      icon: '/icons/kafka-si.svg',    color: '#231F20' },
   msk:          { label: 'MSK',             sub: 'Managed Kafka',         icon: '/icons/kafka.svg',       color: '#8f54ff' },
   sqs:          { label: 'SQS',             sub: 'Message Queue',         icon: '/icons/sqs.svg',         color: '#e81b7f' },
   sns:          { label: 'SNS',             sub: 'Notifications',         icon: '/icons/sns.svg',         color: '#e81b7e' },
@@ -55,7 +62,7 @@ export const SERVICES = {
   transcribe:   { label: 'Transcribe',      sub: 'Speech to Text',        icon: '/icons/aws-transcribe.svg', color: '#0aab91' },
   bedrock:      { label: 'Bedrock',         sub: 'Foundation Models',     icon: '/icons/aws-bedrock.svg', color: '#0aab91' },
   claude:       { label: 'Claude',          sub: 'LLM',                   icon: '/icons/claude.svg',      color: '#D97757' },
-  elasticsearch:{ label: 'Elasticsearch',  sub: 'Logs & Search',         icon: '/icons/opensearch.svg',  color: '#8f54ff' },
+  elasticsearch:{ label: 'Elasticsearch',  sub: 'Logs & Search',         icon: '/icons/elasticsearch-si.svg', color: '#005571' },
   opensearch:   { label: 'OpenSearch',      sub: 'Search & Analytics',    icon: '/icons/opensearch.svg',  color: '#8f54ff' },
   atlas:        { label: 'Atlas',          sub: 'Monitoring',             color: '#ec4899', icon: '/icons/gen-atlas.svg' },
   grafana:      { label: 'Grafana',        sub: 'Dashboards',             icon: '/icons/grafana.svg',     color: '#f97316' },
