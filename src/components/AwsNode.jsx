@@ -319,10 +319,10 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: 6, position: 'relative',
       // The resting shadow, plus the arrival ring and halo while the glow lasts.
-      // A clicked card wears a solid 3 px ring and a soft halo in its own
+      // A clicked card wears a solid 10 px ring and a soft halo in its own
       // colour, so it stands out from every other card (owner 2026-10-09).
       boxShadow: selected
-        ? `0 1px 3px rgba(0,0,0,0.10), 0 0 0 3px ${color}, 0 0 20px ${hexToRgba(color, 0.55)}`
+        ? `0 1px 3px rgba(0,0,0,0.10), 0 0 0 10px ${color}, 0 0 28px ${hexToRgba(color, 0.55)}`
         : glow
         ? `0 1px 3px rgba(0,0,0,0.10), 0 0 0 ${(3 * glow).toFixed(1)}px ${hexToRgba(color, 0.45 * glow)}, 0 0 ${Math.round(22 * glow)}px ${hexToRgba(color, 0.7 * glow)}`
         : '0 1px 3px rgba(0,0,0,0.10)',
