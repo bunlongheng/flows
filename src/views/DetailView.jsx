@@ -115,6 +115,9 @@ export function DetailView({
   // is undefined for anyone but the owner, which is what hides the panel: a
   // visitor reads the diagram the way the owner left it running.
   current, onCurrentChange,
+  // Match / Auto / Custom card sizes, picked in the same panel. Only Custom
+  // shows the resize handles: the other 2 decide the size themselves.
+  sizing, onSizingChange,
 }) {
   const [codeWidth, setCodeWidth] = useState(340)
   const brand = brandFor(activeDiagram?.title)
@@ -897,7 +900,7 @@ export function DetailView({
           <ShowNotesContext.Provider value={showNotes}>
           <NoteEditContext.Provider value={viewOnly ? null : onNoteChange || null}>
           <InfoEditContext.Provider value={viewOnly ? null : onInfoChange || null}>
-          <NodeResizeContext.Provider value={viewOnly ? null : onNodeResize || null}>
+          <NodeResizeContext.Provider value={viewOnly || sizing !== 'custom' ? null : onNodeResize || null}>
           <IconResizeContext.Provider value={viewOnly ? null : onIconResize || null}>
           <ReactFlow
             className={`${showSteps ? 'sd-steps-on ' : ''}${flowing ? '' : 'sd-still '}${canEdit && !viewOnly ? '' : 'sd-reading '}sd-badge-${badgeMode}`}
@@ -1111,6 +1114,7 @@ export function DetailView({
             alongside Share or History - the same 1 extra panel slot. */}
         {currentOpen && !card && !narrow && onCurrentChange && (
           <CurrentPanel value={current} onChange={onCurrentChange} onClose={() => setCurrentOpen(false)}
+            sizing={sizing} onSizing={onSizingChange}
             pattern={activeDiagram?.pattern} description={activeDiagram?.description} />
         )}
 

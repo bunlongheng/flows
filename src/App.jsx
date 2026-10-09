@@ -19,6 +19,12 @@ import { cleanEdgeLabel } from './note.js'
 import { fireflies } from './fireflies'
 import { makeThumbnail } from './thumbnail'
 import { currentOf, cleanCurrent } from './view-state.js'
+import { sizingOf, lineCounts, cardSize } from './card-size.js'
+
+// A card's drawn size for the diagram's sizing mode; a picture card scales
+// from its own 240 x 225.
+const sizedCard = (nd, mode, lines) => cardSize(nd, mode, lines.get(nd.id),
+  typeof nd.image === 'string' && nd.image.startsWith('data:image/') ? { w: 240, h: 225 } : { w: 180, h: 180 })
 
 // Vite exposed import.meta.env.DEV; Next replaces process.env.NODE_ENV at build
 // time, so this compiles to a constant in the client bundle exactly the same way.
@@ -228,6 +234,7 @@ export default function App() {
   // well as in view_state so a click lands on the dots at once rather than
   // after the PATCH comes back.
   const [current, setCurrentState] = useState(() => currentOf(null))
+  const [sizing, setSizingState] = useState('match')
   useEffect(() => { flowClock.setCurrent(current) }, [current])
   // Declared before the effects/callbacks that depend on it - a const useCallback
   // is not hoisted, so referencing it earlier would be a temporal-dead-zone crash.
@@ -677,7 +684,13 @@ export default function App() {
     const hasSaved = raw.length > 0 && raw.every(nd => nd.position && Number.isFinite(nd.position.x) && Number.isFinite(nd.position.y))
     // Carry any custom brand fields (label/icon/color/sub) into node data so a
     // bring-your-own-icon node renders its own logo, not a catalog lookup.
-    const n = raw.map(nd => ({ ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, iconFrame: nd.iconFrame === true, size: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: nd.position } : {}), ...(nd.size ? { width: nd.size.w, height: nd.size.h } : {}) }))
+    // The card's drawn size follows the diagram's Match / Auto / Custom pick
+    // (src/card-size.js); `handSize` keeps the owner's own, the only one saved.
+    const mode = sizingOf(d.view_state, raw), lines = lineCounts(d.data.edges)
+    const n = raw.map(nd => {
+      const size = sizedCard(nd, mode, lines)
+      return { ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, iconFrame: nd.iconFrame === true, size, handSize: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: nd.position } : {}), ...(size ? { width: size.w, height: size.h } : {}) }
+    })
     const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined, d.view_state?.lanes || [], canAI ? onLabelEdit : undefined)
     return { nodes: hasSaved ? n : layoutFanOut(n, e), edges: e }
   }
@@ -704,6 +717,7 @@ export default function App() {
     pendingPanels.current = canAI || authChecked ? null : open
     if (['dark', 'silver', 'color', 'plain'].includes(v.badge)) setBadgeMode(v.badge)
     setCurrentState(currentOf(v))
+    setSizingState(sizingOf(v, d.data.nodes))
     const { nodes: n, edges: e } = buildDiagramNodesEdges(d)
     setNodes(n)
     setEdges(e)
@@ -751,7 +765,8 @@ export default function App() {
       .map(n => ({
         id: n.id,
         position: { x: Math.round(n.position.x), y: Math.round(n.position.y) },
-        ...(n.width && n.height ? { size: { w: n.width, h: n.height } } : n.data?.size ? { size: n.data.size } : {}),
+        // Only the owner's hand size is saved: a Match or Auto size is drawn, never stored.
+        ...(n.data?.handSize ? { size: n.data.handSize } : {}),
         iconSize: n.data?.iconSize ?? null,
         // Preserve bring-your-own-icon fields so saving the layout never strips them.
         ...(n.icon ? { icon: n.icon } : {}),
@@ -822,6 +837,7 @@ export default function App() {
       ...(keep('lanes') ? { lanes: prev.lanes } : {}),
       ...(keep('start') ? { start: prev.start } : {}),
       ...(keep('current') ? { current: prev.current } : {}),
+      ...(keep('sizing') ? { sizing: prev.sizing } : {}),
     }
   }, [activeDiagram])
 
@@ -841,12 +857,26 @@ export default function App() {
     patchViewState({ ...otherView(['current']), ...cleanCurrent(c) })
   }, [current, otherView, patchViewState])
 
+  // Match, Auto or Custom card sizes from the same panel: every card redraws
+  // now, and the pick is saved on the row so the exports draw the same.
+  const setSizing = useCallback(mode => {
+    setSizingState(mode)
+    patchViewState({ ...otherView(['sizing']), sizing: mode })
+    const lines = lineCounts(activeDiagram?.data?.edges)
+    setNodes(nds => nds.map(n => {
+      if (n.type !== 'awsNode') return n
+      const size = sizedCard({ size: n.data.handSize, image: n.data.image, id: n.id }, mode, lines)
+      const { width, height, ...rest } = n
+      return { ...rest, ...(size ? { width: size.w, height: size.h } : {}), data: { ...n.data, size } }
+    }))
+  }, [activeDiagram, otherView, patchViewState])
+
   // The owner dragged a node's resize handle. Store the new size on the node
   // (both top-level, for React Flow's own sizing, and in data, for AwsNode's
   // card) and persist it the same way a drag persists position.
   const onNodeResize = useCallback((id, size) => {
     setNodes(nds => {
-      const next = nds.map(n => n.id === id ? { ...n, width: size.w, height: size.h, data: { ...n.data, size } } : n)
+      const next = nds.map(n => n.id === id ? { ...n, width: size.w, height: size.h, data: { ...n.data, size, handSize: size } } : n)
       if (canAI && activeDiagram?.id) savePositions(activeDiagram.id, next)
       return next
     })
@@ -1665,6 +1695,7 @@ export default function App() {
       onToggleVisibility={canAI && activeDiagram?.id ? toggleVisibility : undefined}
       onShareOpen={canAI && activeDiagram?.id ? ensureShareable : undefined}
       current={current} onCurrentChange={canAI && activeDiagram?.id ? setCurrent : undefined}
+      sizing={sizing} onSizingChange={canAI && activeDiagram?.id ? setSizing : undefined}
     />
   )
 }

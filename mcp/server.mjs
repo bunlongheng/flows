@@ -27,6 +27,7 @@ import { resolveNodeImages } from '../lib/resolve-image.js'
 import { cleanNote, cleanInfo } from '../src/note.js'
 import { cleanStyle } from '../src/style.js'
 import { PANELS, BADGES, SPEEDS, AMOUNTS, CURRENT_DEFAULT } from '../src/view-state.js'
+import { SIZINGS } from '../src/card-size.js'
 import { NODE_KEEP, EDGE_KEEP, okBox, roundBox, edgeKey, keepOwnerWork } from '../lib/owner-work.js'
 import { validateDesign, okColor } from '../lib/validate-design.js'
 
@@ -393,6 +394,7 @@ server.registerTool(
           speed: z.union(SPEEDS.map((n) => z.literal(n))).optional().describe(`How fast the current runs: ${SPEEDS.join(', ')}. 1x crosses 1 line in 1.4 s, 2x is the cap (faster is a blur) and 0.5x is for watching a dense map. Omit for ${CURRENT_DEFAULT.speed}x.`),
           amount: z.union(AMOUNTS.map((n) => z.literal(n))).optional().describe(`How many small dots the WHOLE diagram carries: ${AMOUNTS.join(', ')}. A total, not a count per line, so it reads the same on a 6 line flow and a 50 line map. Omit for ${CURRENT_DEFAULT.amount}.`),
         }).optional().describe('The flowing current: its speed and how many small dots it carries. PER DIAGRAM - the owner sets it by clicking the Start here pill, and it travels with this diagram into its SVG and GIF exports. Both keys are presets; anything else is refused.'),
+        sizing: z.enum(SIZINGS).optional().describe('How big the cards draw, for the WHOLE diagram (canvas and exports): "match" every card the default square, "auto" 10% bigger per line in or out past the first (up to 1.5x), "custom" the hand sizes in each node `size`. Omit to leave it; a row without it reads as custom when any node has a size, else match.'),
       }).optional().describe('How the diagram opens, saved with it. Only the keys you send change; the owner\'s lanes and hand-placed Start pill are kept. Use it to ship a diagram already readable instead of leaving the reader to find the Steps button.'),
       lanes: z.array(z.object({
         id: z.string().regex(/^[\w-]{1,40}$/), title: z.string().max(40),
@@ -468,12 +470,13 @@ server.registerTool(
       if (view?.panels) patch.panels = view.panels
       if (view?.badge) patch.badge = view.badge
       if (view?.current) patch.current = { ...CURRENT_DEFAULT, ...view.current }
+      if (view?.sizing) patch.sizing = view.sizing
       if (lanes || view) {
         await db.query(
           `UPDATE flows SET view_state =
              (COALESCE(view_state, '{}'::jsonb) - ($4::text[])) || $2::jsonb
            WHERE id = $1 AND user_id = $3 AND deleted_at IS NULL`,
-          [id, JSON.stringify(patch), owner(), [...(lanes ? ['lanes'] : []), ...(view?.panels ? ['panels'] : []), ...(view?.badge ? ['badge'] : []), ...(view?.current ? ['current'] : [])]],
+          [id, JSON.stringify(patch), owner(), [...(lanes ? ['lanes'] : []), ...(view?.panels ? ['panels'] : []), ...(view?.badge ? ['badge'] : []), ...(view?.current ? ['current'] : []), ...(view?.sizing ? ['sizing'] : [])]],
         )
       }
       return ok({
