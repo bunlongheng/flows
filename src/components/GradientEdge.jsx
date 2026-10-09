@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react'
+import { useState, useEffect, useSyncExternalStore } from 'react'
 import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, useStore } from '@xyflow/react'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteEditContext'
 import { subscribe, currentPhase, motionAllowed, dotAt, ambientAt } from '../flowClock'
@@ -88,7 +88,7 @@ function takenBefore(id, nodes, edges) {
     const cards = nodes.filter(n => n.type === 'awsNode' && n.measured?.width && n.position)
     const nodeRects = cards.map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
     const gaps = laneGaps(nodes.filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height })))
-    const before = new Map(), taken = [], badgeAt = new Map(), badges = []
+    const before = new Map(), taken = [], badgeAt = new Map(), badges = [], jobs = []
     for (const e of edges) {
       before.set(e.id, [...taken])
       const sourceNode = nodeOf(e.source), targetNode = nodeOf(e.target)
@@ -102,8 +102,13 @@ function takenBefore(id, nodes, edges) {
       })
       taken.push(...(r.legs || []))
       if (r.hideLabel || !(tagText(e.label, e.data?.description) || e.data?.step != null)) continue
+      jobs.push({ e, r, hand: typeof e.data?.labelT === 'number' })
+    }
+    // The owner's hand-slid badges first, so an auto badge clears all of them
+    // (render-svg.js places in the same order).
+    for (const { e, r, hand } of [...jobs.filter(j => j.hand), ...jobs.filter(j => !j.hand)]) {
       const box = badgeBox(tagText(e.label, e.data?.description), true)
-      const at = typeof e.data?.labelT === 'number'
+      const at = hand
         ? pointAlongPath(r.path, Math.min(T_MAX, Math.max(T_MIN, e.data.labelT))) || { x: r.labelX, y: r.labelY }
         : clearBadge(r.path, { x: r.labelX, y: r.labelY }, box, r.labelOff, badges)
       badgeAt.set(e.id, at)
@@ -298,15 +303,9 @@ export function GradientEdge({
   const ax = onPath ? onPath.x : auto ? auto.x : labelX
   const ay = onPath ? onPath.y : auto ? auto.y : labelY
   // A paired line's badge hangs off the line on a short leader, on the pair's
-  // outside. The shift needs the badge's real box, read back after it paints.
-  const badgeRef = useRef(null)
-  const [box, setBox] = useState({ w: 84, h: 22 })
-  useLayoutEffect(() => {
-    const el = badgeRef.current
-    if (!el || !labelOff) return
-    const w = el.offsetWidth, h = el.offsetHeight
-    if (w && h && (w !== box.w || h !== box.h)) setBox({ w, h })
-  })
+  // outside. The shift uses the same estimated box as the placement pass and
+  // render-svg.js, so the canvas and the export put every badge in 1 spot.
+  const box = badgeBox(tag, true)
   const { dx, dy } = badgeShift(labelOff, box.w, box.h, onPath ? 0 : auto?.lead)
   const bx = ax + dx
   const by = ay + dy
@@ -352,7 +351,6 @@ export function GradientEdge({
         <EdgeLabelRenderer>
           {(tag || hasStep) && (
             <div
-              ref={badgeRef}
               className={`sd-edge-badge nodrag nopan${movable ? ' is-movable' : ''}${dragT != null ? ' is-dragging' : ''}`}
               onPointerDown={startDrag}
               onDoubleClickCapture={movable || editable ? startEdit : undefined}

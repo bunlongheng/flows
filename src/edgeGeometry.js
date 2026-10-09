@@ -706,7 +706,15 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
         clear = clear || cand
         if (!onTaken(cand, taken)) { pts = cand; break }
       }
-      // Every clear lane already holds a line: try going round, else share.
+      // Every clear lane already holds a line: try a turn close to either own
+      // face, half a track at a time, then going round, else share.
+      if (!pts && clear) {
+        const near = axis === 'x' ? [sx, tx] : [sy, ty]
+        for (let j = 1; j <= 12 && !pts; j++) for (const f of near) for (const c of [f - j * TRACK_SEP / 2, f + j * TRACK_SEP / 2]) {
+          const cand = routePoints(S, T, sHoriz, tHoriz, c)
+          if (!pts && clearPolyline(cand, guard) && !onTaken(cand, taken)) pts = cand
+        }
+      }
       if (!pts && clear) pts = detour(sRect, tRect, guard, axis === 'y', slotS, slotT, taken) || clear
       if (!pts) {
         // Nothing clear on these faces - go over the top (or round the side).
@@ -878,7 +886,7 @@ const BADGE_GAP = 4
 export function badgeBox(tag, step) {
   let w = 0
   for (const ch of String(tag || '')) w += ch === ' ' ? 0.28 : /[il.,:;'|!I[\]()jft]/.test(ch) ? 0.3 : /[mwMW@%]/.test(ch) ? 0.9 : /[A-Z]/.test(ch) ? 0.68 : 0.58
-  return { w: 16 + w * 8.5 * 1.06 + (step ? 20 : 0), h: 18 }
+  return { w: 16 + w * 8.5 * 1.16 + (step ? 20 : 0), h: 18 } // 10% over the renderer width: the browser draws a touch wider
 }
 export function clearBadge(path, at, box, off, placed) {
   const { dx, dy } = badgeShift(off, box.w, box.h)
