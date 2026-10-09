@@ -3,6 +3,7 @@ import {
   subscribe, beginCapture, stepCapture, endCapture,
   motionAllowed, capturePeriodMs, setSteps, stepAt, dotAt, glowAt, beatsOf, beatCount,
   isPlaying, setPlaying, isFlowing, subscribeFlowing,
+  ambientAt, AMBIENT_DOTS,
 } from "../../src/flowClock.js";
 
 // The clock exists so a GIF export can show motion. html-to-image serialises the
@@ -93,6 +94,17 @@ describe("flowClock", () => {
     expect(stepAt(1, 4).index).toBe(0);
     expect(stepAt(-0.1, 4).index).toBe(3);
     expect(stepAt(0.5, 0).index).toBe(0); // a diagram with no lines still answers
+  });
+
+  // The ambient current: every line carries its small dots the whole time,
+  // under the 1 big step dot, and a cycle holds whole crossings so a GIF loops.
+  it("keeps small dots on every line, staggered by line, and loops with the cycle", () => {
+    for (const i of [0, 1, 2, 3]) expect(ambientAt(0.3, 4, i)).toHaveLength(AMBIENT_DOTS);
+    const a = ambientAt(0.3, 4, 1);
+    expect(Math.abs(a[0] - a[1])).toBeCloseTo(0.5, 5);
+    expect(Math.abs(ambientAt(0.3, 4, 0)[0] - a[0])).toBeGreaterThan(0.1);
+    expect(ambientAt(1, 4, 2)[0]).toBeCloseTo(ambientAt(0, 4, 2)[0], 5);
+    for (const x of ambientAt(0.77, 4, 3)) { expect(x).toBeGreaterThanOrEqual(0); expect(x).toBeLessThan(1); }
   });
 
   it("puts exactly 1 dot on the canvas at a time", () => {

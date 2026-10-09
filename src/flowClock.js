@@ -171,6 +171,24 @@ export function stepAt(phase, count) {
 }
 
 /**
+ * The small ambient current under the big step dot: every line carries
+ * AMBIENT_DOTS small dots the whole time, each crossing in 1 step (STEP_MS),
+ * staggered by line so the diagram reads as many things happening at once
+ * while the 1 big dot still says which step this is (owner 2026-10-09: "keep
+ * the big one, add smaller ones, multiple dots like before"). A cycle holds
+ * exactly `beatCount` crossings, so a GIF loops without a jump. Returns the
+ * positions (0..1) along line `index`.
+ */
+export const AMBIENT_DOTS = 2
+export function ambientAt(phase, edges, index) {
+  const list = typeof edges === 'number' ? Array.from({ length: edges }, () => ({})) : (edges || [])
+  const n = Math.max(1, beatCount(list))
+  const p = ((phase % 1) + 1) % 1
+  const base = (p * n + index * 0.37) % 1
+  return Array.from({ length: AMBIENT_DOTS }, (_, k) => (base + k / AMBIENT_DOTS) % 1)
+}
+
+/**
  * Where line `index` draws its dot, or null while the current is elsewhere.
  * `edges` is the ordered list (a bare count still works for a diagram with no
  * async lines): every line on the live beat carries a dot at the same spot.

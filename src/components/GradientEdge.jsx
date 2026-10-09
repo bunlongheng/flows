@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react'
 import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, useStore } from '@xyflow/react'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteEditContext'
-import { subscribe, currentPhase, motionAllowed, dotAt } from '../flowClock'
+import { subscribe, currentPhase, motionAllowed, dotAt, ambientAt } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
 import { routeEdge, badgeShift, bendPoint, bendFor, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
@@ -381,10 +381,12 @@ export function SunsetX({ size = 16 }) {
 // the 1 thing moving, so it has to be the 1 thing you notice.
 // Whether this line is the one carrying the current right now, and how far
 // along it the dot has got. null the rest of the cycle.
-const dotFor = (order, edgeId, p) => {
+const dotsFor = (order, edgeId, p) => {
   const list = order ? order.split('\u0000').map(s => { const a = s.endsWith('\u0001'); return { id: a ? s.slice(0, -1) : s, async: a } }) : []
   const i = list.findIndex(e => e.id === edgeId)
-  return i < 0 ? null : dotAt(p, list, i)
+  // t: the big step dot, null while the current is on another line.
+  // small: the ambient dots this line carries the whole time.
+  return { t: i < 0 ? null : dotAt(p, list, i), small: i < 0 ? [] : ambientAt(p, list, i) }
 }
 
 // One beat at a time: the cycle gives each beat its own slot, in the order the
@@ -396,23 +398,37 @@ function FlowDot({ edgeId, path, color }) {
   // line. Pulled out as a stable string because the edges array itself is
   // rebuilt every frame.
   const order = useStore(s => s.edges.map(e => e.id + (e.data?.async ? '\u0001' : '')).join('\u0000'))
-  const [t, setT] = useState(() => dotFor(order, edgeId, currentPhase()))
+  const [{ t, small }, setDots] = useState(() => dotsFor(order, edgeId, currentPhase()))
 
   useEffect(() => {
     if (!motionAllowed()) return
-    return subscribe(p => setT(dotFor(order, edgeId, p)))
+    return subscribe(p => setDots(dotsFor(order, edgeId, p)))
   }, [order, edgeId])
 
-  // Ease in and out of the endpoints so the dot appears to leave the source box
+  // Ease in and out of the endpoints so a dot appears to leave the source box
   // and arrive at the target, rather than popping through both of them.
+  const fadeAt = x => Math.min(1, Math.min(x, 1 - x) / 0.12)
   const pt = t == null ? null : pointOnPath(path, t)
-  if (!pt) return null
-  const fade = Math.min(1, Math.min(t, 1 - t) / 0.12)
 
   return (
-    <g className="sd-flow-dot" pointerEvents="none" opacity={fade}>
-      <circle cx={pt.x} cy={pt.y} r={16} fill={color} opacity={0.25} />
-      <circle cx={pt.x} cy={pt.y} r={7} fill={color} stroke="#fff" strokeWidth={2} />
+    <g className="sd-flow-dot" pointerEvents="none">
+      {/* The ambient current: small and soft, the look every line had before
+          the single step dot, under it so the big one always reads on top. */}
+      {small.map((a, k) => {
+        const sp = pointOnPath(path, a)
+        return sp && (
+          <g key={k} opacity={fadeAt(a)}>
+            <circle cx={sp.x} cy={sp.y} r={5} fill={color} opacity={0.18} />
+            <circle cx={sp.x} cy={sp.y} r={2.4} fill={color} />
+          </g>
+        )
+      })}
+      {pt && (
+        <g opacity={fadeAt(t)}>
+          <circle cx={pt.x} cy={pt.y} r={16} fill={color} opacity={0.25} />
+          <circle cx={pt.x} cy={pt.y} r={7} fill={color} stroke="#fff" strokeWidth={2} />
+        </g>
+      )}
     </g>
   )
 }
