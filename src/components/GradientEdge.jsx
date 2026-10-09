@@ -70,6 +70,42 @@ function nearestTOnPath(d, x, y) {
   } catch { return null }
 }
 
+// Middle legs of every earlier line, in edges order, so this line never lies
+// on one (render-svg.js accumulates the same list). Routed once per frame of
+// node, edge and note-height state, then shared by every edge.
+let takenCache = { nodes: null, edges: null, notes: -1, before: new Map() }
+function takenBefore(id, nodes, edges) {
+  const notes = noteHeightsVersion()
+  if (takenCache.nodes !== nodes || takenCache.edges !== edges || takenCache.notes !== notes) {
+    const byId = new Map(nodes.map(n => [n.id, n]))
+    const nodeOf = nid => {
+      const n = byId.get(nid)
+      return n?.measured?.width
+        ? { measured: n.measured, internals: { positionAbsolute: n.position }, lane: n.type === 'lane' }
+        : null
+    }
+    const cards = nodes.filter(n => n.type === 'awsNode' && n.measured?.width && n.position)
+    const nodeRects = cards.map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
+    const gaps = laneGaps(nodes.filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height })))
+    const before = new Map(), taken = []
+    for (const e of edges) {
+      before.set(e.id, [...taken])
+      const sourceNode = nodeOf(e.source), targetNode = nodeOf(e.target)
+      if (!sourceNode || !targetNode) continue
+      const obstacles = cards.filter(n => n.id !== e.source && n.id !== e.target)
+        .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
+      const r = routeEdge({
+        taken: [...taken], id: e.id, source: e.source, target: e.target, sourceNode, targetNode, nodeOf, edges, obstacles, nodeRects, gaps,
+        bend: e.data?.bend, endS: e.data?.ends?.s, endT: e.data?.ends?.t, arrow: e.data?.style?.arrow, label: e.label, description: e.data?.description,
+        fallback: { sx: 0, sy: 0, tx: 0, ty: 0 },
+      })
+      taken.push(...(r.legs || []))
+    }
+    takenCache = { nodes, edges, notes, before }
+  }
+  return takenCache.before.get(id) || []
+}
+
 export function GradientEdge({
   id, source, target, sourceX, sourceY, targetX, targetY, markerEnd, data, label, selected,
 }) {
@@ -120,6 +156,7 @@ export function GradientEdge({
   const laneRects = getNodes().filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height }))
   const gaps = laneGaps(laneRects)
   const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, labelX, labelY, labelOff } = routeEdge({
+    taken: takenBefore(id, getNodes(), allEdges),
     id, source, target, sourceNode, targetNode, nodeOf, edges: allEdges, obstacles, nodeRects, gaps,
     bend, endS, endT, arrow: data?.style?.arrow, label, description: data?.description,
     fallback: { sx: sourceX, sy: sourceY, tx: targetX, ty: targetY },

@@ -135,3 +135,26 @@ describe("routeEdge - a pair of lines between the same 2 cards", () => {
     expect(badgeShift(null, 80, 20)).toEqual({ dx: 0, dy: 0 });
   });
 });
+
+describe("no 2 lines on 1 track", () => {
+  // 2 lines crossing round 1 card: unreserved, both pick the same vertical lane
+  // and draw on top of each other for its whole length.
+  const all = { a1: node("a1", 0, 0), a2: node("a2", 0, 600), b1: node("b1", 800, 600), b2: node("b2", 800, 0), w: node("w", 400, 300) };
+  const box = (n) => ({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, w: 180, h: 180 });
+  const pairs = [["a1", "b1"], ["a2", "b2"]];
+  const edges = pairs.map(([s, t], i) => ({ id: `e${i}`, source: s, target: t }));
+  const go = (i, taken) => {
+    const [s, t] = pairs[i];
+    return routeEdge({
+      id: `e${i}`, source: s, target: t, sourceNode: all[s], targetNode: all[t], nodeOf: (k) => all[k], edges, taken,
+      obstacles: Object.values(all).filter((n) => n.id !== s && n.id !== t).map(box), nodeRects: Object.values(all).map(box),
+    });
+  };
+  const gap = (A, B) => Math.min(...B.flatMap((l) => A.filter((t) => t.h === l.h && Math.min(t.hi, l.hi) - Math.max(t.lo, l.lo) > 14)
+    .map((t) => Math.abs(t.c - l.c))));
+  it("keeps the 2nd line off the legs the 1st reserved", () => {
+    const first = go(0, []);
+    expect(gap(first.legs, go(1, []).legs)).toBe(0);
+    expect(gap(first.legs, go(1, first.legs).legs)).toBeGreaterThanOrEqual(8);
+  });
+});

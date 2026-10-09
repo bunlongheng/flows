@@ -241,6 +241,37 @@ const clearPolyline = (pts, rects) => {
   return true
 }
 
+// Lines never lie on top of each other. Every straight leg of a routed line,
+// stubs included, is reserved in `taken`, and a later line whose leg would run
+// within TRACK_SEP of a reserved one, alongside it, takes another lane instead.
+// Trunks share their stem on purpose and route elsewhere, reserving nothing.
+const TRACK_SEP = 14
+export function routeLegs(pts) {
+  const out = []
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i]
+    if (a.y === b.y && a.x !== b.x) out.push({ h: true, c: a.y, lo: Math.min(a.x, b.x), hi: Math.max(a.x, b.x) })
+    else if (a.x === b.x && a.y !== b.y) out.push({ h: false, c: a.x, lo: Math.min(a.y, b.y), hi: Math.max(a.y, b.y) })
+  }
+  return out
+}
+// The straight legs of a drawn path string, for routes that never were a polyline
+// (a trunk, a straight run, a plain elbow). Rounded corners are skipped.
+function pathLegs(d) {
+  const pts = []
+  for (const m of d.matchAll(/([MLQC])([^MLQC]+)/g)) {
+    const n = m[2].match(/-?[\d.]+/g).map(Number)
+    if (m[1] !== 'L') pts.push(null)
+    pts.push({ x: n[n.length - 2], y: n[n.length - 1] })
+  }
+  const out = []
+  for (let i = 1; i < pts.length; i++) if (pts[i - 1] && pts[i]) out.push(...routeLegs([pts[i - 1], pts[i]]))
+  return out
+}
+// `g` is the line's group: the members of 1 trunk share theirs on purpose.
+const onTaken = (pts, taken, g) => taken.length > 0 && routeLegs(pts).some(l => taken.some(t => t.g !== g &&
+  t.h === l.h && Math.abs(t.c - l.c) < TRACK_SEP && Math.min(t.hi, l.hi) - Math.max(t.lo, l.lo) > TRACK_SEP))
+
 // Lanes to try for the middle of the route: the natural midpoint first, then
 // just clear of each box's edges, nearest first.
 //
@@ -248,8 +279,11 @@ const clearPolyline = (pts, rects) => {
 // and ends on their borders - but the MIDDLE of the route must still not sit
 // inside them, or the line doubles back and crosses the box it just left. That
 // is invisible to the obstacle test, which excludes both endpoints by design.
-const lanes = (mid, rects, axis, own = []) => {
+const lanes = (mid, rects, axis, own = [], stagger = false) => {
   const out = [mid]
+  // With tracks reserved, tracks just beside the middle give a line somewhere
+  // close to go when the middle is taken.
+  if (stagger) for (let k = 1; k <= 8; k++) out.push(mid - k * TRACK_SEP * 1.5, mid + k * TRACK_SEP * 1.5)
   for (const r of rects) {
     if (axis === 'x') { out.push(r.x - LANE, r.x + r.w + LANE) }
     else { out.push(r.y - LANE, r.y + r.h + LANE) }
@@ -278,7 +312,7 @@ const lanes = (mid, rects, axis, own = []) => {
 // that row and passes through whatever sits between them. The way out is to
 // leave through the TOP or BOTTOM face instead and travel in a clear lane above
 // or below the row. Mirrored for two boxes sharing a column.
-function detour(sRect, tRect, rects, vertical, slotS, slotT) {
+function detour(sRect, tRect, rects, vertical, slotS, slotT, taken = []) {
   // The nearest clear lane is the right answer for ONE edge. When several
   // detour to the same face they all pick it, arrive at their own slots, and
   // then run the whole way down the same line - which is the overlap this is
@@ -299,11 +333,11 @@ function detour(sRect, tRect, rects, vertical, slotS, slotT) {
       : { x: pt.at, y: before ? tRect.y : tRect.y + tRect.h }
     const mid = vertical ? (s.x + t.x) / 2 : (s.y + t.y) / 2
     let skip = Math.max(ps.rank, pt.rank)
-    for (const c of lanes(mid, rects, vertical ? 'x' : 'y', [sRect, tRect])) {
+    for (const c of lanes(mid, rects, vertical ? 'x' : 'y', [sRect, tRect], taken.length > 0)) {
       const pts = vertical
         ? [s, { x: c, y: s.y }, { x: c, y: t.y }, t]
         : [s, { x: s.x, y: c }, { x: t.x, y: c }, t]
-      if (!clearPolyline(pts, rects)) continue
+      if (!clearPolyline(pts, rects) || onTaken(pts, taken)) continue
       // Every clear lane is a valid route, so the last one seen is the answer
       // if this edge's rank runs past the end of the list.
       fallback = pts
@@ -438,7 +472,7 @@ function fanAt(end, nodeId, node, id, tag, side, edges, nodeOf) {
 // `drawPath` is what this member strokes: the leader strokes everything, a
 // fan-in follower stops at the junction, a fan-out follower starts there. Null
 // when a card sits on the way, and the member then routes on its own.
-function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacles, gaps }) {
+function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacles, gaps, taken = [], g }) {
   const vertical = side === Position.Top || side === Position.Bottom
   const into = fan.end === 't'
   // The far ends' slots, so the bus sits halfway between the shared face and them.
@@ -454,8 +488,13 @@ function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacl
     if (mid !== undefined) bus = mid
   }
   const S = { x: sx, y: sy }, T = { x: tx, y: ty }
-  const Cs = vertical ? { x: sx, y: bus } : { x: bus, y: sy } // where the source's stem meets the bus
-  const Ct = vertical ? { x: tx, y: bus } : { x: bus, y: ty } // where the target's stem meets the bus
+  const at = b => vertical ? [{ x: sx, y: b }, { x: tx, y: b }] : [{ x: b, y: sy }, { x: b, y: ty }]
+  // Another line already on this bus: step off it, 1 track at a time.
+  for (const b of [0, 1, -1, 2, -2, 3, -3].map(k => bus + k * TRACK_SEP)) {
+    const [cs, ct] = at(b)
+    if (clearPolyline([S, cs, ct, T], obstacles) && !onTaken([S, cs, ct, T], taken, g)) { bus = b; break }
+  }
+  const [Cs, Ct] = at(bus) // where the source's and the target's stems meet the bus
   if (!clearPolyline([S, Cs, Ct, T], obstacles)) return null
   const straight = vertical ? sx === tx : sy === ty
   const leader = fan.leader === id
@@ -476,7 +515,7 @@ function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacl
   return { path, drawPath, labelX, labelYRaw, hideArrow: into && !leader }
 }
 
-export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, edges, obstacles, nodeRects, gaps = null, bend, endS, endT, arrow, label, description, fallback = {} }) {
+export function routeEdge({ taken = [], id, source, target, sourceNode, targetNode, nodeOf, edges, obstacles, nodeRects, gaps = null, bend, endS, endT, arrow, label, description, fallback = {} }) {
   let sx = fallback.sx ?? 0, sy = fallback.sy ?? 0, tx = fallback.tx ?? 0, ty = fallback.ty ?? 0
   let sSide = Position.Right, tSide = Position.Left
   let aligned = false
@@ -558,7 +597,7 @@ export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, 
   let routedStraight = false, laneShift = 0, laneAlongY = false
   let drawPath = null, hideLabel = false, hideArrow = false
   const trunk = fan && !parallel ? trunkPath({
-    fan, id, sx, sy, tx, ty, edges, nodeOf, obstacles, gaps,
+    fan, id, sx, sy, tx, ty, edges, nodeOf, obstacles, gaps, taken, g: `fan:${fan.end}:${fan.leader}`,
     side: fan.end === 't' ? tSide : sSide, node: fan.end === 't' ? targetNode : sourceNode,
   }) : null
   if (trunk) {
@@ -660,14 +699,20 @@ export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, 
     let pts = null
     if (axis) {
       const mid = axis === 'x' ? (sx + tx) / 2 : (sy + ty) / 2
-      for (const c of lanes(mid, obstacles, axis, [sRect, tRect])) {
+      let clear = null
+      for (const c of lanes(mid, obstacles, axis, [sRect, tRect], taken.length > 0)) {
         const cand = routePoints(S, T, sHoriz, tHoriz, c)
-        if (clearPolyline(cand, guard)) { pts = cand; break }
+        if (!clearPolyline(cand, guard)) continue
+        clear = clear || cand
+        if (!onTaken(cand, taken)) { pts = cand; break }
       }
+      // Every clear lane already holds a line: try going round, else share.
+      if (!pts && clear) pts = detour(sRect, tRect, guard, axis === 'y', slotS, slotT, taken) || clear
       if (!pts) {
         // Nothing clear on these faces - go over the top (or round the side).
-        pts = detour(sRect, tRect, guard, axis === 'y', slotS, slotT)
-          || detour(sRect, tRect, guard, axis !== 'y', slotS, slotT)
+        pts = detour(sRect, tRect, guard, axis === 'y', slotS, slotT, taken)
+          || detour(sRect, tRect, guard, axis !== 'y', slotS, slotT, taken)
+          || detour(sRect, tRect, guard, axis === 'y', slotS, slotT)
           || routePoints(S, T, sHoriz, tHoriz, mid)
       }
     } else {
@@ -741,7 +786,11 @@ export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, 
       break
     }
   }
-  return { path, drawPath: drawPath || path, hideLabel, hideArrow, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelYRaw, labelOff }
+  // Every line reserves the track it draws on, for the lines after it. A
+  // hand-made line (bend, straight, curved) is the owner's call: it reserves nothing.
+  const g = fan ? `fan:${fan.end}:${fan.leader}` : id
+  const legs = bend || arrow === 'straight' || arrow === 'curved' ? [] : pathLegs(drawPath || path).map(l => ({ ...l, g }))
+  return { legs, path, drawPath: drawPath || path, hideLabel, hideArrow, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelYRaw, labelOff }
 }
 
 // Where a paired line's badge sits: `off` is routeEdge's unit direction away

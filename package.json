@@ -14,6 +14,7 @@
     "migrate": "node db/migrate.mjs",
     "prebuild": "node scripts/gen-icon-manifest.mjs && node scripts/gen-font-data.mjs",
     "start": "next start --port 5174 -H 127.0.0.1",
+    "check:overlaps": "node scripts/check-overlaps.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test"
