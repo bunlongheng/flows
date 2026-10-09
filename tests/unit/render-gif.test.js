@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { renderDiagramGif, over } from "../../lib/render-gif.js";
 import { renderDiagramSvg } from "../../lib/render-svg.js";
-import { STEP_MS } from "../../src/flowClock.js";
+import { STEP_MS, AMBIENT_DOTS } from "../../src/flowClock.js";
 
 // The server-side GIF is what an agent or a README gets from ?format=gif. It
 // exists because the in-app export needs a DOM, html-to-image and an owner
@@ -44,10 +44,10 @@ describe("renderDiagramSvg dotPhase", () => {
   it("draws no dot unless a phase is asked for", () => {
     const plain = renderDiagramSvg(NODES, EDGES);
     const dotted = renderDiagramSvg(NODES, EDGES, { dotPhase: 0.4 });
-    // Two circles (glow + core) for the ONE line carrying the current, on top
-    // of whatever the plain frame has - not 2 per edge.
+    // Two circles (glow + core) for the ONE line carrying the big current,
+    // plus the small ambient dots (halo + core each) every line carries.
     const n = (s) => (s.match(/<circle/g) || []).length;
-    expect(n(dotted) - n(plain)).toBe(2);
+    expect(n(dotted) - n(plain)).toBe(2 + EDGES.length * AMBIENT_DOTS * 2);
   });
 
   it("moves the dot as the phase advances", () => {
