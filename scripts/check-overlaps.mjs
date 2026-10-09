@@ -23,10 +23,10 @@ await pool.end();
 
 let bad = 0;
 for (const r of rows) {
-  const svg = renderDiagramSvg(r.nodes || [], r.edges || [], { viewState: r.view_state });
+  const svg = renderDiagramSvg(r.nodes || [], r.edges || [], { view: r.view_state });
   const hits = findOverlaps(svg);
   // Tags with the Steps chips on, the widest a badge gets.
-  const tags = findTagOverlaps(renderDiagramSvg(r.nodes || [], r.edges || [], { viewState: { ...(r.view_state || {}), panels: [...(r.view_state?.panels || []), "steps"] } }));
+  const tags = findTagOverlaps(renderDiagramSvg(r.nodes || [], r.edges || [], { view: { ...(r.view_state || {}), panels: [...(r.view_state?.panels || []), "steps"] } }));
   if (!hits.length && !tags.length) continue;
   bad++;
   console.log(`${r.id}  ${r.title}`);

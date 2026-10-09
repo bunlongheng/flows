@@ -706,7 +706,15 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
         clear = clear || cand
         if (!onTaken(cand, taken)) { pts = cand; break }
       }
-      // Every clear lane already holds a line: try going round, else share.
+      // Every clear lane already holds a line: try a turn close to either own
+      // face, half a track at a time, then going round, else share.
+      if (!pts && clear) {
+        const near = axis === 'x' ? [sx, tx] : [sy, ty]
+        for (let j = 1; j <= 12 && !pts; j++) for (const f of near) for (const c of [f - j * TRACK_SEP / 2, f + j * TRACK_SEP / 2]) {
+          const cand = routePoints(S, T, sHoriz, tHoriz, c)
+          if (!pts && clearPolyline(cand, guard) && !onTaken(cand, taken)) pts = cand
+        }
+      }
       if (!pts && clear) pts = detour(sRect, tRect, guard, axis === 'y', slotS, slotT, taken) || clear
       if (!pts) {
         // Nothing clear on these faces - go over the top (or round the side).
