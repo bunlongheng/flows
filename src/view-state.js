@@ -35,12 +35,18 @@ export const cleanStart = (v) =>
 
 // The current: how fast it runs and how many small dots the WHOLE diagram
 // carries. Presets only, because the panel offers presets (owner 2026-10-09:
-// "control speed of current 1 2 3 4 5 x, control amount 5 10 20 50 100").
+// "control speed of current, control amount, control currents you know").
+//
+// Speed stops at 2x and goes DOWN to half, in half steps (owner, same day:
+// "speed 2x max, pls do in between .5 1.5"): past 2x the dots are a blur and
+// the diagram stops being readable, while 0.5x is the setting for watching a
+// dense map. Amount runs to 500 for a big map that wants to look busy.
+//
 // Amount is a total, not a per-line count: the same number reads the same on a
 // 6 line flow and on a 50 line map, which is the whole point - 1 dot a line put
 // 41 of them on BC Integrations and the owner called it "a bit too much".
-export const SPEEDS = [1, 2, 3, 4, 5];
-export const AMOUNTS = [5, 10, 20, 50, 100];
+export const SPEEDS = [0.5, 1, 1.5, 2];
+export const AMOUNTS = [5, 10, 20, 50, 100, 200, 500];
 export const CURRENT_DEFAULT = { speed: 1, amount: 10 };
 
 /** The current's settings from a view_state, defaults filled in. Always both keys. */

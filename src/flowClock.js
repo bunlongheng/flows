@@ -10,7 +10,7 @@
 // A rAF loop per edge would mean 20+ loops on a busy diagram, all waking the
 // compositor independently. Instead there is one loop here that every edge
 // subscribes to, and it only runs while something is listening.
-import { CURRENT_DEFAULT } from './view-state.js'
+import { CURRENT_DEFAULT, SPEEDS } from './view-state.js'
 
 
 // One step of the current: how long 1 dot takes to cross 1 line. A diagram is
@@ -73,12 +73,13 @@ export function setSteps(n) {
 /**
  * The owner's current settings, from the Start pill's panel: `speed` is the
  * multiplier on the whole clock (the big step dot and the ambient drift alike,
- * so 5x is the same walk 5 times over), `amount` the TOTAL number of small
- * dots spread across the diagram. Both are validated presets (src/view-state.js).
+ * so 2x is the same walk twice over and 0.5x is it at half pace), `amount` the
+ * TOTAL number of small dots spread across the diagram. Both are validated
+ * presets (src/view-state.js), and anything else is clamped to their range.
  */
 export function setCurrent(c) {
   const a = Number(c?.amount)
-  speed = Math.min(5, Math.max(1, Number(c?.speed) || 1))
+  speed = Math.min(Math.max(...SPEEDS), Math.max(Math.min(...SPEEDS), Number(c?.speed) || 1))
   amount = Number.isFinite(a) ? Math.max(0, a) : AMBIENT_AMOUNT
   periodMs = steps * STEP_MS / speed
 }
