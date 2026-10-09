@@ -3,6 +3,7 @@ import * as flowClock from './flowClock'
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react'
 import diagramData from './data/diagram.json'
 import SignInScreen from './components/SignInScreen'
+import ClosedFlowScreen from './components/ClosedFlowScreen'
 import { IndexView } from './views/IndexView'
 import { DetailView } from './views/DetailView'
 import { layoutElements } from './layout'
@@ -262,6 +263,7 @@ export default function App() {
   // Work vs personal. Twenty diagrams in one list meant hunting for the one that
   // matters; this splits the day job from stock bots and practice designs.
   const [loadingId, setLoadingId] = useState(false)
+  // false, an HTTP status from the flow fetch, or 'network' when nothing answered.
   const [loadError, setLoadError] = useState(false)
   const [listError, setListError] = useState(false) // gallery fetch failed
   const [user, setUser] = useState(null)
@@ -1076,10 +1078,7 @@ export default function App() {
         flowClock.setPlaying(true)
         setLoadingId(false)
       })
-      .catch(() => {
-        setLoadError(true)
-        setLoadingId(false)
-      })
+      .catch(failedLoad)
     // Same: a one-shot load from the URL, not a subscription to openDiagram.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -1105,7 +1104,7 @@ export default function App() {
         flowClock.setPlaying(true) // same as ?id=: a shared link plays itself
         setLoadingId(false)
       })
-      .catch(() => { setLoadError(true); setLoadingId(false) })
+      .catch(failedLoad)
     // Resolves the URL once on mount. openDiagram is stable for that purpose and
     // listing it would re-run the fetch on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1124,7 +1123,7 @@ export default function App() {
       fetch(`/api/flows/${encodeURIComponent(key)}`)
         .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then(row => { openDiagram(rowToDiagram(row)); setLoadingId(false) })
-        .catch(() => { setLoadError(true); setLoadingId(false) })
+        .catch(failedLoad)
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
@@ -1213,6 +1212,14 @@ export default function App() {
     return () => clearTimeout(viewSaveTimer.current)
   }, [view, canAI, activeDiagram, panelKey, badgeMode])
 
+  // The flow fetches reject with Error('HTTP <status>'); anything else is the
+  // network, and the closed-flow page tells the 2 apart.
+  function failedLoad(err) {
+    const m = /^HTTP (\d+)$/.exec(err?.message || '')
+    setLoadError(m ? Number(m[1]) : 'network')
+    setLoadingId(false)
+  }
+
   function backToGallery() {
     setLoadError(false)
     const url = new URL(window.location.href)
@@ -1275,20 +1282,8 @@ export default function App() {
 
   if (loadError) {
     return (
-      <div style={{
-        position: 'fixed', inset: 0, background: '#f4f5f7',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-      }}>
-        <div style={{ width: 48, height: 48, borderRadius: 12, background: '#e4e6e8', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-          <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#8a8d91" strokeWidth={1.5} strokeLinecap="round"><circle cx="12" cy="12" r="9"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
-        </div>
-        <p style={{ fontSize: 14, color: '#1c1e21', fontWeight: 600, margin: 0 }}>Design not found</p>
-        <p style={{ fontSize: 13, color: '#8a8d91', marginTop: 6, marginBottom: 20 }}>It may have been deleted or the link is invalid</p>
-        <button onClick={backToGallery} style={{ padding: '10px 20px', background: '#1c1e21', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
-          Back to gallery
-        </button>
-      </div>
+      <ClosedFlowScreen status={loadError} signedIn={Boolean(user) || IS_DEV}
+        flowId={new URLSearchParams(window.location.search).get('id')} onBack={backToGallery} />
     )
   }
 
