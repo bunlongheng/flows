@@ -1,5 +1,6 @@
 import { PANEL, PANEL_CAPTION, PANEL_CLOSE } from '../panel.js'
 import { SPEEDS, AMOUNTS, CURRENT_DEFAULT } from '../view-state.js'
+import { SIZINGS } from '../card-size.js'
 import { STEP_MS } from '../flowClock'
 
 // The current's own panel, opened by clicking the Start here pill (owner
@@ -48,7 +49,7 @@ function Row({ caption: title, values, value, format, onPick, hint: text }) {
   )
 }
 
-export function CurrentPanel({ value, onChange, onClose, pattern, description }) {
+export function CurrentPanel({ value, onChange, onClose, pattern, description, sizing, onSizing }) {
   const speed = value?.speed ?? CURRENT_DEFAULT.speed
   const amount = value?.amount ?? CURRENT_DEFAULT.amount
   // What the multiplier actually means on the clock, so the number is a time
@@ -94,7 +95,22 @@ export function CurrentPanel({ value, onChange, onClose, pattern, description })
         hint={`${amount} small dots spread over the whole diagram, however many lines it has. The 1 big dot always says which step is live.`}
       />
 
-      <div style={{ ...hint, marginTop: 0 }}>Press Play to watch it. Both settings belong to THIS diagram and are saved with it, so a picture or GIF export runs the same current.</div>
+      {onSizing && (
+        <Row
+          caption="Card size"
+          values={SIZINGS}
+          value={sizing}
+          format={v => v[0].toUpperCase() + v.slice(1)}
+          onPick={onSizing}
+          hint={{
+            match: 'Every card the same square, whatever you resized.',
+            auto: 'A card grows 10% for every line in or out past the first, up to 1.5x, so the busy ones read first.',
+            custom: 'The sizes you set by hand. Drag a selected card\'s corner to resize it.',
+          }[sizing]}
+        />
+      )}
+
+      <div style={{ ...hint, marginTop: 0 }}>Press Play to watch it. Every setting belongs to THIS diagram and is saved with it, so a picture or GIF export draws the same current and the same card sizes.</div>
     </aside>
   )
 }
