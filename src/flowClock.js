@@ -172,17 +172,20 @@ export function stepAt(phase, count) {
 
 /**
  * The small ambient current under the big step dot: every line carries
- * AMBIENT_DOTS small dots the whole time, each crossing in 1 step (STEP_MS),
- * staggered by line so the diagram reads as many things happening at once
- * while the 1 big dot still says which step this is (owner 2026-10-09: "keep
- * the big one, add smaller ones, multiple dots like before"). A cycle holds
- * exactly `beatCount` crossings, so a GIF loops without a jump. Returns the
- * positions (0..1) along line `index`.
+ * AMBIENT_DOTS small dots the whole time, staggered by line so the diagram
+ * reads as many things happening at once while the 1 big dot still says which
+ * step this is (owner 2026-10-09: "keep the big one, add smaller ones,
+ * multiple dots like before"). They drift: a small dot takes about
+ * AMBIENT_STEPS steps to cross a line, where the big one takes 1 (owner, same
+ * day: "the speed of the other current needs to be way slower"). A cycle still
+ * holds a whole number of crossings, so a GIF loops without a jump. Returns
+ * the positions (0..1) along line `index`.
  */
 export const AMBIENT_DOTS = 2
+export const AMBIENT_STEPS = 4
 export function ambientAt(phase, edges, index) {
   const list = typeof edges === 'number' ? Array.from({ length: edges }, () => ({})) : (edges || [])
-  const n = Math.max(1, beatCount(list))
+  const n = Math.max(1, Math.round(beatCount(list) / AMBIENT_STEPS))
   const p = ((phase % 1) + 1) % 1
   const base = (p * n + index * 0.37) % 1
   return Array.from({ length: AMBIENT_DOTS }, (_, k) => (base + k / AMBIENT_DOTS) % 1)
