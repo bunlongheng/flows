@@ -69,8 +69,19 @@ export function IndexView({
         @media (max-width: 1280px) { .sd-grid-demo { grid-template-columns: repeat(3, 1fr) !important; } }
         @media (max-width: 1024px) { .sd-grid-demo { grid-template-columns: repeat(2, 1fr) !important; } }
         @media (max-width: 480px) { .sd-grid-demo { grid-template-columns: 1fr !important; } }
+        /* Off the phone the tabs read in full; the short names only exist for it. */
+        .sd-tab-short { display: none; }
         @media (max-width: 640px) {
-          .sd-header { padding: 0 16px !important; }
+          /* The inline safe-area top was lost under this padding, so in the
+             home-screen app the status bar sat on the logo and the tabs. */
+          .sd-header { padding: env(safe-area-inset-top) 16px 0 !important; }
+          /* 390 px holds the logo, the search, 3 tabs and the avatar only when
+             the wordmark goes (the logo is the name) and the tabs read short. */
+          .sd-wordmark { display: none !important; }
+          .sd-search-wrap { min-width: 0; }
+          .sd-tabs button { padding: 6px 9px !important; font-size: 12px !important; }
+          .sd-tab-long { display: none; }
+          .sd-tab-short { display: inline; }
           /* The inner bar kept its own 32px, so the logo sat 48px in while the
              cards started at 16px. Same gutter as .sd-main now. */
           .sd-header-inner { padding: 0 !important; gap: 12px !important; }
@@ -110,7 +121,7 @@ export function IndexView({
         <div className="sd-header-inner" style={{ maxWidth: 1600, margin: '0 auto', padding: '0 32px', height: '100%', display: 'flex', alignItems: 'center', gap: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             <img className="sd-app-logo" src="/icon-96.png" width={28} height={28} alt="" style={{ borderRadius: 8 }} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#1c1e21', letterSpacing: '-0.01em' }}>Flows</span>
+            <span className="sd-wordmark" style={{ fontSize: 14, fontWeight: 700, color: '#1c1e21', letterSpacing: '-0.01em' }}>Flows</span>
             {isDemo && <span style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', background: '#eaf2ff', borderRadius: 999, padding: '3px 9px' }}>Demos</span>}
           </div>
 
@@ -133,8 +144,8 @@ export function IndexView({
               for a repo (README, PR, audit) so the daily list stays the owner's
               own work. Public /demo never shows it. */}
           {!isDemo && canAI && (
-            <div style={{ display: 'inline-flex', background: '#f0f1f3', borderRadius: 9, padding: 3, flexShrink: 0 }}>
-              {[['mine', 'My Diagrams'], ['linked', 'Linked'], ['demos', 'Demos']].map(([key, label]) => (
+            <div className="sd-tabs" style={{ display: 'inline-flex', background: '#f0f1f3', borderRadius: 9, padding: 3, flexShrink: 0 }}>
+              {[['mine', 'My Diagrams', 'Mine'], ['linked', 'Linked'], ['demos', 'Demos']].map(([key, label, short]) => (
                 <button key={key} onClick={() => setGalleryTab(key)}
                   style={{
                     padding: '6px 13px', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
@@ -143,7 +154,7 @@ export function IndexView({
                     color: galleryTab === key ? '#1c1e21' : '#8a8d91',
                     boxShadow: galleryTab === key ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
                     transition: 'background 0.15s, color 0.15s',
-                  }}>{label}</button>
+                  }}>{short ? <><span className="sd-tab-long">{label}</span><span className="sd-tab-short">{short}</span></> : label}</button>
               ))}
             </div>
           )}
