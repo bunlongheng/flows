@@ -36,7 +36,7 @@ export async function designMetadata(searchParams, path) {
   let rows = [];
   try {
     ({ rows } = await db.query(
-      `SELECT title, slug, description, pattern, nodes, EXTRACT(EPOCH FROM updated_at)::bigint AS v FROM flows WHERE ${name ? "slug = $1" : "id = $1::uuid"} AND is_public = true AND deleted_at IS NULL LIMIT 1`,
+      `SELECT id, title, slug, description, pattern, nodes, EXTRACT(EPOCH FROM updated_at)::bigint AS v FROM flows WHERE ${name ? "slug = $1" : "id = $1::uuid"} AND is_public = true AND deleted_at IS NULL LIMIT 1`,
       [name || id],
     ));
   } catch {
@@ -47,7 +47,7 @@ export async function designMetadata(searchParams, path) {
 
   const row = rows[0];
   const description = describe(row);
-  const url = `${path}?name=${encodeURIComponent(row.slug)}`;
+  const url = `${path}?id=${row.id}`;
   // Crawlers cache an image by its URL for days. Stamping the last edit onto the
   // URL means a diagram that changed previews as it is now, not as it was when
   // the link was first pasted.

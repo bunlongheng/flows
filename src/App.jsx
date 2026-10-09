@@ -709,13 +709,13 @@ export default function App() {
     setEdges(e)
     setView('detail')
     pendingFit.current = true
-    // Readable deep link: /demo?name=<slug>. A diagram with no slug (AI-generated
-    // or pasted, so nothing saved yet) leaves the URL alone - there is nothing to
-    // link to. ?id= is still honoured on load for older shared links.
-    if (d.slug) {
+    // Deep link: ?id=<uuid>, unique and stable across renames. A diagram with no
+    // slug (AI-generated or pasted, so nothing saved yet) leaves the URL alone -
+    // there is nothing to link to. ?name= is still honoured on load for older links.
+    if (d.slug && d.id) {
       const url = new URL(window.location.href)
-      url.searchParams.delete('id')
-      url.searchParams.set('name', d.slug)
+      url.searchParams.delete('name')
+      url.searchParams.set('id', d.id)
       // Pushed when this is somewhere new, replaced when the URL already says
       // it. Replacing unconditionally destroyed the list's history entry, so
       // the browser Back button left the app instead of going back to the
@@ -1352,16 +1352,16 @@ export default function App() {
 
   // ── Export/Share functions ───────────────────────────────────────────────────
 
-  // The link every share path hands out: the readable ?name= URL on the public
+  // The link every share path hands out: the unique ?id= URL on the public
   // origin. A diagram with no slug (unsaved, AI-generated, pasted) has no public
   // URL, so it falls back to whatever is in the address bar.
-  const shareSlug = activeDiagram?.slug || ''
+  const shareSlug = (activeDiagram?.id && activeDiagram?.slug) || ''
   // Always /demo, never "/". Vercel applies rewrites AFTER the filesystem check,
   // and "/" resolves to the static index.html - so the share function never runs
   // there and a link off the home route previews as the generic site card. /demo
   // is not a file, so it reaches the function and gets this design's own card.
   const shareUrl = shareSlug
-    ? `${publicOrigin()}/demo?name=${encodeURIComponent(shareSlug)}`
+    ? `${publicOrigin()}/demo?id=${encodeURIComponent(activeDiagram.id)}`
     : (typeof window !== 'undefined' ? window.location.href : PROD_ORIGIN)
 
   function exportFilename(ext) {
