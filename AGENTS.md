@@ -31,7 +31,7 @@ to drift:
 | What does the MCP take? | `mcp/README.md`, and each tool's own parameter descriptions. |
 | What colour is this card? | `src/iconColor.js` `isNeutralColor`. The colour comes off the icon; do not pick one. |
 
-## The 6 things that bite
+## The 7 things that bite
 
 1. **An update replaces the whole array.** `update_flow` / the API with `nodes`
    or `edges` swaps that list wholesale. Send every node, not only the one you
@@ -60,6 +60,16 @@ to drift:
    what buys a step chip its 100 px of clear line. Omit `x`/`y` and let it lay
    out; if you place cards by hand, match that pitch. Inside swimlanes, a card
    sits fully within 1 band and never straddles a divider.
+7. **No 2 lines on 1 track, ever** (owner rule 2026-10-09). The router
+   (`src/edgeGeometry.js`, shared by the canvas and the export) reserves every
+   drawn leg in edges order and moves a later line off it, but it cannot invent
+   room: cards packed so tight that only 1 track fits between them force a
+   share. After any create or move, run `npm run check:overlaps`; it renders
+   every stored flow and must print 0. A flow it lists needs its cards moved
+   apart, never a hand `bend` to paper over it. The same goes for tags: an
+   auto-placed tag slides along its own line off any earlier tag (its leader
+   grows when the line is too short), and the check fails on 2 tags touching.
+   Never drop a hand `labelT` on top of another tag.
 
 ## Which door to use
 

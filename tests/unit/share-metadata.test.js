@@ -4,8 +4,8 @@ const query = vi.fn();
 vi.mock("../../lib/db.js", () => ({ default: { query: (...a) => query(...a) } }));
 const { designMetadata, describe: describeRow } = await import("../../app/share-metadata.js");
 
-const ROW = { title: "AppMarket Billing", slug: "appmarket-billing", description: "d", pattern: "Tray chain" };
 const ID = "a69c82fc-0626-4032-bb83-69ac341670ee";
+const ROW = { id: ID, title: "AppMarket Billing", slug: "appmarket-billing", description: "d", pattern: "Tray chain" };
 
 describe("designMetadata (share card)", () => {
   beforeEach(() => query.mockReset());
@@ -19,6 +19,8 @@ describe("designMetadata (share card)", () => {
     expect(query.mock.calls[0][1]).toEqual([ID]);
     expect(m.openGraph.title).toBe("AppMarket Billing");
     expect(m.openGraph.siteName).toBe("Flows");
+    // The card links back by the unique id, never the name slug.
+    expect(m.openGraph.url).toBe(`/?id=${ID}`);
     expect(m.openGraph.images[0].url).toBe("/api/og?name=appmarket-billing");
     expect(m.openGraph.images[0].alt).toContain("AppMarket Billing");
     expect(m.twitter.images[0].url).toBe("/api/og?name=appmarket-billing");

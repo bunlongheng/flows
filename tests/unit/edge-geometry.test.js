@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { routeEdge, badgeShift, LEAD, pointAlongPath, flattenPath, bendPoint, T_MIN, T_MAX } from "../../src/edgeGeometry.js";
+import { routeEdge, badgeShift, LEAD, pointAlongPath, flattenPath, bendPoint, badgeBox, clearBadge, T_MIN, T_MAX } from "../../src/edgeGeometry.js";
 
 // The same module routes the canvas (GradientEdge) and the server export, so
 // a line the owner sees on the page is the line a README gets.
@@ -135,3 +135,43 @@ describe("routeEdge - a pair of lines between the same 2 cards", () => {
     expect(badgeShift(null, 80, 20)).toEqual({ dx: 0, dy: 0 });
   });
 });
+
+describe("no 2 lines on 1 track", () => {
+  // 2 lines crossing round 1 card: unreserved, both pick the same vertical lane
+  // and draw on top of each other for its whole length.
+  const all = { a1: node("a1", 0, 0), a2: node("a2", 0, 600), b1: node("b1", 800, 600), b2: node("b2", 800, 0), w: node("w", 400, 300) };
+  const box = (n) => ({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, w: 180, h: 180 });
+  const pairs = [["a1", "b1"], ["a2", "b2"]];
+  const edges = pairs.map(([s, t], i) => ({ id: `e${i}`, source: s, target: t }));
+  const go = (i, taken) => {
+    const [s, t] = pairs[i];
+    return routeEdge({
+      id: `e${i}`, source: s, target: t, sourceNode: all[s], targetNode: all[t], nodeOf: (k) => all[k], edges, taken,
+      obstacles: Object.values(all).filter((n) => n.id !== s && n.id !== t).map(box), nodeRects: Object.values(all).map(box),
+    });
+  };
+  const gap = (A, B) => Math.min(...B.flatMap((l) => A.filter((t) => t.h === l.h && Math.min(t.hi, l.hi) - Math.max(t.lo, l.lo) > 14)
+    .map((t) => Math.abs(t.c - l.c))));
+  it("keeps the 2nd line off the legs the 1st reserved", () => {
+    const first = go(0, []);
+    expect(gap(first.legs, go(1, []).legs)).toBe(0);
+    expect(gap(first.legs, go(1, first.legs).legs)).toBeGreaterThanOrEqual(8);
+  });
+});
+
+describe('no tag on a tag', () => {
+  const line = 'M0 0 L400 0'
+  it('slides an auto badge along its own line off an earlier badge', () => {
+    const box = badgeBox('12 target: sync', true)
+    const placed = [{ ...badgeBox('5 today: sync', true), x: 200, y: 0 }]
+    const at = clearBadge(line, { x: 200, y: 0 }, box, null, placed)
+    expect(at.y).toBe(0)
+    expect(Math.abs(at.x - 200) * 2).toBeGreaterThanOrEqual(box.w + placed[0].w)
+    expect(clearBadge(line, { x: 200, y: 0 }, box, null, [])).toEqual({ x: 200, y: 0 })
+  })
+  it('grows the leader of a short paired line with no clear spot', () => {
+    const box = badgeBox('alerts', true), off = { x: 0, y: -1 }
+    const at = clearBadge('M0 0 L60 0', { x: 30, y: 0 }, box, off, [{ w: 200, h: 18, x: 30, y: -23 }])
+    expect(at.lead).toBeGreaterThan(0)
+  })
+})

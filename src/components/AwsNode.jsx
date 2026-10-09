@@ -120,6 +120,14 @@ function NodeNote({ id, note }) {
             : <span key={i} style={runStyle(part)}>{part.text}</span>)}
         </div>
       )}
+      {/* 1 click removes the note; hidden until the note is hovered (always
+          shown on touch). The edit history keeps the old text. */}
+      {canEdit && !editing && (
+        <button type="button" className="sd-note-del" title="Delete note" aria-label="Delete note"
+          onClick={e => { e.stopPropagation(); onNoteChange(id, '') }}
+          style={{ position: 'absolute', top: -8, right: -8, width: 18, height: 18, padding: 0, borderRadius: 9,
+            border: '1px solid #000', background: '#fff', color: '#000', fontSize: 12, lineHeight: '16px', cursor: 'pointer' }}>×</button>
+      )}
     </div>
   )
 }

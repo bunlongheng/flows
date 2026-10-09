@@ -4,7 +4,7 @@ import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteE
 import { subscribe, currentPhase, motionAllowed, dotAt, ambientAt } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
-import { routeEdge, badgeShift, bendPoint, bendFor, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
+import { routeEdge, badgeShift, badgeBox, clearBadge, pointAlongPath, bendPoint, bendFor, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
 import { laneGaps, isLaneNode } from '../lanes.js'
 import { tagText } from '../tag.js'
 import { EDGE_LABEL_MAX } from '../note.js'
@@ -70,6 +70,51 @@ function nearestTOnPath(d, x, y) {
   } catch { return null }
 }
 
+// Middle legs of every earlier line, in edges order, so this line never lies
+// on one (render-svg.js accumulates the same list). Routed once per frame of
+// node, edge and note-height state, then shared by every edge. The same pass
+// places every auto badge clear of the badges before it (`badgeAt`).
+let takenCache = { nodes: null, edges: null, notes: -1, before: new Map(), badgeAt: new Map() }
+function takenBefore(id, nodes, edges) {
+  const notes = noteHeightsVersion()
+  if (takenCache.nodes !== nodes || takenCache.edges !== edges || takenCache.notes !== notes) {
+    const byId = new Map(nodes.map(n => [n.id, n]))
+    const nodeOf = nid => {
+      const n = byId.get(nid)
+      return n?.measured?.width
+        ? { measured: n.measured, internals: { positionAbsolute: n.position }, lane: n.type === 'lane' }
+        : null
+    }
+    const cards = nodes.filter(n => n.type === 'awsNode' && n.measured?.width && n.position)
+    const nodeRects = cards.map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
+    const gaps = laneGaps(nodes.filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height })))
+    const before = new Map(), taken = [], badgeAt = new Map(), badges = []
+    for (const e of edges) {
+      before.set(e.id, [...taken])
+      const sourceNode = nodeOf(e.source), targetNode = nodeOf(e.target)
+      if (!sourceNode || !targetNode) continue
+      const obstacles = cards.filter(n => n.id !== e.source && n.id !== e.target)
+        .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
+      const r = routeEdge({
+        taken: [...taken], id: e.id, source: e.source, target: e.target, sourceNode, targetNode, nodeOf, edges, obstacles, nodeRects, gaps,
+        bend: e.data?.bend, endS: e.data?.ends?.s, endT: e.data?.ends?.t, arrow: e.data?.style?.arrow, label: e.label, description: e.data?.description,
+        fallback: { sx: 0, sy: 0, tx: 0, ty: 0 },
+      })
+      taken.push(...(r.legs || []))
+      if (r.hideLabel || !(tagText(e.label, e.data?.description) || e.data?.step != null)) continue
+      const box = badgeBox(tagText(e.label, e.data?.description), true)
+      const at = typeof e.data?.labelT === 'number'
+        ? pointAlongPath(r.path, Math.min(T_MAX, Math.max(T_MIN, e.data.labelT))) || { x: r.labelX, y: r.labelY }
+        : clearBadge(r.path, { x: r.labelX, y: r.labelY }, box, r.labelOff, badges)
+      badgeAt.set(e.id, at)
+      const s = badgeShift(r.labelOff, box.w, box.h, at.lead)
+      badges.push({ ...box, x: at.x + s.dx, y: at.y + s.dy })
+    }
+    takenCache = { nodes, edges, notes, before, badgeAt }
+  }
+  return takenCache.before.get(id) || []
+}
+
 export function GradientEdge({
   id, source, target, sourceX, sourceY, targetX, targetY, markerEnd, data, label, selected,
 }) {
@@ -120,6 +165,7 @@ export function GradientEdge({
   const laneRects = getNodes().filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height }))
   const gaps = laneGaps(laneRects)
   const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, labelX, labelY, labelOff } = routeEdge({
+    taken: takenBefore(id, getNodes(), allEdges),
     id, source, target, sourceNode, targetNode, nodeOf, edges: allEdges, obstacles, nodeRects, gaps,
     bend, endS, endT, arrow: data?.style?.arrow, label, description: data?.description,
     fallback: { sx: sourceX, sy: sourceY, tx: targetX, ty: targetY },
@@ -248,8 +294,9 @@ export function GradientEdge({
   // Where the badge actually sits: on the path when it has been placed, else the
   // computed spot with its node-avoidance nudge.
   const onPath = t == null ? null : pointOnPath(path, t)
-  const ax = onPath ? onPath.x : labelX
-  const ay = onPath ? onPath.y : labelY
+  const auto = takenCache.badgeAt.get(id)
+  const ax = onPath ? onPath.x : auto ? auto.x : labelX
+  const ay = onPath ? onPath.y : auto ? auto.y : labelY
   // A paired line's badge hangs off the line on a short leader, on the pair's
   // outside. The shift needs the badge's real box, read back after it paints.
   const badgeRef = useRef(null)
@@ -260,7 +307,7 @@ export function GradientEdge({
     const w = el.offsetWidth, h = el.offsetHeight
     if (w && h && (w !== box.w || h !== box.h)) setBox({ w, h })
   })
-  const { dx, dy } = badgeShift(labelOff, box.w, box.h)
+  const { dx, dy } = badgeShift(labelOff, box.w, box.h, onPath ? 0 : auto?.lead)
   const bx = ax + dx
   const by = ay + dy
   const lineStroke = data?.sunsetLine ? SUNSET.line : (st.stroke || `url(#${gid})`)
