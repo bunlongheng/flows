@@ -285,7 +285,7 @@ server.registerTool(
       })).min(1).describe('The services in the diagram'),
       edges: z.array(z.object({
         source: z.string().describe('source node id'),
-        target: z.string().describe('target node id'),
+        target: z.string().describe('target node id, or "lane:<id>" to end the line on a swimlane border (1 end per edge, never both)'),
         label: z.string().optional().describe('short edge label, e.g. "read/write"'),
         description: z.string().max(300).optional().describe('Longer text for this line, max 300. The tag on the line reads the label, or this cut short when there is no label; hovering the tag shows the whole of it. Not in the SVG.'),
         ...zEdgeFields,
@@ -380,7 +380,7 @@ server.registerTool(
         ...zNodeFields,
       })).optional().describe('Replaces the whole list. A card you leave out is GONE, so send every node, not only the changed one. Anything the owner set by hand that you omit (size, iconSize, style) is carried over from the stored card rather than wiped.'),
       edges: z.array(z.object({
-        source: z.string(), target: z.string(), label: z.string().optional(),
+        source: z.string(), target: z.string().describe('target node id, or "lane:<id>" to end the line on a swimlane border (1 end per edge, never both)'), label: z.string().optional(),
         description: z.string().max(300).optional(),
         ...zEdgeFields,
       })).optional().describe('Replaces the whole list, in flow order - that order numbers the Steps badges and is the path the single current walks. Give every line a stable id: the owner\'s styling, dragged badge position and hand bends are matched back to it by id, and without one they are matched by array index instead.'),

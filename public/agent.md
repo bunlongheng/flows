@@ -35,7 +35,7 @@ Authorization: Bearer <FLOWS_API_SECRET>
 |-------|------|
 | `title` | Required. Max 200 chars. |
 | `nodes[]` | Required. 1 to 100. Each `{ id, label?, sub?, note?, info?, sunset?, iconFrame?, icon?, image?, color?, position?, size?, iconSize? }`. `iconFrame: true` draws a 1 px grey frame around a white-edged icon tile (set by itself on MCP create when most of a PNG icon's outer ring is white). `size` is optional `{ w, h }` 130..600 px, the card size on the canvas; icon cards default to 180x180, picture cards to 240x225. `iconSize` is optional `{ w, h }` 16..600 px, the icon or photo drawn inside the card (default 48x48 icon, photo fills the card). |
-| `edges[]` | Optional. Max 300. Each `{ source, target, label?, description?, animated? }`. Ids must exist in `nodes`. The tag on the line reads `label`, or `description` (max 300) cut short when there is no label; hovering the tag shows the whole description. |
+| `edges[]` | Optional. Max 300. Each `{ source, target, label?, description?, animated? }`. Ids must exist in `nodes`, or 1 end (never both) is `lane:<id>` naming a swimlane from 4c: the line then stops on the lane border straight under its card, in the lane colour, so 1 line and 1 badge stand for every card in the band. The tag on the line reads `label`, or `description` (max 300) cut short when there is no label; hovering the tag shows the whole description. |
 | `is_public` | Set `true`. A private diagram gives everyone else a 404 and the GIF will not embed. |
 | `pattern` | Optional. Max 200 chars. 1 line shown above the diagram. |
 | `description` | Optional. Max 600 chars. |
@@ -104,6 +104,7 @@ Lanes are bands under the cards, 1 per layer of the system, with a title and an 
 - `size` (optional, 10 to 40) is the title in px, default 13: `{ "id": "apps", "title": "Sender apps", "y": 120, "h": 580, "size": 18 }`. Canvas, SVG and GIF draw the same number.
 - 1 kind per diagram, max 12, thinnest 80, canvas units; lanes pack from the first with equal 40 px gaps and span the whole diagram on their other axis.
 - `h` (or `w`) says which band a card starts in; the drawn band then ends 36 px past the last card inside it, note included while notes are shown, so hiding the notes tightens every band. It never grows across the next band, and an empty lane keeps its configured size. Never move a card to fit a lane.
+- Lane edges: when 3 cards each fan out to every card in a band, draw 3 edges to the band instead, `{ "source": "caddy", "target": "lane:apps", "label": "name.localhost to :port" }`. 1 end of an edge may be a lane, never both, and the lane must exist. Removing a lane that edges point at leaves those edges unresolved, so re-point them first.
 - `lanes: []` removes them; a `view_state` save without a `lanes` key keeps them. With lanes on, no Start pill is drawn.
 
 ## 5. Do not
