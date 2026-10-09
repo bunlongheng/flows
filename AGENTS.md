@@ -66,7 +66,10 @@ to drift:
    room: cards packed so tight that only 1 track fits between them force a
    share. After any create or move, run `npm run check:overlaps`; it renders
    every stored flow and must print 0. A flow it lists needs its cards moved
-   apart, never a hand `bend` to paper over it.
+   apart, never a hand `bend` to paper over it. The same goes for tags: an
+   auto-placed tag slides along its own line off any earlier tag (its leader
+   grows when the line is too short), and the check fails on 2 tags touching.
+   Never drop a hand `labelT` on top of another tag.
 
 ## Which door to use
 
