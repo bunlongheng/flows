@@ -226,6 +226,11 @@ export function DetailView({
   // lights a card's lines when you click it. A finger is the exception - it is
   // wider than a card, so a tap meant to zoom must land on nothing.
   const fingerOnly = (touch || narrow) && !touchEdit
+  // The 2 things the top-left "i" is about: the summary text a diagram may
+  // carry, and whether this reader is the owner, who can set the current.
+  const summary = activeDiagram?.pattern || activeDiagram?.description
+  const currentControl = !!onCurrentChange && !narrow
+
   // The tools that change the layout follow the same rule as the canvas: no
   // Arrange, no Undo, no Code while the diagram is frozen.
   const canEditNow = canEdit && !frozen
@@ -958,8 +963,15 @@ export function DetailView({
           </ShowNotesContext.Provider>
 
           {/* Info card overlay - what it tests + goal, pinned top-left of the canvas.
-              Tap it to fold it into a badge so the diagram gets the whole screen. */}
-          {(activeDiagram?.pattern || activeDiagram?.description) && (infoOpen ? (
+              Tap it to fold it into a badge so the diagram gets the whole screen.
+
+              For the owner the badge is ALSO the way into the current, because
+              not every diagram draws a Start pill - a swimlane diagram has none
+              (owner 2026-10-09: "some graphs has no start, pls make sure show
+              when click on i", "speed and currents count"). So the owner's click
+              opens the right panel, which carries this same summary above the
+              presets; a visitor's click still unfolds the card on the canvas. */}
+          {(summary || currentControl) && (infoOpen && summary ? (
             <div className="sd-info-card" role="button" tabIndex={0}
               aria-expanded="true" aria-label="Hide the diagram summary"
               onClick={() => setInfoOpen(false)}
@@ -992,9 +1004,10 @@ export function DetailView({
             </div>
           ) : (
             <button type="button" className="sd-info-badge"
-              aria-expanded="false" aria-label="Show the diagram summary"
-              title="Show the diagram summary"
-              onClick={() => setInfoOpen(true)}
+              aria-expanded={currentControl ? String(currentOpen) : "false"}
+              aria-label={currentControl ? "Control the current - speed and amount" : "Show the diagram summary"}
+              title={currentControl ? "Control the current - speed and amount" : "Show the diagram summary"}
+              onClick={() => { if (currentControl) { setCardId(null); setCurrentOpen(true) } else setInfoOpen(true) }}
               style={{
                 position: 'absolute', top: 16, left: 16, zIndex: 40,
                 width: 34, height: 34, borderRadius: '50%', padding: 0,
@@ -1104,7 +1117,8 @@ export function DetailView({
             opened by clicking the Start here pill. Owner only, and never
             alongside Share or History - the same 1 extra panel slot. */}
         {currentOpen && !card && !narrow && onCurrentChange && (
-          <CurrentPanel value={current} onChange={onCurrentChange} onClose={() => setCurrentOpen(false)} />
+          <CurrentPanel value={current} onChange={onCurrentChange} onClose={() => setCurrentOpen(false)}
+            pattern={activeDiagram?.pattern} description={activeDiagram?.description} />
         )}
 
         {/* Share panel (right side) */}

@@ -118,7 +118,7 @@ describe("flowClock", () => {
   // on BC Integrations and the owner called it "a bit too much" (2026-10-09).
   it("spreads the owner's amount over the whole diagram, never per line", () => {
     for (const lines of [1, 4, 7, 41]) {
-      for (const total of [5, 10, 20, 50, 100]) {
+      for (const total of [5, 10, 20, 50, 100, 200, 500]) {
         const spread = Array.from({ length: lines }, (_, i) => ambientCount(i, lines, total));
         expect(spread.reduce((a, b) => a + b, 0)).toBe(total);
         // Evenly: no line carries more than 1 dot over its neighbour's share.
@@ -131,24 +131,30 @@ describe("flowClock", () => {
     // And the drawn dots follow the setting, not this module's default.
     const drawn = (total) => Array.from({ length: 4 }, (_, i) => ambientAt(0.3, 4, i, total).length).reduce((a, b) => a + b, 0);
     expect(drawn(5)).toBe(5);
-    expect(drawn(100)).toBe(100);
+    expect(drawn(500)).toBe(500);
   });
 
   // The panel's 2 presets: speed multiplies the whole clock, amount is what
-  // every line reads when it is not told otherwise.
+  // every line reads when it is not told otherwise. Speed stops at 2x and goes
+  // down to half (owner 2026-10-09: "speed 2x max, pls do in between .5 1.5").
   it("takes the owner's speed and amount from the current's panel", () => {
     setSteps(6);
     const at1x = capturePeriodMs();
-    setCurrent({ speed: 5, amount: 50 });
-    expect(capturePeriodMs()).toBe(at1x / 5);
-    expect(currentAmount()).toBe(50);
-    expect(ambientAt(0.3, 4, 0).length).toBe(ambientCount(0, 4, 50));
+    setCurrent({ speed: 2, amount: 500 });
+    expect(capturePeriodMs()).toBe(at1x / 2);
+    expect(currentAmount()).toBe(500);
+    expect(ambientAt(0.3, 4, 0).length).toBe(ambientCount(0, 4, 500));
+    // Half speed is twice the time, which is the point of the 0.5 preset.
+    setCurrent({ speed: 0.5, amount: 10 });
+    expect(capturePeriodMs()).toBe(at1x * 2);
     // A later line count keeps the speed: the 2 settings are independent.
     setSteps(3);
-    expect(capturePeriodMs()).toBe(at1x / 6 * 3 / 5);
-    // Anything outside the presets is clamped rather than trusted.
+    expect(capturePeriodMs()).toBe(at1x / 6 * 3 * 2);
+    // Anything outside the presets is clamped to their range, not trusted.
     setCurrent({ speed: 99, amount: 10 });
-    expect(capturePeriodMs()).toBe(at1x / 6 * 3 / 5);
+    expect(capturePeriodMs()).toBe(at1x / 6 * 3 / 2);
+    setCurrent({ speed: 0.01, amount: 10 });
+    expect(capturePeriodMs()).toBe(at1x / 6 * 3 * 2);
   });
 
   it("puts exactly 1 dot on the canvas at a time", () => {

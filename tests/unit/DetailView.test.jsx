@@ -345,8 +345,8 @@ describe("current panel", () => {
     setup({ nodes, current: { speed: 1, amount: 10 }, onCurrentChange: vi.fn() });
     clickPill();
     const panel = within(screen.getByTestId("current-panel"));
-    for (const s of ["1x", "2x", "3x", "4x", "5x"]) expect(panel.getByRole("button", { name: s })).toBeInTheDocument();
-    for (const a of ["5", "10", "20", "50", "100"]) expect(panel.getByRole("button", { name: a })).toBeInTheDocument();
+    for (const s of ["0.5x", "1x", "1.5x", "2x"]) expect(panel.getByRole("button", { name: s })).toBeInTheDocument();
+    for (const a of ["5", "10", "20", "50", "100", "200", "500"]) expect(panel.getByRole("button", { name: a })).toBeInTheDocument();
   });
 
   it("reports a picked speed and a picked amount, 1 key at a time", () => {
@@ -354,9 +354,9 @@ describe("current panel", () => {
     setup({ nodes, current: { speed: 1, amount: 10 }, onCurrentChange });
     clickPill();
     const panel = within(screen.getByTestId("current-panel"));
-    fireEvent.click(panel.getByRole("button", { name: "4x" }));
-    fireEvent.click(panel.getByRole("button", { name: "50" }));
-    expect(onCurrentChange.mock.calls).toEqual([[{ speed: 4 }], [{ amount: 50 }]]);
+    fireEvent.click(panel.getByRole("button", { name: "0.5x" }));
+    fireEvent.click(panel.getByRole("button", { name: "500" }));
+    expect(onCurrentChange.mock.calls).toEqual([[{ speed: 0.5 }], [{ amount: 500 }]]);
   });
 
   it("closes on the X and on Escape, and never opens for a visitor", () => {
@@ -373,6 +373,38 @@ describe("current panel", () => {
     // the current the owner left running and has no panel to change it.
     setup({ nodes, current: { speed: 1, amount: 10 } });
     clickPill();
+    expect(screen.queryByTestId("current-panel")).toBeNull();
+  });
+
+  // A swimlane diagram draws no Start pill, so the owner needs a second way in
+  // (owner 2026-10-09: "some graphs has no start, pls make sure show when click
+  // on i"). The "i" badge is it, and it is there even with nothing to summarise.
+  it("opens from the i badge on a diagram with no Start pill", () => {
+    setup({ nodes: [nodes[0]], current: { speed: 1, amount: 10 }, onCurrentChange: vi.fn() });
+    expect(document.querySelector('.react-flow__node[data-id="__start_user"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /control the current/i }));
+    const panel = within(screen.getByTestId("current-panel"));
+    expect(panel.getByRole("button", { name: "2x" })).toBeInTheDocument();
+    expect(panel.getByRole("button", { name: "500" })).toBeInTheDocument();
+  });
+
+  // The badge used to unfold the summary card, so the summary rides along in
+  // the panel rather than being lost to the owner.
+  it("carries the diagram summary the badge used to show", () => {
+    const activeDiagram = { ...sampleDiagram, pattern: "Fan-out on write", description: "A URL shortener." };
+    setup({ activeDiagram, nodes: [nodes[0]], current: { speed: 1, amount: 10 }, onCurrentChange: vi.fn() });
+    fireEvent.click(screen.getByRole("button", { name: /control the current/i }));
+    const panel = within(screen.getByTestId("current-panel"));
+    expect(panel.getByText("Fan-out on write")).toBeInTheDocument();
+    expect(panel.getByText("A URL shortener.")).toBeInTheDocument();
+  });
+
+  // A visitor's badge is unchanged: it still unfolds the card on the canvas.
+  it("leaves the visitor's i badge showing the summary", () => {
+    const activeDiagram = { ...sampleDiagram, pattern: "Fan-out on write" };
+    setup({ activeDiagram, nodes: [nodes[0]] });
+    fireEvent.click(screen.getByRole("button", { name: /show the diagram summary/i }));
+    expect(screen.getByText("Fan-out on write")).toBeInTheDocument();
     expect(screen.queryByTestId("current-panel")).toBeNull();
   });
 });

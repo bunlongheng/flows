@@ -390,9 +390,9 @@ server.registerTool(
           .describe('Which reading aids the diagram OPENS with. "steps" prints a numbered chip on every line, 1..N in edges order - turn it on for anything a reader has to follow in order. "notes-off" HIDES the notes, which show by default, so the key is inverted on purpose. Replaces the whole list; [] is the plain canvas.'),
         badge: z.enum(BADGES).optional().describe('How a step chip is painted. Omit for dark.'),
         current: z.object({
-          speed: z.union(SPEEDS.map((n) => z.literal(n))).optional().describe(`How fast the current runs, 1x to 5x. 1x crosses 1 line in 1.4 s. Omit for ${CURRENT_DEFAULT.speed}x.`),
+          speed: z.union(SPEEDS.map((n) => z.literal(n))).optional().describe(`How fast the current runs: ${SPEEDS.join(', ')}. 1x crosses 1 line in 1.4 s, 2x is the cap (faster is a blur) and 0.5x is for watching a dense map. Omit for ${CURRENT_DEFAULT.speed}x.`),
           amount: z.union(AMOUNTS.map((n) => z.literal(n))).optional().describe(`How many small dots the WHOLE diagram carries: ${AMOUNTS.join(', ')}. A total, not a count per line, so it reads the same on a 6 line flow and a 50 line map. Omit for ${CURRENT_DEFAULT.amount}.`),
-        }).optional().describe('The flowing current: its speed and how many small dots it carries. The owner sets this by clicking the Start here pill, and it travels with the diagram into the SVG and GIF exports. Both keys are presets; anything else is refused.'),
+        }).optional().describe('The flowing current: its speed and how many small dots it carries. PER DIAGRAM - the owner sets it by clicking the Start here pill, and it travels with this diagram into its SVG and GIF exports. Both keys are presets; anything else is refused.'),
       }).optional().describe('How the diagram opens, saved with it. Only the keys you send change; the owner\'s lanes and hand-placed Start pill are kept. Use it to ship a diagram already readable instead of leaving the reader to find the Steps button.'),
       lanes: z.array(z.object({
         id: z.string().regex(/^[\w-]{1,40}$/), title: z.string().max(40),
