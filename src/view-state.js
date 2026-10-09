@@ -1,3 +1,4 @@
+import { cleanSizing } from "./card-size.js";
 // How a diagram OPENS: which reading aids are showing and how a step chip is
 // painted. One module, for the same reason src/style.js is one module: the
 // canvas writes this, the API validates it (PATCH view_state), the MCP declares
@@ -72,4 +73,5 @@ export const cleanView = (v) => ({
   badge: cleanBadge(v?.badge),
   ...cleanStart(v?.start),
   ...cleanCurrent(v?.current),
+  ...cleanSizing(v?.sizing),
 });
