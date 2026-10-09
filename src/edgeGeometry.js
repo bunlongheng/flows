@@ -878,7 +878,7 @@ const BADGE_GAP = 4
 export function badgeBox(tag, step) {
   let w = 0
   for (const ch of String(tag || '')) w += ch === ' ' ? 0.28 : /[il.,:;'|!I[\]()jft]/.test(ch) ? 0.3 : /[mwMW@%]/.test(ch) ? 0.9 : /[A-Z]/.test(ch) ? 0.68 : 0.58
-  return { w: 16 + w * 8.5 * 1.06 + (step ? 20 : 0), h: 18 }
+  return { w: 16 + w * 8.5 * 1.16 + (step ? 20 : 0), h: 18 } // 10% over the renderer width: the browser draws a touch wider
 }
 export function clearBadge(path, at, box, off, placed) {
   const { dx, dy } = badgeShift(off, box.w, box.h)
