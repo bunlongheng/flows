@@ -286,6 +286,17 @@ describe("card panel", () => {
     expect(within(into).getByText("opens")).toBeInTheDocument();
   });
 
+  // Owner 2026-10-09: "connection in and out should next to each other in the
+  // details panel, below notes". In used to sit at the very top, with the
+  // card's facts, what it is and the note between the 2 lists.
+  it("keeps the 2 connection lists together, under the note", () => {
+    setup({ nodes: cardNodes, edges: cardEdges });
+    fireEvent.click(document.querySelector('.react-flow__node[data-id="api"]'));
+    const titles = [...screen.getByTestId("card-panel").querySelectorAll("section")]
+      .map((s) => s.firstChild.textContent);
+    expect(titles.slice(-3)).toEqual(["Notes", "Connections in (1)", "Connections out (1)"]);
+  });
+
   it("names the lane and section the card sits in, and the status", () => {
     const lane = { id: "__lane_entry", type: "lane", position: { x: -50, y: -50 }, width: 300, height: 600, selectable: false, draggable: false,
       data: { title: "1. Entry", axis: "col", sections: [{ id: "a", title: "Entry: target", x: 0, y: 0, w: 300, h: 250 }, { id: "b", title: "Entry: today", x: 0, y: 250, w: 300, h: 350 }] } };

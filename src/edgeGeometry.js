@@ -155,6 +155,16 @@ function detourSlot(node, nodeId, side, edgeId, edges, nodeOf) {
   }
   const n = Math.max(1, natural.length)
   const gap = Math.min(face / (n + 1), MAX_GAP)
+  // A detouring edge can still BELONG to the face it comes back to: the direct
+  // line was blocked, it went the long way round, and it arrives from the
+  // natural direction anyway. That one keeps its natural slot, which for the
+  // only line on a face is dead center (owner 2026-10-09: "if 1 line going in
+  // pls going in center not off center" - a lone line was landing 38 px low on
+  // a 130 px card). Parking outside the band is for an edge with no claim to
+  // the face; the 2 sets are disjoint, so neither can take the other's slot.
+  natural.sort((a, b) => a.along - b.along || (a.id < b.id ? -1 : 1))
+  const own = natural.findIndex(o => o.id === edgeId)
+  if (own >= 0) return { at: mid + (own - (n - 1) / 2) * gap, rank: 0 }
   const inner = ((n - 1) / 2) * gap + gap / 2 // clear of the outermost natural slot
   outer.sort((a, b) => a.along - b.along || (a.id < b.id ? -1 : 1))
   const rank = Math.max(0, outer.findIndex(o => o.id === edgeId))
@@ -170,15 +180,24 @@ function detourSlot(node, nodeId, side, edgeId, edges, nodeOf) {
 
 // Can this slot move from `from` to `to` along its face? It must stay inside the
 // box, and a shared face must not let it cross into the neighbouring slot.
+//
+// A LONE slot does not move at all. It is the middle of its face, and the only
+// line on a face enters dead centre (owner 2026-10-09: "if 1 line going in pls
+// going in center not off center"). It used to be the most movable slot of the
+// two - nothing to collide with, so straightening dragged it up to half a card
+// off its middle, and a single line met a card near its corner.
 const canSlide = (p, from, to) => {
   const d = Math.abs(to - from)
   if (d === 0) return true
+  if (p.alone) return false
   if (Math.abs(to - p.mid) > p.half - 10) return false
-  return p.alone || d <= p.gap / 2 - 2
+  return d <= p.gap / 2 - 2
 }
 
 // One coordinate both ends can share: keep a lone (centred) end where it is and
-// move the spread one, else meet in the middle, else take whichever end can.
+// move the spread one, else meet in the middle. Nothing when neither can give -
+// 2 centred ends that do not line up take a small elbow, which is the honest
+// picture of 2 cards that are not level.
 function snapLine(a, av, b, bv) {
   const mid = (av + bv) / 2
   const order = a.alone && !b.alone ? [av, mid, bv] : b.alone && !a.alone ? [bv, mid, av] : [mid, av, bv]
@@ -493,17 +512,19 @@ export function routeEdge({ id, source, target, sourceNode, targetNode, nodeOf, 
     // sharing slots, otherwise forcing this one to center would collide with a
     // neighbour's slot. A pinned end is where the owner put it, so it never
     // gets snapped back onto an auto-computed line.
+    //
+    // Both ends being lone used to meet at the midpoint of the 2 centres, which
+    // pulled BOTH off their middles when the cards were not level - 2 cards of
+    // different heights on one row have centres up to 25 px apart. A lone end
+    // stays centred, so the pair draws straight when their centres agree and
+    // takes the elbow when they do not.
     if (!fan && !endS && !endT && sp2.alone && tp2.alone) {
       const sc = centerOf(sourceNode), tc = centerOf(targetNode)
       const driftY = Math.abs(sc.y - tc.y), driftX = Math.abs(sc.x - tc.x)
       if (driftX >= driftY && onAxis(driftY, driftX)) {
-        aligned = true
-        const y = (sc.y + tc.y) / 2
-        sy = y; ty = y
+        if (sy === ty) aligned = true
       } else if (onAxis(driftX, driftY)) {
-        aligned = true
-        const x = (sc.x + tc.x) / 2
-        sx = x; tx = x
+        if (sx === tx) aligned = true
       }
     }
     // Slots that nearly line up get pulled onto one line. Same proportional
