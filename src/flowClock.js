@@ -10,6 +10,8 @@
 // A rAF loop per edge would mean 20+ loops on a busy diagram, all waking the
 // compositor independently. Instead there is one loop here that every edge
 // subscribes to, and it only runs while something is listening.
+import { CURRENT_DEFAULT } from './view-state.js'
+
 
 // One step of the current: how long 1 dot takes to cross 1 line. A diagram is
 // 1 cycle of `steps` of these, so a 6 line flow loops in 8.4 s and a 90 line
@@ -17,6 +19,14 @@
 // Exported because lib/render-gif.js builds the GIF's frame delay from it: the
 // export has to walk a line in exactly the time the canvas does.
 export const STEP_MS = 1400
+
+// The small ambient current, documented at ambientAt below: the diagram's
+// default TOTAL number of small dots, and how many steps one takes to cross a
+// line. Declared up here because the module state further down starts from it.
+// The default is the one src/view-state.js validates against, so the canvas,
+// the row and both exports cannot drift to different numbers.
+export const AMBIENT_AMOUNT = CURRENT_DEFAULT.amount
+export const AMBIENT_STEPS = 4
 
 // A line marked `async: true` fires on the same BEAT as the line numbered
 // before it (owner rule 2026-10-08: "if 12 does not rely on 11 or 13, shoot
@@ -43,6 +53,12 @@ const subs = new Set()
 let raf = 0
 let phase = 0 // 0..1 across the WHOLE cycle, shared by every edge
 let steps = 1 // how many lines the current walks before it starts over
+// The owner's speed multiplier (1x..5x) and how many small dots the whole
+// diagram carries, both off view_state.current - see src/view-state.js. Module
+// state for the same reason `steps` is: every edge reads them from here, so a
+// change lands on the next frame without re-rendering the canvas.
+let speed = 1
+let amount = AMBIENT_AMOUNT
 let periodMs = STEP_MS
 
 /**
@@ -51,8 +67,24 @@ let periodMs = STEP_MS
  */
 export function setSteps(n) {
   steps = Math.max(1, n | 0)
-  periodMs = steps * STEP_MS
+  periodMs = steps * STEP_MS / speed
 }
+
+/**
+ * The owner's current settings, from the Start pill's panel: `speed` is the
+ * multiplier on the whole clock (the big step dot and the ambient drift alike,
+ * so 5x is the same walk 5 times over), `amount` the TOTAL number of small
+ * dots spread across the diagram. Both are validated presets (src/view-state.js).
+ */
+export function setCurrent(c) {
+  const a = Number(c?.amount)
+  speed = Math.min(5, Math.max(1, Number(c?.speed) || 1))
+  amount = Number.isFinite(a) ? Math.max(0, a) : AMBIENT_AMOUNT
+  periodMs = steps * STEP_MS / speed
+}
+
+/** The ambient total in force, for anything drawing dots without its own copy. */
+export function currentAmount() { return amount }
 
 // While a GIF is being captured the clock is driven by hand instead of by the
 // wall clock. Frame capture takes a variable 100-300ms, so letting real time
@@ -171,8 +203,8 @@ export function stepAt(phase, count) {
 }
 
 /**
- * The small ambient current under the big step dot: every line carries
- * AMBIENT_DOTS small dots the whole time, staggered by line so the diagram
+ * The small ambient current under the big step dot: the diagram carries a
+ * TOTAL of `amount` small dots, spread evenly over its lines, so the diagram
  * reads as many things happening at once while the 1 big dot still says which
  * step this is (owner 2026-10-09: "keep the big one, add smaller ones,
  * multiple dots like before"). They drift: a small dot takes about
@@ -180,15 +212,32 @@ export function stepAt(phase, count) {
  * day: "the speed of the other current needs to be way slower"). A cycle still
  * holds a whole number of crossings, so a GIF loops without a jump. Returns
  * the positions (0..1) along line `index`.
+ *
+ * A TOTAL, not a count per line. 1 apiece put 41 dots on BC Integrations and
+ * the owner called it "a bit too much" the same day; a total reads the same on
+ * a 6 line flow as on a 50 line map, and the Start pill's panel sets it
+ * (5/10/20/50/100, default 10).
  */
-export const AMBIENT_DOTS = 2
-export const AMBIENT_STEPS = 4
-export function ambientAt(phase, edges, index) {
+/**
+ * How many of the diagram's `amount` dots line `index` of `lines` carries.
+ * Evenly spread and deterministic - the floors always sum to exactly `amount`,
+ * so the canvas and a GIF frame draw the same dots on the same lines.
+ */
+export function ambientCount(index, lines, total = amount) {
+  const n = Math.max(1, lines | 0)
+  const a = Math.max(0, total | 0)
+  if (index < 0 || index >= n) return 0
+  return Math.floor(((index + 1) * a) / n) - Math.floor((index * a) / n)
+}
+
+export function ambientAt(phase, edges, index, total = amount) {
   const list = typeof edges === 'number' ? Array.from({ length: edges }, () => ({})) : (edges || [])
+  const dots = ambientCount(index, list.length, total)
+  if (!dots) return []
   const n = Math.max(1, Math.round(beatCount(list) / AMBIENT_STEPS))
   const p = ((phase % 1) + 1) % 1
   const base = (p * n + index * 0.37) % 1
-  return Array.from({ length: AMBIENT_DOTS }, (_, k) => (base + k / AMBIENT_DOTS) % 1)
+  return Array.from({ length: dots }, (_, k) => (base + k / dots) % 1)
 }
 
 /**

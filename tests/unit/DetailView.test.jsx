@@ -329,3 +329,50 @@ describe("card panel", () => {
     }
   });
 });
+
+// Clicking the Start here pill opens the current's own panel: the speed
+// multiplier and how many small dots the whole diagram carries (owner
+// 2026-10-09: "if I click on start here, show right panel for me to control
+// speed of current 1 2 3 4 5 x, control amount 5 10 20 50 100").
+describe("current panel", () => {
+  const nodes = [
+    { id: "user", type: "awsNode", position: { x: 0, y: 0 }, data: { id: "user", label: "User", icon: "/t.svg" } },
+    { id: "__start_user", type: "marker", position: { x: -200, y: 0 }, width: 132, height: 36, selectable: false, data: { kind: "start", dir: "right", control: true } },
+  ];
+  const clickPill = () => fireEvent.click(document.querySelector('.react-flow__node[data-id="__start_user"]'));
+
+  it("opens on the Start pill with both rows of presets", () => {
+    setup({ nodes, current: { speed: 1, amount: 10 }, onCurrentChange: vi.fn() });
+    clickPill();
+    const panel = within(screen.getByTestId("current-panel"));
+    for (const s of ["1x", "2x", "3x", "4x", "5x"]) expect(panel.getByRole("button", { name: s })).toBeInTheDocument();
+    for (const a of ["5", "10", "20", "50", "100"]) expect(panel.getByRole("button", { name: a })).toBeInTheDocument();
+  });
+
+  it("reports a picked speed and a picked amount, 1 key at a time", () => {
+    const onCurrentChange = vi.fn();
+    setup({ nodes, current: { speed: 1, amount: 10 }, onCurrentChange });
+    clickPill();
+    const panel = within(screen.getByTestId("current-panel"));
+    fireEvent.click(panel.getByRole("button", { name: "4x" }));
+    fireEvent.click(panel.getByRole("button", { name: "50" }));
+    expect(onCurrentChange.mock.calls).toEqual([[{ speed: 4 }], [{ amount: 50 }]]);
+  });
+
+  it("closes on the X and on Escape, and never opens for a visitor", () => {
+    setup({ nodes, current: { speed: 1, amount: 10 }, onCurrentChange: vi.fn() });
+    clickPill();
+    fireEvent.click(screen.getByRole("button", { name: /close current panel/i }));
+    expect(screen.queryByTestId("current-panel")).toBeNull();
+    clickPill();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByTestId("current-panel")).toBeNull();
+
+    cleanup();
+    // No onCurrentChange is what makes a diagram read-only here: a visitor sees
+    // the current the owner left running and has no panel to change it.
+    setup({ nodes, current: { speed: 1, amount: 10 } });
+    clickPill();
+    expect(screen.queryByTestId("current-panel")).toBeNull();
+  });
+});

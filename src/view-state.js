@@ -33,9 +33,36 @@ export const cleanStart = (v) =>
     ? { start: { x: Math.round(v.x), y: Math.round(v.y) } }
     : {};
 
+// The current: how fast it runs and how many small dots the WHOLE diagram
+// carries. Presets only, because the panel offers presets (owner 2026-10-09:
+// "control speed of current 1 2 3 4 5 x, control amount 5 10 20 50 100").
+// Amount is a total, not a per-line count: the same number reads the same on a
+// 6 line flow and on a 50 line map, which is the whole point - 1 dot a line put
+// 41 of them on BC Integrations and the owner called it "a bit too much".
+export const SPEEDS = [1, 2, 3, 4, 5];
+export const AMOUNTS = [5, 10, 20, 50, 100];
+export const CURRENT_DEFAULT = { speed: 1, amount: 10 };
+
+/** The current's settings from a view_state, defaults filled in. Always both keys. */
+export const currentOf = (v) => ({
+  speed: SPEEDS.includes(v?.current?.speed) ? v.current.speed : CURRENT_DEFAULT.speed,
+  amount: AMOUNTS.includes(v?.current?.amount) ? v.current.amount : CURRENT_DEFAULT.amount,
+});
+
+/**
+ * `current` for storage, or nothing when it is the default - a row only carries
+ * the key once the owner has moved off 1x/10, the same way `start` is omitted
+ * until the pill is placed by hand.
+ */
+export const cleanCurrent = (v) => {
+  const c = currentOf({ current: v });
+  return c.speed === CURRENT_DEFAULT.speed && c.amount === CURRENT_DEFAULT.amount ? {} : { current: c };
+};
+
 /** The full canvas-state half of view_state, lanes excluded. */
 export const cleanView = (v) => ({
   panels: cleanPanels(v?.panels),
   badge: cleanBadge(v?.badge),
   ...cleanStart(v?.start),
+  ...cleanCurrent(v?.current),
 });

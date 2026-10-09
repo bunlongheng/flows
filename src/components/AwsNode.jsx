@@ -404,12 +404,18 @@ export const MarkerNode = memo(function MarkerNode({ data }) {
     ),
   }[data.dir || 'right']
 
+  // For the owner the pill is also the current's control: a click opens the
+  // speed and amount panel (owner 2026-10-09), so it has to look clickable.
+  // A visitor can only read it, and gets no pointer promising otherwise.
   return (
-    <div style={{
-      position: 'relative', display: 'flex', alignItems: 'center', gap: 7,
-      background: '#ffffff', border: `2px solid ${color}`, borderRadius: 999,
-      padding: '6px 13px 6px 7px', boxShadow: `0 2px 6px ${color}33`, whiteSpace: 'nowrap',
-    }}>
+    <div
+      title={data.control ? 'Control the current - speed and amount' : undefined}
+      style={{
+        position: 'relative', display: 'flex', alignItems: 'center', gap: 7,
+        background: '#ffffff', border: `2px solid ${color}`, borderRadius: 999,
+        padding: '6px 13px 6px 7px', boxShadow: `0 2px 6px ${color}33`, whiteSpace: 'nowrap',
+        cursor: data.control ? 'pointer' : 'default',
+      }}>
       {connector}
       <span style={{ width: 22, height: 22, borderRadius: '50%', background: color, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>

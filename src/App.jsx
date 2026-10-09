@@ -18,6 +18,7 @@ import { cleanDesc } from './tag'
 import { cleanEdgeLabel } from './note.js'
 import { fireflies } from './fireflies'
 import { makeThumbnail } from './thumbnail'
+import { currentOf, cleanCurrent } from './view-state.js'
 
 // Vite exposed import.meta.env.DEV; Next replaces process.env.NODE_ENV at build
 // time, so this compiles to a constant in the client bundle exactly the same way.
@@ -138,7 +139,7 @@ function buildMarkers(nodes, edges, override, draggable) {
     const dx = cardCenter.x - pillCenter.x, dy = cardCenter.y - pillCenter.y
     const dir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up')
     return {
-      nodes: [{ id: `__start_${startId}`, type: 'marker', position: { x: override.x, y: override.y }, width: 132, height: 36, data: { kind: 'start', dir }, draggable: !!draggable, selectable: false }],
+      nodes: [{ id: `__start_${startId}`, type: 'marker', position: { x: override.x, y: override.y }, width: 132, height: 36, data: { kind: 'start', dir, control: !!draggable }, draggable: !!draggable, selectable: false }],
       edges: [],
     }
   }
@@ -176,7 +177,7 @@ function buildMarkers(nodes, edges, override, draggable) {
     right: { pos: { x: p.x + 205, y: p.y + sh / 2 - 18 }, dir: 'left' },
   }[side]
   return {
-    nodes: [{ id: `__start_${startId}`, type: 'marker', position: place.pos, width: 132, height: 36, data: { kind: 'start', dir: place.dir }, draggable: !!draggable, selectable: false }],
+    nodes: [{ id: `__start_${startId}`, type: 'marker', position: place.pos, width: 132, height: 36, data: { kind: 'start', dir: place.dir, control: !!draggable }, draggable: !!draggable, selectable: false }],
     edges: [],
   }
 }
@@ -222,6 +223,12 @@ export default function App() {
   // the edges state is rebuilt every frame.
   const beatN = flowClock.beatCount(edges)
   useEffect(() => { flowClock.setSteps(beatN) }, [beatN])
+  // How fast the current runs and how many small dots it carries, from the row
+  // and changed from the Start pill's panel (owner 2026-10-09). Held here as
+  // well as in view_state so a click lands on the dots at once rather than
+  // after the PATCH comes back.
+  const [current, setCurrentState] = useState(() => currentOf(null))
+  useEffect(() => { flowClock.setCurrent(current) }, [current])
   // Declared before the effects/callbacks that depend on it - a const useCallback
   // is not hoisted, so referencing it earlier would be a temporal-dead-zone crash.
   const showToastMsg = useCallback(msg => {
@@ -696,6 +703,7 @@ export default function App() {
     applyPanels(canAI ? open : open.filter(p => p !== 'code'))
     pendingPanels.current = canAI || authChecked ? null : open
     if (['dark', 'silver', 'color', 'plain'].includes(v.badge)) setBadgeMode(v.badge)
+    setCurrentState(currentOf(v))
     const { nodes: n, edges: e } = buildDiagramNodesEdges(d)
     setNodes(n)
     setEdges(e)
@@ -802,18 +810,36 @@ export default function App() {
       .catch(() => {})
   }, [activeDiagram])
 
+  // Everything in view_state that is NOT the key being written. The canvas
+  // PATCH replaces the whole object, so a save that rebuilt it from scratch
+  // would silently clear the owner's lanes, Start placement or current.
+  const otherView = useCallback(drop => {
+    const prev = activeDiagram?.view_state || {}
+    const keep = k => !drop.includes(k) && prev[k] !== undefined && prev[k] !== null
+    return {
+      ...(keep('panels') ? { panels: prev.panels } : {}),
+      ...(keep('badge') ? { badge: prev.badge } : {}),
+      ...(keep('lanes') ? { lanes: prev.lanes } : {}),
+      ...(keep('start') ? { start: prev.start } : {}),
+      ...(keep('current') ? { current: prev.current } : {}),
+    }
+  }, [activeDiagram])
+
   // The owner dropped the Start pill somewhere of their own choosing - save the
   // spot so it overrides the automatic placement from here on.
   const saveStart = useCallback(pos => {
-    const prev = activeDiagram?.view_state || {}
-    patchViewState({
-      ...(prev.panels ? { panels: prev.panels } : {}),
-      ...(prev.badge ? { badge: prev.badge } : {}),
-      ...(prev.lanes ? { lanes: prev.lanes } : {}),
-      start: { x: Math.round(pos.x), y: Math.round(pos.y) },
-    })
+    patchViewState({ ...otherView(['start']), start: { x: Math.round(pos.x), y: Math.round(pos.y) } })
     setStartDrag(null)
-  }, [activeDiagram, patchViewState])
+  }, [otherView, patchViewState])
+
+  // A speed or amount preset from the current's panel: on the dots now, in the
+  // row a moment later. Stored only once it differs from the default, the same
+  // way the Start placement is (src/view-state.js).
+  const setCurrent = useCallback(next => {
+    const c = currentOf({ current: { ...current, ...next } })
+    setCurrentState(c)
+    patchViewState({ ...otherView(['current']), ...cleanCurrent(c) })
+  }, [current, otherView, patchViewState])
 
   // The owner dragged a node's resize handle. Store the new size on the node
   // (both top-level, for React Flow's own sizing, and in data, for AwsNode's
@@ -1189,7 +1215,7 @@ export default function App() {
       // Carry the owner's Start placement through a plain panel/badge save -
       // this effect only ever meant to touch those two, and rebuilding the
       // object from scratch would otherwise silently clear the placement.
-      const view_state = { panels: panelKey ? panelKey.split(',') : [], badge: badgeMode, ...(prev.start ? { start: prev.start } : {}), ...(prev.lanes ? { lanes: prev.lanes } : {}) }
+      const view_state = { panels: panelKey ? panelKey.split(',') : [], badge: badgeMode, ...(prev.start ? { start: prev.start } : {}), ...(prev.lanes ? { lanes: prev.lanes } : {}), ...(prev.current ? { current: prev.current } : {}) }
       return fetch(`/api/flows/${savingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -1638,6 +1664,7 @@ export default function App() {
       canEdit={canAI}
       onToggleVisibility={canAI && activeDiagram?.id ? toggleVisibility : undefined}
       onShareOpen={canAI && activeDiagram?.id ? ensureShareable : undefined}
+      current={current} onCurrentChange={canAI && activeDiagram?.id ? setCurrent : undefined}
     />
   )
 }

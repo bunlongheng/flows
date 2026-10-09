@@ -5,7 +5,7 @@
 // all. That shipped once. This is the guard.
 import { describe, it, expect } from "vitest";
 import { spawn } from "node:child_process";
-import { PANELS, BADGES } from "../../src/view-state.js";
+import { PANELS, BADGES, SPEEDS, AMOUNTS } from "../../src/view-state.js";
 
 const listTools = () =>
   new Promise((resolve, reject) => {
@@ -56,5 +56,10 @@ describe("the MCP tool list", () => {
     const view = (await listTools()).find((t) => t.name === "update_flow").inputSchema.properties.view.properties;
     expect(view.panels.items.enum).toEqual(PANELS);
     expect(view.badge.enum).toEqual(BADGES);
+    // The current's 2 presets are the 4th door onto the same list: the canvas
+    // writes them, the API validates them, the renderer draws them.
+    const cur = view.current.properties;
+    expect(cur.speed.anyOf.map((o) => o.const)).toEqual(SPEEDS);
+    expect(cur.amount.anyOf.map((o) => o.const)).toEqual(AMOUNTS);
   }, 20_000);
 });

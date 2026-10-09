@@ -3,7 +3,7 @@ import {
   subscribe, beginCapture, stepCapture, endCapture,
   motionAllowed, capturePeriodMs, setSteps, stepAt, dotAt, glowAt, beatsOf, beatCount,
   isPlaying, setPlaying, isFlowing, subscribeFlowing,
-  ambientAt, AMBIENT_DOTS, AMBIENT_STEPS,
+  ambientAt, ambientCount, AMBIENT_AMOUNT, AMBIENT_STEPS, setCurrent, currentAmount,
 } from "../../src/flowClock.js";
 
 // The clock exists so a GIF export can show motion. html-to-image serialises the
@@ -21,8 +21,8 @@ const raf = () => {
 
 describe("flowClock", () => {
   let clock;
-  beforeEach(() => { clock = raf(); endCapture(); setSteps(1); setPlaying(true); });
-  afterEach(() => { endCapture(); setPlaying(false); vi.restoreAllMocks(); });
+  beforeEach(() => { clock = raf(); endCapture(); setCurrent({ speed: 1, amount: AMBIENT_AMOUNT }); setSteps(1); setPlaying(true); });
+  afterEach(() => { endCapture(); setPlaying(false); setCurrent({ speed: 1, amount: AMBIENT_AMOUNT }); vi.restoreAllMocks(); });
 
   it("drives every subscriber from one loop", () => {
     const a = vi.fn(), b = vi.fn();
@@ -96,12 +96,13 @@ describe("flowClock", () => {
     expect(stepAt(0.5, 0).index).toBe(0); // a diagram with no lines still answers
   });
 
-  // The ambient current: every line carries its small dots the whole time,
+  // The ambient current: the diagram carries a TOTAL number of small dots
   // under the 1 big step dot, and a cycle holds whole crossings so a GIF loops.
   it("keeps small dots on every line, staggered by line, and loops with the cycle", () => {
-    for (const i of [0, 1, 2, 3]) expect(ambientAt(0.3, 4, i)).toHaveLength(AMBIENT_DOTS);
+    for (const i of [0, 1, 2, 3]) expect(ambientAt(0.3, 4, i).length).toBeGreaterThan(0);
     const a = ambientAt(0.3, 4, 1);
-    expect(Math.abs(a[0] - a[1])).toBeCloseTo(0.5, 5);
+    // Evenly spaced along the line, whatever this line's share came to.
+    for (let k = 1; k < a.length; k++) expect((a[k] - a[0] + 1) % 1).toBeCloseTo(k / a.length, 5);
     expect(Math.abs(ambientAt(0.3, 4, 0)[0] - a[0])).toBeGreaterThan(0.1);
     expect(ambientAt(1, 4, 2)[0]).toBeCloseTo(ambientAt(0, 4, 2)[0], 5);
     for (const x of ambientAt(0.77, 4, 3)) { expect(x).toBeGreaterThanOrEqual(0); expect(x).toBeLessThan(1); }
@@ -110,6 +111,44 @@ describe("flowClock", () => {
     expect((ambientAt(0.25, 4, 0)[0] - ambientAt(0, 4, 0)[0] + 1) % 1).toBeCloseTo(1 / AMBIENT_STEPS, 5);
     // and the crossings per cycle stay whole on an odd count, so the loop is seamless
     expect(ambientAt(1, 7, 2)[0]).toBeCloseTo(ambientAt(0, 7, 2)[0], 5);
+  });
+
+  // The owner's amount is a TOTAL across the diagram, so the same setting reads
+  // the same on a 6 line flow and on a 50 line map: 1 dot a line put 41 of them
+  // on BC Integrations and the owner called it "a bit too much" (2026-10-09).
+  it("spreads the owner's amount over the whole diagram, never per line", () => {
+    for (const lines of [1, 4, 7, 41]) {
+      for (const total of [5, 10, 20, 50, 100]) {
+        const spread = Array.from({ length: lines }, (_, i) => ambientCount(i, lines, total));
+        expect(spread.reduce((a, b) => a + b, 0)).toBe(total);
+        // Evenly: no line carries more than 1 dot over its neighbour's share.
+        expect(Math.max(...spread) - Math.min(...spread)).toBeLessThanOrEqual(1);
+      }
+    }
+    // A line with no share of a small total draws nothing at all.
+    expect(ambientCount(0, 41, 5)).toBe(0);
+    expect(ambientAt(0.3, 41, 0, 5)).toEqual([]);
+    // And the drawn dots follow the setting, not this module's default.
+    const drawn = (total) => Array.from({ length: 4 }, (_, i) => ambientAt(0.3, 4, i, total).length).reduce((a, b) => a + b, 0);
+    expect(drawn(5)).toBe(5);
+    expect(drawn(100)).toBe(100);
+  });
+
+  // The panel's 2 presets: speed multiplies the whole clock, amount is what
+  // every line reads when it is not told otherwise.
+  it("takes the owner's speed and amount from the current's panel", () => {
+    setSteps(6);
+    const at1x = capturePeriodMs();
+    setCurrent({ speed: 5, amount: 50 });
+    expect(capturePeriodMs()).toBe(at1x / 5);
+    expect(currentAmount()).toBe(50);
+    expect(ambientAt(0.3, 4, 0).length).toBe(ambientCount(0, 4, 50));
+    // A later line count keeps the speed: the 2 settings are independent.
+    setSteps(3);
+    expect(capturePeriodMs()).toBe(at1x / 6 * 3 / 5);
+    // Anything outside the presets is clamped rather than trusted.
+    setCurrent({ speed: 99, amount: 10 });
+    expect(capturePeriodMs()).toBe(at1x / 6 * 3 / 5);
   });
 
   it("puts exactly 1 dot on the canvas at a time", () => {
