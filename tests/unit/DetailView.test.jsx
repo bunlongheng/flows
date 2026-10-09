@@ -353,11 +353,11 @@ describe("current panel", () => {
   const clickPill = () => fireEvent.click(document.querySelector('.react-flow__node[data-id="__start_user"]'));
 
   it("opens on the Start pill with both rows of presets", () => {
-    setup({ nodes, current: { speed: 1, amount: 10 }, onCurrentChange: vi.fn() });
+    setup({ nodes, current: { speed: 1, amount: 20 }, onCurrentChange: vi.fn() });
     clickPill();
     const panel = within(screen.getByTestId("current-panel"));
     for (const s of ["0.5x", "1x", "1.5x", "2x"]) expect(panel.getByRole("button", { name: s })).toBeInTheDocument();
-    for (const a of ["5", "10", "20", "50", "100", "200", "500"]) expect(panel.getByRole("button", { name: a })).toBeInTheDocument();
+    for (const a of ["20", "50", "100", "200", "500", "1000", "2000", "5000"]) expect(panel.getByRole("button", { name: a })).toBeInTheDocument();
   });
 
   it("reports a picked speed and a picked amount, 1 key at a time", () => {

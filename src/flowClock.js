@@ -260,10 +260,16 @@ const ease = t => t * t * (3 - 2 * t)
 // has to read as the current moving rather than as 2 cards lit at once.
 const FADE = 0.4
 
+// Where on its line the big dot reaches the card: it fades out over the last
+// 12% of the line (FlowDot, render-svg.js), which is it going in.
+const ARRIVE = 0.88
+
 /**
- * How brightly 1 card lights: up as the live step crosses towards it, full as
- * the dot lands, then back down while the next step runs. Every other card on
- * the canvas is 0 - the glow is there to say "the current is HERE".
+ * How brightly 1 card lights: dark while the big dot is still on its way, up
+ * only as the dot goes INTO the card, then back down while the next step runs
+ * (owner 2026-10-09: "only glow when the big current go into the box, not in
+ * advance"). The small dots never light anything. Every other card is 0 - the
+ * glow is there to say "the current is HERE".
  */
 export function glowAt(phase, edges, nodeId) {
   const list = edges || []
@@ -271,7 +277,7 @@ export function glowAt(phase, edges, nodeId) {
   const s = stepAt(phase, beatCount(list))
   // Every line on a beat lands together, so each of their targets lights.
   const landsOn = b => list.some((e, i) => beats[i] === b && e.target === nodeId)
-  if (landsOn(s.index)) return ease(s.local)
+  if (landsOn(s.index)) return s.local < ARRIVE ? 0 : ease((s.local - ARRIVE) / (1 - ARRIVE))
   const prev = (s.index - 1 + s.count) % s.count
   if (prev !== s.index && landsOn(prev)) return 1 - ease(Math.min(1, s.local / FADE))
   return 0

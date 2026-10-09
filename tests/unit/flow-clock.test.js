@@ -200,15 +200,21 @@ describe("flowClock", () => {
 
   it("lights only the card the current is crossing into", () => {
     const lit = (p) => ["a", "b", "c", "d"].filter((n) => glowAt(p, chain, n) > 0.01);
-    // Mid step 2 of 3: c is coming up and that is the whole canvas. b has
-    // already gone dark behind the dot, a is a source only, d is still to come.
-    expect(lit(0.5)).toEqual(["c"]);
+    // Mid step 2 of 3 the dot is still on its way: nothing glows in advance.
+    // b has already gone dark behind it, a is a source only, d is to come.
+    expect(lit(0.5)).toEqual([]);
+    expect(lit(0.65)).toEqual(["c"]); // c lights as the dot goes in
     expect(glowAt(0.5, chain, "a")).toBe(0);
     expect(glowAt(0.5, chain, "d")).toBe(0);
     expect(lit(0.3)).toEqual(["b"]); // late in step 1, where it lands
     // The hand off is the only moment 2 cards carry any light at all, and the
     // one being left is already on its way out.
     expect(glowAt(0.37, chain, "b")).toBeGreaterThan(glowAt(0.37, chain, "c"));
+  });
+
+  it("stays dark while the dot is on its way, lights only as it goes in", () => {
+    expect(glowAt(0.25, chain, "b")).toBe(0); // 3/4 of the way there: still dark
+    expect(glowAt(0.3, chain, "b")).toBeGreaterThan(0); // going in
   });
 
   it("brings a card up to full as the dot lands, then back down", () => {
