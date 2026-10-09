@@ -866,7 +866,7 @@ export default function App() {
     setNodes(nds => nds.map(n => {
       if (n.type !== 'awsNode') return n
       const size = sizedCard({ size: n.data.handSize, image: n.data.image, id: n.id }, mode, lines)
-      const { width, height, ...rest } = n
+      const { width: _w, height: _h, ...rest } = n
       return { ...rest, ...(size ? { width: size.w, height: size.h } : {}), data: { ...n.data, size } }
     }))
   }, [activeDiagram, otherView, patchViewState])
