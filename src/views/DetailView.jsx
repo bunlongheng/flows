@@ -176,10 +176,24 @@ export function DetailView({
   // 2026-10-09). Same slot as the card panel, so opening either closes the other.
   const [currentOpen, setCurrentOpen] = useState(false)
   useEffect(() => { setCurrentOpen(false) }, [activeDiagram?.id])
-  // At most 1 extra right panel: Share and History already own that slot.
+  // Never 2 panels at once (owner rule 2026-10-09): opening one closes whichever
+  // was open, so the latest opened is the only one on screen.
+  const openPanels = { share: showSharePanel, history: showHistoryPanel, code: showDetailCode, card: !!cardId, current: currentOpen }
+  const prevPanels = useRef(openPanels)
   useEffect(() => {
-    if (showSharePanel || showHistoryPanel) { setCardId(null); setCurrentOpen(false) }
-  }, [showSharePanel, showHistoryPanel])
+    const prev = prevPanels.current
+    prevPanels.current = openPanels
+    const fresh = Object.keys(openPanels).filter(k => openPanels[k] && !prev[k])
+    if (!fresh.length) return
+    const keep = fresh[fresh.length - 1]
+    if (keep !== 'share' && showSharePanel) setShowSharePanel(false)
+    if (keep !== 'history' && showHistoryPanel) setShowHistoryPanel(false)
+    if (keep !== 'code' && showDetailCode) setShowDetailCode(false)
+    if (keep !== 'card' && cardId) setCardId(null)
+    if (keep !== 'current' && currentOpen) setCurrentOpen(false)
+    // Reacts to a panel opening, nothing else; the setters are stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSharePanel, showHistoryPanel, showDetailCode, cardId, currentOpen])
   useEffect(() => {
     if (!cardId && !currentOpen) return
     const onKeyDown = e => { if (e.key === 'Escape') { setCardId(null); setCurrentOpen(false) } }
@@ -326,27 +340,6 @@ export function DetailView({
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showSteps, showSharePanel, showDetailCode, showHistoryPanel, cardOpen, currentOpen])
-
-  // Push to Miro. Miro has no file import for diagrams at all, so this is the
-  // one export that is a request rather than a download: the owner pastes a
-  // token from their own Miro app settings and a board URL. The token lives in
-  // this state for the length of the push and is never stored anywhere.
-  const [miro, setMiro] = useState(null)
-  async function pushMiro() {
-    if (!activeDiagram?.id || !miro) return
-    setMiro(m => ({ ...m, busy: true, msg: '' }))
-    try {
-      const r = await fetch(`/api/flows/${activeDiagram.id}/miro`, {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: miro.token, board: miro.board }),
-      })
-      const j = await r.json().catch(() => ({}))
-      if (!r.ok) { setMiro(m => ({ ...m, busy: false, msg: j.error || 'Miro said no' })); return }
-      window.open(j.boardUrl, '_blank', 'noopener')
-      setMiro(null)
-    } catch { setMiro(m => ({ ...m, busy: false, msg: 'Could not reach the server' })) }
-  }
 
   // History panel: fetch the list on open, and again after every restore - a
   // restore is itself versioned, so the fresh top row is always what just ran.
@@ -1201,47 +1194,18 @@ export function DetailView({
                   onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
                 >Excalidraw</a>
               )}
-              {/* One file, four tools: Lucidchart File > Import takes a draw.io
-                  file on any account, and so do draw.io, Confluence and VS Code.
-                  Lucid's own .lucid format would need an OAuth'd import API. */}
+              {/* Lucidchart File > Import takes this file on any account. It is
+                  the draw.io format on the wire, since Lucid's own .lucid format
+                  would need an OAuth'd import API. */}
               {canEdit && activeDiagram?.id && (
                 <a href={`/api/flows/${activeDiagram.id}?format=drawio`} download
-                  title="A .drawio file - import into Lucidchart (File > Import), or open in draw.io, Confluence or VS Code"
+                  title="A Lucidchart file - in Lucidchart, File > Import"
                   style={{ background: '#FC9867', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit', textAlign: 'center', textDecoration: 'none' }}
                   onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
                   onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
-                >Lucid / draw.io</a>
-              )}
-              {canEdit && activeDiagram?.id && (
-                <button onClick={() => setMiro(m => (m ? null : { token: '', board: '', busy: false, msg: '' }))}
-                  title="Push this flow onto a Miro board - real shapes, real connectors, logos included"
-                  style={{ background: '#78DCE8', color: '#221F22', cursor: 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', transition: 'all 0.1s', fontFamily: 'inherit' }}
-                  onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
-                  onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
-                >Miro</button>
+                >Lucid</a>
               )}
             </div>
-            {/* Miro asks for a token because it has no other way in: its REST
-                API is the only import path and every Miro token comes out of an
-                OAuth flow. Pasting one beats running a redirect route and
-                holding someone's credentials - this one is sent with the push
-                and kept nowhere. */}
-            {miro && (
-              <div style={{ marginTop: 8, padding: 10, borderRadius: 10, background: '#2D2A2E', display: 'grid', gap: 6 }}>
-                <input value={miro.token} onChange={e => setMiro(m => ({ ...m, token: e.target.value }))}
-                  type="password" placeholder="Miro OAuth token" autoComplete="off" spellCheck={false}
-                  style={{ padding: '6px 8px', fontSize: 11, borderRadius: 8, border: '1px solid #5B595C', background: '#221F22', color: '#FCFCFA', fontFamily: 'inherit' }} />
-                <input value={miro.board} onChange={e => setMiro(m => ({ ...m, board: e.target.value }))}
-                  placeholder="https://miro.com/app/board/..." autoComplete="off" spellCheck={false}
-                  style={{ padding: '6px 8px', fontSize: 11, borderRadius: 8, border: '1px solid #5B595C', background: '#221F22', color: '#FCFCFA', fontFamily: 'inherit' }} />
-                <button onClick={pushMiro} disabled={miro.busy || !miro.token || !miro.board}
-                  style={{ background: '#78DCE8', color: '#221F22', cursor: miro.busy ? 'wait' : 'pointer', padding: '7px 0', fontSize: 11, fontWeight: 600, borderRadius: 12, border: 'none', opacity: miro.busy || !miro.token || !miro.board ? 0.5 : 1, fontFamily: 'inherit' }}
-                >{miro.busy ? 'Pushing...' : 'Push to board'}</button>
-                <div style={{ fontSize: 10, color: miro.msg ? '#FF6188' : '#939293', lineHeight: 1.4 }}>
-                  {miro.msg || <>Miro app settings &gt; <b>Install app and get OAuth token</b>. Never stored.</>}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -1504,6 +1468,10 @@ export function DetailView({
            touch device pays that tax - a mouse keeps the note's own 10px, so
            the text does not change size the moment it is clicked. */
         @media (hover: none) and (pointer: coarse) { .sd-note-edit { font-size: 16px; } }
+        /* The note's delete button shows on hover; touch has no hover, so it stays. */
+        .sd-note-del { opacity: 0; transition: opacity 0.15s; }
+        .sd-note-box:hover .sd-note-del, .sd-note-del:focus-visible { opacity: 1; }
+        @media (hover: none) { .sd-note-del { opacity: 1; } }
         /* Step number, first thing in the badge - hidden until Steps is on. */
         .sd-step-chip { display: none; }
         .sd-steps-on .sd-step-chip {
