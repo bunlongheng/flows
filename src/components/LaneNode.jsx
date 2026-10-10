@@ -43,7 +43,10 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
       style={k === 'w' ? { width: hit(14), right: -hit(14) / 2 } : k === 'l' ? { width: hit(14), left: -hit(14) / 2 } : { height: hit(14), bottom: -hit(14) / 2 }} />
   )) : null)
   const title = (text, color, section, rect) => (edit ? (
-    <div className="sd-lane-grab nodrag nopan" style={{ position: 'absolute', left: 0, right: 0, top: 0, height: Math.max(32, hit(28)) }}
+    // Only as wide as the title (plus its 16 px inset each side), never the
+    // whole band: a line's dot or badge under the top strip must stay reachable.
+    <div className="sd-lane-grab nodrag nopan" style={{ position: 'absolute', left: 0, top: 0, height: Math.max(32, hit(28)),
+      width: Math.max(32 + String(text || '').length * 0.62 * (data.size || LANE_TITLE), hit(80)) }}
       onPointerDown={grab('move', section, rect)} />
   ) : (
     <div className="sd-lane-title" style={{ color, fontSize: data.size || LANE_TITLE }}>{text || ''}</div>

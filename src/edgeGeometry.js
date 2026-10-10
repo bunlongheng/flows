@@ -404,6 +404,34 @@ export function bendPoint(sx, sy, tx, ty, b) {
   const { ux, uy, len } = bendFrame(sx, sy, tx, ty)
   return { x: sx + ux * len * b.t - uy * b.d, y: sy + uy * len * b.t + ux * b.d }
 }
+// A step line moved by hand keeps its square corners: `ox` slides its middle
+// upright leg left / right and `oy` its middle level leg up / down, both from
+// the midpoint of the 2 ends so the line follows the boxes when they move.
+// Between 2 side faces only ox counts, between top / bottom faces only oy,
+// and a line from a side to a top or bottom face takes both (2 corners).
+const sideways = s => s === 'left' || s === 'right'
+export const isElbow = b => !!b && (Number.isFinite(b.ox) || Number.isFinite(b.oy))
+export function elbowPoints(sx, sy, tx, ty, sSide, tSide, b) {
+  const S = { x: sx, y: sy }, T = { x: tx, y: ty }
+  const mx = (sx + tx) / 2 + (b.ox || 0), my = (sy + ty) / 2 + (b.oy || 0)
+  const sh = sideways(sSide), th = sideways(tSide)
+  if (sh && th) return [S, { x: mx, y: sy }, { x: mx, y: ty }, T]
+  if (!sh && !th) return [S, { x: sx, y: my }, { x: tx, y: my }, T]
+  return sh ? [S, { x: mx, y: sy }, { x: mx, y: my }, { x: tx, y: my }, T]
+    : [S, { x: sx, y: my }, { x: mx, y: my }, { x: mx, y: ty }, T]
+}
+// Where the dot sits: the middle of the leg it moves.
+export function elbowHandle(sx, sy, tx, ty, sSide, tSide, b) {
+  const p = elbowPoints(sx, sy, tx, ty, sSide, tSide, b), i = Math.floor((p.length - 1) / 2)
+  return p.length === 4 ? { x: (p[1].x + p[2].x) / 2, y: (p[1].y + p[2].y) / 2 } : p[i]
+}
+// The elbow that puts the moved leg under a dragged (px, py).
+export function elbowFor(sx, sy, tx, ty, sSide, tSide, px, py) {
+  const sh = sideways(sSide), th = sideways(tSide), r = v => Math.min(3000, Math.max(-3000, Number(v.toFixed(1))))
+  const ox = r(px - (sx + tx) / 2), oy = r(py - (sy + ty) / 2)
+  return sh && th ? { ox } : !sh && !th ? { oy } : { ox, oy }
+}
+
 // The bend that puts the bend point under a dragged (px, py).
 export function bendFor(sx, sy, tx, ty, px, py) {
   const { ux, uy, len } = bendFrame(sx, sy, tx, ty)
@@ -796,7 +824,11 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
   }
   // A hand-bent line: a quadratic curve through the bend point, replacing
   // whatever the automatic routing chose.
-  if (bend) {
+  if (isElbow(bend)) {
+    path = roundedPath(elbowPoints(sx, sy, tx, ty, sSide, tSide, bend))
+    const H = elbowHandle(sx, sy, tx, ty, sSide, tSide, bend)
+    labelX = H.x; labelYRaw = H.y
+  } else if (bend) {
     const B = bendPoint(sx, sy, tx, ty, bend)
     const qx = 2 * B.x - (sx + tx) / 2, qy = 2 * B.y - (sy + ty) / 2
     path = `M${sx},${sy} Q${qx},${qy} ${tx},${ty}`
@@ -815,8 +847,9 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
   }
   // Every line reserves the track it draws on, for the lines after it. A
   // hand-made line (bend, straight, curved) is the owner's call: it reserves nothing.
+  // A square line the owner moved still holds its track, so the next line steps off it.
   const g = fan ? `fan:${fan.end}:${fan.leader}` : id
-  const legs = bend || arrow === 'straight' || arrow === 'curved' ? [] : pathLegs(drawPath || path).map(l => ({ ...l, g }))
+  const legs = (bend && !isElbow(bend)) || arrow === 'straight' || arrow === 'curved' ? [] : pathLegs(drawPath || path).map(l => ({ ...l, g }))
   return { legs, path, drawPath: drawPath || path, hideLabel, hideArrow, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelYRaw, labelOff }
 }
 
