@@ -105,14 +105,15 @@ describe("sections", () => {
     { id: "work", title: "Work", at: 1300, color: "#E650BA" },
   ] }];
 
-  it("keeps 2 to 4 typed sections, sorted, and drops a lone or malformed one", () => {
+  it("keeps 2 to 8 typed sections, sorted, and drops a lone or malformed one", () => {
     expect(cleanLanes(split)[0].sections).toEqual([
       { id: "jobs", title: "Jobs", at: -100 },
       { id: "work", title: "Work", at: 1300, color: "#E650BA" },
     ]);
-    // Out of order comes back in order, and a 5th is cut.
-    const many = [{ id: "a", y: 0, h: 300, sections: [{ id: "c", at: 900 }, { id: "b", at: 100 }, { id: "a", at: 0 }, { id: "d", at: 1200 }, { id: "e", at: 1500 }] }];
-    expect(cleanLanes(many)[0].sections.map(s => s.id)).toEqual(["a", "b", "c", "d"]);
+    // Out of order comes back in order, and a 9th is cut.
+    const ids = ["c", "b", "a", "d", "e", "f", "g", "h", "i"];
+    const many = [{ id: "a", y: 0, h: 300, sections: ids.map(id => ({ id, at: { a: 0, b: 100, c: 900 }[id] ?? 1000 + ids.indexOf(id) * 300 })) }];
+    expect(cleanLanes(many)[0].sections.map(s => s.id)).toEqual(["a", "b", "c", "d", "e", "f", "g", "h"]);
     // 1 section is not a split; neither is one with no `at` or a repeated id.
     for (const bad of [[{ id: "only", at: 0 }], [{ id: "a", at: 0 }, { id: "a", at: 9 }], [{ id: "a" }, { id: "b" }], "no"]) {
       expect(cleanLanes([{ id: "x", y: 0, h: 300, sections: bad }])[0].sections).toBeUndefined();

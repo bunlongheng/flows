@@ -51,7 +51,7 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
   ) : (
     <div className="sd-lane-title" style={{ color, fontSize: data.size || LANE_TITLE }}>{text || ''}</div>
   ))
-  // 2 to 4 sections across the band, each its own band with its own title and
+  // 2 to 8 sections across the band, each its own band with its own title and
   // tint, LANE_GAP apart for the same visual separation 2 lanes get (src/lanes.js).
   const sections = data.sections || []
   const split = sections.length >= 2

@@ -11,7 +11,7 @@ import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapSuggest } from './snapAlign'
 import { findService } from './services'
-import { laneNodes, laneRef, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD } from './lanes.js'
+import { laneNodes, laneRef, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD, LANE_FIT, LANE_SECTIONS_MAX } from './lanes.js'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
@@ -1691,8 +1691,15 @@ export default function App() {
         ...rects.flatMap(r => (r.sections?.length >= 2 ? sectionRects(r, col ? 'col' : 'row', laneCards) : [r])).filter(r => r.id !== mine),
         ...laneCards.filter(c => home[c.id] !== mine),
       ]
+      // Which lane every card sits in, for the lanes that re-pack under a dropped section.
+      const laneOf = {}
+      const [a, s] = col ? ['x', 'w'] : ['y', 'h']
+      for (const c of laneCards) {
+        const m = c[a] + c[s] / 2, r = rects.find(r => m >= r[a] && m < r[a] + r[s])
+        if (r) laneOf[c.id] = r.id
+      }
       setSelBand({ lane, section: section || null })
-      bandDrag.current = { base: laneCfg, home, targets, from: Object.fromEntries(laneCards.map(c => [c.id, { x: c.x, y: c.y }])) }
+      bandDrag.current = { base: laneCfg, home, laneOf, targets, from: Object.fromEntries(laneCards.map(c => [c.id, { x: c.x, y: c.y }])) }
       return
     }
     const d = bandDrag.current
@@ -1715,12 +1722,59 @@ export default function App() {
     }
     setSnapGuides(phase === 'end' || !guide ? [] : [guide])
     let next = d.base, moved = null
-    if (kind === 'move' && section) {
-      const along = col ? 'y' : 'x', dv = col ? dy : dx
-      moved = id => (d.home[id] === section ? { ...d.from[id], [along]: d.from[id][along] + dv } : null)
-      const starts = {}
-      for (const [id, sid] of Object.entries(d.home)) starts[sid] = Math.min(starts[sid] ?? Infinity, (moved(id) || d.from[id])[along])
-      next = d.base.map(l => (l.id === lane ? { ...l, sections: resortSections(l.sections, starts) } : l))
+    if (kind === 'move' && section && phase !== 'end') {
+      // Free form while dragged: the section's cards follow the pointer both ways.
+      moved = id => (d.home[id] === section ? { x: d.from[id].x + dx, y: d.from[id].y + dy } : null)
+    } else if (kind === 'move' && section) {
+      // Dropped, it joins the lane its middle lands in (the nearest one from a
+      // gap), never above that lane's own edge. A full lane keeps it home.
+      const [along, across, deep] = col ? ['y', 'x', 'w'] : ['x', 'y', 'h']
+      const du = Math.round(col ? dy : dx), rects = laneRects(d.base, laneCards)
+      const mid = rect[across] + (col ? dx : dy) + rect[deep] / 2
+      const off = r => Math.max(r[across] - mid, mid - r[across] - r[deep], 0)
+      let tgt = rects.reduce((a, r) => (off(r) < off(a) ? r : a))
+      if (tgt.id !== lane && (tgt.sections?.length || 1) >= LANE_SECTIONS_MAX) tgt = rects.find(r => r.id === lane)
+      const da = Math.round(Math.max(tgt[across], rect[across] + (col ? dx : dy)) - rect[across])
+      const mine = id => d.home[id] === section
+      const to = id => ({ ...d.from[id], [along]: d.from[id][along] + du, [across]: d.from[id][across] + da })
+      const cardsOf = id => laneCards.filter(c => !mine(c.id) && d.laneOf[c.id] === id).map(c => ({ ...c, ...d.from[c.id] }))
+      const sec = d.base.find(l => l.id === lane).sections.find(s => s.id === section)
+      const ours = laneCards.filter(c => mine(c.id)).map(c => ({ ...c, ...to(c.id) }))
+      const startOf = cs => Math.min(...cs.map(c => c[along])) - SECTION_PAD
+      // A lane holds its cards by where they start, so it grows to take them
+      // (and shrinks behind a section that left); the lanes after it re-pack.
+      const fit = (l, cs) => {
+        if (!cs.length) return l
+        const need = Math.max(LANE_MIN, Math.round(Math.max(...cs.map(c => c[across] + c[deep])) + LANE_FIT - l[across]))
+        return { ...l, [deep]: need, ...(Number.isFinite(l.depth) ? { depth: Math.max(l.depth, need) } : {}) }
+      }
+      next = d.base.map(l => {
+        if (l.id === tgt.id) {
+          const theirs = cardsOf(l.id), all = [...theirs, ...ours]
+          let sections
+          if (l.id === lane) {
+            const starts = {}
+            for (const [id, sid] of Object.entries(d.home)) starts[sid] = Math.min(starts[sid] ?? Infinity, (mine(id) ? to(id) : d.from[id])[along])
+            sections = resortSections(l.sections, starts)
+          } else if (l.sections?.length) sections = [...l.sections, { ...sec, at: ours.length ? startOf(ours) : sec.at }]
+          else if (theirs.length) {
+            const main = sec.id === `${l.id}-main` ? `${l.id}-rest` : `${l.id}-main`
+            sections = [{ id: main, title: l.title, at: startOf(theirs) }, { ...sec, at: ours.length ? startOf(ours) : sec.at }]
+          }
+          // An empty lane that takes a section becomes that section.
+          const own = sections ? { sections: sections.sort((a, b) => a.at - b.at) } : { title: sec.title, ...(sec.color ? { color: sec.color } : {}) }
+          return fit({ ...l, ...own }, all)
+        }
+        if (l.id !== lane) return l
+        const left = l.sections.filter(s => s.id !== section)
+        const { sections: _, ...plain } = l
+        return fit(left.length >= 2 ? { ...l, sections: left } : plain, cardsOf(l.id))
+      })
+      const packed = cleanLanes(next)
+      const by = Object.fromEntries(packed.map(l => [l.id, l[across] - d.base.find(b => b.id === l.id)[across]]))
+      moved = id => (mine(id) ? { ...to(id), [across]: to(id)[across] + by[tgt.id] }
+        : by[d.laneOf[id]] ? { ...d.from[id], [across]: d.from[id][across] + by[d.laneOf[id]] } : null)
+      next = packed
     } else if (kind === 'move') {
       // Lanes re-pack on the drop, so every lane's cards follow their band.
       const across = col ? 'x' : 'y', dv = col ? dx : dy, out = moveLane(d.base, lane, dv)
