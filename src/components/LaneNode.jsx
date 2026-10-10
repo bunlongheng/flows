@@ -36,10 +36,11 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
   // bar, never smaller than the band's own 32 px top pad. Width only: the
   // height always hugs the cards (top and bottom pad are automatic).
   const zoom = useStore(s => s.transform[2])
+  const along = data.axis === 'col' ? ['h'] : ['l', 'w']
   const hit = px => Math.max(px, px / zoom)
   const grips = (section, rect, edges) => (edit ? edges.map(k => (
     <div key={k} className={`sd-lane-edge nodrag nopan ${k}`} onPointerDown={grab(k, section, rect)}
-      style={k === 'w' ? { width: hit(14), right: -hit(14) / 2 } : { height: hit(14), bottom: -hit(14) / 2 }} />
+      style={k === 'w' ? { width: hit(14), right: -hit(14) / 2 } : k === 'l' ? { width: hit(14), left: -hit(14) / 2 } : { height: hit(14), bottom: -hit(14) / 2 }} />
   )) : null)
   const title = (text, color, section, rect) => (edit ? (
     <div className="sd-lane-grab nodrag nopan" style={{ position: 'absolute', left: 0, right: 0, top: 0, height: Math.max(32, hit(28)) }}
@@ -85,12 +86,12 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
             background: clear(hexToRgba(sink, 0.05)), borderColor: clear(hexToRgba(sink, 0.35)), boxShadow: edit ? undefined : halo(sink),
           }}>
             {title(s.title, sink, s.id, { x: ox + s.x, y: oy + s.y, w: s.w, h: s.h })}
-            {grips(s.id, { x: ox + s.x, y: oy + s.y, w: s.w, h: s.h }, ['w'])}
+            {grips(s.id, { x: ox + s.x, y: oy + s.y, w: s.w, h: s.h }, along)}
           </div>
         )
       }) : <>
         {title(data.title, ink, null, { x: ox, y: oy, w: width, h: height })}
-        {grips(null, { x: ox, y: oy, w: width, h: height }, ['w'])}
+        {grips(null, { x: ox, y: oy, w: width, h: height }, along)}
       </>}
     </div>
   )

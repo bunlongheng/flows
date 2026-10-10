@@ -228,6 +228,10 @@ export function GradientEdge({
   const [draft, setDraft] = useState(null)
   const endMovable = typeof data?.onEndMove === 'function'
   const bendMovable = typeof data?.onBendMove === 'function'
+  // The end and bend dots keep a grabbable screen size at any zoom (a whole
+  // diagram fitted on screen sits near 0.4). Only a selected line listens.
+  const dot = useStore(s => (selected ? Math.max(14, 18 / s.transform[2]) : 14))
+  const ring = dot / 7
 
   const startBendDrag = e => {
     if (!bendMovable || e.button !== 0) return
@@ -400,7 +404,7 @@ export function GradientEdge({
             <div key={which} className="sd-edge-end nodrag nopan" onPointerDown={e => startEndDrag(e, which)}
               onDoubleClick={e => { e.stopPropagation(); data.onEndMove(id, which, null) }}
               title="Drag to another spot on the box; double-click to reset"
-              style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, width: 14, height: 14, borderRadius: '50%', background: color || '#6b7280', border: '2px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,0.25)', cursor: 'grab', pointerEvents: 'all', zIndex: 2 }} />
+              style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, width: dot, height: dot, borderRadius: '50%', background: color || '#6b7280', border: `${ring}px solid #fff`, boxShadow: `0 0 0 ${ring / 2}px rgba(0,0,0,0.25)`, cursor: 'grab', pointerEvents: 'all', zIndex: 2 }} />
           ))}
           {bendMovable && selected && (() => {
             const mid = bend ? bendPoint(sx, sy, tx, ty, bend) : (pointOnPath(path, 0.5) || { x: labelX, y: labelY })
@@ -408,12 +412,12 @@ export function GradientEdge({
             // sits, and the 2 swallowed each other's clicks: the dot took the
             // second click of a double-click, so the badge never saw one. While
             // there is no bend the dot sits clear below the badge.
-            const h = bend ? mid : { x: mid.x, y: mid.y + 20 }
+            const h = bend ? mid : { x: mid.x, y: mid.y + Math.max(20, dot * 1.4) }
             return (
               <div className="sd-edge-bend nodrag nopan" onPointerDown={startBendDrag}
                 onDoubleClick={e => { e.stopPropagation(); data.onBendMove(id, null) }}
                 title="Drag to bend the line; double-click to straighten"
-                style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${h.x}px, ${h.y}px)`, width: 14, height: 14, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', border: `2px solid ${c1}`, boxShadow: '0 0 0 2px #fff', cursor: 'move', pointerEvents: 'all', zIndex: 3 }} />
+                style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${h.x}px, ${h.y}px)`, width: dot, height: dot, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', border: `${ring}px solid ${c1}`, boxShadow: `0 0 0 ${ring}px #fff`, cursor: 'move', pointerEvents: 'all', zIndex: 3 }} />
             )
           })()}
         </EdgeLabelRenderer>

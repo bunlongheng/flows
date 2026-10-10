@@ -73,5 +73,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .sd-lane-grab:active { cursor: grabbing; }
 .sd-lane-edge { position: absolute; pointer-events: auto; z-index: 1; touch-action: none; border-radius: 4px; }
 .sd-lane-edge.w { top: 12px; bottom: 12px; right: -5px; width: 10px; cursor: ew-resize; }
+.sd-lane-edge.l { top: 12px; bottom: 12px; left: -5px; width: 10px; cursor: ew-resize; }
 .sd-lane-edge.h { left: 12px; right: 12px; bottom: -5px; height: 10px; cursor: ns-resize; }
 .sd-lane-edge:hover, .sd-lane-edge:active { background: rgba(15, 23, 42, 0.12); }

@@ -1697,10 +1697,18 @@ export default function App() {
       moved = id => (d.home[id] ? { ...d.from[id], [across]: d.from[id][across] + by(d.home[id]) } : null)
       next = phase === 'end' ? out.lanes : d.base.map(l => (l.id === lane ? { ...l, [across]: l[across] + dv } : l))
     } else {
-      const size = Math.max(LANE_MIN, Math.round(rect[kind] + (kind === 'w' ? dx : dy)))
-      next = d.base.map(l => (l.id !== lane ? l : section
-        ? { ...l, sections: l.sections.map(s => (s.id === section ? { ...s, [kind]: size } : s)) }
-        : { ...l, [(kind === 'h') === col ? 'len' : 'depth']: size }))
+      // 'l' is the leading edge: it adds room before the first card. A size
+      // along the band counts from the cards, so it leaves the lead out.
+      const own = l => (section ? l.sections.find(s => s.id === section) : l)
+      const along = (kind === 'h') === col
+      const set = (l, v) => (section ? { ...l, sections: l.sections.map(s => (s.id === section ? { ...s, ...v } : s)) } : { ...l, ...v })
+      next = d.base.map(l => {
+        if (l.id !== lane) return l
+        const lead = own(l).lead || 0
+        if (kind === 'l') return set(l, { lead: Math.max(0, Math.round(lead - (col ? dy : dx))) })
+        const size = Math.max(LANE_MIN, Math.round(rect[kind] + (kind === 'w' ? dx : dy) - (along ? lead : 0)))
+        return set(l, { [section ? kind : along ? 'len' : 'depth']: size })
+      })
       // A thicker or thinner plain lane re-packs the lanes after it: their cards follow.
       if (!section) {
         const across = col ? 'x' : 'y', packed = cleanLanes(next)

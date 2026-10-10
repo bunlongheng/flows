@@ -205,3 +205,17 @@ describe("a plain lane's hand thickness (issue #468)", () => {
     expect(tight.h).toBe(220 + 8);
   });
 });
+
+describe("a hand lead, the left edge (issue #468)", () => {
+  const card = { x: 0, y: 40, w: 180, h: 180 };
+  it("pulls a plain lane's start back and keeps its far end", () => {
+    const [plain] = laneRects(cleanLanes([{ id: "a", y: 0, h: 300 }]), [card]);
+    const [led] = laneRects(cleanLanes([{ id: "a", y: 0, h: 300, lead: 100.4 }]), [card]);
+    expect([led.x, led.x + led.w]).toEqual([plain.x - 100, plain.x + plain.w]);
+  });
+  it("adds room before a section's first card, a hand width still counts from the cards", () => {
+    const [l] = cleanLanes([{ id: "a", y: 0, h: 300, sections: [{ id: "s1", at: 0, lead: 60, w: 400 }, { id: "s2", at: 2000 }] }]);
+    const [s1] = sectionRects(laneRects([l], [card])[0], "row", [card]);
+    expect([s1.x, s1.x + s1.w]).toEqual([-SECTION_PAD - 60, -SECTION_PAD + 400]);
+  });
+});
