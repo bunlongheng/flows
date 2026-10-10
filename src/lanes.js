@@ -120,7 +120,9 @@ export function cleanLanes(raw) {
     if (typeof l.color === 'string' && /^#[0-9a-f]{6}$/i.test(l.color)) lane.color = l.color
     if (Number.isFinite(l.size)) lane.size = Math.min(LANE_TITLE_MAX, Math.max(LANE_TITLE_MIN, Math.round(l.size)))
     if (Number.isFinite(l.len)) lane.len = handSize(l.len)
-    if (handLead(l.lead)) lane.lead = handLead(l.lead)
+    // A plain lane may also start later than the shared start (moved right).
+    if (Number.isFinite(l.lead) && Math.round(l.lead)) lane.lead = Math.min(20000, Math.max(-20000, Math.round(l.lead)))
+    if (handLead(l.gap)) lane.gap = handLead(l.gap)
     // A hand thickness (the bottom / right edge of a plain lane) is also the
     // configured size, so the stack packs around what the owner sees.
     if (Number.isFinite(l.depth)) lane[kind === 'col' ? 'w' : 'h'] = lane.depth = handSize(l.depth)
@@ -137,8 +139,9 @@ export function cleanLanes(raw) {
 export function packLanes(lanes) {
   const [at, size] = laneAxis(lanes) === 'col' ? ['x', 'w'] : ['y', 'h']
   const sorted = [...lanes].sort((a, b) => a[at] - b[at])
-  let pos = sorted[0]?.[at] ?? 0
-  return sorted.map(l => { const out = { ...l, [at]: pos }; pos += l[size] + LANE_GAP; return out })
+  // A hand `gap` is extra room the owner left before a lane by dropping it there.
+  let pos = sorted.length ? sorted[0][at] - (sorted[0].gap || 0) : 0
+  return sorted.map(l => { const out = { ...l, [at]: pos + (l.gap || 0) }; pos = out[at] + l[size] + LANE_GAP; return out })
 }
 
 // The reach shared by every lane on its other axis: the cards' extent plus padding.
@@ -252,10 +255,19 @@ export function resortSections(sections, starts) {
 // cards can follow it.
 export function moveLane(lanes, id, delta) {
   const at = laneAxis(lanes) === 'col' ? 'x' : 'y'
+  const size = at === 'x' ? 'w' : 'h'
   const was = Object.fromEntries(lanes.map(l => [l.id, l[at]]))
-  // The stack keeps its top where it was, whichever lane now leads it.
-  const top = Math.min(...lanes.map(l => l[at]))
-  const packed = packLanes(lanes.map(l => (l.id === id ? { ...l, [at]: l[at] + delta } : l)))
-    .map((l, _, all) => ({ ...l, [at]: l[at] - all[0][at] + top }))
+  // The stack keeps its top where it was, whichever lane now leads it, and
+  // the moved lane stays where it was dropped: the room it leaves before it
+  // becomes its `gap`. Dropped past the middle of a neighbour, it swaps.
+  const top = Math.min(...lanes.map(l => l[at] - (l.gap || 0)))
+  const pack = ls => {
+    let pos = top
+    return [...ls].sort((a, b) => a[at] - b[at]).map(l => { const v = pos + (l.gap || 0); pos = v + l[size] + LANE_GAP; return { ...l, [at]: v } })
+  }
+  const moved = lanes.map(l => (l.id === id ? { ...l, [at]: l[at] + delta, gap: 0 } : l))
+  let packed = pack(moved)
+  const want = was[id] + delta, got = packed.find(l => l.id === id)[at]
+  if (want > got) packed = pack(moved.map(l => (l.id === id ? { ...l, gap: Math.round(want - got) } : l)))
   return { lanes: packed, shift: Object.fromEntries(packed.map(l => [l.id, l[at] - was[l.id]])) }
 }

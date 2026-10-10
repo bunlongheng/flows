@@ -75,4 +75,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .sd-lane-edge.w { top: 12px; bottom: 12px; right: -5px; width: 10px; cursor: ew-resize; }
 .sd-lane-edge.l { top: 12px; bottom: 12px; left: -5px; width: 10px; cursor: ew-resize; }
 .sd-lane-edge.h { left: 12px; right: 12px; bottom: -5px; height: 10px; cursor: ns-resize; }
-.sd-lane-edge:hover, .sd-lane-edge:active { background: rgba(15, 23, 42, 0.12); }
+/* Figma-style pick: hover outlines the band, a pick draws the frame and handles. */
+.sd-band:has(> .sd-lane-grab:hover, > .sd-lane-edge:hover) { outline: calc(1px * var(--gz)) solid rgba(13, 153, 255, 0.6); }
+.sd-band.is-picked { outline: calc(1.5px * var(--gz)) solid #0d99ff; }
+.sd-lane-edge > i { display: none; position: absolute; left: 50%; top: 50%; width: calc(8px * var(--gz)); height: calc(8px * var(--gz)); transform: translate(-50%, -50%); background: #fff; border: calc(1px * var(--gz)) solid #0d99ff; border-radius: calc(1px * var(--gz)); }
+.sd-band.is-picked > .sd-lane-edge > i, .sd-lane-edge:hover > i { display: block; }
+.sd-band.is-picked > .sd-lane-grab { cursor: move; }
