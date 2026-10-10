@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, laneNodeId, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT } from "../../src/lanes.js";
+import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, laneNodeId, cardsColor, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT } from "../../src/lanes.js";
 
 describe("cleanLanes", () => {
   it("keeps typed, bounded lanes and drops the rest", () => {
@@ -154,3 +154,18 @@ describe("sections", () => {
   });
 });
 
+
+describe("a band with no colour takes its cards' colour", () => {
+  it("mixes the colourful cards and skips black or grey logos", () => {
+    expect(cardsColor([{ color: "#6040e0" }, { color: "#2080ff" }, { color: "#111111" }])).toBe("#4060f0");
+    expect(cardsColor([{ color: "#111111" }, {}])).toBeNull();
+  });
+  it("a lane and each section draw in their own cards' mix, a set colour still wins", () => {
+    const lanes = cleanLanes([{ id: "a", title: "A", y: 0, h: 250, sections: [{ at: 0, id: "s1", title: "S1" }, { at: 500, id: "s2", title: "S2", color: "#ff0000" }] }]);
+    const [r] = laneRects(lanes, [{ x: 0, y: 40, w: 180, h: 180, color: "#6040e0" }, { x: 600, y: 40, w: 180, h: 180, color: "#2080ff" }]);
+    expect(r.color).toBe("#4060f0");
+    const [s1, s2] = sectionRects(r, "row", [{ x: 0, y: 40, w: 180, h: 180, color: "#6040e0" }, { x: 600, y: 40, w: 180, h: 180, color: "#2080ff" }]);
+    expect(s1.color).toBe("#6040e0");
+    expect(s2.color).toBe("#ff0000");
+  });
+});

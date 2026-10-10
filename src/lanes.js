@@ -9,6 +9,8 @@
 // axis, so cards fit by where they stand. The canvas and every export draw
 // lanes from this 1 file so they match.
 
+import { isNeutralColor } from './iconColor.js'
+
 export const LANE_PAD = 100 // past the outermost card on each side
 export const LANE_MIN = 80 // the thinnest lane
 export const LANE_GAP = 40 // the 1 gap between lanes, always the same
@@ -59,7 +61,7 @@ function cleanSections(raw) {
 // edge whatever its `at` says, the last runs to the far edge, and an `at`
 // outside the band is pulled back inside it, so a bad number costs a section
 // its width and never paints outside the lane.
-export function sectionRects(rect, axis = 'row') {
+export function sectionRects(rect, axis = 'row', cards = []) {
   const secs = rect.sections || []
   if (secs.length < 2) return []
   const [at, size] = axis === 'col' ? ['y', 'h'] : ['x', 'w']
@@ -69,7 +71,8 @@ export function sectionRects(rect, axis = 'row') {
   return secs.map((s, i) => {
     const end = i + 1 < cuts.length ? cuts[i + 1] - LANE_GAP : hi
     return {
-      id: s.id, title: s.title, color: s.color || rect.color, size: rect.size,
+      id: s.id, title: s.title, size: rect.size,
+      color: s.color || cardsColor(cards.filter(c => c[at] + c[size] / 2 >= cuts[i] && c[at] + c[size] / 2 < end)) || rect.color,
       x: rect.x, y: rect.y, w: rect.w, h: rect.h,
       [at]: cuts[i], [size]: Math.max(0, end - cuts[i]),
     }
@@ -137,9 +140,20 @@ export function fitLanes(lanes, rects) {
   })
 }
 
+// The primary colour of a band's cards, for a lane or section that names none
+// (owner 2026-10-10: a band of LaunchKit and AirClips reads blue-purple): the
+// mean of every card colour that says something. A black or grey logo says
+// nothing, so it is left out; a band of only those keeps the house ink.
+export function cardsColor(cards) {
+  const cs = cards.map(c => c.color).filter(c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) && !isNeutralColor(c))
+  if (!cs.length) return null
+  return '#' + [1, 3, 5].map(i => Math.round(cs.reduce((t, c) => t + parseInt(c.slice(i, i + 2), 16), 0) / cs.length).toString(16).padStart(2, '0')).join('')
+}
+
 export function laneRects(lanes, rects) {
-  const span = laneSpan(rects, laneAxis(lanes))
-  return fitLanes(lanes, rects).map(l => ({ id: l.id, title: l.title, color: l.color, size: l.size, ...(l.sections ? { sections: l.sections } : {}), ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...span }))
+  const axis = laneAxis(lanes), span = laneSpan(rects, axis)
+  const [at, size] = axis === 'col' ? ['x', 'w'] : ['y', 'h']
+  return fitLanes(lanes, rects).map(l => ({ l, cards: rects.filter(r => r[at] >= l[at] && r[at] < l[at] + l[size]) })).map(({ l, cards }) => ({ id: l.id, title: l.title, color: l.color || cardsColor(cards) || undefined, size: l.size, ...(l.sections ? { sections: l.sections } : {}), ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...span }))
 }
 
 // The React Flow nodes that draw the lanes: 1 per lane, under the cards,
@@ -152,7 +166,7 @@ export function laneNodes(lanes, rects) {
     // Sections come through in the band's own coordinates: the node is already
     // placed at r.x,r.y, so LaneNode lays them out inside it.
     data: { title: r.title, color: r.color, size: r.size, axis,
-      sections: sectionRects(r, axis).map(s => ({ id: s.id, title: s.title, color: s.color, x: s.x - r.x, y: s.y - r.y, w: s.w, h: s.h })) },
+      sections: sectionRects(r, axis, rects).map(s => ({ id: s.id, title: s.title, color: s.color, x: s.x - r.x, y: s.y - r.y, w: s.w, h: s.h })) },
   }))
 }
 
