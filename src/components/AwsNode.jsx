@@ -319,10 +319,16 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: 6, position: 'relative',
       // The resting shadow, plus the arrival ring and halo while the glow lasts.
-      boxShadow: glow
+      // A clicked card's ring is drawn by the overlay below, not here.
+      boxShadow: !selected && glow
         ? `0 1px 3px rgba(0,0,0,0.10), 0 0 0 ${(3 * glow).toFixed(1)}px ${hexToRgba(color, 0.45 * glow)}, 0 0 ${Math.round(22 * glow)}px ${hexToRgba(color, 0.7 * glow)}`
         : '0 1px 3px rgba(0,0,0,0.10)',
     }}>
+      {/* A clicked card wears a solid 10 px ring and a soft halo in its own
+          colour (owner 2026-10-09), on its own layer above the note so the
+          note never cuts into it. */}
+      {selected && <div style={{ position: 'absolute', inset: -(st.bw || 1), zIndex: 2, pointerEvents: 'none', borderRadius: st.radius || 0,
+        boxShadow: `0 0 0 10px ${color}, 0 0 28px 10px ${hexToRgba(color, 0.55)}` }} />}
       {canResize && <NodeResizer isVisible={selected} minWidth={130} minHeight={130} maxWidth={600} maxHeight={600} keepAspectRatio={!!picture}
         lineStyle={{ borderColor: color, borderWidth: 1 }}
         handleStyle={{ width: 9, height: 9, borderRadius: 0, background: color, border: '1px solid #fff' }}

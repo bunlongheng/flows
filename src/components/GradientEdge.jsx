@@ -338,8 +338,13 @@ export function GradientEdge({
       <g>
       {selected && <path className="sd-edge-halo" d={drawPath} fill="none" stroke={c1} strokeWidth={10} strokeOpacity={0.18} strokeLinecap="round" pointerEvents="none" />}
       {/* Clicking a card lights every line in and out of it, so the owner can
-          read a card's traffic at a glance: a quiet 4 px wash, no shadow. */}
-      {lit && <path className="sd-edge-glow" d={drawPath} fill="none" stroke={`url(#${gid})`} strokeWidth={4} strokeOpacity={0.22} strokeLinecap="round" pointerEvents="none" />}
+          read a card's traffic at a glance: a wide soft spread (26 px and 14 px
+          washes) plus a gentle dash
+          flowing source to target (React Flow's dashdraw, 1 period of 10). */}
+      {lit && <path className="sd-edge-glow" d={drawPath} fill="none" stroke={`url(#${gid})`} strokeWidth={26} strokeOpacity={0.1} strokeLinecap="round" pointerEvents="none" />}
+      {lit && <path className="sd-edge-wash" d={drawPath} fill="none" stroke={`url(#${gid})`} strokeWidth={14} strokeOpacity={0.18} strokeLinecap="round" pointerEvents="none" />}
+      {lit && <path className="sd-edge-flow" d={drawPath} fill="none" stroke={`url(#${gid})`} strokeWidth={4.5} strokeOpacity={0.85} strokeLinecap="round" pointerEvents="none"
+        style={{ strokeDasharray: '4 6', animation: motionAllowed() ? 'dashdraw 0.7s linear infinite' : 'none' }} />}
       {/* A picked stroke replaces the gradient outright rather than tinting it.
           The gradient's whole job is to say which node a line came FROM and
           which it goes TO; once the owner has chosen a colour, that is the
