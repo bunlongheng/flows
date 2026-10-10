@@ -775,6 +775,9 @@ export default function App() {
   // rearranged diagram stays put on reopen instead of resetting to auto-layout.
   // saveState drives the little spinner/check next to the title: idle|saving|saved.
   const saveTimer = useRef(null)
+  // Layout saves go out 1 at a time: 2 in flight can land out of order, and
+  // the older layout would then overwrite the newer one.
+  const saveChain = useRef(Promise.resolve())
   const savedResetTimer = useRef(null)
   const [saveState, setSaveState] = useState('idle')
   const doSave = useCallback((diagramId, nds, notify = false) => {
@@ -794,11 +797,11 @@ export default function App() {
       }))
     if (!payload.length) return
     setSaveState('saving')
-    fetch(`/api/flows/${diagramId}`, {
+    saveChain.current = saveChain.current.then(() => fetch(`/api/flows/${diagramId}`, {
       method: 'PATCH', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nodes: payload }),
-    })
+    }))
       .then(r => {
         setSaveState(r.ok ? 'saved' : 'idle')
         if (r.ok) {
