@@ -1833,13 +1833,39 @@ export default function App() {
     setActiveDiagram(a => (a ? { ...a, view_state: { ...a.view_state, lanes: clean } } : a))
     patchViewState({ ...otherView(['lanes']), lanes: clean })
   }
+  // The owner deletes an empty band with its x. A section leaves its lane (1
+  // left is no split); a lane goes and the lanes after it pack up, cards along.
+  const onBandDelete = (laneId, sectionId) => {
+    const col = laneAxis(laneCfg) === 'col', [at, size] = col ? ['x', 'w'] : ['y', 'h']
+    const next = laneCfg.flatMap(l => {
+      if (l.id !== laneId) return [l]
+      if (!sectionId) return []
+      const left = l.sections.filter(s => s.id !== sectionId)
+      const { sections: _, ...plain } = l
+      return [left.length >= 2 ? { ...l, sections: left } : plain]
+    })
+    const clean = cleanLanes(next)
+    if (!sectionId) {
+      const rects = laneRects(laneCfg, laneCards)
+      const by = Object.fromEntries(clean.map(l => [l.id, l[at] - laneCfg.find(b => b.id === l.id)[at]]))
+      const laneOf = id => { const c = laneCards.find(c => c.id === id); if (!c) return null; const m = c[at] + c[size] / 2; return rects.find(r => m >= r[at] && m < r[at] + r[size])?.id }
+      setNodes(nds => {
+        const nx = nds.map(n => { const d = by[laneOf(n.id)]; return d ? { ...n, position: { ...n.position, [at]: n.position[at] + d } } : n })
+        savePositions(activeDiagram.id, nx)
+        return nx
+      })
+    }
+    setSelBand(null)
+    setActiveDiagram(a => (a ? { ...a, view_state: { ...a.view_state, lanes: clean } } : a))
+    patchViewState({ ...otherView(['lanes']), lanes: clean })
+  }
   const lanes = laneNodes(laneCfg, laneCards)
   // The grips ride a see-through copy of each band above the lines and cards,
   // so a line crossing a title or an edge never takes the drag.
   // While a line is selected the line owns the pointer: its end and bend dots
   // may sit under a band's title or edge, so the grips step aside.
   const laneGrips = canAI && activeDiagram?.id && !activeDiagram.editLocked && !edges.some(e => e.selected)
-    ? lanes.map(l => ({ ...l, id: `__grip_${l.data.laneId}`, type: 'laneGrips', zIndex: 1000, data: { ...l.data, onBand, picked: selBand?.lane === l.data.laneId ? (selBand.section || '__lane') : null } }))
+    ? lanes.map(l => ({ ...l, id: `__grip_${l.data.laneId}`, type: 'laneGrips', zIndex: 1000, data: { ...l.data, onBand, onDelete: onBandDelete, picked: selBand?.lane === l.data.laneId ? (selBand.section || '__lane') : null } }))
     : []
   // Swimlanes already say where a flow begins (the top lane), so a diagram
   // with lanes draws no Start here pill. Same rule in render-svg.js.

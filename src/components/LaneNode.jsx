@@ -42,6 +42,13 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
     <div key={k} className={`sd-lane-edge nodrag nopan ${k}`} onPointerDown={grab(k, section, rect)}
       style={k === 'w' ? { width: hit(14), right: -hit(14) / 2 } : k === 'l' ? { width: hit(14), left: -hit(14) / 2 } : { height: hit(14), bottom: -hit(14) / 2 }}><i /></div>
   )) : null)
+  // A picked band moves from anywhere on its body, not only its title, and an
+  // empty one shows an x to delete it.
+  const body = (section, rect, empty) => (edit && data.picked === (section || '__lane') ? <>
+    <div className="sd-lane-body nodrag nopan" onPointerDown={grab('move', section, rect)} />
+    {empty && data.onDelete && <button type="button" className="sd-lane-del nodrag nopan" title="Delete this empty band"
+      onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); data.onDelete(data.laneId, section) }}>×</button>}
+  </> : null)
   const title = (text, color, section, rect) => (edit ? (
     // Only as wide as the title (plus its 16 px inset each side), never the
     // whole band: a line's dot or badge under the top strip must stay reachable.
@@ -91,11 +98,13 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
             left: s.x, top: s.y, width: s.w, height: s.h, '--pick': sink,
             background: clear(hexToRgba(sink, 0.05)), borderColor: clear(hexToRgba(sink, 0.35)), boxShadow: edit ? undefined : halo(sink),
           }}>
+            {body(s.id, { x: ox + s.x, y: oy + s.y, w: s.w, h: s.h }, s.empty)}
             {title(s.title, sink, s.id, { x: ox + s.x, y: oy + s.y, w: s.w, h: s.h })}
             {grips(s.id, { x: ox + s.x, y: oy + s.y, w: s.w, h: s.h }, along)}
           </div>
         )
       }) : <>
+        {body(null, { x: ox, y: oy, w: width, h: height }, data.empty)}
         {title(data.title, ink, null, { x: ox, y: oy, w: width, h: height })}
         {grips(null, { x: ox, y: oy, w: width, h: height }, along)}
       </>}

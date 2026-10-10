@@ -69,6 +69,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .sd-lane-section { position: absolute; }
 /* The owner's grips (#468): the title moves a band, its right / bottom edge sizes it. */
 .sd-lane-grab { pointer-events: auto; cursor: grab; border-radius: 10px 10px 0 0; }
+.sd-lane-body { position: absolute; inset: 0; pointer-events: auto; cursor: grab; }
+.sd-lane-body:active { cursor: grabbing; }
+.sd-lane-del { position: absolute; top: calc(6px * var(--gz)); right: calc(6px * var(--gz)); z-index: 2; pointer-events: auto; cursor: pointer;
+  width: calc(22px * var(--gz)); height: calc(22px * var(--gz)); border-radius: 50%; border: 0; background: #ef4444; color: #fff;
+  font: 600 calc(15px * var(--gz))/1 system-ui, sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.sd-lane-del:hover { background: #dc2626; }
 .sd-lane-grab:hover { background: rgba(15, 23, 42, 0.06); }
 .sd-lane-grab:active { cursor: grabbing; }
 .sd-lane-edge { position: absolute; pointer-events: auto; z-index: 1; touch-action: none; border-radius: 4px; }

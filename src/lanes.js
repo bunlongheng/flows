@@ -217,6 +217,8 @@ export function laneRects(lanes, rects) {
   return fitLanes(lanes, rects).map(l => ({ l, cards: rects.filter(r => r[at] >= l[at] && r[at] < l[at] + l[size]) })).map(({ l, cards }) => ({ id: l.id, title: l.title, color: l.color || cardsColor(cards) || undefined, size: l.size, ...(l.sections ? { sections: l.sections } : {}), ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...leadOf(l, { ...span, ...lenOf(l, cards) }, cards) }))
 }
 
+const holds = (b, c) => c.x + c.w / 2 >= b.x && c.x + c.w / 2 < b.x + b.w && c.y + c.h / 2 >= b.y && c.y + c.h / 2 < b.y + b.h
+
 // The React Flow nodes that draw the lanes: 1 per lane, under the cards,
 // never selectable or draggable.
 export function laneNodes(lanes, rects) {
@@ -226,8 +228,9 @@ export function laneNodes(lanes, rects) {
     zIndex: -1, selectable: false, draggable: false,
     // Sections come through in the band's own coordinates: the node is already
     // placed at r.x,r.y, so LaneNode lays them out inside it.
-    data: { laneId: r.id, title: r.title, color: r.color, size: r.size, axis,
-      sections: sectionRects(r, axis, rects).map(s => ({ id: s.id, title: s.title, color: s.color, x: s.x - r.x, y: s.y - r.y, w: s.w, h: s.h })) },
+    // `empty`: no card's centre inside, so the owner may delete the band.
+    data: { laneId: r.id, title: r.title, color: r.color, size: r.size, axis, empty: !rects.some(c => holds(r, c)),
+      sections: sectionRects(r, axis, rects).map(s => ({ id: s.id, title: s.title, color: s.color, x: s.x - r.x, y: s.y - r.y, w: s.w, h: s.h, empty: !rects.some(c => holds(s, c)) })) },
   }))
 }
 
