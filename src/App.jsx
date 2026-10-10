@@ -1129,8 +1129,11 @@ export default function App() {
         // unless the owner has placed it, and even then it moves by its own
         // save path above, not by snapping against the other cards.
         const targets = all.filter(n => n.type === 'awsNode')
+        // Inside a free panel, a card lines up on the panel's pad, as the cards in it do.
+        const cfg = activeDiagram?.view_state?.lanes || []
+        const pads = laneAxis(cfg) === 'free' ? cfg.map(l => ({ id: `__pad_${l.id}`, position: { x: l.x + SECTION_PAD, y: l.y + SECTION_PAD }, width: l.w - 2 * SECTION_PAD, height: l.h - 2 * SECTION_PAD })) : []
         if (dragged) {
-          const { position, guides } = snapSuggest({ ...dragged, position: drag.position }, targets)
+          const { position, guides } = snapSuggest({ ...dragged, position: drag.position }, targets, undefined, undefined, pads)
           applied = changes.map(c => (c === drag ? { ...c, position } : c))
           setSnapGuides(drag.dragging === false ? [] : guides)
         }

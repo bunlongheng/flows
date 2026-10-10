@@ -139,8 +139,10 @@ function nearestGapSlot(d, others, axis, gap, threshold) {
 // other, because a map reads as one grid or it reads as none.
 const SETTLED = 1.5 // flow px - close enough to call a gap exact
 
-export function snapSuggest(dragged, others, threshold = SNAP_THRESHOLD, gapThreshold = GAP_THRESHOLD) {
-  const aligned = snapAlign(dragged, others, threshold)
+// `lines` are extra boxes to align on only, never gap neighbours (a panel's
+// padded inside, so a card lands at the same pad as the cards already in it).
+export function snapSuggest(dragged, others, threshold = SNAP_THRESHOLD, gapThreshold = GAP_THRESHOLD, lines = []) {
+  const aligned = snapAlign(dragged, [...others, ...lines], threshold)
   const d = rectOf(dragged)
   const rects = others.filter(o => o.id !== dragged.id && o.position).map(rectOf)
   const position = { ...aligned.position }
