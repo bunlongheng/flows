@@ -1481,6 +1481,9 @@ export function DetailView({
         @media (hover: none) { .sd-note-del { opacity: 1; } }
         /* Step number, first thing in the badge - hidden until Steps is on. */
         .sd-step-chip { display: none; }
+        /* A line with no text has a tag only to hold its step number: with
+           the Steps chips off there is nothing to show, so no empty pill. */
+        .react-flow:not(.sd-steps-on) .sd-edge-badge.is-bare, .react-flow:not(.sd-steps-on) .sd-edge-lead.is-bare { display: none; }
         .sd-steps-on .sd-step-chip {
           display: inline-flex; align-items: center; justify-content: center;
           /* Deliberately smaller than the badge's text line, so the circle sits

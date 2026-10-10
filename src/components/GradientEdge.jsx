@@ -403,7 +403,7 @@ export function GradientEdge({
         <path d={drawPath} fill="none" stroke="transparent" strokeWidth={selected ? dot : 24} className="nodrag nopan"
           style={{ pointerEvents: 'stroke', cursor: selected ? 'move' : 'pointer' }} onPointerDown={startBodyDrag} />
       )}
-        {labelOff && (tag || hasStep) && <line className="sd-edge-lead" x1={ax} y1={ay} x2={bx} y2={by} stroke={lineStroke} strokeWidth={1} strokeOpacity={0.7} pointerEvents="none" />}
+        {labelOff && (tag || hasStep) && <line className={`sd-edge-lead${tag ? '' : ' is-bare'}`} x1={ax} y1={ay} x2={bx} y2={by} stroke={lineStroke} strokeWidth={1} strokeOpacity={0.7} pointerEvents="none" />}
         {port && <circle className="sd-lane-port" cx={port.x} cy={port.y} r={5} fill={port.c} stroke="#fff" strokeWidth={1.5} pointerEvents="none" />}
         <FlowDot edgeId={id} path={path} color={c1} />
       </g>
@@ -411,7 +411,7 @@ export function GradientEdge({
         <EdgeLabelRenderer>
           {(tag || hasStep) && (
             <div
-              className={`sd-edge-badge nodrag nopan${movable ? ' is-movable' : ''}${dragT != null ? ' is-dragging' : ''}`}
+              className={`sd-edge-badge nodrag nopan${movable ? ' is-movable' : ''}${dragT != null ? ' is-dragging' : ''}${!tag && draft == null && !selected ? ' is-bare' : ''}`}
               onPointerDown={startDrag}
               onDoubleClickCapture={movable || editable ? startEdit : undefined}
               data-tip={draft == null ? desc || undefined : undefined}
