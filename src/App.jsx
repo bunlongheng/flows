@@ -11,7 +11,7 @@ import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapSuggest } from './snapAlign'
 import { findService } from './services'
-import { laneNodes, laneRef, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD } from './lanes.js'
+import { laneNodes, laneRef, sectionRef, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD } from './lanes.js'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
@@ -88,12 +88,20 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove, lane
   const laneColor = id => {
     const l = lanes.find(l => l.id === laneRef(id))
     if (!l) return LANE_INK
+    const sec = l.sections?.find(s => s.id === sectionRef(id))
+    if (sec?.color) return sec.color
     const [at, size] = 'x' in l ? ['x', 'w'] : ['y', 'h']
     const inside = (rawNodes || []).filter(n => !n.sunset && n.position?.[at] >= l[at] && n.position[at] < l[at] + l[size])
     return l.color || cardsColor(inside.map(n => ({ color: findService(n)?.color }))) || LANE_INK
   }
   const edgeColor = id => (laneRef(id) ? laneColor(id) : sunsetOf(id) ? SUNSET.border : findService(byId.get(id) || { id })?.color || INK)
-  const rfId = id => (laneRef(id) ? laneNodeId(laneRef(id)) : id)
+  // A section end ("lane:<id>/<section>") is its own node while the lane is
+  // split into 2 or more; a section since removed draws as the whole lane.
+  const hasSection = id => {
+    const secs = lanes.find(l => l.id === laneRef(id))?.sections || []
+    return secs.length >= 2 && secs.some(s => s.id === sectionRef(id))
+  }
+  const rfId = id => (laneRef(id) ? laneNodeId(hasSection(id) ? `${laneRef(id)}/${sectionRef(id)}` : laneRef(id)) : id)
   return rawEdges.map((e, i) => ({
     id: e.id || `e${i}`,
     source: rfId(e.source),
@@ -679,15 +687,25 @@ export default function App() {
       .catch(() => showToastMsg('Could not save'))
   }, [activeId, showToastMsg])
 
-  // The owner drew a line: dragged from a card's side dot onto another card.
-  // It goes on the end of the edges array (the last step) with a stable id.
-  const onConnect = useCallback(({ source, target }) => {
+  // The owner drew a line: dragged from a card's side dot (or a picked band's)
+  // onto another card or band. It goes on the end of the edges array (the last
+  // step) with a stable id. A band end is "lane:<id>" or "lane:<id>/<section>":
+  // a grip's handle id carries the section after the "|", a section end node
+  // its id after "__lane_". 1 lane end per line at most.
+  const onConnect = useCallback(({ source: rs, sourceHandle, target: rt, targetHandle }) => {
     const a = activeDiagram
-    const cards = a?.data?.nodes || []
-    if (!a?.id || source === target || ![source, target].every(id => cards.some(n => n.id === id))) return
+    const cards = a?.data?.nodes || [], laneCfg = a?.view_state?.lanes || []
+    const endOf = (n, h) => {
+      if (n.startsWith('__grip_')) { const sec = String(h || '').split('|')[1]; return `lane:${n.slice(7)}${sec ? `/${sec}` : ''}` }
+      return n.startsWith('__lane_') ? `lane:${n.slice(7)}` : n
+    }
+    const source = endOf(rs, sourceHandle), target = endOf(rt, targetHandle)
+    const real = e => (laneRef(e) !== null ? laneCfg.some(l => l.id === laneRef(e)) : cards.some(n => n.id === e))
+    if (!a?.id || source === target || !real(source) || !real(target) || (laneRef(source) !== null && laneRef(target) !== null)) return
     const raw = a.data.edges || [], taken = new Set(raw.map((e, i) => e.id || `e${i}`))
-    let id = `${source}-${target}`
-    for (let k = 2; taken.has(id); k++) id = `${source}-${target}-${k}`
+    const base = `${source}-${target}`.replace(/\//g, '.')
+    let id = base
+    for (let k = 2; taken.has(id); k++) id = `${base}-${k}`
     const data = { ...a.data, edges: [...raw, { id, source, target }] }
     setActiveDiagram({ ...a, data })
     setDiagrams(ds => ds.map(d => (d.id !== a.id ? d : { ...d, data: { ...d.data, edges: data.edges } })))
@@ -1802,6 +1820,12 @@ export default function App() {
     patchViewState({ ...otherView(['lanes']), lanes: clean })
   }
   const lanes = laneNodes(laneCfg, laneCards)
+  // Each section of a split lane is a line end of its own ("lane:<id>/<section>"),
+  // an invisible node over the section that only carries the line's anchor.
+  const sectionEnds = lanes.flatMap(l => (l.data.sections.length >= 2 ? l.data.sections.map(s => ({
+    id: laneNodeId(`${l.data.laneId}/${s.id}`), type: 'laneEnd', position: { x: l.position.x + s.x, y: l.position.y + s.y },
+    width: s.w, height: s.h, measured: { width: s.w, height: s.h }, zIndex: -1, selectable: false, draggable: false, data: {},
+  })) : []))
   // The grips ride a see-through copy of each band above the lines and cards,
   // so a line crossing a title or an edge never takes the drag.
   // While a line is selected the line owns the pointer: its end and bend dots
@@ -1812,7 +1836,7 @@ export default function App() {
   // Swimlanes already say where a flow begins (the top lane), so a diagram
   // with lanes draws no Start here pill. Same rule in render-svg.js.
   const markers = lanes.length ? { nodes: [], edges: [] } : buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)
-  const displayNodes = [...lanes, ...nodes, ...markers.nodes, ...laneGrips]
+  const displayNodes = [...lanes, ...sectionEnds, ...nodes, ...markers.nodes, ...laneGrips]
   const displayEdges = [...edges, ...markers.edges]
   return (
     <DetailView

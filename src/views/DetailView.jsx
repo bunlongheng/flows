@@ -956,8 +956,13 @@ export function DetailView({
             onConnectEnd={(e, c) => {
               if (c.isValid || !c.fromNode || !onConnect) return
               const pt = e.changedTouches?.[0] || e
+              // A drop on a card's body connects to the card; on open band, to
+              // the section under the pointer, else its lane (c.pointer is in
+              // canvas units).
+              const p = c.pointer, inside = n => p && p.x >= n.position.x && p.x < n.position.x + n.width && p.y >= n.position.y && p.y < n.position.y + n.height
               const id = document.elementFromPoint(pt.clientX, pt.clientY)?.closest('.react-flow__node-awsNode')?.dataset.id
-              if (id && id !== c.fromNode.id) onConnect({ source: c.fromNode.id, target: id })
+                || nodes.find(n => n.type === 'laneEnd' && inside(n))?.id || nodes.find(n => n.type === 'lane' && inside(n))?.id
+              if (id && id !== c.fromNode.id) onConnect({ source: c.fromNode.id, sourceHandle: c.fromHandle?.id, target: id })
             }}
             connectionMode="loose" connectionRadius={34} connectionLineType="straight"
             connectionLineStyle={{ stroke: '#2d7ff9', strokeWidth: 2.4 }}

@@ -61,7 +61,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* Swimlanes: the band is see-through to the pointer so the canvas still pans
    and box-selects over it; only the title strip and the bottom edge take events. */
-.react-flow__node-lane, .react-flow__node-laneGrips { pointer-events: none !important; }
+.react-flow__node-lane, .react-flow__node-laneGrips, .react-flow__node-laneEnd { pointer-events: none !important; }
 .sd-lane { position: relative; box-sizing: border-box; border: 1.5px solid; border-radius: 10px; }
 .sd-lane-title { position: absolute; left: 16px; top: 9px; font-size: 13px; font-weight: 800; letter-spacing: 0.2px; line-height: 1; user-select: none; white-space: nowrap; }
 .sd-panel-resizer { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; cursor: col-resize; z-index: 2; touch-action: none; }
@@ -90,3 +90,5 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .react-flow:not(.sd-reading) .react-flow__node:hover .sd-port.connectable,
 .react-flow:not(.sd-reading) .react-flow__node.selected .sd-port.connectable { opacity: 1; pointer-events: auto; }
 .react-flow__handle.sd-port.connectable:hover { scale: 1.4; }
+.react-flow:not(.sd-reading) .sd-band.is-picked > .sd-band-port.connectable { opacity: 1; pointer-events: auto; }
+.react-flow__handle.sd-band-port { width: max(12px, calc(12px * var(--gz))); height: max(12px, calc(12px * var(--gz))); }

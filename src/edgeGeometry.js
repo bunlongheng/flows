@@ -56,7 +56,7 @@ export const centerOf = n => ({
 // axis: a column lane holding 5 columns of cards and 3 rows is WIDER than tall,
 // so w >= h called it a row and the line hooked up over the band's top edge
 // instead of running straight into its side.
-const isLane = n => n?.lane === true || n?.type === 'lane'
+const isLane = n => n?.lane === true || n?.type === 'lane' || n?.type === 'laneEnd'
 const laneAxisOf = n => n?.axis || n?.data?.axis || null
 const clampTo = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
 // A split lane draws only its sections, each hugging its cards, so the line
