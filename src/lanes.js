@@ -57,9 +57,10 @@ function cleanSections(raw) {
 // Where a laid-out lane's sections are drawn, in canvas units. `at` says which
 // cards belong to a section: those whose centre sits from its `at` up to the
 // next one's (an `at` outside the band is pulled back inside it). A section
-// then hugs its own cards with the same SECTION_PAD on both sides (owner
-// 2026-10-10: "consistent padding", and the lane may stay empty between
-// sections), so a section is only as big as what it holds. A section with no
+// then hugs its own cards with the same SECTION_PAD on all 4 sides, the title
+// sitting inside the top pad (owner 2026-10-10: "this padding MUST be same",
+// and the lane may stay empty around sections), so a section is only as big
+// as what it holds. A section with no
 // cards keeps the span its `at` gives it: from the band's edge or its `at`, to
 // LANE_GAP short of the next one or the band's far edge.
 export const SECTION_PAD = 40
@@ -76,10 +77,12 @@ export function sectionRects(rect, axis = 'row', cards = []) {
     const mine = inBand.filter(c => c[at] + c[size] / 2 >= (i === 0 ? -Infinity : cuts[i]) && c[at] + c[size] / 2 < next)
     const start = mine.length ? Math.min(...mine.map(c => c[at])) - SECTION_PAD : cuts[i]
     const end = mine.length ? Math.max(...mine.map(c => c[at] + c[size])) + SECTION_PAD : (next === Infinity ? hi : next - LANE_GAP)
+    const top = mine.length ? Math.min(...mine.map(c => c[across])) - SECTION_PAD : rect[across]
+    const bottom = mine.length ? Math.max(...mine.map(c => c[across] + c[deep])) + SECTION_PAD : rect[across] + rect[deep]
     return {
       id: s.id, title: s.title, size: rect.size,
       color: s.color || cardsColor(mine) || rect.color,
-      x: rect.x, y: rect.y, w: rect.w, h: rect.h,
+      [across]: top, [deep]: bottom - top,
       [at]: start, [size]: Math.max(0, end - start),
     }
   })

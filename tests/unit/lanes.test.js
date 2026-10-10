@@ -149,7 +149,8 @@ describe("sections", () => {
     expect(n.data.axis).toBe("row");
     // Each section hugs its own card, SECTION_PAD each side, wherever its `at` cut.
     expect(n.data.sections.map(s => [s.x, s.w])).toEqual([[-SECTION_PAD - n.position.x, 190 + 2 * SECTION_PAD], [2000 - SECTION_PAD - n.position.x, 190 + 2 * SECTION_PAD]]);
-    expect(n.data.sections.every(s => s.y === 0 && s.h === n.height)).toBe(true);
+    // and the same SECTION_PAD above and below, so all 4 pads match.
+    expect(n.data.sections.every(s => s.y === 40 - SECTION_PAD - n.position.y && s.h === 180 + 2 * SECTION_PAD)).toBe(true);
     const [plain] = laneNodes([{ id: "a", title: "Apps", y: 0, h: 300 }], [{ x: 0, y: 40, w: 190, h: 180 }]);
     expect(plain.data.sections).toEqual([]);
   });
