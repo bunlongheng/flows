@@ -260,10 +260,13 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
         handleStyle={{ width: 9, height: 9, borderRadius: 0, background: color, border: '1px solid #fff' }}
         onResize={(_, p) => setLive({ w: p.width, h: p.height })}
         onResizeEnd={(_, p) => { onResize(data.id, { w: Math.round(p.width), h: Math.round(p.height) }); setLive(null) }} />}
-      <Handle type="target" position={Position.Left}   style={{ opacity: 0, pointerEvents: 'none' }} />
-      <Handle type="target" position={Position.Top}    style={{ opacity: 0, pointerEvents: 'none' }} />
-      <Handle type="source" position={Position.Right}  style={{ opacity: 0, pointerEvents: 'none' }} />
-      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, pointerEvents: 'none' }} />
+      {/* A dot in the middle of each side, shown on hover to the owner: drag
+          from it onto another card to draw a line (connectionMode loose, so
+          any of the 4 starts or ends one). Hidden and inert for a reader. */}
+      <Handle id="l" type="target" position={Position.Left}   className="sd-port" />
+      <Handle id="t" type="target" position={Position.Top}    className="sd-port" />
+      <Handle id="r" type="source" position={Position.Right}  className="sd-port" />
+      <Handle id="b" type="source" position={Position.Bottom} className="sd-port" />
       {/* Logo only - no frame, never an emoji. Every known service has an icon;
           the letter fallback only guards against a bad id the gate should reject. */}
       {picture

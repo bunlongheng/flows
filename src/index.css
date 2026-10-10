@@ -81,3 +81,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .sd-lane-edge > i { display: none; position: absolute; left: 50%; top: 50%; width: calc(8px * var(--gz)); height: calc(8px * var(--gz)); transform: translate(-50%, -50%); background: #fff; border: calc(1px * var(--gz)) solid var(--pick, #0d99ff); border-radius: calc(1px * var(--gz)); }
 .sd-band.is-picked > .sd-lane-edge > i, .sd-lane-edge:hover > i { display: block; }
 .sd-band.is-picked > .sd-lane-grab { cursor: move; }
+
+/* A card's side dots for drawing a line: hidden until the owner hovers the
+   card, with a wide invisible ring so the grab is forgiving. */
+.react-flow__handle.sd-port { width: 12px; height: 12px; border-radius: 50%; background: #2d7ff9; border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .12s ease, transform .12s ease; z-index: 5; }
+.react-flow__handle.sd-port::before { content: ''; position: absolute; inset: -10px; border-radius: 50%; }
+.react-flow:not(.sd-reading) .react-flow__node:hover .sd-port.connectable,
+.react-flow:not(.sd-reading) .react-flow__node.selected .sd-port.connectable { opacity: 1; pointer-events: auto; }
+.react-flow__handle.sd-port.connectable:hover { scale: 1.4; }
