@@ -61,7 +61,8 @@ test("a drag snaps a node onto its neighbour's line, and Cmd suspends it", async
       Number(document.querySelector(".react-flow__viewport").style.transform.match(/scale\(([\d.]+)\)/)[1]),
     );
     const box = await moving.boundingBox();
-    let px = box.x + box.width / 2;
+    // The left quarter: the top centre is the side dot that draws a line.
+    let px = box.x + box.width / 4;
     let py = box.y + 8;
 
     // Hold Cmd for the whole approach: that suspends snapping, which is the only
