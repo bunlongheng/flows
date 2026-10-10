@@ -40,7 +40,7 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
   const hit = px => Math.max(px, px / zoom)
   const grips = (section, rect, edges) => (edit ? edges.map(k => (
     <div key={k} className={`sd-lane-edge nodrag nopan ${k}`} onPointerDown={grab(k, section, rect)}
-      style={k === 'w' ? { width: hit(14), right: -hit(14) / 2 } : k === 'l' ? { width: hit(14), left: -hit(14) / 2 } : { height: hit(14), bottom: -hit(14) / 2 }} />
+      style={k === 'w' ? { width: hit(14), right: -hit(14) / 2 } : k === 'l' ? { width: hit(14), left: -hit(14) / 2 } : { height: hit(14), bottom: -hit(14) / 2 }}><i /></div>
   )) : null)
   const title = (text, color, section, rect) => (edit ? (
     // Only as wide as the title (plus its 16 px inset each side), never the
@@ -69,8 +69,11 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
   // A split band lights its sections 1 by 1, so the gap between them stays dark
   // instead of 1 halo drawn around the whole row.
   const halo = c => (glow ? `0 0 0 ${(3 * glow).toFixed(1)}px ${hexToRgba(c, 0.45 * glow)}, 0 0 ${Math.round(22 * glow)}px ${hexToRgba(c, 0.7 * glow)}` : undefined)
+  // Figma-style selection: a band the owner picked gets a blue frame and
+  // square handles on the edges it can be sized by; hovering one outlines it.
+  const band = key => (edit ? ` sd-band${data.picked === key ? ' is-picked' : ''}` : '')
   return (
-    <div className="sd-lane" style={{
+    <div className={`sd-lane${split ? '' : band('__lane')}`} style={{ '--gz': 1 / zoom,
       width, height, borderColor: clear(hexToRgba(ink, 0.35)), boxShadow: split || edit ? undefined : halo(ink),
       // A split band draws nothing of its own: its sections are the bands, so
       // the space between them reads as a gap and not as a box inside a box.
@@ -84,7 +87,7 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
       {split ? sections.map(s => {
         const sink = s.color || ink
         return (
-          <div key={s.id} className="sd-lane sd-lane-section" style={{
+          <div key={s.id} className={`sd-lane sd-lane-section${band(s.id)}`} style={{
             left: s.x, top: s.y, width: s.w, height: s.h,
             background: clear(hexToRgba(sink, 0.05)), borderColor: clear(hexToRgba(sink, 0.35)), boxShadow: edit ? undefined : halo(sink),
           }}>

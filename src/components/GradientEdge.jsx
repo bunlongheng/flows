@@ -235,14 +235,15 @@ export function GradientEdge({
 
   const sideways = side => side === 'left' || side === 'right'
   const square = data?.style?.arrow !== 'straight' && data?.style?.arrow !== 'curved'
-  const startBendDrag = e => {
+  const startBendDrag = (e, grabbed) => {
     if (!bendMovable || e.button !== 0) return
     e.stopPropagation()
     e.preventDefault()
     let last = null
-    // A square line's leg moves by how far the pointer went, from where the leg is now.
+    // A square line's leg moves by how far the pointer went, from where the leg
+    // is now - or from the very spot on the line the owner grabbed.
     const f0 = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-    const leg = isElbow(bend) ? elbowHandle(sx, sy, tx, ty, sSide, tSide, bend) : (pointOnPath(path, 0.5) || { x: labelX, y: labelY })
+    const leg = grabbed ? f0 : isElbow(bend) ? elbowHandle(sx, sy, tx, ty, sSide, tSide, bend) : (pointOnPath(path, 0.5) || { x: labelX, y: labelY })
     const move = ev => {
       const p = screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
       const f = square ? { x: leg.x + p.x - f0.x, y: leg.y + p.y - f0.y } : p
@@ -261,14 +262,42 @@ export function GradientEdge({
     window.addEventListener('pointerup', up)
   }
 
-  const startEndDrag = (e, which) => {
+  // Grabbing the line itself moves it too: past 4 px of travel the press
+  // becomes a leg drag from that spot; a plain click still just selects.
+  const startBodyDrag = e => {
+    if (!square || !bendMovable || e.button !== 0) return
+    const down = { clientX: e.clientX, clientY: e.clientY, button: 0, stopPropagation() {}, preventDefault() {} }
+    const arm = ev => {
+      const mx = ev.clientX - down.clientX, my = ev.clientY - down.clientY
+      if (Math.hypot(mx, my) < 4) return
+      off()
+      // The middle leg moves across itself. A drag the middle leg cannot take
+      // (up / down on a line between 2 side faces, left / right between top
+      // and bottom faces) slides the nearer end along its card instead.
+      const across = Math.abs(mx) > Math.abs(my) ? 'x' : 'y'
+      const sh = sideways(sSide), th = sideways(tSide)
+      const middleTakes = sh === th ? (sh ? across === 'x' : across === 'y') : true
+      if (middleTakes || !endMovable) return startBendDrag(down, true)
+      const f = screenToFlowPosition({ x: down.clientX, y: down.clientY })
+      startEndDrag(down, Math.hypot(f.x - sx, f.y - sy) <= Math.hypot(f.x - tx, f.y - ty) ? 's' : 't', f)
+    }
+    const off = () => { window.removeEventListener('pointermove', arm); window.removeEventListener('pointerup', off) }
+    window.addEventListener('pointermove', arm)
+    window.addEventListener('pointerup', off)
+  }
+
+  // `grabbed`: the end slides along its own face by the pointer's travel
+  // (a leg grabbed on the line), instead of jumping to the pointer (the dot).
+  const startEndDrag = (e, which, grabbed) => {
     if (!endMovable || e.button !== 0) return
     e.stopPropagation()
     e.preventDefault()
     const node = which === 's' ? sourceNode : targetNode
+    const anchor = which === 's' ? { x: sx, y: sy } : { x: tx, y: ty }
     let last = null
     const move = ev => {
-      const f = screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
+      const p = screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
+      const f = grabbed ? { x: anchor.x + p.x - grabbed.x, y: anchor.y + p.y - grabbed.y } : p
       last = nearestEnd(node, f.x, f.y)
       setDragEnd({ which, ...last })
     }
@@ -370,6 +399,10 @@ export function GradientEdge({
         strokeDasharray: dashArray(st.bs, st.bw || 1.5) || undefined,
         opacity: st.opacity == null ? undefined : st.opacity / 100,
       }} />
+      {square && bendMovable && (
+        <path d={drawPath} fill="none" stroke="transparent" strokeWidth={selected ? dot : 24} className="nodrag nopan"
+          style={{ pointerEvents: 'stroke', cursor: selected ? 'move' : 'pointer' }} onPointerDown={startBodyDrag} />
+      )}
         {labelOff && (tag || hasStep) && <line className="sd-edge-lead" x1={ax} y1={ay} x2={bx} y2={by} stroke={lineStroke} strokeWidth={1} strokeOpacity={0.7} pointerEvents="none" />}
         {port && <circle className="sd-lane-port" cx={port.x} cy={port.y} r={5} fill={port.c} stroke="#fff" strokeWidth={1.5} pointerEvents="none" />}
         <FlowDot edgeId={id} path={path} color={c1} />

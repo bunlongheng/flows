@@ -74,7 +74,7 @@ export function DetailView({
   badgeMode, setBadgeMode,
   activeDiagram,
   detailCodeCopied, setDetailCodeCopied,
-  nodes, edges, onNodesChange, onEdgesChange, onNodeDragStop, snapGuides = [],
+  nodes, edges, onNodesChange, onEdgesChange, onNodeDragStop, snapGuides = [], onPaneTap,
   exportPng, exportWebp, exportGif, exportCode, exportJson, copyLink, copiedLink, shareAction, copiedShare, copyCode, copiedCode,
   shareSlug, shareUrl,
   showDocs, setShowDocs, copiedLabel, onCopyFormat,
@@ -921,7 +921,7 @@ export function DetailView({
               if (node.type === 'marker') { if (onCurrentChange) { setCardId(null); setCurrentOpen(true) } return }
               if (node.type === 'awsNode') { setCurrentOpen(false); setCardId(node.id) }
             }}
-            onPaneClick={() => { setCardId(null); setCurrentOpen(false) }}
+            onPaneClick={() => { setCardId(null); setCurrentOpen(false); onPaneTap?.() }}
             /* Cmd/Ctrl is reserved for snap-align while dragging, so additive
                multi-select moves to Shift (box-select already uses Shift). */
             multiSelectionKeyCode="Shift"

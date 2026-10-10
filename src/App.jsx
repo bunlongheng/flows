@@ -11,7 +11,7 @@ import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapSuggest } from './snapAlign'
 import { findService } from './services'
-import { laneNodes, laneRef, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, sectionRects, resortSections, moveLane } from './lanes.js'
+import { laneNodes, laneRef, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane } from './lanes.js'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
@@ -230,6 +230,14 @@ export default function App() {
   // A band the owner is dragging (#468) previews here until the drop saves it.
   const [laneDraft, setLaneDraft] = useState(null)
   const bandDrag = useRef(null)
+  // The band the owner picked, drawn with a selection frame (Figma style).
+  const [selBand, setSelBand] = useState(null)
+  useEffect(() => {
+    if (!selBand) return
+    const onKey = e => { if (e.key === 'Escape') setSelBand(null) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [selBand])
   const [nodes, setNodes] = useState(defaultNodes)
   const [edges, setEdges] = useState(defaultEdges)
   const [toast, setToast] = useState({ message: '', visible: false })
@@ -1684,6 +1692,7 @@ export default function App() {
         ...rects.flatMap(r => (r.sections?.length >= 2 ? sectionRects(r, col ? 'col' : 'row', laneCards) : [r])).filter(r => r.id !== mine),
         ...laneCards.filter(c => home[c.id] !== mine),
       ]
+      setSelBand({ lane, section: section || null })
       bandDrag.current = { base: laneCfg, home, targets, from: Object.fromEntries(laneCards.map(c => [c.id, { x: c.x, y: c.y }])) }
       return
     }
@@ -1692,7 +1701,7 @@ export default function App() {
     // Snap along the band like a card does: the edge that moves latches onto
     // the nearest edge within 10 screen px, and a guide shows the line.
     let guide = null
-    if (!col && (dx || dy) && (section || kind !== 'move')) {
+    if (!col && (dx || dy)) {
       const zoom = rfInstance.current?.getZoom?.() || 1
       const edges = kind === 'w' ? [rect.x + rect.w] : kind === 'l' ? [rect.x] : [rect.x, rect.x + rect.w]
       let best = null
@@ -1717,8 +1726,18 @@ export default function App() {
       // Lanes re-pack on the drop, so every lane's cards follow their band.
       const across = col ? 'x' : 'y', dv = col ? dx : dy, out = moveLane(d.base, lane, dv)
       const by = sid => (phase === 'end' ? out.shift[sid] : sid === lane ? dv : 0)
-      moved = id => (d.home[id] ? { ...d.from[id], [across]: d.from[id][across] + by(d.home[id]) } : null)
-      next = phase === 'end' ? out.lanes : d.base.map(l => (l.id === lane ? { ...l, [across]: l[across] + dv } : l))
+      // Along the band the lane's cards move with it, and its start and end
+      // follow (lead / len); the other lanes hold still even if the shared
+      // start moved.
+      const along = col ? 'y' : 'x', du = Math.round(col ? dy : dx)
+      moved = id => (d.home[id] ? { ...d.from[id], [across]: d.from[id][across] + by(d.home[id]), ...(d.home[id] === lane ? { [along]: d.from[id][along] + du } : {}) } : null)
+      const startOf = cards => laneSpan(cards, col ? 'col' : 'row')[along]
+      const ds = du ? startOf(laneCards.map(c => (d.home[c.id] === lane ? { ...c, [along]: c[along] + du } : c))) - startOf(laneCards) : 0
+      const slide = l => {
+        const by = l.id === lane ? du - ds : -ds
+        return by ? { ...l, lead: (l.lead || 0) - by, ...(Number.isFinite(l.len) ? { len: l.len + by } : {}) } : l
+      }
+      next = (phase === 'end' ? out.lanes : d.base.map(l => (l.id === lane ? { ...l, [across]: l[across] + dv } : l))).map(slide)
     } else {
       // 'l' is the leading edge: it adds room before the first card. A size
       // along the band counts from the cards, so it leaves the lead out.
@@ -1760,7 +1779,7 @@ export default function App() {
   // While a line is selected the line owns the pointer: its end and bend dots
   // may sit under a band's title or edge, so the grips step aside.
   const laneGrips = canAI && activeDiagram?.id && !activeDiagram.editLocked && !edges.some(e => e.selected)
-    ? lanes.map(l => ({ ...l, id: `__grip_${l.data.laneId}`, type: 'laneGrips', zIndex: 1000, data: { ...l.data, onBand } }))
+    ? lanes.map(l => ({ ...l, id: `__grip_${l.data.laneId}`, type: 'laneGrips', zIndex: 1000, data: { ...l.data, onBand, picked: selBand?.lane === l.data.laneId ? (selBand.section || '__lane') : null } }))
     : []
   // Swimlanes already say where a flow begins (the top lane), so a diagram
   // with lanes draws no Start here pill. Same rule in render-svg.js.
@@ -1783,7 +1802,7 @@ export default function App() {
       activeDiagram={activeDiagram}
       detailCodeCopied={detailCodeCopied} setDetailCodeCopied={setDetailCodeCopied}
       nodes={displayNodes} edges={displayEdges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
-      onNodeDragStop={onNodeDragStop} snapGuides={snapGuides}
+      onNodeDragStop={onNodeDragStop} snapGuides={snapGuides} onPaneTap={() => setSelBand(null)}
       canUndo={history.past.length > 0} canRedo={history.future.length > 0} onUndo={undo} onRedo={redo}
       shareSlug={shareSlug} shareUrl={shareUrl}
       onDeleteDiagram={canAI && activeDiagram?.id ? () => deleteDiagram(activeDiagram.id, { thenBack: true }) : undefined}

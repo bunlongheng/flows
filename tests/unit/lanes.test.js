@@ -190,8 +190,16 @@ describe("the owner moves and sizes bands (issue #468)", () => {
   it("moves a lane in its stack, re-packs it from the same top and says how far each band went", () => {
     const lanes = cleanLanes([{ id: "a", y: 0, h: 200 }, { id: "b", y: 240, h: 100 }]);
     const { lanes: out, shift } = moveLane(lanes, "a", 300);
-    expect(out.map(l => [l.id, l.y])).toEqual([["b", 0], ["a", 140]]);
-    expect(shift).toEqual({ a: 140, b: -240 });
+    expect(out.map(l => [l.id, l.y])).toEqual([["b", 0], ["a", 300]]); // swapped, and stays where dropped
+    expect(shift).toEqual({ a: 300, b: -240 });
+  });
+  it("keeps a lane where a short drop left it, the room above it saved as its gap", () => {
+    const lanes = cleanLanes([{ id: "a", y: 0, h: 200 }, { id: "b", y: 240, h: 100 }, { id: "c", y: 380, h: 100 }]);
+    const { lanes: down } = moveLane(lanes, "b", 80);
+    expect(down.map(l => [l.id, l.y, l.gap])).toEqual([["a", 0, undefined], ["b", 320, 80], ["c", 460, undefined]]);
+    expect(cleanLanes(down).map(l => l.y)).toEqual([0, 320, 460]); // survives the save
+    const { lanes: back } = moveLane(cleanLanes(down), "b", -200);
+    expect(back.find(l => l.id === "b").y).toBe(240); // never above its neighbour's 40 px gap
   });
 });
 
