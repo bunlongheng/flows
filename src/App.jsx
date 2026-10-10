@@ -1678,11 +1678,34 @@ export default function App() {
         const b = bands.find(r => cx >= r.x && cx < r.x + r.w && cy >= r.y && cy < r.y + r.h)
         if (b) home[c.id] = b.id
       }
-      bandDrag.current = { base: laneCfg, home, from: Object.fromEntries(laneCards.map(c => [c.id, { x: c.x, y: c.y }])) }
+      // What a band edge may snap to: every other band and section, and every card outside it.
+      const mine = section || lane
+      const targets = [
+        ...rects.flatMap(r => (r.sections?.length >= 2 ? sectionRects(r, col ? 'col' : 'row', laneCards) : [r])).filter(r => r.id !== mine),
+        ...laneCards.filter(c => home[c.id] !== mine),
+      ]
+      bandDrag.current = { base: laneCfg, home, targets, from: Object.fromEntries(laneCards.map(c => [c.id, { x: c.x, y: c.y }])) }
       return
     }
     const d = bandDrag.current
     if (!d) return
+    // Snap along the band like a card does: the edge that moves latches onto
+    // the nearest edge within 10 screen px, and a guide shows the line.
+    let guide = null
+    if (!col && (dx || dy) && (section || kind !== 'move')) {
+      const zoom = rfInstance.current?.getZoom?.() || 1
+      const edges = kind === 'w' ? [rect.x + rect.w] : kind === 'l' ? [rect.x] : [rect.x, rect.x + rect.w]
+      let best = null
+      for (const o of d.targets) for (const b of [o.x, o.x + o.w]) for (const a of edges) {
+        const delta = b - (a + dx)
+        if (Math.abs(delta) <= 10 / zoom && (!best || Math.abs(delta) < Math.abs(best.delta))) best = { delta, at: b, o }
+      }
+      if (best) {
+        dx += best.delta
+        guide = { axis: 'x', at: best.at, from: Math.min(rect.y, best.o.y), to: Math.max(rect.y + rect.h, best.o.y + best.o.h) }
+      }
+    }
+    setSnapGuides(phase === 'end' || !guide ? [] : [guide])
     let next = d.base, moved = null
     if (kind === 'move' && section) {
       const along = col ? 'y' : 'x', dv = col ? dy : dx
@@ -1734,7 +1757,9 @@ export default function App() {
   const lanes = laneNodes(laneCfg, laneCards)
   // The grips ride a see-through copy of each band above the lines and cards,
   // so a line crossing a title or an edge never takes the drag.
-  const laneGrips = canAI && activeDiagram?.id && !activeDiagram.editLocked
+  // While a line is selected the line owns the pointer: its end and bend dots
+  // may sit under a band's title or edge, so the grips step aside.
+  const laneGrips = canAI && activeDiagram?.id && !activeDiagram.editLocked && !edges.some(e => e.selected)
     ? lanes.map(l => ({ ...l, id: `__grip_${l.data.laneId}`, type: 'laneGrips', zIndex: 1000, data: { ...l.data, onBand } }))
     : []
   // Swimlanes already say where a flow begins (the top lane), so a diagram

@@ -4,7 +4,7 @@ import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteE
 import { subscribe, currentPhase, motionAllowed, dotAt, ambientAt } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
-import { routeEdge, badgeShift, badgeBox, clearBadge, pointAlongPath, bendPoint, bendFor, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
+import { routeEdge, badgeShift, badgeBox, clearBadge, pointAlongPath, bendPoint, bendFor, isElbow, elbowFor, elbowHandle, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
 import { laneGaps, isLaneNode } from '../lanes.js'
 import { tagText } from '../tag.js'
 import { EDGE_LABEL_MAX } from '../note.js'
@@ -185,7 +185,7 @@ export function GradientEdge({
   // The strips between swimlanes, where a trunk's bus line runs.
   const laneRects = getNodes().filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height }))
   const gaps = laneGaps(laneRects)
-  const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, labelX, labelY, labelOff } = routeEdge({
+  const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelOff } = routeEdge({
     taken: takenBefore(id, getNodes(), allEdges),
     id, source, target, sourceNode, targetNode, nodeOf, edges: allEdges, obstacles, nodeRects, gaps,
     bend, endS, endT, arrow: data?.style?.arrow, label, description: data?.description,
@@ -233,14 +233,21 @@ export function GradientEdge({
   const dot = useStore(s => (selected ? Math.max(14, 18 / s.transform[2]) : 14))
   const ring = dot / 7
 
+  const sideways = side => side === 'left' || side === 'right'
+  const square = data?.style?.arrow !== 'straight' && data?.style?.arrow !== 'curved'
   const startBendDrag = e => {
     if (!bendMovable || e.button !== 0) return
     e.stopPropagation()
     e.preventDefault()
     let last = null
+    // A square line's leg moves by how far the pointer went, from where the leg is now.
+    const f0 = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+    const leg = isElbow(bend) ? elbowHandle(sx, sy, tx, ty, sSide, tSide, bend) : (pointOnPath(path, 0.5) || { x: labelX, y: labelY })
     const move = ev => {
-      const f = screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
-      last = bendFor(sx, sy, tx, ty, f.x, f.y)
+      const p = screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
+      const f = square ? { x: leg.x + p.x - f0.x, y: leg.y + p.y - f0.y } : p
+      // A square line slides a leg (left, right, up, down); straight and curved ones bend.
+      last = square ? elbowFor(sx, sy, tx, ty, sSide, tSide, f.x, f.y) : bendFor(sx, sy, tx, ty, f.x, f.y)
       setDragBend(last)
     }
     const up = () => {
@@ -248,7 +255,7 @@ export function GradientEdge({
       window.removeEventListener('pointerup', up)
       setDragBend(null)
       const saved = data?.bend
-      if (last && (!saved || saved.t !== last.t || saved.d !== last.d)) data.onBendMove(id, last)
+      if (last && JSON.stringify(saved) !== JSON.stringify(last)) data.onBendMove(id, last)
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
@@ -407,17 +414,21 @@ export function GradientEdge({
               style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`, width: dot, height: dot, borderRadius: '50%', background: color || '#6b7280', border: `${ring}px solid #fff`, boxShadow: `0 0 0 ${ring / 2}px rgba(0,0,0,0.25)`, cursor: 'grab', pointerEvents: 'all', zIndex: 2 }} />
           ))}
           {bendMovable && selected && (() => {
-            const mid = bend ? bendPoint(sx, sy, tx, ty, bend) : (pointOnPath(path, 0.5) || { x: labelX, y: labelY })
+            const mid = isElbow(bend) ? elbowHandle(sx, sy, tx, ty, sSide, tSide, bend)
+              : bend ? bendPoint(sx, sy, tx, ty, bend) : (pointOnPath(path, 0.5) || { x: labelX, y: labelY })
             // Unbent, the handle rests at the midpoint - exactly where the badge
             // sits, and the 2 swallowed each other's clicks: the dot took the
             // second click of a double-click, so the badge never saw one. While
             // there is no bend the dot sits clear below the badge.
-            const h = bend ? mid : { x: mid.x, y: mid.y + Math.max(20, dot * 1.4) }
+            // A moved square line's dot slides along its own leg, off the badge.
+            const gap = Math.max(20, dot * 1.4)
+            const h = isElbow(bend) ? (Number.isFinite(bend.oy) && !Number.isFinite(bend.ox) ? { x: mid.x + gap, y: mid.y } : { x: mid.x, y: mid.y + gap })
+              : bend ? mid : { x: mid.x, y: mid.y + gap }
             return (
               <div className="sd-edge-bend nodrag nopan" onPointerDown={startBendDrag}
                 onDoubleClick={e => { e.stopPropagation(); data.onBendMove(id, null) }}
-                title="Drag to bend the line; double-click to straighten"
-                style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${h.x}px, ${h.y}px)`, width: dot, height: dot, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', border: `${ring}px solid ${c1}`, boxShadow: `0 0 0 ${ring}px #fff`, cursor: 'move', pointerEvents: 'all', zIndex: 3 }} />
+                title={square ? 'Drag to move the line up, down, left or right; double-click to reset' : 'Drag to bend the line; double-click to straighten'}
+                style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${h.x}px, ${h.y}px)`, width: dot, height: dot, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', border: `${ring}px solid ${c1}`, boxShadow: `0 0 0 ${ring}px #fff`, cursor: square ? (sideways(sSide) && sideways(tSide) ? 'ew-resize' : !sideways(sSide) && !sideways(tSide) ? 'ns-resize' : 'move') : 'move', pointerEvents: 'all', zIndex: 3 }} />
             )
           })()}
         </EdgeLabelRenderer>

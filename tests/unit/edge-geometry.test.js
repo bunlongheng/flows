@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { routeEdge, badgeShift, LEAD, pointAlongPath, flattenPath, bendPoint, badgeBox, clearBadge, T_MIN, T_MAX } from "../../src/edgeGeometry.js";
+import { routeEdge, badgeShift, LEAD, pointAlongPath, flattenPath, bendPoint, badgeBox, clearBadge, T_MIN, T_MAX, elbowPoints, elbowHandle, elbowFor, isElbow } from "../../src/edgeGeometry.js";
 
 // The same module routes the canvas (GradientEdge) and the server export, so
 // a line the owner sees on the page is the line a README gets.
@@ -175,3 +175,20 @@ describe('no tag on a tag', () => {
     expect(at.lead).toBeGreaterThan(0)
   })
 })
+
+describe("a square line moved by hand (elbow)", () => {
+  it("slides the upright leg between 2 side faces and keeps square corners", () => {
+    const p = elbowPoints(0, 0, 400, 200, "right", "left", { ox: 50 });
+    expect(p).toEqual([{ x: 0, y: 0 }, { x: 250, y: 0 }, { x: 250, y: 200 }, { x: 400, y: 200 }]);
+    expect(elbowHandle(0, 0, 400, 200, "right", "left", { ox: 50 })).toEqual({ x: 250, y: 100 });
+  });
+  it("slides the level leg between top and bottom faces", () => {
+    expect(elbowFor(0, 0, 400, 200, "bottom", "top", 120, 160)).toEqual({ oy: 60 });
+    expect(elbowPoints(0, 0, 400, 200, "bottom", "top", { oy: 60 })[1]).toEqual({ x: 0, y: 160 });
+  });
+  it("takes both offsets from a side face to a top face, every leg square", () => {
+    const p = elbowPoints(0, 0, 400, 200, "right", "top", elbowFor(0, 0, 400, 200, "right", "top", 300, 50));
+    for (let i = 1; i < p.length; i++) expect(p[i].x === p[i - 1].x || p[i].y === p[i - 1].y).toBe(true);
+    expect(isElbow({ t: 0.5, d: 10 })).toBe(false);
+  });
+});
