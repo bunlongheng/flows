@@ -617,7 +617,6 @@ export default function App() {
       .catch(() => showToastMsg('Could not save'))
   }, [activeId, applyNodeField, showToastMsg])
   const onNoteChange = useCallback((nodeId, note) => saveNodeText('note', nodeId, note), [saveNodeText])
-  const onInfoChange = useCallback((nodeId, info) => saveNodeText('info', nodeId, info), [saveNodeText])
 
   // The format panel fires a write per click, and 5 PATCHes racing to the same
   // row do NOT arrive in the order they were sent - the e2e caught the last two
@@ -1823,7 +1822,6 @@ export default function App() {
       saveState={saveState}
       onArrange={autoArrange}
       onNoteChange={canAI ? onNoteChange : undefined}
-      onInfoChange={canAI ? onInfoChange : undefined}
       onEdgeStyleChange={canAI ? onEdgeStyleChange : undefined}
       onNodeResize={canAI ? onNodeResize : undefined}
       onIconResize={canAI ? onIconResize : undefined}
