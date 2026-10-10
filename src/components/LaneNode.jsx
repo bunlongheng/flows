@@ -36,7 +36,7 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
   // bar, never smaller than the band's own 32 px top pad. Width only: the
   // height always hugs the cards (top and bottom pad are automatic).
   const zoom = useStore(s => s.transform[2])
-  const along = data.axis === 'col' ? ['h'] : ['l', 'w']
+  const along = data.axis === 'free' ? ['l', 'w', 'h'] : data.axis === 'col' ? ['h'] : ['l', 'w']
   const hit = px => Math.max(px, px / zoom)
   const grips = (section, rect, edges) => (edit ? edges.map(k => (
     <div key={k} className={`sd-lane-edge nodrag nopan ${k}`} onPointerDown={grab(k, section, rect)}

@@ -11,7 +11,7 @@ import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapSuggest } from './snapAlign'
 import { findService } from './services'
-import { laneNodes, laneRef, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD, LANE_FIT, LANE_SECTIONS_MAX } from './lanes.js'
+import { laneNodes, laneRef, freeHome, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD, LANE_FIT, LANE_SECTIONS_MAX } from './lanes.js'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
@@ -88,6 +88,7 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove, lane
   const laneColor = id => {
     const l = lanes.find(l => l.id === laneRef(id))
     if (!l) return LANE_INK
+    if ('x' in l && 'y' in l) return l.color || cardsColor((rawNodes || []).filter(n => !n.sunset && freeHome(lanes, [{ id: n.id, x: n.position?.x ?? 0, y: n.position?.y ?? 0, w: 180, h: 180 }])[n.id] === l.id).map(n => ({ color: findService(n)?.color }))) || LANE_INK
     const [at, size] = 'x' in l ? ['x', 'w'] : ['y', 'h']
     const inside = (rawNodes || []).filter(n => !n.sunset && n.position?.[at] >= l[at] && n.position[at] < l[at] + l[size])
     return l.color || cardsColor(inside.map(n => ({ color: findService(n)?.color }))) || LANE_INK
@@ -1674,7 +1675,49 @@ export default function App() {
   // The owner drags a band (#468): its title moves it with its cards, an edge
   // sizes it. The drag previews in laneDraft and the card positions; the drop
   // saves the lanes and the cards together.
+  // A free panel moves and sizes on its own: nothing re-packs and it never
+  // joins another panel. A moving edge latches onto another panel's or card's
+  // edge or middle within 8 screen px, with a guide; past that it lands
+  // exactly where it is dropped.
+  const onFreeBand = ({ phase, kind, lane, rect, dx, dy }) => {
+    if (phase === 'start') {
+      const home = freeHome(laneCfg, laneCards), mine = laneCards.filter(c => home[c.id] === lane)
+      const targets = [...laneRects(laneCfg, laneCards).filter(r => r.id !== lane), ...laneCards.filter(c => home[c.id] !== lane)]
+      // A size never cuts its own cards: the box keeps them plus the pad.
+      const fit = mine.length ? { x0: Math.min(...mine.map(c => c.x)) - SECTION_PAD, x1: Math.max(...mine.map(c => c.x + c.w)) + SECTION_PAD, y1: Math.max(...mine.map(c => c.y + c.h)) + SECTION_PAD } : null
+      setSelBand({ lane, section: null })
+      bandDrag.current = { base: laneCfg, home, targets, fit, from: Object.fromEntries(laneCards.map(c => [c.id, { x: c.x, y: c.y }])) }
+      return
+    }
+    const d = bandDrag.current
+    if (!d) return
+    const zoom = rfInstance.current?.getZoom?.() || 1
+    const latch = (mine, lo, size, delta) => {
+      let best = null
+      for (const o of d.targets) for (const b of [o[lo], o[lo] + o[size] / 2, o[lo] + o[size]]) for (const a of mine) {
+        const gap = b - (a + delta)
+        if (Math.abs(gap) <= 8 / zoom && (!best || Math.abs(gap) < Math.abs(best.gap))) best = { gap, at: b, o }
+      }
+      return best
+    }
+    const move = kind === 'move'
+    const bx = latch(move ? [rect.x, rect.x + rect.w / 2, rect.x + rect.w] : kind === 'w' ? [rect.x + rect.w] : kind === 'l' ? [rect.x] : [], 'x', 'w', dx)
+    const by = latch(move ? [rect.y, rect.y + rect.h / 2, rect.y + rect.h] : kind === 'h' ? [rect.y + rect.h] : [], 'y', 'h', dy)
+    if (bx) dx += bx.gap
+    if (by) dy += by.gap
+    const box = move ? { ...rect, x: rect.x + dx, y: rect.y + dy } : kind === 'w' ? { ...rect, w: Math.max(rect.w + dx, d.fit ? d.fit.x1 - rect.x : 0) }
+      : kind === 'h' ? { ...rect, h: Math.max(rect.h + dy, d.fit ? d.fit.y1 - rect.y : 0) }
+      : (x => ({ ...rect, x, w: rect.x + rect.w - x }))(Math.min(rect.x + dx, d.fit ? d.fit.x0 : Infinity))
+    setSnapGuides(phase === 'end' ? [] : [
+      ...(bx ? [{ axis: 'x', at: bx.at, from: Math.min(box.y, bx.o.y), to: Math.max(box.y + box.h, bx.o.y + bx.o.h) }] : []),
+      ...(by ? [{ axis: 'y', at: by.at, from: Math.min(box.x, by.o.x), to: Math.max(box.x + box.w, by.o.x + by.o.w) }] : []),
+    ])
+    const next = d.base.map(l => (l.id === lane ? { ...l, x: Math.round(box.x), y: Math.round(box.y), w: Math.max(LANE_MIN, Math.round(box.w)), h: Math.max(LANE_MIN, Math.round(box.h)) } : l))
+    const moved = move ? id => (d.home[id] === lane ? { x: d.from[id].x + Math.round(dx), y: d.from[id].y + Math.round(dy) } : null) : null
+    finishBand(phase, next, moved, phase === 'end' && !dx && !dy)
+  }
   const onBand = ({ phase, kind, lane, section, rect, dx, dy }) => {
+    if (laneAxis(laneCfg) === 'free') return onFreeBand({ phase, kind, lane, rect, dx, dy })
     const col = laneAxis(laneCfg) === 'col'
     if (phase === 'start') {
       const rects = laneRects(laneCfg, laneCards)
@@ -1819,7 +1862,10 @@ export default function App() {
         next = packed
       }
     }
-    const still = phase === 'end' && !dx && !dy
+    finishBand(phase, next, moved, phase === 'end' && !dx && !dy)
+  }
+  // A band drag's preview, then on the drop the lanes and the cards saved together.
+  const finishBand = (phase, next, moved, still) => {
     if (moved && !still) setNodes(nds => {
       const nx = nds.map(n => { const p = moved(n.id); return p ? { ...n, position: p } : n })
       if (phase === 'end') savePositions(activeDiagram.id, nx)
