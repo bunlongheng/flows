@@ -63,7 +63,7 @@ function cleanSections(raw) {
 // as what it holds. A section with no
 // cards keeps the span its `at` gives it: from the band's edge or its `at`, to
 // LANE_GAP short of the next one or the band's far edge.
-export const SECTION_PAD = 40
+export const SECTION_PAD = 32
 export function sectionRects(rect, axis = 'row', cards = []) {
   const secs = rect.sections || []
   if (secs.length < 2) return []

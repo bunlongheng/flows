@@ -1657,7 +1657,9 @@ export default function App() {
   // Start/Destination marker nodes are always shown (auto-detected from edges).
   // Swimlanes are configuration (view_state.lanes, set over the API or MCP),
   // never edited on the canvas: drawn under the cards, nothing more.
-  const lanes = laneNodes(activeDiagram?.view_state?.lanes || [], nodes.map(n => { const s = sizeOf(n); return { x: n.position?.x ?? 0, y: n.position?.y ?? 0, w: s.w, h: s.h + (showNotes ? getNoteHeight(n.id) : 0), color: n.data?.sunset ? null : findService(n.data || { id: n.id })?.color } }))
+  // A card draws 180 square (NODE_W 190 is layout pitch), so a section's pad is
+  // measured off the drawn card, the same on every side.
+  const lanes = laneNodes(activeDiagram?.view_state?.lanes || [], nodes.map(n => { const s = sizeOf(n); return { x: n.position?.x ?? 0, y: n.position?.y ?? 0, w: n.data?.size?.w ?? 180, h: s.h + (showNotes ? getNoteHeight(n.id) : 0), color: n.data?.sunset ? null : findService(n.data || { id: n.id })?.color } }))
   // Swimlanes already say where a flow begins (the top lane), so a diagram
   // with lanes draws no Start here pill. Same rule in render-svg.js.
   const markers = lanes.length ? { nodes: [], edges: [] } : buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)
