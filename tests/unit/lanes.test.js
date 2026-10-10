@@ -97,7 +97,7 @@ describe("laneRef", () => {
   });
 });
 
-// A lane can be split into 2 or 3 titled slices across its own band, so 2
+// A lane can be split into 2 to 4 titled slices across its own band, so 2
 // groups share 1 row instead of stacking 2 lanes.
 describe("sections", () => {
   const split = [{ id: "team", title: "", y: 0, h: 300, color: "#0F766E", sections: [
@@ -105,14 +105,14 @@ describe("sections", () => {
     { id: "work", title: "Work", at: 1300, color: "#E650BA" },
   ] }];
 
-  it("keeps 2 or 3 typed sections, sorted, and drops a lone or malformed one", () => {
+  it("keeps 2 to 4 typed sections, sorted, and drops a lone or malformed one", () => {
     expect(cleanLanes(split)[0].sections).toEqual([
       { id: "jobs", title: "Jobs", at: -100 },
       { id: "work", title: "Work", at: 1300, color: "#E650BA" },
     ]);
-    // Out of order comes back in order, and a 4th is cut.
-    const many = [{ id: "a", y: 0, h: 300, sections: [{ id: "c", at: 900 }, { id: "b", at: 100 }, { id: "a", at: 0 }, { id: "d", at: 1200 }] }];
-    expect(cleanLanes(many)[0].sections.map(s => s.id)).toEqual(["a", "b", "c"]);
+    // Out of order comes back in order, and a 5th is cut.
+    const many = [{ id: "a", y: 0, h: 300, sections: [{ id: "c", at: 900 }, { id: "b", at: 100 }, { id: "a", at: 0 }, { id: "d", at: 1200 }, { id: "e", at: 1500 }] }];
+    expect(cleanLanes(many)[0].sections.map(s => s.id)).toEqual(["a", "b", "c", "d"]);
     // 1 section is not a split; neither is one with no `at` or a repeated id.
     for (const bad of [[{ id: "only", at: 0 }], [{ id: "a", at: 0 }, { id: "a", at: 9 }], [{ id: "a" }, { id: "b" }], "no"]) {
       expect(cleanLanes([{ id: "x", y: 0, h: 300, sections: bad }])[0].sections).toBeUndefined();
