@@ -43,8 +43,10 @@ export const laneAxis = lanes => (lanes[0] && 'x' in lanes[0] ? 'col' : 'row')
 // A size the owner dragged on the canvas (section w / h, a plain lane's len
 // along its band). It wins over the auto fit, but never cuts a card: the draw
 // grows it back to the cards plus HAND_MIN_PAD.
-const HAND_MIN_PAD = 8
+export const HAND_MIN_PAD = 8
 const handLead = v => (Number.isFinite(v) ? Math.min(20000, Math.max(0, Math.round(v))) : 0)
+// A section's left edge may also pull in through its auto pad, down to HAND_MIN_PAD.
+const SECTION_LEAD_MIN = -24
 const handSize = v => Math.min(20000, Math.max(LANE_MIN, Math.round(v)))
 function cleanSections(raw) {
   if (!Array.isArray(raw)) return null
@@ -56,7 +58,7 @@ function cleanSections(raw) {
     const sec = { id, title: String(s.title ?? '').trim().slice(0, 40), at: Math.round(s.at) }
     if (typeof s.color === 'string' && /^#[0-9a-f]{6}$/i.test(s.color)) sec.color = s.color
     for (const k of ['w', 'h']) if (Number.isFinite(s[k])) sec[k] = handSize(s[k])
-    if (handLead(s.lead)) sec.lead = handLead(s.lead)
+    if (Number.isFinite(s.lead) && Math.round(s.lead)) sec.lead = Math.min(20000, Math.max(SECTION_LEAD_MIN, Math.round(s.lead)))
     out.push(sec)
   }
   return out.length >= 2 ? out.sort((a, b) => a.at - b.at) : null
@@ -86,7 +88,7 @@ export function sectionRects(rect, axis = 'row', cards = []) {
     // A hand lead (its left / top edge) adds room before the first card; the
     // far edge stays where it was, so a hand size counts from the cards.
     const base = mine.length ? Math.min(...mine.map(c => c[at])) - SECTION_PAD : cuts[i]
-    const start = base - (s.lead || 0)
+    const start = base - Math.max(SECTION_LEAD_MIN, s.lead || 0)
     const far = mine.length ? Math.max(...mine.map(c => c[at] + c[size])) : start
     const top = mine.length ? Math.min(...mine.map(c => c[across])) - SECTION_PAD : rect[across]
     const low = mine.length ? Math.max(...mine.map(c => c[across] + c[deep])) : top
@@ -207,8 +209,12 @@ export function laneRects(lanes, rects) {
     ? { [long]: Math.max(l.len, Math.max(span[along], ...cards.map(c => c[along] + c[long])) - span[along] + HAND_MIN_PAD) }
     : {})
   // A hand lead pulls the start back by that much, the far end stays put.
-  const leadOf = (l, box) => (l.lead ? { [along]: box[along] - l.lead, [long]: box[long] + l.lead } : box)
-  return fitLanes(lanes, rects).map(l => ({ l, cards: rects.filter(r => r[at] >= l[at] && r[at] < l[at] + l[size]) })).map(({ l, cards }) => ({ id: l.id, title: l.title, color: l.color || cardsColor(cards) || undefined, size: l.size, ...(l.sections ? { sections: l.sections } : {}), ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...leadOf(l, { ...span, ...lenOf(l, cards) }) }))
+  // A negative lead pulls the start in, never past the lane's own first card.
+  const leadOf = (l, box, cards) => {
+    const lead = cards.length ? Math.max(l.lead || 0, span[along] + HAND_MIN_PAD - Math.min(...cards.map(c => c[along]))) : Math.max(0, l.lead || 0)
+    return lead ? { [along]: box[along] - lead, [long]: box[long] + lead } : box
+  }
+  return fitLanes(lanes, rects).map(l => ({ l, cards: rects.filter(r => r[at] >= l[at] && r[at] < l[at] + l[size]) })).map(({ l, cards }) => ({ id: l.id, title: l.title, color: l.color || cardsColor(cards) || undefined, size: l.size, ...(l.sections ? { sections: l.sections } : {}), ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...leadOf(l, { ...span, ...lenOf(l, cards) }, cards) }))
 }
 
 // The React Flow nodes that draw the lanes: 1 per lane, under the cards,

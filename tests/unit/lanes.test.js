@@ -226,4 +226,17 @@ describe("a hand lead, the left edge (issue #468)", () => {
     const [s1] = sectionRects(laneRects([l], [card])[0], "row", [card]);
     expect([s1.x, s1.x + s1.w]).toEqual([-SECTION_PAD - 60, -SECTION_PAD + 400]);
   });
+  it("pulls a plain lane's start in, never past its own first card", () => {
+    const far = { x: 900, y: 40, w: 180, h: 180 };
+    const rows = cleanLanes([{ id: "a", y: 0, h: 300, lead: -300 }, { id: "b", y: 400, h: 300, lead: -5000 }]);
+    const [a, b] = laneRects(rows, [card, { ...far, y: 440 }]);
+    expect(a.x).toBe(-8);
+    expect(b.x).toBe(900 - 8);
+  });
+  it("pulls a section's start in through its auto pad, down to 8 px", () => {
+    const [l] = cleanLanes([{ id: "a", y: 0, h: 300, sections: [{ id: "s1", at: 0, lead: -500 }, { id: "s2", at: 2000 }] }]);
+    expect(l.sections[0].lead).toBe(-24);
+    const [s1] = sectionRects(laneRects([l], [card])[0], "row", [card]);
+    expect(s1.x).toBe(-8);
+  });
 });

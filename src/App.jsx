@@ -11,7 +11,7 @@ import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapSuggest } from './snapAlign'
 import { findService } from './services'
-import { laneNodes, laneRef, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane } from './lanes.js'
+import { laneNodes, laneRef, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD } from './lanes.js'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
@@ -1747,7 +1747,14 @@ export default function App() {
       next = d.base.map(l => {
         if (l.id !== lane) return l
         const lead = own(l).lead || 0
-        if (kind === 'l') return set(l, { lead: Math.max(0, Math.round(lead - (col ? dy : dx))) })
+        // Pulled in, the left edge stops at the first card (plain lane) or
+        // through the auto pad (section); src/lanes.js holds the same floor.
+        if (kind === 'l') {
+          const a = col ? 'y' : 'x', mine = laneCards.filter(c => d.home[c.id] === (section || lane)).map(c => c[a])
+          const room = mine.length ? Math.min(...mine) - HAND_MIN_PAD - rect[a] : 0
+          const from = !section ? laneSpan(laneCards, col ? 'col' : 'row')[a] : mine.length ? Math.min(...mine) - SECTION_PAD : rect[a] + lead
+          return set(l, { lead: Math.round(from - rect[a] - Math.min(col ? dy : dx, room)) })
+        }
         const size = Math.max(LANE_MIN, Math.round(rect[kind] + (kind === 'w' ? dx : dy) - (along ? lead : 0)))
         return set(l, { [section ? kind : along ? 'len' : 'depth']: size })
       })
