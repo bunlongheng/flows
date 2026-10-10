@@ -95,6 +95,7 @@ export function DetailView({
   // (nodeId, { w, h }) => void when the owner is signed in; undefined
   // otherwise, which makes every node card a fixed, non-resizable size.
   onNodeResize,
+  onConnect,
   // (nodeId, iconSize | null) => void when the owner is signed in; undefined
   // otherwise. Resizes the icon/photo INSIDE the card, independent of the card.
   onIconResize,
@@ -947,7 +948,19 @@ export function DetailView({
                Nothing moves - the drag handles on a line only exist when the
                owner's onEndMove/onBendMove are threaded into its data. On a
                phone even selecting is off: a finger is wider than a card. */
-            nodesDraggable={canEdit && !viewOnly} nodesConnectable={false} elementsSelectable={!fingerOnly}
+            nodesDraggable={canEdit && !viewOnly} elementsSelectable={!fingerOnly}
+            /* The owner draws a line Forensic style: hover a card, drag from a
+               side dot, and it snaps onto any card within 34 px. */
+            nodesConnectable={!!onConnect && canEdit && !viewOnly} onConnect={onConnect}
+            /* Missed every dot? Dropped anywhere on a card's body still snaps onto it. */
+            onConnectEnd={(e, c) => {
+              if (c.isValid || !c.fromNode || !onConnect) return
+              const pt = e.changedTouches?.[0] || e
+              const id = document.elementFromPoint(pt.clientX, pt.clientY)?.closest('.react-flow__node-awsNode')?.dataset.id
+              if (id && id !== c.fromNode.id) onConnect({ source: c.fromNode.id, target: id })
+            }}
+            connectionMode="loose" connectionRadius={34} connectionLineType="straight"
+            connectionLineStyle={{ stroke: '#2d7ff9', strokeWidth: 2.4 }}
             /* 2 fingers on the trackpad pan the canvas in any direction, the way
                Sequences and Mindmaps do; pinch or Cmd + wheel zooms. */
             panOnDrag panOnScroll panOnScrollMode="free" panOnScrollSpeed={1} zoomOnScroll={false} zoomOnDoubleClick={false} minZoom={narrow ? 0.04 : 0.2} maxZoom={2.5}
