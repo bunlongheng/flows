@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, sectionRef, laneNodeId, cardsColor, SECTION_PAD, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT, resortSections, moveLane } from "../../src/lanes.js";
+import { laneAxis, cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, sectionRef, laneNodeId, cardsColor, SECTION_PAD, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT, resortSections, moveLane } from "../../src/lanes.js";
 
 describe("cleanLanes", () => {
   it("keeps typed, bounded lanes and drops the rest", () => {
@@ -246,5 +246,22 @@ describe("a hand lead, the left edge (issue #468)", () => {
     expect(l.sections[0].lead).toBe(-24);
     const [s1] = sectionRects(laneRects([l], [card])[0], "row", [card]);
     expect(s1.x).toBe(-8);
+  });
+});
+
+// Free panels (owner 2026-10-10: "allow me to move panel freely in canvas"):
+// each keeps its own box, nothing packs, and it grows to hold its cards.
+describe("free panels", () => {
+  const free = [{ id: "a", title: "A", x: 0, y: 0, w: 400, h: 300 }, { id: "b", title: "B", x: 1000, y: 37, w: 200, h: 200 }];
+  it("keeps every box where it was dropped", () => {
+    expect(laneAxis(free)).toBe("free");
+    expect(cleanLanes(free).map((l) => [l.x, l.y, l.w, l.h])).toEqual([[0, 0, 400, 300], [1000, 37, 200, 200]]);
+  });
+  it("draws a box grown to its own cards plus the pad, and leaves the others alone", () => {
+    const cards = [{ id: "c", x: 300, y: 200, w: 180, h: 180 }];
+    const [a, b] = laneRects(cleanLanes(free), cards);
+    expect([a.x, a.y, a.w, a.h]).toEqual([0, 0, 300 + 180 + SECTION_PAD, 200 + 180 + SECTION_PAD]);
+    expect([b.x, b.y, b.w, b.h]).toEqual([1000, 37, 200, 200]);
+    expect(laneGaps(laneRects(cleanLanes(free), cards))).toBeNull();
   });
 });

@@ -73,7 +73,8 @@ function laneFace(node, fc) {
   const { p, w, h } = laneBox(node, fc)
   const c = { x: p.x + w / 2, y: p.y + h / 2 }
   const ax = laneAxisOf(node)
-  if (ax ? ax === 'row' : w >= h) {
+  // A free panel is met on the face that looks at the far end, as a card is.
+  if (ax === 'free' ? Math.abs(fc.y - c.y) / h >= Math.abs(fc.x - c.x) / w : ax ? ax === 'row' : w >= h) {
     const side = fc.y < c.y ? Position.Top : Position.Bottom
     return { x: clampTo(fc.x, p.x + EDGE_MARGIN, p.x + w - EDGE_MARGIN), y: side === Position.Top ? p.y : p.y + h, side, alone: true, gap: 0, half: w / 2, mid: c.x }
   }

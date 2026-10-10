@@ -103,7 +103,7 @@ function takenBefore(id, nodes, edges) {
     }
     const cards = nodes.filter(n => n.type === 'awsNode' && n.measured?.width && n.position)
     const nodeRects = cards.map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
-    const gaps = laneGaps(nodes.filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height })))
+    const gaps = laneGaps(nodes.filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height, free: n.data?.axis === 'free' })))
     const before = new Map(), taken = [], badgeAt = new Map(), badges = [], jobs = []
     for (const e of edges) {
       before.set(e.id, [...taken])
@@ -183,7 +183,7 @@ export function GradientEdge({
     .filter(n => n.type === 'awsNode' && n.measured && n.position)
     .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
   // The strips between swimlanes, where a trunk's bus line runs.
-  const laneRects = getNodes().filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height }))
+  const laneRects = getNodes().filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height, free: n.data?.axis === 'free' }))
   const gaps = laneGaps(laneRects)
   const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelOff } = routeEdge({
     taken: takenBefore(id, getNodes(), allEdges),
