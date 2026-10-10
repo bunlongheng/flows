@@ -919,7 +919,7 @@ export function DetailView({
                index.js, onSelectNodeHandler, ~line 2169). Lane and marker
                nodes are not cards, so they are excluded by type. */
             onNodeClick={(_e, node) => {
-              if (narrow) return
+              if (phone) return
               // The Start pill is the current's own control (owner 2026-10-09):
               // clicking it opens the speed and amount presets, for the owner only.
               if (node.type === 'marker') { if (onCurrentChange) { setCardId(null); setCurrentOpen(true) } return }
@@ -1108,7 +1108,7 @@ export function DetailView({
         {/* Card panel (right side): a clicked card's name, info, note and
             every connection, read-only. Desktop and iPad only - never a phone -
             and never alongside Share or History (owner rule 2026-10-08). */}
-        {card && !narrow && (
+        {card && !phone && (
           <CardPanel node={card} nodes={nodes} edges={edges} onPick={setCardId} onClose={() => setCardId(null)} />
         )}
 
