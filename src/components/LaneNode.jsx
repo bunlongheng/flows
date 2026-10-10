@@ -33,10 +33,10 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
   const edit = !!data.onBand
   const clear = c => (edit ? 'transparent' : c)
   // A grip keeps its screen size at any zoom: 14 px edges and a 28 px title
-  // bar, never smaller than the band's own 32 px top pad. Width only: the
-  // height always hugs the cards (top and bottom pad are automatic).
+  // bar, never smaller than the band's own 32 px top pad. The bottom edge
+  // sets a hand height (#480), never less than the cards plus HAND_MIN_PAD.
   const zoom = useStore(s => s.transform[2])
-  const along = data.axis === 'col' ? ['h'] : ['l', 'w']
+  const along = data.axis === 'col' ? ['h'] : ['l', 'w', 'h']
   const hit = px => Math.max(px, px / zoom)
   const grips = (section, rect, edges) => (edit ? edges.map(k => (
     <div key={k} className={`sd-lane-edge nodrag nopan ${k}`} onPointerDown={grab(k, section, rect)}
