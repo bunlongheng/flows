@@ -1951,6 +1951,17 @@ export default function App() {
     setActiveDiagram(a => (a ? { ...a, view_state: { ...a.view_state, lanes: clean } } : a))
     patchViewState({ ...otherView(['lanes']), lanes: clean })
   }
+  // The owner recolours the picked panel (or section) from the right panel;
+  // null drops the hand colour so it takes its cards' colour again.
+  const onBandColor = color => {
+    if (!selBand || !activeDiagram) return
+    const paint = b => { const { color: _, ...rest } = b; return color ? { ...rest, color } : rest }
+    const next = (activeDiagram.view_state?.lanes || []).map(l => (l.id !== selBand.lane ? l
+      : selBand.section ? { ...l, sections: (l.sections || []).map(x => (x.id === selBand.section ? paint(x) : x)) } : paint(l)))
+    const clean = cleanLanes(next)
+    setActiveDiagram(a => (a ? { ...a, view_state: { ...a.view_state, lanes: clean } } : a))
+    patchViewState({ ...otherView(['lanes']), lanes: clean })
+  }
   const lanes = laneNodes(laneCfg, laneCards)
   // Each section of a split lane is a line end of its own ("lane:<id>/<section>"),
   // an invisible node over the section that only carries the line's anchor.
@@ -1958,6 +1969,18 @@ export default function App() {
     id: laneNodeId(`${l.data.laneId}/${s.id}`), type: 'laneEnd', position: { x: l.position.x + s.x, y: l.position.y + s.y },
     width: s.w, height: s.h, measured: { width: s.w, height: s.h }, zIndex: -1, selectable: false, draggable: false, data: {},
   })) : []))
+  // What the colour panel shows for the picked band: its name, the colour it
+  // draws in, and the hand colour if it has one.
+  const pickedLane = selBand && lanes.find(l => l.data.laneId === selBand.lane)
+  const pickedSec = selBand?.section && pickedLane?.data.sections.find(x => x.id === selBand.section)
+  const pickedCfg = selBand && laneCfg.find(l => l.id === selBand.lane)
+  const bandPick = canAI && pickedLane ? {
+    key: `${selBand.lane}/${selBand.section || ''}`,
+    title: (pickedSec || pickedLane.data).title || (pickedSec ? 'Section' : 'Panel'),
+    kind: pickedSec ? 'Section' : 'Panel',
+    color: (pickedSec || pickedLane.data).color || LANE_INK,
+    hand: (pickedSec ? pickedCfg?.sections?.find(x => x.id === selBand.section) : pickedCfg)?.color || null,
+  } : null
   // The grips ride a see-through copy of each band above the lines and cards,
   // so a line crossing a title or an edge never takes the drag.
   // While a line is selected the line owns the pointer: its end and bend dots
@@ -2001,6 +2024,7 @@ export default function App() {
       onArrange={autoArrange}
       onNoteChange={canAI ? onNoteChange : undefined}
       onEdgeStyleChange={canAI ? onEdgeStyleChange : undefined}
+      bandPick={bandPick} onBandColor={canAI ? onBandColor : undefined}
       onNodeResize={canAI ? onNodeResize : undefined}
       onConnect={canAI && activeDiagram?.id && !activeDiagram.editLocked ? onConnect : undefined}
       onIconResize={canAI ? onIconResize : undefined}
