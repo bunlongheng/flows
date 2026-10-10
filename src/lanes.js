@@ -20,7 +20,7 @@ export const LANE_INK = '#64748b'
 export const LANE_TITLE = 13 // title size in px unless the lane says otherwise
 export const LANE_TITLE_MIN = 10
 export const LANE_TITLE_MAX = 40
-export const LANE_SECTIONS_MAX = 4
+export const LANE_SECTIONS_MAX = 8
 
 // An edge end may name a lane instead of a card: "lane:<id>". The line stops on
 // the lane's border and reads as 1 line to every card inside it. On the canvas
@@ -33,7 +33,7 @@ export const isLaneNode = id => typeof id === 'string' && id.startsWith('__lane_
 // 'row' lanes stack by y and h; 'col' lanes stand side by side by x and w.
 export const laneAxis = lanes => (lanes[0] && 'x' in lanes[0] ? 'col' : 'row')
 
-// A lane can be split into 2 to 4 sections side by side ACROSS its own band:
+// A lane can be split into 2 to 8 sections side by side ACROSS its own band:
 // the row stays 1 row, and each section is a band of its own inside it, with
 // its own title and tint and the same LANE_GAP between them that separates 2
 // stacked lanes. `at` is where a section starts on the lane's other axis (x in
