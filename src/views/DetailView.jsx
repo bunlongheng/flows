@@ -6,7 +6,7 @@ import '@xyflow/react/dist/style.css'
 import diagramData from '../data/diagram.json'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { nodeTypes } from '../components/AwsNode'
-import { NoteEditContext, InfoEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext } from '../components/noteEditContext'
+import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext } from '../components/noteEditContext'
 import { edgeTypes } from '../components/GradientEdge'
 import { Toast } from '../components/Toast'
 import { SnapGuides } from '../components/SnapGuides'
@@ -92,7 +92,6 @@ export function DetailView({
   // (nodeId, note) => void when the owner is signed in; undefined otherwise,
   // which makes every node note read-only (shared links, /demo).
   onNoteChange,
-  onInfoChange,
   // (nodeId, { w, h }) => void when the owner is signed in; undefined
   // otherwise, which makes every node card a fixed, non-resizable size.
   onNodeResize,
@@ -899,7 +898,6 @@ export function DetailView({
         <div style={{ flex: 1, position: 'relative', background: '#ffffff' }}>
           <ShowNotesContext.Provider value={showNotes}>
           <NoteEditContext.Provider value={viewOnly ? null : onNoteChange || null}>
-          <InfoEditContext.Provider value={viewOnly ? null : onInfoChange || null}>
           <NodeResizeContext.Provider value={viewOnly || sizing !== 'custom' ? null : onNodeResize || null}>
           <IconResizeContext.Provider value={viewOnly ? null : onIconResize || null}>
           <ReactFlow
@@ -954,7 +952,6 @@ export function DetailView({
           </ReactFlow>
           </IconResizeContext.Provider>
           </NodeResizeContext.Provider>
-          </InfoEditContext.Provider>
           </NoteEditContext.Provider>
           </ShowNotesContext.Provider>
 
