@@ -1,5 +1,5 @@
 import { useState, useEffect, useSyncExternalStore } from 'react'
-import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, useStore } from '@xyflow/react'
+import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, useStore, useStoreApi } from '@xyflow/react'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteEditContext'
 import { subscribe, currentPhase, motionAllowed, dotAt, ambientAt } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
@@ -90,10 +90,14 @@ function nearestTOnPath(d, x, y) {
 // on one (render-svg.js accumulates the same list). Routed once per frame of
 // node, edge and note-height state, then shared by every edge. The same pass
 // places every auto badge clear of the badges before it (`badgeAt`).
-let takenCache = { nodes: null, edges: null, notes: -1, before: new Map(), badgeAt: new Map() }
-function takenBefore(id, nodes, edges) {
+// The node geometry every edge reads, built once per node list and note
+// version and shared. Keyed on the store's own arrays: getNodes() hands back a
+// fresh copy on every call, so a cache keyed on it never hit and every edge
+// re-routed every edge on every render (the drag lag).
+let geoCache = { nodes: null, notes: -1 }
+function frameGeo(nodes) {
   const notes = noteHeightsVersion()
-  if (takenCache.nodes !== nodes || takenCache.edges !== edges || takenCache.notes !== notes) {
+  if (geoCache.nodes !== nodes || geoCache.notes !== notes) {
     const byId = new Map(nodes.map(n => [n.id, n]))
     const nodeOf = nid => {
       const n = byId.get(nid)
@@ -102,15 +106,24 @@ function takenBefore(id, nodes, edges) {
         : null
     }
     const cards = nodes.filter(n => n.type === 'awsNode' && n.measured?.width && n.position)
-    const nodeRects = cards.map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
-    const gaps = laneGaps(nodes.filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height, free: n.data?.axis === 'free' })))
+      .map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
+    const laneRects = nodes.filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height, free: n.data?.axis === 'free' }))
+    geoCache = { nodes, notes, nodeOf, cards, gaps: laneGaps(laneRects) }
+  }
+  return geoCache
+}
+
+let takenCache = { geo: null, edges: null, before: new Map(), badgeAt: new Map() }
+function takenBefore(id, nodes, edges) {
+  const geo = frameGeo(nodes)
+  if (takenCache.geo !== geo || takenCache.edges !== edges) {
+    const { nodeOf, cards, gaps } = geo, nodeRects = cards
     const before = new Map(), taken = [], badgeAt = new Map(), badges = [], jobs = []
     for (const e of edges) {
       before.set(e.id, [...taken])
       const sourceNode = nodeOf(e.source), targetNode = nodeOf(e.target)
       if (!sourceNode || !targetNode) continue
       const obstacles = cards.filter(n => n.id !== e.source && n.id !== e.target)
-        .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
       const r = routeEdge({
         taken: [...taken], id: e.id, source: e.source, target: e.target, sourceNode, targetNode, nodeOf, edges, obstacles, nodeRects, gaps,
         bend: e.data?.bend, endS: e.data?.ends?.s, endT: e.data?.ends?.t, arrow: e.data?.style?.arrow, label: e.label, description: e.data?.description,
@@ -131,7 +144,7 @@ function takenBefore(id, nodes, edges) {
       const s = badgeShift(r.labelOff, box.w, box.h, at.lead)
       badges.push({ ...box, x: at.x + s.dx, y: at.y + s.dy })
     }
-    takenCache = { nodes, edges, notes, before, badgeAt }
+    takenCache = { geo, edges, before, badgeAt }
   }
   return takenCache.before.get(id) || []
 }
@@ -142,31 +155,25 @@ export function GradientEdge({
   const sourceNode = useInternalNode(source)
   const targetNode = useInternalNode(target)
   const lit = !selected && (sourceNode?.selected || targetNode?.selected)
-  const { getNodes, getEdges, screenToFlowPosition } = useReactFlow()
-  // Stem direction needs the OTHER nodes' geometry, and useInternalNode only
-  // covers this edge's two ends, so measured sizes come off the node list.
-  const internalById = id => {
-    const n = getNodes().find(x => x.id === id)
-    return n?.measured?.width
-      ? { measured: n.measured, internals: { positionAbsolute: n.position }, lane: n.type === 'lane' || n.type === 'laneEnd', data: n.data }
-      : null
-  }
+  const { screenToFlowPosition } = useReactFlow()
+  const storeApi = useStoreApi()
 
   // A note is measured after its node paints, and re-wraps whenever the card is
   // resized or the text edited. Subscribing keeps the route honest instead of
   // leaving it computed against a height that has since changed.
   useSyncExternalStore(subscribeNoteHeights, noteHeightsVersion, () => 0)
 
-  const allEdges = getEdges()
-  const nodeOf = nid => (nid === source ? sourceNode : nid === target ? targetNode : internalById(nid))
+  // Stem direction needs the OTHER nodes' geometry, and useInternalNode only
+  // covers this edge's two ends, so the rest comes off the shared frame.
+  const { nodes: allNodes, edges: allEdges } = storeApi.getState()
+  const geo = frameGeo(allNodes)
+  const nodeOf = nid => (nid === source ? sourceNode : nid === target ? targetNode : geo.nodeOf(nid))
   // Every other service box is something this edge must not run through.
   // A note hangs below its card and React Flow does not measure it, so the box
   // to avoid is the card PLUS whatever the note wraps to: a passing line still
   // goes around another card's note. Only this edge's OWN two notes are open
   // to it, since it runs under them to reach its cards (see attachPoint).
-  const obstacles = getNodes()
-    .filter(n => n.type === 'awsNode' && n.id !== source && n.id !== target && n.measured?.width && n.position)
-    .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
+  const obstacles = geo.cards.filter(n => n.id !== source && n.id !== target)
   // A pinned end overrides the automatic attach point for that side only. Live
   // drag wins over the saved value while it is in progress.
   const [dragEnd, setDragEnd] = useState(null)
@@ -179,14 +186,11 @@ export function GradientEdge({
   // that strip is simply invisible - the nudge has to step past the note, not
   // past the card. A hidden note publishes height 0, so toggling Notes moves
   // the badges back on its own.
-  const nodeRects = getNodes()
-    .filter(n => n.type === 'awsNode' && n.measured && n.position)
-    .map(n => ({ x: n.position.x, y: n.position.y, w: n.measured.width, h: n.measured.height + getNoteHeight(n.id) }))
-  // The strips between swimlanes, where a trunk's bus line runs.
-  const laneRects = getNodes().filter(n => n.type === 'lane').map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.width, h: n.height, free: n.data?.axis === 'free' }))
-  const gaps = laneGaps(laneRects)
+  // The strips between swimlanes, where a trunk's bus line runs, also come off
+  // the frame.
+  const { cards: nodeRects, gaps } = geo
   const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelOff } = routeEdge({
-    taken: takenBefore(id, getNodes(), allEdges),
+    taken: takenBefore(id, allNodes, allEdges),
     id, source, target, sourceNode, targetNode, nodeOf, edges: allEdges, obstacles, nodeRects, gaps,
     bend, endS, endT, arrow: data?.style?.arrow, label, description: data?.description,
     fallback: { sx: sourceX, sy: sourceY, tx: targetX, ty: targetY },
