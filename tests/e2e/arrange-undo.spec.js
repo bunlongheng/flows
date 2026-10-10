@@ -61,9 +61,10 @@ test("undo and redo cover both dragging and Arrange", async ({ page, context, ba
 
     // 1. A drag is one history step.
     const box = await page.locator('.react-flow__node-awsNode[data-id="dynamo"]').boundingBox();
-    await page.mouse.move(box.x + box.width / 2, box.y + 10);
+    // The left quarter of the top strip: the top centre is the side dot that draws a line.
+    await page.mouse.move(box.x + box.width / 4, box.y + 10);
     await page.mouse.down();
-    await page.mouse.move(box.x + box.width / 2 + 90, box.y + 70, { steps: 8 });
+    await page.mouse.move(box.x + box.width / 4 + 90, box.y + 70, { steps: 8 });
     await page.mouse.up();
     await expect(undo).toHaveCount(1);
     const dragged = await at(page, "dynamo");
