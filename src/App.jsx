@@ -11,7 +11,7 @@ import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapSuggest } from './snapAlign'
 import { findService } from './services'
-import { laneNodes, laneRef, laneNodeId, LANE_INK } from './lanes.js'
+import { laneNodes, laneRef, laneNodeId, LANE_INK, cardsColor } from './lanes.js'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
@@ -84,7 +84,14 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove, lane
   // edge INTO one also carries the flag so its badge goes grey with the red X.
   const sunsetOf = id => byId.get(id)?.sunset === true
   // An end on a lane ("lane:<id>") is the lane's React Flow node, in the lane's ink.
-  const laneColor = id => lanes.find(l => l.id === laneRef(id))?.color || LANE_INK
+  // An unconfigured lane draws in its cards' colour (src/lanes.js cardsColor), so its lines do too.
+  const laneColor = id => {
+    const l = lanes.find(l => l.id === laneRef(id))
+    if (!l) return LANE_INK
+    const [at, size] = 'x' in l ? ['x', 'w'] : ['y', 'h']
+    const inside = (rawNodes || []).filter(n => !n.sunset && n.position?.[at] >= l[at] && n.position[at] < l[at] + l[size])
+    return l.color || cardsColor(inside.map(n => ({ color: findService(n)?.color }))) || LANE_INK
+  }
   const edgeColor = id => (laneRef(id) ? laneColor(id) : sunsetOf(id) ? SUNSET.border : findService(byId.get(id) || { id })?.color || INK)
   const rfId = id => (laneRef(id) ? laneNodeId(laneRef(id)) : id)
   return rawEdges.map((e, i) => ({
@@ -1650,7 +1657,9 @@ export default function App() {
   // Start/Destination marker nodes are always shown (auto-detected from edges).
   // Swimlanes are configuration (view_state.lanes, set over the API or MCP),
   // never edited on the canvas: drawn under the cards, nothing more.
-  const lanes = laneNodes(activeDiagram?.view_state?.lanes || [], nodes.map(n => { const s = sizeOf(n); return { x: n.position?.x ?? 0, y: n.position?.y ?? 0, w: s.w, h: s.h + (showNotes ? getNoteHeight(n.id) : 0) } }))
+  // A card draws 180 square (NODE_W 190 is layout pitch), so a section's pad is
+  // measured off the drawn card, the same on every side.
+  const lanes = laneNodes(activeDiagram?.view_state?.lanes || [], nodes.map(n => { const s = sizeOf(n); return { x: n.position?.x ?? 0, y: n.position?.y ?? 0, w: n.data?.size?.w ?? 180, h: s.h + (showNotes ? getNoteHeight(n.id) : 0), color: n.data?.sunset ? null : findService(n.data || { id: n.id })?.color } }))
   // Swimlanes already say where a flow begins (the top lane), so a diagram
   // with lanes draws no Start here pill. Same rule in render-svg.js.
   const markers = lanes.length ? { nodes: [], edges: [] } : buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)

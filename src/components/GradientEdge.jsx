@@ -98,7 +98,7 @@ function takenBefore(id, nodes, edges) {
     const nodeOf = nid => {
       const n = byId.get(nid)
       return n?.measured?.width
-        ? { measured: n.measured, internals: { positionAbsolute: n.position }, lane: n.type === 'lane' }
+        ? { measured: n.measured, internals: { positionAbsolute: n.position }, lane: n.type === 'lane', data: n.data }
         : null
     }
     const cards = nodes.filter(n => n.type === 'awsNode' && n.measured?.width && n.position)
@@ -148,7 +148,7 @@ export function GradientEdge({
   const internalById = id => {
     const n = getNodes().find(x => x.id === id)
     return n?.measured?.width
-      ? { measured: n.measured, internals: { positionAbsolute: n.position }, lane: n.type === 'lane' }
+      ? { measured: n.measured, internals: { positionAbsolute: n.position }, lane: n.type === 'lane', data: n.data }
       : null
   }
 

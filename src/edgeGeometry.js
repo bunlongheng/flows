@@ -59,8 +59,18 @@ export const centerOf = n => ({
 const isLane = n => n?.lane === true || n?.type === 'lane'
 const laneAxisOf = n => n?.axis || n?.data?.axis || null
 const clampTo = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
+// A split lane draws only its sections, each hugging its cards, so the line
+// meets the section nearest its far end, never bare band where nothing is drawn.
+// Sections come band-relative (laneNodes' data.sections).
+function laneBox(node, fc) {
+  const p = node.internals.positionAbsolute
+  const secs = node.sections || node.data?.sections || []
+  const gap = r => Math.hypot(Math.max(r.x - fc.x, 0, fc.x - r.x - r.w), Math.max(r.y - fc.y, 0, fc.y - r.y - r.h))
+  const near = secs.map(r => ({ x: p.x + r.x, y: p.y + r.y, w: r.w, h: r.h })).filter(r => r.w > 0 && r.h > 0).sort((a, b) => gap(a) - gap(b))[0]
+  return near ? { p: { x: near.x, y: near.y }, w: near.w, h: near.h } : { p, w: node.measured.width, h: node.measured.height }
+}
 function laneFace(node, fc) {
-  const p = node.internals.positionAbsolute, w = node.measured.width, h = node.measured.height
+  const { p, w, h } = laneBox(node, fc)
   const c = { x: p.x + w / 2, y: p.y + h / 2 }
   const ax = laneAxisOf(node)
   if (ax ? ax === 'row' : w >= h) {
@@ -516,6 +526,15 @@ function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacl
 }
 
 export function routeEdge({ taken = [], id, source, target, sourceNode, targetNode, nodeOf, edges, obstacles, nodeRects, gaps = null, bend, endS, endT, arrow, label, description, fallback = {} }) {
+  // A split lane routes as its section nearest the other end, every leg and
+  // obstacle included, so the line ends on a drawn border (see laneBox).
+  const asSection = (node, other) => {
+    if (!isLane(node) || !other?.measured?.width) return node
+    const b = laneBox(node, centerOf(other))
+    if (b.p === node.internals.positionAbsolute) return node
+    return { ...node, sections: null, data: { ...node.data, sections: null }, internals: { positionAbsolute: b.p }, measured: { width: b.w, height: b.h } }
+  }
+  ;[sourceNode, targetNode] = [asSection(sourceNode, targetNode), asSection(targetNode, sourceNode)]
   let sx = fallback.sx ?? 0, sy = fallback.sy ?? 0, tx = fallback.tx ?? 0, ty = fallback.ty ?? 0
   let sSide = Position.Right, tSide = Position.Left
   let aligned = false

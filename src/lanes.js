@@ -9,6 +9,8 @@
 // axis, so cards fit by where they stand. The canvas and every export draw
 // lanes from this 1 file so they match.
 
+import { isNeutralColor } from './iconColor.js'
+
 export const LANE_PAD = 100 // past the outermost card on each side
 export const LANE_MIN = 80 // the thinnest lane
 export const LANE_GAP = 40 // the 1 gap between lanes, always the same
@@ -18,7 +20,7 @@ export const LANE_INK = '#64748b'
 export const LANE_TITLE = 13 // title size in px unless the lane says otherwise
 export const LANE_TITLE_MIN = 10
 export const LANE_TITLE_MAX = 40
-export const LANE_SECTIONS_MAX = 3
+export const LANE_SECTIONS_MAX = 4
 
 // An edge end may name a lane instead of a card: "lane:<id>". The line stops on
 // the lane's border and reads as 1 line to every card inside it. On the canvas
@@ -31,7 +33,7 @@ export const isLaneNode = id => typeof id === 'string' && id.startsWith('__lane_
 // 'row' lanes stack by y and h; 'col' lanes stand side by side by x and w.
 export const laneAxis = lanes => (lanes[0] && 'x' in lanes[0] ? 'col' : 'row')
 
-// A lane can be split into 2 or 3 sections side by side ACROSS its own band:
+// A lane can be split into 2 to 4 sections side by side ACROSS its own band:
 // the row stays 1 row, and each section is a band of its own inside it, with
 // its own title and tint and the same LANE_GAP between them that separates 2
 // stacked lanes. `at` is where a section starts on the lane's other axis (x in
@@ -52,26 +54,36 @@ function cleanSections(raw) {
   return out.length >= 2 ? out.sort((a, b) => a.at - b.at) : null
 }
 
-// Where a laid-out lane's sections are drawn, in canvas units. A section is a
-// band in its own right, so the 1 gap between 2 of them is the LANE_GAP that
-// sits between 2 stacked lanes: `at` is where a section STARTS, and the one
-// before it ends LANE_GAP short of that. The first starts at the band's own
-// edge whatever its `at` says, the last runs to the far edge, and an `at`
-// outside the band is pulled back inside it, so a bad number costs a section
-// its width and never paints outside the lane.
-export function sectionRects(rect, axis = 'row') {
+// Where a laid-out lane's sections are drawn, in canvas units. `at` says which
+// cards belong to a section: those whose centre sits from its `at` up to the
+// next one's (an `at` outside the band is pulled back inside it). A section
+// then hugs its own cards with the same SECTION_PAD on all 4 sides, the title
+// sitting inside the top pad (owner 2026-10-10: "this padding MUST be same",
+// and the lane may stay empty around sections), so a section is only as big
+// as what it holds. A section with no
+// cards keeps the span its `at` gives it: from the band's edge or its `at`, to
+// LANE_GAP short of the next one or the band's far edge.
+export const SECTION_PAD = 32
+export function sectionRects(rect, axis = 'row', cards = []) {
   const secs = rect.sections || []
   if (secs.length < 2) return []
-  const [at, size] = axis === 'col' ? ['y', 'h'] : ['x', 'w']
+  const [at, size, across, deep] = axis === 'col' ? ['y', 'h', 'x', 'w'] : ['x', 'w', 'y', 'h']
   const lo = rect[at], hi = rect[at] + rect[size]
   const cuts = secs.map((s, i) => (i === 0 ? lo : Math.min(hi, Math.max(lo, s.at))))
   for (let i = 1; i < cuts.length; i++) if (cuts[i] < cuts[i - 1]) cuts[i] = cuts[i - 1]
+  const inBand = cards.filter(c => c[across] >= rect[across] && c[across] < rect[across] + rect[deep])
   return secs.map((s, i) => {
-    const end = i + 1 < cuts.length ? cuts[i + 1] - LANE_GAP : hi
+    const next = i + 1 < cuts.length ? cuts[i + 1] : Infinity
+    const mine = inBand.filter(c => c[at] + c[size] / 2 >= (i === 0 ? -Infinity : cuts[i]) && c[at] + c[size] / 2 < next)
+    const start = mine.length ? Math.min(...mine.map(c => c[at])) - SECTION_PAD : cuts[i]
+    const end = mine.length ? Math.max(...mine.map(c => c[at] + c[size])) + SECTION_PAD : (next === Infinity ? hi : next - LANE_GAP)
+    const top = mine.length ? Math.min(...mine.map(c => c[across])) - SECTION_PAD : rect[across]
+    const bottom = mine.length ? Math.max(...mine.map(c => c[across] + c[deep])) + SECTION_PAD : rect[across] + rect[deep]
     return {
-      id: s.id, title: s.title, color: s.color || rect.color, size: rect.size,
-      x: rect.x, y: rect.y, w: rect.w, h: rect.h,
-      [at]: cuts[i], [size]: Math.max(0, end - cuts[i]),
+      id: s.id, title: s.title, size: rect.size,
+      color: s.color || cardsColor(mine) || rect.color,
+      [across]: top, [deep]: bottom - top,
+      [at]: start, [size]: Math.max(0, end - start),
     }
   })
 }
@@ -137,9 +149,35 @@ export function fitLanes(lanes, rects) {
   })
 }
 
+// The primary colour of a band's cards, for a lane or section that names none
+// (owner 2026-10-10: a band of LaunchKit and AirClips reads blue-purple). The
+// HUE is averaged, not the RGB: mixing RGB turns purple and red into brown. A
+// black or grey logo says nothing and is left out; cards whose hues point every
+// way have no primary, and the band keeps the lane's colour or the house ink.
+const hsl = hex => {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn
+  const h = d === 0 ? 0 : mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4
+  return { h: h * 60, s: d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1)), l }
+}
+const hex = ({ h, s, l }) => {
+  const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l)
+  return '#' + [0, 8, 4].map(n => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)))).toString(16).padStart(2, '0')).join('')
+}
+export function cardsColor(cards) {
+  const cs = cards.map(c => c.color).filter(c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) && !isNeutralColor(c)).map(hsl)
+  if (!cs.length) return null
+  const x = cs.reduce((t, c) => t + Math.cos(c.h * Math.PI / 180), 0) / cs.length
+  const y = cs.reduce((t, c) => t + Math.sin(c.h * Math.PI / 180), 0) / cs.length
+  if (Math.hypot(x, y) < 0.35) return null
+  const mean = k => cs.reduce((t, c) => t + c[k], 0) / cs.length
+  return hex({ h: (Math.atan2(y, x) * 180 / Math.PI + 360) % 360, s: Math.max(0.5, mean('s')), l: Math.min(0.65, Math.max(0.35, mean('l'))) })
+}
+
 export function laneRects(lanes, rects) {
-  const span = laneSpan(rects, laneAxis(lanes))
-  return fitLanes(lanes, rects).map(l => ({ id: l.id, title: l.title, color: l.color, size: l.size, ...(l.sections ? { sections: l.sections } : {}), ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...span }))
+  const axis = laneAxis(lanes), span = laneSpan(rects, axis)
+  const [at, size] = axis === 'col' ? ['x', 'w'] : ['y', 'h']
+  return fitLanes(lanes, rects).map(l => ({ l, cards: rects.filter(r => r[at] >= l[at] && r[at] < l[at] + l[size]) })).map(({ l, cards }) => ({ id: l.id, title: l.title, color: l.color || cardsColor(cards) || undefined, size: l.size, ...(l.sections ? { sections: l.sections } : {}), ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...span }))
 }
 
 // The React Flow nodes that draw the lanes: 1 per lane, under the cards,
@@ -152,7 +190,7 @@ export function laneNodes(lanes, rects) {
     // Sections come through in the band's own coordinates: the node is already
     // placed at r.x,r.y, so LaneNode lays them out inside it.
     data: { title: r.title, color: r.color, size: r.size, axis,
-      sections: sectionRects(r, axis).map(s => ({ id: s.id, title: s.title, color: s.color, x: s.x - r.x, y: s.y - r.y, w: s.w, h: s.h })) },
+      sections: sectionRects(r, axis, rects).map(s => ({ id: s.id, title: s.title, color: s.color, x: s.x - r.x, y: s.y - r.y, w: s.w, h: s.h })) },
   }))
 }
 

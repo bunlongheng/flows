@@ -10,14 +10,15 @@ describe("renderDiagramSvg - swimlanes", () => {
   it("draws each lane as a bordered band the width of the cards plus padding, titled as written", () => {
     const svg = renderDiagramSvg(NODES, EDGES, { view: { lanes: LANES } });
     expect(svg.match(/class="sd-lane"/g)).toHaveLength(2);
-    expect(svg).toContain(`<rect x="${-LANE_PAD}.0" y="-60.0" width="${480 + 2 * LANE_PAD}.0" height="276.0" rx="10" fill="#64748b" fill-opacity="0.05" stroke="#64748b" stroke-opacity="0.35" stroke-width="1.5"/>`);
+    // Visitor names no colour, so it draws in its Client card's blue.
+    expect(svg).toContain(`<rect x="${-LANE_PAD}.0" y="-60.0" width="${480 + 2 * LANE_PAD}.0" height="276.0" rx="10" fill="#3b82f6" fill-opacity="0.05" stroke="#3b82f6" stroke-opacity="0.35" stroke-width="1.5"/>`);
     expect(svg).toContain('stroke="#dc2626" stroke-opacity="0.35" stroke-width="1.5"');
     expect(svg).toContain(">Visitor</text>");
     expect(svg).toContain('fill="#dc2626">Inbox</text>');
   });
   it("sizes the title from the lane's size, 13 px when it says nothing", () => {
     const svg = renderDiagramSvg(NODES, EDGES, { view: { lanes: [LANES[0], { ...LANES[1], size: 20 }] } });
-    expect(svg).toContain('y="-38.0" font-size="13" font-weight="800" letter-spacing="0.2" fill="#64748b">Visitor</text>');
+    expect(svg).toContain('y="-38.0" font-size="13" font-weight="800" letter-spacing="0.2" fill="#3b82f6">Visitor</text>');
     expect(svg).toContain('y="309.0" font-size="20" font-weight="800" letter-spacing="0.2" fill="#dc2626">Inbox</text>');
   });
   it("draws nothing extra without lanes, and the picture grows to hold a lane", () => {

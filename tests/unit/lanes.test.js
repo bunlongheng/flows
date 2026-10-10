@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, laneNodeId, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT } from "../../src/lanes.js";
+import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, laneNodeId, cardsColor, SECTION_PAD, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT } from "../../src/lanes.js";
 
 describe("cleanLanes", () => {
   it("keeps typed, bounded lanes and drops the rest", () => {
@@ -97,7 +97,7 @@ describe("laneRef", () => {
   });
 });
 
-// A lane can be split into 2 or 3 titled slices across its own band, so 2
+// A lane can be split into 2 to 4 titled slices across its own band, so 2
 // groups share 1 row instead of stacking 2 lanes.
 describe("sections", () => {
   const split = [{ id: "team", title: "", y: 0, h: 300, color: "#0F766E", sections: [
@@ -105,14 +105,14 @@ describe("sections", () => {
     { id: "work", title: "Work", at: 1300, color: "#E650BA" },
   ] }];
 
-  it("keeps 2 or 3 typed sections, sorted, and drops a lone or malformed one", () => {
+  it("keeps 2 to 4 typed sections, sorted, and drops a lone or malformed one", () => {
     expect(cleanLanes(split)[0].sections).toEqual([
       { id: "jobs", title: "Jobs", at: -100 },
       { id: "work", title: "Work", at: 1300, color: "#E650BA" },
     ]);
-    // Out of order comes back in order, and a 4th is cut.
-    const many = [{ id: "a", y: 0, h: 300, sections: [{ id: "c", at: 900 }, { id: "b", at: 100 }, { id: "a", at: 0 }, { id: "d", at: 1200 }] }];
-    expect(cleanLanes(many)[0].sections.map(s => s.id)).toEqual(["a", "b", "c"]);
+    // Out of order comes back in order, and a 5th is cut.
+    const many = [{ id: "a", y: 0, h: 300, sections: [{ id: "c", at: 900 }, { id: "b", at: 100 }, { id: "a", at: 0 }, { id: "d", at: 1200 }, { id: "e", at: 1500 }] }];
+    expect(cleanLanes(many)[0].sections.map(s => s.id)).toEqual(["a", "b", "c", "d"]);
     // 1 section is not a split; neither is one with no `at` or a repeated id.
     for (const bad of [[{ id: "only", at: 0 }], [{ id: "a", at: 0 }, { id: "a", at: 9 }], [{ id: "a" }, { id: "b" }], "no"]) {
       expect(cleanLanes([{ id: "x", y: 0, h: 300, sections: bad }])[0].sections).toBeUndefined();
@@ -147,10 +147,27 @@ describe("sections", () => {
   it("hands LaneNode its slices in the band's own coordinates, and none when there is no split", () => {
     const [n] = laneNodes(cleanLanes(split), [{ x: 0, y: 40, w: 190, h: 180 }, { x: 2000, y: 40, w: 190, h: 180 }]);
     expect(n.data.axis).toBe("row");
-    expect(n.data.sections.map(s => s.x)).toEqual([0, 1300 - n.position.x]);
-    expect(n.data.sections.every(s => s.y === 0 && s.h === n.height)).toBe(true);
+    // Each section hugs its own card, SECTION_PAD each side, wherever its `at` cut.
+    expect(n.data.sections.map(s => [s.x, s.w])).toEqual([[-SECTION_PAD - n.position.x, 190 + 2 * SECTION_PAD], [2000 - SECTION_PAD - n.position.x, 190 + 2 * SECTION_PAD]]);
+    // and the same SECTION_PAD above and below, so all 4 pads match.
+    expect(n.data.sections.every(s => s.y === 40 - SECTION_PAD - n.position.y && s.h === 180 + 2 * SECTION_PAD)).toBe(true);
     const [plain] = laneNodes([{ id: "a", title: "Apps", y: 0, h: 300 }], [{ x: 0, y: 40, w: 190, h: 180 }]);
     expect(plain.data.sections).toEqual([]);
   });
 });
 
+
+describe("a band with no colour takes its cards' colour", () => {
+  it("mixes the colourful cards and skips black or grey logos", () => {
+    expect(cardsColor([{ color: "#6040e0" }, { color: "#2080ff" }, { color: "#111111" }])).toBe("#3046ef");
+    expect(cardsColor([{ color: "#111111" }, {}])).toBeNull();
+  });
+  it("a lane and each section draw in their own cards' mix, a set colour still wins", () => {
+    const lanes = cleanLanes([{ id: "a", title: "A", y: 0, h: 250, sections: [{ at: 0, id: "s1", title: "S1" }, { at: 500, id: "s2", title: "S2", color: "#ff0000" }] }]);
+    const [r] = laneRects(lanes, [{ x: 0, y: 40, w: 180, h: 180, color: "#6040e0" }, { x: 600, y: 40, w: 180, h: 180, color: "#2080ff" }]);
+    expect(r.color).toBe("#3046ef");
+    const [s1, s2] = sectionRects(r, "row", [{ x: 0, y: 40, w: 180, h: 180, color: "#6040e0" }, { x: 600, y: 40, w: 180, h: 180, color: "#2080ff" }]);
+    expect(s1.color).toBe("#6040e0");
+    expect(s2.color).toBe("#ff0000");
+  });
+});
