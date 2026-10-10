@@ -12,7 +12,7 @@ import { Toast } from '../components/Toast'
 import { SnapGuides } from '../components/SnapGuides'
 import { Footer } from '../components/Footer'
 import { brandFor } from '../brands'
-import { FormatPanel } from '../components/FormatPanel.jsx'
+import { FormatPanel, BandPanel } from '../components/FormatPanel.jsx'
 import { CardPanel } from '../components/CardPanel.jsx'
 import { CurrentPanel } from '../components/CurrentPanel.jsx'
 import { findService } from '../services.js'
@@ -79,6 +79,7 @@ export function DetailView({
   shareSlug, shareUrl,
   showDocs, setShowDocs, copiedLabel, onCopyFormat,
   onEdgeStyleChange,
+  bandPick, onBandColor,
   showToastMsg,
   isPublic,
   saveState = 'idle',
@@ -180,7 +181,7 @@ export function DetailView({
   useEffect(() => { setCurrentOpen(false) }, [activeDiagram?.id])
   // Never 2 panels at once (owner rule 2026-10-09): opening one closes whichever
   // was open, so the latest opened is the only one on screen.
-  const openPanels = { share: showSharePanel, history: showHistoryPanel, code: showDetailCode, card: !!cardId, current: currentOpen }
+  const openPanels = { share: showSharePanel, history: showHistoryPanel, code: showDetailCode, card: !!cardId, current: currentOpen, band: bandPick?.key || null }
   const prevPanels = useRef(openPanels)
   useEffect(() => {
     const prev = prevPanels.current
@@ -193,9 +194,10 @@ export function DetailView({
     if (keep !== 'code' && showDetailCode) setShowDetailCode(false)
     if (keep !== 'card' && cardId) setCardId(null)
     if (keep !== 'current' && currentOpen) setCurrentOpen(false)
+    if (keep !== 'band' && bandPick) onPaneTap?.()
     // Reacts to a panel opening, nothing else; the setters are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSharePanel, showHistoryPanel, showDetailCode, cardId, currentOpen])
+  }, [showSharePanel, showHistoryPanel, showDetailCode, cardId, currentOpen, bandPick?.key])
   useEffect(() => {
     if (!cardId && !currentOpen) return
     const onKeyDown = e => { if (e.key === 'Escape') { setCardId(null); setCurrentOpen(false) } }
@@ -1108,6 +1110,11 @@ export function DetailView({
         {/* Card panel (right side): a clicked card's name, info, note and
             every connection, read-only. Desktop and iPad only - never a phone -
             and never alongside Share or History (owner rule 2026-10-08). */}
+        {/* Colour panel (right side): a picked panel or section, owner only. */}
+        {bandPick && onBandColor && !phone && (
+          <BandPanel band={bandPick} onColor={onBandColor} />
+        )}
+
         {card && !phone && (
           <CardPanel node={card} nodes={nodes} edges={edges} onPick={setCardId} onClose={() => setCardId(null)} />
         )}
