@@ -679,6 +679,28 @@ export default function App() {
       .catch(() => showToastMsg('Could not save'))
   }, [activeId, showToastMsg])
 
+  // The owner drew a line: dragged from a card's side dot onto another card.
+  // It goes on the end of the edges array (the last step) with a stable id.
+  const onConnect = useCallback(({ source, target }) => {
+    const a = activeDiagram
+    const cards = a?.data?.nodes || []
+    if (!a?.id || source === target || ![source, target].every(id => cards.some(n => n.id === id))) return
+    const raw = a.data.edges || [], taken = new Set(raw.map((e, i) => e.id || `e${i}`))
+    let id = `${source}-${target}`
+    for (let k = 2; taken.has(id); k++) id = `${source}-${target}-${k}`
+    const data = { ...a.data, edges: [...raw, { id, source, target }] }
+    setActiveDiagram({ ...a, data })
+    setDiagrams(ds => ds.map(d => (d.id !== a.id ? d : { ...d, data: { ...d.data, edges: data.edges } })))
+    setEdges(buildEdges(data.edges, onLabelMove, cards, onEndMove, onBendMove, a.view_state?.lanes || [], onLabelEdit))
+    fetch(`/api/flows/${a.id}`, {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ addEdge: { id, source, target } }),
+    })
+      .then(r => showToastMsg(r.ok ? 'Line added' : 'Could not save (owner only)'))
+      .catch(() => showToastMsg('Could not save'))
+  }, [activeDiagram, onLabelMove, onEndMove, onBendMove, onLabelEdit, showToastMsg])
+
   // A cold ?name= / ?id= load resolves the design BEFORE /api/auth/me answers, so
   // canAI was still false when the edges were built and no badge came out
   // draggable. Re-attach (or strip) the handler whenever ownership settles.
@@ -1824,6 +1846,7 @@ export default function App() {
       onNoteChange={canAI ? onNoteChange : undefined}
       onEdgeStyleChange={canAI ? onEdgeStyleChange : undefined}
       onNodeResize={canAI ? onNodeResize : undefined}
+      onConnect={canAI && activeDiagram?.id && !activeDiagram.editLocked ? onConnect : undefined}
       onIconResize={canAI ? onIconResize : undefined}
       isDiagramPublic={activeDiagram?.is_public !== false}
       canEdit={canAI}
