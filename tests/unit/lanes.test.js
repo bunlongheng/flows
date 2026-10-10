@@ -194,3 +194,14 @@ describe("the owner moves and sizes bands (issue #468)", () => {
     expect(shift).toEqual({ a: 140, b: -240 });
   });
 });
+
+describe("a plain lane's hand thickness (issue #468)", () => {
+  it("packs the stack and draws the band at the owner's depth, never cutting a card", () => {
+    const lanes = cleanLanes([{ id: "a", y: 0, h: 450, depth: 300 }, { id: "b", y: 490, h: 200 }]);
+    expect(lanes.map(l => [l.id, l.y, l.h])).toEqual([["a", 0, 300], ["b", 340, 200]]);
+    const [a] = fitLanes(lanes, [{ x: 0, y: 40, w: 180, h: 180 }]);
+    expect(a.h).toBe(300);
+    const [tight] = fitLanes(cleanLanes([{ id: "a", y: 0, h: 450, depth: 100 }]), [{ x: 0, y: 40, w: 180, h: 180 }]);
+    expect(tight.h).toBe(220 + 8);
+  });
+});

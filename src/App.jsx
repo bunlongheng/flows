@@ -1700,7 +1700,14 @@ export default function App() {
       const size = Math.max(LANE_MIN, Math.round(rect[kind] + (kind === 'w' ? dx : dy)))
       next = d.base.map(l => (l.id !== lane ? l : section
         ? { ...l, sections: l.sections.map(s => (s.id === section ? { ...s, [kind]: size } : s)) }
-        : { ...l, len: size }))
+        : { ...l, [(kind === 'h') === col ? 'len' : 'depth']: size }))
+      // A thicker or thinner plain lane re-packs the lanes after it: their cards follow.
+      if (!section) {
+        const across = col ? 'x' : 'y', packed = cleanLanes(next)
+        const by = Object.fromEntries(packed.map(l => [l.id, l[across] - d.base.find(b => b.id === l.id)[across]]))
+        moved = id => (by[d.home[id]] ? { ...d.from[id], [across]: d.from[id][across] + by[d.home[id]] } : null)
+        next = packed
+      }
     }
     const still = phase === 'end' && !dx && !dy
     if (moved && !still) setNodes(nds => {
@@ -1716,11 +1723,16 @@ export default function App() {
     setActiveDiagram(a => (a ? { ...a, view_state: { ...a.view_state, lanes: clean } } : a))
     patchViewState({ ...otherView(['lanes']), lanes: clean })
   }
-  const lanes = laneNodes(laneCfg, laneCards).map(l => (canAI && activeDiagram?.id && !activeDiagram.editLocked ? { ...l, data: { ...l.data, onBand } } : l))
+  const lanes = laneNodes(laneCfg, laneCards)
+  // The grips ride a see-through copy of each band above the lines and cards,
+  // so a line crossing a title or an edge never takes the drag.
+  const laneGrips = canAI && activeDiagram?.id && !activeDiagram.editLocked
+    ? lanes.map(l => ({ ...l, id: `__grip_${l.data.laneId}`, type: 'laneGrips', zIndex: 1000, data: { ...l.data, onBand } }))
+    : []
   // Swimlanes already say where a flow begins (the top lane), so a diagram
   // with lanes draws no Start here pill. Same rule in render-svg.js.
   const markers = lanes.length ? { nodes: [], edges: [] } : buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)
-  const displayNodes = [...lanes, ...nodes, ...markers.nodes]
+  const displayNodes = [...lanes, ...nodes, ...markers.nodes, ...laneGrips]
   const displayEdges = [...edges, ...markers.edges]
   return (
     <DetailView

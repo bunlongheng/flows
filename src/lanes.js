@@ -115,6 +115,9 @@ export function cleanLanes(raw) {
     if (typeof l.color === 'string' && /^#[0-9a-f]{6}$/i.test(l.color)) lane.color = l.color
     if (Number.isFinite(l.size)) lane.size = Math.min(LANE_TITLE_MAX, Math.max(LANE_TITLE_MIN, Math.round(l.size)))
     if (Number.isFinite(l.len)) lane.len = handSize(l.len)
+    // A hand thickness (the bottom / right edge of a plain lane) is also the
+    // configured size, so the stack packs around what the owner sees.
+    if (Number.isFinite(l.depth)) lane[kind === 'col' ? 'w' : 'h'] = lane.depth = handSize(l.depth)
     const sections = cleanSections(l.sections)
     if (sections) lane.sections = sections
     out.push(lane)
@@ -152,7 +155,8 @@ export function fitLanes(lanes, rects) {
   return lanes.map(l => {
     const inside = rects.filter(r => r[at] >= l[at] && r[at] < l[at] + l[size])
     if (!inside.length) return l
-    const end = Math.max(...inside.map(r => r[at] + r[size])) + LANE_FIT
+    const last = Math.max(...inside.map(r => r[at] + r[size]))
+    const end = Number.isFinite(l.depth) ? l[at] + Math.max(l.depth, last - l[at] + HAND_MIN_PAD) : last + LANE_FIT
     const next = starts.find(s => s > l[at])
     const cap = next === undefined ? Infinity : next - LANE_GAP - l[at]
     return { ...l, [size]: Math.max(LANE_MIN, Math.min(cap, end - l[at])) }

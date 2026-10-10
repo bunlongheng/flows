@@ -402,6 +402,7 @@ server.registerTool(
         color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().describe('Hex ink for the band and its title, e.g. #B464DC. Omit for the default slate.'),
         size: z.number().int().min(10).max(40).optional().describe('Title size in px, 10 to 40. Omit for 13.'),
         len: z.number().min(80).optional().describe('A plain lane\'s length along its band, dragged by the owner. Send back what get_flow returned.'),
+        depth: z.number().min(80).optional().describe('A plain lane\'s thickness, dragged by the owner (its bottom edge in a row lane). Send back what get_flow returned.'),
         sections: z.array(z.object({
           id: z.string().regex(/^[\w-]{1,40}$/), title: z.string().max(40),
           at: z.number().describe('Where this section STARTS on the lane\'s OTHER axis: x in a row lane, y in a column one. The section before it ends 40 px short of this, the same gap that separates 2 lanes, so leave room: put this 140 px past the last card of the section before (100 px of padding plus the 40 px gap). The first section always starts at the band edge whatever this says.'),
