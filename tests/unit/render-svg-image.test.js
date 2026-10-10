@@ -10,10 +10,10 @@ const NODES = [
 const EDGES = [{ source: "user", target: "shot" }];
 
 describe("renderDiagramSvg - picture nodes", () => {
-  it("draws a photo with a slice crop on a 240 x 225 card", () => {
+  it("draws the whole photo, never cropped, on a 240 x 225 card", () => {
     const svg = renderDiagramSvg(NODES, EDGES);
     expect(svg).toContain("<image");
-    expect(svg).toContain("xMidYMid slice");
+    expect(svg).toContain("xMidYMid meet");
     expect(svg).toContain('<rect width="240" height="225"');
     expect(svg).toContain("Checkout page");
     expect(svg).toContain("What the user sees");

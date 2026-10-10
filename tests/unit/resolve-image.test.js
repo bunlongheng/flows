@@ -25,7 +25,13 @@ describe("okImageSource", () => {
 });
 
 describe("toNodeImage", () => {
-  it("resizes to 640x480 cover-cropped JPEG under the char budget", async () => {
+  it("keeps a wide screenshot whole instead of cropping it to 4:3", async () => {
+    const uri = await toNodeImage(await png(1600, 900));
+    const meta = await sharp(Buffer.from(uri.slice(uri.indexOf(",") + 1), "base64")).metadata();
+    expect([meta.width, meta.height]).toEqual([640, 360]);
+  });
+
+  it("resizes a 4:3 image to a 640x480 JPEG under the char budget", async () => {
     const bytes = await png(1200, 900);
     const uri = await toNodeImage(bytes);
     expect(uri.startsWith("data:image/jpeg;base64,")).toBe(true);
