@@ -12,7 +12,7 @@ import { Toast } from '../components/Toast'
 import { SnapGuides } from '../components/SnapGuides'
 import { Footer } from '../components/Footer'
 import { brandFor } from '../brands'
-import { FormatPanel } from '../components/FormatPanel.jsx'
+import { FormatPanel, BandPanel } from '../components/FormatPanel.jsx'
 import { CardPanel } from '../components/CardPanel.jsx'
 import { CurrentPanel } from '../components/CurrentPanel.jsx'
 import { findService } from '../services.js'
@@ -79,6 +79,7 @@ export function DetailView({
   shareSlug, shareUrl,
   showDocs, setShowDocs, copiedLabel, onCopyFormat,
   onEdgeStyleChange,
+  bandPick, onBandColor,
   showToastMsg,
   isPublic,
   saveState = 'idle',
@@ -95,6 +96,7 @@ export function DetailView({
   // (nodeId, { w, h }) => void when the owner is signed in; undefined
   // otherwise, which makes every node card a fixed, non-resizable size.
   onNodeResize,
+  onConnect,
   // (nodeId, iconSize | null) => void when the owner is signed in; undefined
   // otherwise. Resizes the icon/photo INSIDE the card, independent of the card.
   onIconResize,
@@ -180,7 +182,7 @@ export function DetailView({
   useEffect(() => { setCurrentOpen(false) }, [activeDiagram?.id])
   // Never 2 panels at once (owner rule 2026-10-09): opening one closes whichever
   // was open, so the latest opened is the only one on screen.
-  const openPanels = { share: showSharePanel, history: showHistoryPanel, code: showDetailCode, card: !!cardId, current: currentOpen }
+  const openPanels = { share: showSharePanel, history: showHistoryPanel, code: showDetailCode, card: !!cardId, current: currentOpen, band: bandPick?.key || null }
   const prevPanels = useRef(openPanels)
   useEffect(() => {
     const prev = prevPanels.current
@@ -193,9 +195,10 @@ export function DetailView({
     if (keep !== 'code' && showDetailCode) setShowDetailCode(false)
     if (keep !== 'card' && cardId) setCardId(null)
     if (keep !== 'current' && currentOpen) setCurrentOpen(false)
+    if (keep !== 'band' && bandPick) onPaneTap?.()
     // Reacts to a panel opening, nothing else; the setters are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSharePanel, showHistoryPanel, showDetailCode, cardId, currentOpen])
+  }, [showSharePanel, showHistoryPanel, showDetailCode, cardId, currentOpen, bandPick?.key])
   useEffect(() => {
     if (!cardId && !currentOpen) return
     const onKeyDown = e => { if (e.key === 'Escape') { setCardId(null); setCurrentOpen(false) } }
@@ -947,7 +950,24 @@ export function DetailView({
                Nothing moves - the drag handles on a line only exist when the
                owner's onEndMove/onBendMove are threaded into its data. On a
                phone even selecting is off: a finger is wider than a card. */
-            nodesDraggable={canEdit && !viewOnly} nodesConnectable={false} elementsSelectable={!fingerOnly}
+            nodesDraggable={canEdit && !viewOnly} elementsSelectable={!fingerOnly}
+            /* The owner draws a line Forensic style: hover a card, drag from a
+               side dot, and it snaps onto any card within 34 px. */
+            nodesConnectable={!!onConnect && canEdit && !viewOnly} onConnect={onConnect}
+            /* Missed every dot? Dropped anywhere on a card's body still snaps onto it. */
+            onConnectEnd={(e, c) => {
+              if (c.isValid || !c.fromNode || !onConnect) return
+              const pt = e.changedTouches?.[0] || e
+              // A drop on a card's body connects to the card; on open band, to
+              // the section under the pointer, else its lane (c.pointer is in
+              // canvas units).
+              const p = c.pointer, inside = n => p && p.x >= n.position.x && p.x < n.position.x + n.width && p.y >= n.position.y && p.y < n.position.y + n.height
+              const id = document.elementFromPoint(pt.clientX, pt.clientY)?.closest('.react-flow__node-awsNode')?.dataset.id
+                || nodes.find(n => n.type === 'laneEnd' && inside(n))?.id || nodes.find(n => n.type === 'lane' && inside(n))?.id
+              if (id && id !== c.fromNode.id) onConnect({ source: c.fromNode.id, sourceHandle: c.fromHandle?.id, target: id })
+            }}
+            connectionMode="loose" connectionRadius={34} connectionLineType="straight"
+            connectionLineStyle={{ stroke: '#2d7ff9', strokeWidth: 2.4 }}
             /* 2 fingers on the trackpad pan the canvas in any direction, the way
                Sequences and Mindmaps do; pinch or Cmd + wheel zooms. */
             panOnDrag panOnScroll panOnScrollMode="free" panOnScrollSpeed={1} zoomOnScroll={false} zoomOnDoubleClick={false} minZoom={narrow ? 0.04 : 0.2} maxZoom={2.5}
@@ -1108,6 +1128,11 @@ export function DetailView({
         {/* Card panel (right side): a clicked card's name, info, note and
             every connection, read-only. Desktop and iPad only - never a phone -
             and never alongside Share or History (owner rule 2026-10-08). */}
+        {/* Colour panel (right side): a picked panel or section, owner only. */}
+        {bandPick && onBandColor && !phone && (
+          <BandPanel band={bandPick} onColor={onBandColor} />
+        )}
+
         {card && !phone && (
           <CardPanel node={card} nodes={nodes} edges={edges} onPick={setCardId} onClose={() => setCardId(null)} />
         )}
@@ -1481,6 +1506,9 @@ export function DetailView({
         @media (hover: none) { .sd-note-del { opacity: 1; } }
         /* Step number, first thing in the badge - hidden until Steps is on. */
         .sd-step-chip { display: none; }
+        /* A line with no text has a tag only to hold its step number: with
+           the Steps chips off there is nothing to show, so no empty pill. */
+        .react-flow:not(.sd-steps-on) .sd-edge-badge.is-bare, .react-flow:not(.sd-steps-on) .sd-edge-lead.is-bare { display: none; }
         .sd-steps-on .sd-step-chip {
           display: inline-flex; align-items: center; justify-content: center;
           /* Deliberately smaller than the badge's text line, so the circle sits

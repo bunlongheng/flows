@@ -61,7 +61,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* Swimlanes: the band is see-through to the pointer so the canvas still pans
    and box-selects over it; only the title strip and the bottom edge take events. */
-.react-flow__node-lane, .react-flow__node-laneGrips { pointer-events: none !important; }
+.react-flow__node-lane, .react-flow__node-laneGrips, .react-flow__node-laneEnd { pointer-events: none !important; }
 .sd-lane { position: relative; box-sizing: border-box; border: 1.5px solid; border-radius: 10px; }
 .sd-lane-title { position: absolute; left: 16px; top: 9px; font-size: 13px; font-weight: 800; letter-spacing: 0.2px; line-height: 1; user-select: none; white-space: nowrap; }
 .sd-panel-resizer { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; cursor: col-resize; z-index: 2; touch-action: none; }
@@ -69,6 +69,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .sd-lane-section { position: absolute; }
 /* The owner's grips (#468): the title moves a band, its right / bottom edge sizes it. */
 .sd-lane-grab { pointer-events: auto; cursor: grab; border-radius: 10px 10px 0 0; }
+.sd-lane-body { position: absolute; inset: 0; pointer-events: auto; cursor: grab; }
+.sd-lane-body:active { cursor: grabbing; }
+.sd-lane-del { position: absolute; top: calc(6px * var(--gz)); right: calc(6px * var(--gz)); z-index: 2; pointer-events: auto; cursor: pointer;
+  width: calc(22px * var(--gz)); height: calc(22px * var(--gz)); border-radius: 50%; border: 0; background: #ef4444; color: #fff;
+  font: 600 calc(15px * var(--gz))/1 system-ui, sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.sd-lane-del:hover { background: #dc2626; }
 .sd-lane-grab:hover { background: rgba(15, 23, 42, 0.06); }
 .sd-lane-grab:active { cursor: grabbing; }
 .sd-lane-edge { position: absolute; pointer-events: auto; z-index: 1; touch-action: none; border-radius: 4px; }
@@ -81,3 +87,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .sd-lane-edge > i { display: none; position: absolute; left: 50%; top: 50%; width: calc(8px * var(--gz)); height: calc(8px * var(--gz)); transform: translate(-50%, -50%); background: #fff; border: calc(1px * var(--gz)) solid var(--pick, #0d99ff); border-radius: calc(1px * var(--gz)); }
 .sd-band.is-picked > .sd-lane-edge > i, .sd-lane-edge:hover > i { display: block; }
 .sd-band.is-picked > .sd-lane-grab { cursor: move; }
+
+/* A card's side dots for drawing a line: hidden until the owner hovers the
+   card, with a wide invisible ring so the grab is forgiving. */
+.react-flow__handle.sd-port { width: 12px; height: 12px; border-radius: 50%; background: #2d7ff9; border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .12s ease, transform .12s ease; z-index: 5; }
+.react-flow__handle.sd-port::before { content: ''; position: absolute; inset: -10px; border-radius: 50%; }
+.react-flow:not(.sd-reading) .react-flow__node:hover .sd-port.connectable,
+.react-flow:not(.sd-reading) .react-flow__node.selected .sd-port.connectable { opacity: 1; pointer-events: auto; }
+.react-flow__handle.sd-port.connectable:hover { scale: 1.4; }
+.react-flow:not(.sd-reading) .sd-band.is-picked > .sd-band-port.connectable { opacity: 1; pointer-events: auto; }
+.react-flow__handle.sd-band-port { width: max(12px, calc(12px * var(--gz))); height: max(12px, calc(12px * var(--gz))); }

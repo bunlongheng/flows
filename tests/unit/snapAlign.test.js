@@ -105,3 +105,12 @@ describe("snapSuggest", () => {
     expect(snapSuggest(node("a", 900, 0), row).position.x).toBe(900);
   });
 });
+
+describe("snapSuggest lines", () => {
+  it("lands a card on a panel's padded inside, and only when it is close", () => {
+    const pad = { id: "__pad_p", position: { x: 132, y: 132 }, width: 600, height: 400 };
+    const card = (x, y) => ({ id: "c", position: { x, y }, measured: { width: 180, height: 180 } });
+    expect(snapSuggest(card(127, 136), [], undefined, undefined, [pad]).position).toEqual({ x: 132, y: 132 });
+    expect(snapSuggest(card(300, 260), [], undefined, undefined, [pad]).position).toEqual({ x: 300, y: 260 });
+  });
+});

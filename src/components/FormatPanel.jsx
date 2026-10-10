@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { STROKE_PICKS, BG_PICKS, BORDER_WIDTHS, BORDER_STYLES, RADII, FONTS, FONT_SIZES, ALIGNS, ARROWS, STYLE_DEFAULTS } from '../style.js'
 import { PANEL, PANEL_CAPTION } from '../panel.js'
 
@@ -193,6 +194,35 @@ export function FormatPanel({ value, onChange, onReset, target = 'node', stroke,
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: 10, color: '#6b7280' }}>
           <span>0</span><span>100</span>
         </div>
+      </Section>
+    </div>
+  )
+}
+
+// Panel and section colours, greys first: a grey panel is the usual ask.
+const BAND_PICKS = ['#64748b', '#94a3b8', '#475569', '#1e293b', '#2563eb', '#7c3aed', '#db2777', '#dc2626', '#ea580c', '#d97706', '#16a34a', '#0d9488']
+
+// The right panel for a picked panel or section: 1 colour, from the swatches
+// or any colour, and Auto to take its cards' colour again.
+export function BandPanel({ band, onColor }) {
+  const cur = (band.hand || '').toLowerCase()
+  // The colour wheel reports every step of a drag; only where it rests is saved.
+  const wait = useRef(null)
+  const pickAny = c => { clearTimeout(wait.current); wait.current = setTimeout(() => onColor(c), 250) }
+  return (
+    <div className="sd-band-panel" style={PANEL}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={PANEL_CAPTION}>{band.kind}</div>
+        <button type="button" onClick={() => onColor(null)} title="Back to its cards' colour"
+          style={{ border: 'none', background: 'none', color: '#6b7280', fontSize: 11, cursor: 'pointer', padding: 0 }}>Auto</button>
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: '#1b1b1f', marginBottom: 12 }}>{band.title}</div>
+      <Section label="Colour" right={<Current background={band.color} />}>
+        {BAND_PICKS.map(c => <Swatch key={c} color={c} on={cur === c} onPick={onColor} />)}
+        <label title="Any colour" style={{ ...btn(!!cur && !BAND_PICKS.includes(cur)), position: 'relative', overflow: 'hidden', background: 'conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)' }}>
+          <input type="color" value={/^#[0-9a-f]{6}$/i.test(band.color) ? band.color : '#64748b'} onChange={e => pickAny(e.target.value)}
+            style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
+        </label>
       </Section>
     </div>
   )

@@ -56,7 +56,7 @@ export const centerOf = n => ({
 // axis: a column lane holding 5 columns of cards and 3 rows is WIDER than tall,
 // so w >= h called it a row and the line hooked up over the band's top edge
 // instead of running straight into its side.
-const isLane = n => n?.lane === true || n?.type === 'lane'
+const isLane = n => n?.lane === true || n?.type === 'lane' || n?.type === 'laneEnd'
 const laneAxisOf = n => n?.axis || n?.data?.axis || null
 const clampTo = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
 // A split lane draws only its sections, each hugging its cards, so the line
@@ -73,7 +73,8 @@ function laneFace(node, fc) {
   const { p, w, h } = laneBox(node, fc)
   const c = { x: p.x + w / 2, y: p.y + h / 2 }
   const ax = laneAxisOf(node)
-  if (ax ? ax === 'row' : w >= h) {
+  // A free panel is met on the face that looks at the far end, as a card is.
+  if (ax === 'free' ? Math.abs(fc.y - c.y) / h >= Math.abs(fc.x - c.x) / w : ax ? ax === 'row' : w >= h) {
     const side = fc.y < c.y ? Position.Top : Position.Bottom
     return { x: clampTo(fc.x, p.x + EDGE_MARGIN, p.x + w - EDGE_MARGIN), y: side === Position.Top ? p.y : p.y + h, side, alone: true, gap: 0, half: w / 2, mid: c.x }
   }

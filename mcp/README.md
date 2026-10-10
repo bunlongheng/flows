@@ -128,7 +128,7 @@ no Lane button on the canvas, so they are set with `update_flow { id, lanes }`
   its note) inside it.
 - `color` is a hex ink for the band and its title, `size` the title in px
   (10..40, default 13).
-- `sections` (2 to 4 of `{ id, title, at, color? }`) splits 1 band into titled
+- `sections` (2 to 8 of `{ id, title, at, color? }`) splits 1 band into titled
   bands across its other axis instead of stacking 2 lanes. `at` is where a
   section starts and the one before it ends 40 px short of that, so put `at`
   140 px past the last card of the section before it. A split lane draws no

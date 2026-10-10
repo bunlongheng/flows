@@ -14,26 +14,52 @@ import { isNeutralColor } from './iconColor.js'
 export const LANE_PAD = 100 // past the outermost card on each side
 export const LANE_MIN = 80 // the thinnest lane
 export const LANE_GAP = 40 // the 1 gap between lanes, always the same
-export const LANE_MAX = 12
+export const LANE_MAX = 24
 export const LANE_FIT = 36 // past the last card (and its note) inside a lane
 export const LANE_INK = '#64748b'
 export const LANE_TITLE = 13 // title size in px unless the lane says otherwise
 export const LANE_TITLE_MIN = 10
 export const LANE_TITLE_MAX = 40
-export const LANE_SECTIONS_MAX = 4
+export const LANE_SECTIONS_MAX = 8
 
 // An edge end may name a lane instead of a card: "lane:<id>". The line stops on
 // the lane's border and reads as 1 line to every card inside it. On the canvas
 // the lane is the React Flow node laneNodeId(id); the API and exports keep the
-// "lane:" form.
-export const laneRef = id => (typeof id === 'string' && id.startsWith('lane:') ? id.slice(5) : null)
+// "lane:" form. "lane:<id>/<section>" ends on 1 section of a split lane;
+// laneRef is still the lane, sectionRef the section (null for a whole lane).
+export const laneRef = id => (typeof id === 'string' && id.startsWith('lane:') ? id.slice(5).split('/')[0] : null)
+export const sectionRef = id => (laneRef(id) !== null && id.includes('/') ? id.slice(id.indexOf('/') + 1) : null)
 export const laneNodeId = id => `__lane_${id}`
 export const isLaneNode = id => typeof id === 'string' && id.startsWith('__lane_')
 
-// 'row' lanes stack by y and h; 'col' lanes stand side by side by x and w.
-export const laneAxis = lanes => (lanes[0] && 'x' in lanes[0] ? 'col' : 'row')
+// 'row' lanes stack by y and h; 'col' lanes stand side by side by x and w;
+// 'free' panels carry all 4 and sit wherever the owner dropped them.
+export const laneAxis = lanes => (lanes[0] && 'x' in lanes[0] ? ('y' in lanes[0] ? 'free' : 'col') : 'row')
 
-// A lane can be split into 2 to 4 sections side by side ACROSS its own band:
+// A free panel holds the cards whose centre sits in its saved box (the first
+// panel wins an overlap). It never packs against another panel and never
+// spans the diagram: it draws its saved box, grown to its cards plus
+// SECTION_PAD on every side.
+export function freeHome(lanes, cards) {
+  const home = {}
+  for (const c of cards) {
+    const cx = c.x + c.w / 2, cy = c.y + c.h / 2
+    const l = lanes.find(l => cx >= l.x && cx < l.x + l.w && cy >= l.y && cy < l.y + l.h)
+    if (l) home[c.id] = l.id
+  }
+  return home
+}
+function freeRects(lanes, cards) {
+  const home = freeHome(lanes, cards)
+  return lanes.map(l => {
+    const mine = cards.filter(c => home[c.id] === l.id)
+    const x = Math.min(l.x, ...mine.map(c => c.x - SECTION_PAD)), y = Math.min(l.y, ...mine.map(c => c.y - SECTION_PAD))
+    const r = Math.max(l.x + l.w, ...mine.map(c => c.x + c.w + SECTION_PAD)), b = Math.max(l.y + l.h, ...mine.map(c => c.y + c.h + SECTION_PAD))
+    return { id: l.id, title: l.title, color: l.color || cardsColor(mine) || undefined, size: l.size, free: true, x, y, w: r - x, h: b - y }
+  })
+}
+
+// A lane can be split into 2 to 8 sections side by side ACROSS its own band:
 // the row stays 1 row, and each section is a band of its own inside it, with
 // its own title and tint and the same LANE_GAP between them that separates 2
 // stacked lanes. `at` is where a section starts on the lane's other axis (x in
@@ -113,10 +139,18 @@ export function cleanLanes(raw) {
     if (!l || typeof l !== 'object' || out.length >= LANE_MAX) continue
     const id = typeof l.id === 'string' && /^[\w-]{1,40}$/.test(l.id) ? l.id : null
     if (!id || out.some(o => o.id === id)) continue
-    const kind = Number.isFinite(l.x) && Number.isFinite(l.w) ? 'col' : Number.isFinite(l.y) && Number.isFinite(l.h) ? 'row' : null
+    const col = Number.isFinite(l.x) && Number.isFinite(l.w), row = Number.isFinite(l.y) && Number.isFinite(l.h)
+    const kind = col && row ? 'free' : col ? 'col' : row ? 'row' : null
     if (!kind || (axis && kind !== axis)) continue
     axis = kind
     const lane = { id, title: String(l.title ?? '').trim().slice(0, 40) }
+    if (kind === 'free') {
+      Object.assign(lane, { x: Math.round(l.x), y: Math.round(l.y), w: Math.max(LANE_MIN, Math.round(l.w)), h: Math.max(LANE_MIN, Math.round(l.h)) })
+      if (typeof l.color === 'string' && /^#[0-9a-f]{6}$/i.test(l.color)) lane.color = l.color
+      if (Number.isFinite(l.size)) lane.size = Math.min(LANE_TITLE_MAX, Math.max(LANE_TITLE_MIN, Math.round(l.size)))
+      out.push(lane)
+      continue
+    }
     if (kind === 'col') { lane.x = Math.round(l.x); lane.w = Math.max(LANE_MIN, Math.round(l.w)) }
     else { lane.y = Math.round(l.y); lane.h = Math.max(LANE_MIN, Math.round(l.h)) }
     if (typeof l.color === 'string' && /^#[0-9a-f]{6}$/i.test(l.color)) lane.color = l.color
@@ -139,6 +173,7 @@ export function cleanLanes(raw) {
 // next one LANE_GAP after the one before, so the gaps are always equal
 // whatever positions come in.
 export function packLanes(lanes) {
+  if (laneAxis(lanes) === 'free') return lanes
   const [at, size] = laneAxis(lanes) === 'col' ? ['x', 'w'] : ['y', 'h']
   const sorted = [...lanes].sort((a, b) => a[at] - b[at])
   // A hand `gap` is extra room the owner left before a lane by dropping it there.
@@ -200,6 +235,7 @@ export function cardsColor(cards) {
 }
 
 export function laneRects(lanes, rects) {
+  if (laneAxis(lanes) === 'free') return freeRects(lanes, rects)
   const axis = laneAxis(lanes), span = laneSpan(rects, axis)
   const [at, size] = axis === 'col' ? ['x', 'w'] : ['y', 'h']
   // A hand len shortens (or stretches) a plain lane along its band, from the
@@ -217,6 +253,8 @@ export function laneRects(lanes, rects) {
   return fitLanes(lanes, rects).map(l => ({ l, cards: rects.filter(r => r[at] >= l[at] && r[at] < l[at] + l[size]) })).map(({ l, cards }) => ({ id: l.id, title: l.title, color: l.color || cardsColor(cards) || undefined, size: l.size, ...(l.sections ? { sections: l.sections } : {}), ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...leadOf(l, { ...span, ...lenOf(l, cards) }, cards) }))
 }
 
+const holds = (b, c) => c.x + c.w / 2 >= b.x && c.x + c.w / 2 < b.x + b.w && c.y + c.h / 2 >= b.y && c.y + c.h / 2 < b.y + b.h
+
 // The React Flow nodes that draw the lanes: 1 per lane, under the cards,
 // never selectable or draggable.
 export function laneNodes(lanes, rects) {
@@ -226,15 +264,16 @@ export function laneNodes(lanes, rects) {
     zIndex: -1, selectable: false, draggable: false,
     // Sections come through in the band's own coordinates: the node is already
     // placed at r.x,r.y, so LaneNode lays them out inside it.
-    data: { laneId: r.id, title: r.title, color: r.color, size: r.size, axis,
-      sections: sectionRects(r, axis, rects).map(s => ({ id: s.id, title: s.title, color: s.color, x: s.x - r.x, y: s.y - r.y, w: s.w, h: s.h })) },
+    // `empty`: no card's centre inside, so the owner may delete the band.
+    data: { laneId: r.id, title: r.title, color: r.color, size: r.size, axis, empty: !rects.some(c => holds(r, c)),
+      sections: sectionRects(r, axis, rects).map(s => ({ id: s.id, title: s.title, color: s.color, x: s.x - r.x, y: s.y - r.y, w: s.w, h: s.h, empty: !rects.some(c => holds(s, c)) })) },
   }))
 }
 
 // The clear strips between lanes, where a trunk's bus line can run without
 // crossing a lane: the axis the lanes are packed on and the centre of each gap.
 export function laneGaps(rects) {
-  if (rects.length < 2) return null
+  if (rects.length < 2 || rects.some(r => r.free)) return null
   const axis = rects.every(r => r.y === rects[0].y) ? 'x' : 'y'
   const len = axis === 'x' ? 'w' : 'h'
   const sorted = [...rects].sort((a, b) => a[axis] - b[axis])

@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from 'react'
-import { Handle, Position, useStore, useStoreApi } from '@xyflow/react'
+import { Handle, Position, useStore, useStoreApi, useUpdateNodeInternals } from '@xyflow/react'
 import { subscribe, glowAt, motionAllowed } from '../flowClock'
 import { LANE_INK, LANE_TITLE } from '../lanes.js'
 import { hexToRgba } from '../style.js'
@@ -36,11 +36,26 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
   // bar, never smaller than the band's own 32 px top pad. Width only: the
   // height always hugs the cards (top and bottom pad are automatic).
   const zoom = useStore(s => s.transform[2])
-  const along = data.axis === 'col' ? ['h'] : ['l', 'w']
+  const along = data.axis === 'free' ? ['l', 'w', 'h'] : data.axis === 'col' ? ['h'] : ['l', 'w']
   const hit = px => Math.max(px, px / zoom)
   const grips = (section, rect, edges) => (edit ? edges.map(k => (
     <div key={k} className={`sd-lane-edge nodrag nopan ${k}`} onPointerDown={grab(k, section, rect)}
       style={k === 'w' ? { width: hit(14), right: -hit(14) / 2 } : k === 'l' ? { width: hit(14), left: -hit(14) / 2 } : { height: hit(14), bottom: -hit(14) / 2 }}><i /></div>
+  )) : null)
+  // A picked band moves from anywhere on its body, not only its title, and an
+  // empty one shows an x to delete it.
+  const body = (section, rect, empty) => (edit && data.picked === (section || '__lane') ? <>
+    <div className="sd-lane-body nodrag nopan" onPointerDown={grab('move', section, rect)} />
+    {empty && data.onDelete && <button type="button" className="sd-lane-del nodrag nopan" title="Delete this empty band"
+      onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); data.onDelete(data.laneId, section) }}>×</button>}
+  </> : null)
+  // A picked band shows a blue dot on each side, as a card does on hover: drag
+  // 1 onto a card to draw a line from the band ("lane:<id>" or, for a
+  // section, "lane:<id>/<section>"; App onConnect reads the handle id).
+  const updateInternals = useUpdateNodeInternals()
+  useEffect(() => { if (edit) updateInternals(id) }, [edit, data.picked, id, updateInternals])
+  const ports = section => (edit && data.picked === (section || '__lane') ? [Position.Top, Position.Right, Position.Bottom, Position.Left].map(p => (
+    <Handle key={p} id={`${p}|${section || ''}`} type="source" position={p} className="sd-port sd-band-port" />
   )) : null)
   const title = (text, color, section, rect) => (edit ? (
     // Only as wide as the title (plus its 16 px inset each side), never the
@@ -51,7 +66,7 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
   ) : (
     <div className="sd-lane-title" style={{ color, fontSize: data.size || LANE_TITLE }}>{text || ''}</div>
   ))
-  // 2 to 4 sections across the band, each its own band with its own title and
+  // 2 to 8 sections across the band, each its own band with its own title and
   // tint, LANE_GAP apart for the same visual separation 2 lanes get (src/lanes.js).
   const sections = data.sections || []
   const split = sections.length >= 2
@@ -91,13 +106,17 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
             left: s.x, top: s.y, width: s.w, height: s.h, '--pick': sink,
             background: clear(hexToRgba(sink, 0.05)), borderColor: clear(hexToRgba(sink, 0.35)), boxShadow: edit ? undefined : halo(sink),
           }}>
+            {body(s.id, { x: ox + s.x, y: oy + s.y, w: s.w, h: s.h }, s.empty)}
             {title(s.title, sink, s.id, { x: ox + s.x, y: oy + s.y, w: s.w, h: s.h })}
             {grips(s.id, { x: ox + s.x, y: oy + s.y, w: s.w, h: s.h }, along)}
+            {ports(s.id)}
           </div>
         )
       }) : <>
+        {body(null, { x: ox, y: oy, w: width, h: height }, data.empty)}
         {title(data.title, ink, null, { x: ox, y: oy, w: width, h: height })}
         {grips(null, { x: ox, y: oy, w: width, h: height }, along)}
+        {ports(null)}
       </>}
     </div>
   )

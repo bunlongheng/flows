@@ -484,6 +484,50 @@ describe("/api/flows/:id", () => {
     expect(query).not.toHaveBeenCalled();
   });
 
+  it("PATCH addEdge appends 1 line between 2 cards and keeps the rest", async () => {
+    const stored = [{ id: "a-b", source: "a", target: "b" }];
+    query.mockResolvedValueOnce({ rows: [{ nodes: [{ id: "a" }, { id: "b" }, { id: "c" }], edges: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { addEdge: { id: "b-c", source: "b", target: "c" } };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(query.mock.calls[1][1][0])).toEqual([...stored, { id: "b-c", source: "b", target: "c" }]);
+  });
+
+  it("PATCH addEdge refuses an unknown card, a loop and a taken id", async () => {
+    for (const [addEdge, code] of [[{ id: "a-z", source: "a", target: "z" }, 400], [{ id: "a-a", source: "a", target: "a" }, 400], [{ id: "a-b", source: "a", target: "b" }, 409]]) {
+      query.mockReset();
+      query.mockResolvedValueOnce({ rows: [{ nodes: [{ id: "a" }, { id: "b" }], edges: [{ id: "a-b", source: "a", target: "b" }] }] });
+      const res = mockRes();
+      const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+      r.body = { addEdge };
+      await flowById(r, res);
+      expect(res.statusCode).toBe(code);
+      expect(query.mock.calls.length).toBeLessThan(2);
+    }
+  });
+
+  it("PATCH addEdge takes a lane or section end, never 2 lanes or an unknown lane", async () => {
+    const view_state = { lanes: [{ id: "web", y: 0, h: 300 }, { id: "db", y: 340, h: 300 }] };
+    for (const [addEdge, code] of [
+      [{ id: "a-web", source: "a", target: "lane:web" }, 200],
+      [{ id: "web.s1-a", source: "lane:web/s1", target: "a" }, 200],
+      [{ id: "web-db", source: "lane:web", target: "lane:db" }, 400],
+      [{ id: "a-x", source: "a", target: "lane:nope" }, 400],
+    ]) {
+      query.mockReset();
+      query.mockResolvedValueOnce({ rows: [{ nodes: [{ id: "a" }], edges: [], view_state }] });
+      query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+      const res = mockRes();
+      const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+      r.body = { addEdge };
+      await flowById(r, res);
+      expect(res.statusCode).toBe(code);
+    }
+  });
+
   it("PATCH notes { id, info: '' } removes info", async () => {
     const stored = [{ id: "tray", position: { x: 0, y: 0 }, note: "old note", info: "old info" }];
     query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
