@@ -32,13 +32,21 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
   }
   const edit = !!data.onBand
   const clear = c => (edit ? 'transparent' : c)
+  // A grip keeps its screen size at any zoom: 14 px edges and a 28 px title
+  // bar, never smaller than the band's own 32 px top pad. Width only: the
+  // height always hugs the cards (top and bottom pad are automatic).
+  const zoom = useStore(s => s.transform[2])
+  const hit = px => Math.max(px, px / zoom)
   const grips = (section, rect, edges) => (edit ? edges.map(k => (
-    <div key={k} className={`sd-lane-edge nodrag nopan ${k}`} onPointerDown={grab(k, section, rect)} />
+    <div key={k} className={`sd-lane-edge nodrag nopan ${k}`} onPointerDown={grab(k, section, rect)}
+      style={k === 'w' ? { width: hit(14), right: -hit(14) / 2 } : { height: hit(14), bottom: -hit(14) / 2 }} />
   )) : null)
-  const title = (text, color, section, rect) => (
-    <div className={`sd-lane-title${edit ? ' sd-lane-grab nodrag nopan' : ''}`} style={{ color: clear(color), fontSize: data.size || LANE_TITLE }}
-      onPointerDown={edit ? grab('move', section, rect) : undefined}>{text || ''}</div>
-  )
+  const title = (text, color, section, rect) => (edit ? (
+    <div className="sd-lane-grab nodrag nopan" style={{ position: 'absolute', left: 0, right: 0, top: 0, height: Math.max(32, hit(28)) }}
+      onPointerDown={grab('move', section, rect)} />
+  ) : (
+    <div className="sd-lane-title" style={{ color, fontSize: data.size || LANE_TITLE }}>{text || ''}</div>
+  ))
   // 2 to 4 sections across the band, each its own band with its own title and
   // tint, LANE_GAP apart for the same visual separation 2 lanes get (src/lanes.js).
   const sections = data.sections || []
@@ -77,12 +85,12 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
             background: clear(hexToRgba(sink, 0.05)), borderColor: clear(hexToRgba(sink, 0.35)), boxShadow: edit ? undefined : halo(sink),
           }}>
             {title(s.title, sink, s.id, { x: ox + s.x, y: oy + s.y, w: s.w, h: s.h })}
-            {grips(s.id, { x: ox + s.x, y: oy + s.y, w: s.w, h: s.h }, ['w', 'h'])}
+            {grips(s.id, { x: ox + s.x, y: oy + s.y, w: s.w, h: s.h }, ['w'])}
           </div>
         )
       }) : <>
         {title(data.title, ink, null, { x: ox, y: oy, w: width, h: height })}
-        {grips(null, { x: ox, y: oy, w: width, h: height }, ['w', 'h'])}
+        {grips(null, { x: ox, y: oy, w: width, h: height }, ['w'])}
       </>}
     </div>
   )

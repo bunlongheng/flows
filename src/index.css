@@ -68,7 +68,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .sd-panel-resizer:hover, .sd-panel-resizer:active { background: rgba(15, 23, 42, 0.08); }
 .sd-lane-section { position: absolute; }
 /* The owner's grips (#468): the title moves a band, its right / bottom edge sizes it. */
-.sd-lane-grab { pointer-events: auto; cursor: grab; padding: 4px 8px; margin: -4px -8px; border-radius: 6px; }
+.sd-lane-grab { pointer-events: auto; cursor: grab; border-radius: 10px 10px 0 0; }
 .sd-lane-grab:hover { background: rgba(15, 23, 42, 0.06); }
 .sd-lane-grab:active { cursor: grabbing; }
 .sd-lane-edge { position: absolute; pointer-events: auto; z-index: 1; touch-action: none; border-radius: 4px; }

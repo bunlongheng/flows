@@ -71,6 +71,13 @@ describe("GET /api/flows (list)", () => {
     expect(sql).toMatch(/SELECT[^]*\bview_state\b[^]*FROM flows/);
   });
 
+  // The owner looks for what they last worked on, so the newest edit leads.
+  it("orders the list by the latest update first", async () => {
+    query.mockResolvedValueOnce({ rows: [] });
+    await listFlows(req("GET"), mockRes());
+    expect(query.mock.calls[0][0]).toMatch(/ORDER BY updated_at DESC/);
+  });
+
   it("a non-GET method returns 405", async () => {
     const res = mockRes();
     await listFlows(req("POST"), res);
