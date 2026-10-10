@@ -237,7 +237,10 @@ export function DetailView({
   // The edit lock freezes the canvas for EVERYONE, the owner included. It used
   // to hold only agents back while the owner's own drags still landed, which
   // read as the lock simply not working.
-  const frozen = !!isEditLocked || ((touch || narrow) && !touchEdit)
+  // A phone only reads: pinch to zoom and pan, no pencil, nothing to adjust.
+  // Editing is for a desktop or an iPad (short side 600 px or more).
+  const phone = touch && typeof window !== 'undefined' && Math.min(window.screen?.width || 0, window.screen?.height || 0) > 0 && Math.min(window.screen.width, window.screen.height) < 600
+  const frozen = !!isEditLocked || phone || ((touch || narrow) && !touchEdit)
   const viewOnly = frozen
   // Selecting is reading, not editing: on a desktop a locked diagram still
   // lights a card's lines when you click it. A finger is the exception - it is
@@ -256,6 +259,9 @@ export function DetailView({
       ? { ...e, data: { ...e.data, onLabelMove: undefined, onEndMove: undefined, onBendMove: undefined, onLabelEdit: undefined } }
       : e))
     : edges), [edges, viewOnly])
+  // Read only stays read only: no band grips (move, size, pick) unless this
+  // reader may edit right now - never on a phone outside edit, never locked.
+  const canvasNodes = useMemo(() => (canEditNow ? nodes : nodes.filter(n => n.type !== 'laneGrips')), [nodes, canEditNow])
   // Fit is an ACTION, but it reads as a state on touch (the inline hover
   // background never clears without a mouseleave). So make the state real:
   // lit only while the canvas actually IS the fitted view, cleared the moment
@@ -543,7 +549,7 @@ export function DetailView({
           {/* The pencil: the only way into edit mode on a touch screen. It is not
               rendered on a mouse (nothing to unlock there) and not while the
               edit lock is on, because that lock outranks it. */}
-          {canEdit && (touch || narrow) && !isEditLocked && (
+          {canEdit && (touch || narrow) && !isEditLocked && !phone && (
             <button onClick={() => setTouchEdit(v => !v)} aria-pressed={touchEdit}
               title={touchEdit ? 'Editing - tap to go back to reading' : 'Reading only - tap to edit'} style={{
               display: 'flex', alignItems: 'center', gap: 6,
@@ -904,7 +910,7 @@ export function DetailView({
           <IconResizeContext.Provider value={viewOnly ? null : onIconResize || null}>
           <ReactFlow
             className={`${showSteps ? 'sd-steps-on ' : ''}${flowing ? '' : 'sd-still '}${canEdit && !viewOnly ? '' : 'sd-reading '}sd-badge-${badgeMode}`}
-            nodes={nodes} edges={canvasEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
+            nodes={canvasNodes} edges={canvasEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
             onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
             onNodeDragStop={onNodeDragStop}
             /* A card opens the read-only detail panel - desktop and iPad, never
