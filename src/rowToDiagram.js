@@ -20,7 +20,7 @@ export function rowToDiagram(r) {
     // that dropped the old one, each mean a new picture.
     thumbnailAt: r.thumbnail_at || null,
     changedAt: r.updated_at || null,
-    updatedAt: r.created_at,
+    updatedAt: r.updated_at || r.created_at,
     tags: r.tags || [],
   }
 }

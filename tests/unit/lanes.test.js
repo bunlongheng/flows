@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, laneNodeId, cardsColor, SECTION_PAD, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT } from "../../src/lanes.js";
+import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, laneNodeId, cardsColor, SECTION_PAD, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT, resortSections, moveLane } from "../../src/lanes.js";
 
 describe("cleanLanes", () => {
   it("keeps typed, bounded lanes and drops the rest", () => {
@@ -169,5 +169,53 @@ describe("a band with no colour takes its cards' colour", () => {
     const [s1, s2] = sectionRects(r, "row", [{ x: 0, y: 40, w: 180, h: 180, color: "#6040e0" }, { x: 600, y: 40, w: 180, h: 180, color: "#2080ff" }]);
     expect(s1.color).toBe("#6040e0");
     expect(s2.color).toBe("#ff0000");
+  });
+});
+
+describe("the owner moves and sizes bands (issue #468)", () => {
+  it("keeps hand sizes, and a hand size never cuts a card", () => {
+    const [l] = cleanLanes([{ id: "a", y: 0, h: 300, len: 900.4, sections: [{ id: "s1", at: 0, w: 120, h: 5000 }, { id: "s2", at: 2000 }] }]);
+    expect(l.len).toBe(900);
+    expect(l.sections[0]).toMatchObject({ w: 120, h: 5000 });
+    const [r] = laneRects([l], [{ x: 0, y: 40, w: 180, h: 180 }, { x: 2000, y: 40, w: 180, h: 180 }]);
+    const [s1] = sectionRects(r, "row", [{ x: 0, y: 40, w: 180, h: 180 }]);
+    expect(s1.w).toBe(SECTION_PAD + 180 + 8); // 120 asked, the card plus 8 px wins
+    expect(s1.h).toBe(5000);
+    expect(r.w).toBe(LANE_PAD + 2180 + 8); // 900 asked, the lane's own far card wins
+  });
+  it("re-sorts sections by where their cards now start", () => {
+    const out = resortSections([{ id: "a", at: 0 }, { id: "b", at: 1000 }, { id: "c", at: 2000 }], { a: 2500, b: 1100 });
+    expect(out.map(s => [s.id, s.at])).toEqual([["b", 1100 - SECTION_PAD], ["c", 2000], ["a", 2500 - SECTION_PAD]]);
+  });
+  it("moves a lane in its stack, re-packs it from the same top and says how far each band went", () => {
+    const lanes = cleanLanes([{ id: "a", y: 0, h: 200 }, { id: "b", y: 240, h: 100 }]);
+    const { lanes: out, shift } = moveLane(lanes, "a", 300);
+    expect(out.map(l => [l.id, l.y])).toEqual([["b", 0], ["a", 140]]);
+    expect(shift).toEqual({ a: 140, b: -240 });
+  });
+});
+
+describe("a plain lane's hand thickness (issue #468)", () => {
+  it("packs the stack and draws the band at the owner's depth, never cutting a card", () => {
+    const lanes = cleanLanes([{ id: "a", y: 0, h: 450, depth: 300 }, { id: "b", y: 490, h: 200 }]);
+    expect(lanes.map(l => [l.id, l.y, l.h])).toEqual([["a", 0, 300], ["b", 340, 200]]);
+    const [a] = fitLanes(lanes, [{ x: 0, y: 40, w: 180, h: 180 }]);
+    expect(a.h).toBe(300);
+    const [tight] = fitLanes(cleanLanes([{ id: "a", y: 0, h: 450, depth: 100 }]), [{ x: 0, y: 40, w: 180, h: 180 }]);
+    expect(tight.h).toBe(220 + 8);
+  });
+});
+
+describe("a hand lead, the left edge (issue #468)", () => {
+  const card = { x: 0, y: 40, w: 180, h: 180 };
+  it("pulls a plain lane's start back and keeps its far end", () => {
+    const [plain] = laneRects(cleanLanes([{ id: "a", y: 0, h: 300 }]), [card]);
+    const [led] = laneRects(cleanLanes([{ id: "a", y: 0, h: 300, lead: 100.4 }]), [card]);
+    expect([led.x, led.x + led.w]).toEqual([plain.x - 100, plain.x + plain.w]);
+  });
+  it("adds room before a section's first card, a hand width still counts from the cards", () => {
+    const [l] = cleanLanes([{ id: "a", y: 0, h: 300, sections: [{ id: "s1", at: 0, lead: 60, w: 400 }, { id: "s2", at: 2000 }] }]);
+    const [s1] = sectionRects(laneRects([l], [card])[0], "row", [card]);
+    expect([s1.x, s1.x + s1.w]).toEqual([-SECTION_PAD - 60, -SECTION_PAD + 400]);
   });
 });

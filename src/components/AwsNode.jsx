@@ -434,4 +434,4 @@ export const MarkerNode = memo(function MarkerNode({ data }) {
 })
 
 // eslint-disable-next-line react-refresh/only-export-components -- nodeTypes must live alongside AwsNode for <ReactFlow nodeTypes={nodeTypes}>
-export const nodeTypes = { awsNode: AwsNode, marker: MarkerNode, lane: LaneNode }
+export const nodeTypes = { awsNode: AwsNode, marker: MarkerNode, lane: LaneNode, laneGrips: LaneNode }

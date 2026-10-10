@@ -11,7 +11,7 @@ import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapSuggest } from './snapAlign'
 import { findService } from './services'
-import { laneNodes, laneRef, laneNodeId, LANE_INK, cardsColor } from './lanes.js'
+import { laneNodes, laneRef, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, sectionRects, resortSections, moveLane } from './lanes.js'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
@@ -227,6 +227,9 @@ export default function App() {
   // The Start pill's live position while it is being dragged - not yet saved,
   // so it has to win over the saved view_state.start until the drag ends.
   const [startDrag, setStartDrag] = useState(null)
+  // A band the owner is dragging (#468) previews here until the drop saves it.
+  const [laneDraft, setLaneDraft] = useState(null)
+  const bandDrag = useRef(null)
   const [nodes, setNodes] = useState(defaultNodes)
   const [edges, setEdges] = useState(defaultEdges)
   const [toast, setToast] = useState({ message: '', visible: false })
@@ -1659,11 +1662,85 @@ export default function App() {
   // never edited on the canvas: drawn under the cards, nothing more.
   // A card draws 180 square (NODE_W 190 is layout pitch), so a section's pad is
   // measured off the drawn card, the same on every side.
-  const lanes = laneNodes(activeDiagram?.view_state?.lanes || [], nodes.map(n => { const s = sizeOf(n); return { x: n.position?.x ?? 0, y: n.position?.y ?? 0, w: n.data?.size?.w ?? 180, h: s.h + (showNotes ? getNoteHeight(n.id) : 0), color: n.data?.sunset ? null : findService(n.data || { id: n.id })?.color } }))
+  const laneCfg = laneDraft || activeDiagram?.view_state?.lanes || []
+  const laneCards = nodes.map(n => { const s = sizeOf(n); return { id: n.id, x: n.position?.x ?? 0, y: n.position?.y ?? 0, w: n.data?.size?.w ?? 180, h: s.h + (showNotes ? getNoteHeight(n.id) : 0), color: n.data?.sunset ? null : findService(n.data || { id: n.id })?.color } })
+  // The owner drags a band (#468): its title moves it with its cards, an edge
+  // sizes it. The drag previews in laneDraft and the card positions; the drop
+  // saves the lanes and the cards together.
+  const onBand = ({ phase, kind, lane, section, rect, dx, dy }) => {
+    const col = laneAxis(laneCfg) === 'col'
+    if (phase === 'start') {
+      const rects = laneRects(laneCfg, laneCards)
+      const bands = section ? sectionRects(rects.find(r => r.id === lane), col ? 'col' : 'row', laneCards) : rects
+      const home = {}
+      for (const c of laneCards) {
+        const cx = c.x + c.w / 2, cy = c.y + c.h / 2
+        const b = bands.find(r => cx >= r.x && cx < r.x + r.w && cy >= r.y && cy < r.y + r.h)
+        if (b) home[c.id] = b.id
+      }
+      bandDrag.current = { base: laneCfg, home, from: Object.fromEntries(laneCards.map(c => [c.id, { x: c.x, y: c.y }])) }
+      return
+    }
+    const d = bandDrag.current
+    if (!d) return
+    let next = d.base, moved = null
+    if (kind === 'move' && section) {
+      const along = col ? 'y' : 'x', dv = col ? dy : dx
+      moved = id => (d.home[id] === section ? { ...d.from[id], [along]: d.from[id][along] + dv } : null)
+      const starts = {}
+      for (const [id, sid] of Object.entries(d.home)) starts[sid] = Math.min(starts[sid] ?? Infinity, (moved(id) || d.from[id])[along])
+      next = d.base.map(l => (l.id === lane ? { ...l, sections: resortSections(l.sections, starts) } : l))
+    } else if (kind === 'move') {
+      // Lanes re-pack on the drop, so every lane's cards follow their band.
+      const across = col ? 'x' : 'y', dv = col ? dx : dy, out = moveLane(d.base, lane, dv)
+      const by = sid => (phase === 'end' ? out.shift[sid] : sid === lane ? dv : 0)
+      moved = id => (d.home[id] ? { ...d.from[id], [across]: d.from[id][across] + by(d.home[id]) } : null)
+      next = phase === 'end' ? out.lanes : d.base.map(l => (l.id === lane ? { ...l, [across]: l[across] + dv } : l))
+    } else {
+      // 'l' is the leading edge: it adds room before the first card. A size
+      // along the band counts from the cards, so it leaves the lead out.
+      const own = l => (section ? l.sections.find(s => s.id === section) : l)
+      const along = (kind === 'h') === col
+      const set = (l, v) => (section ? { ...l, sections: l.sections.map(s => (s.id === section ? { ...s, ...v } : s)) } : { ...l, ...v })
+      next = d.base.map(l => {
+        if (l.id !== lane) return l
+        const lead = own(l).lead || 0
+        if (kind === 'l') return set(l, { lead: Math.max(0, Math.round(lead - (col ? dy : dx))) })
+        const size = Math.max(LANE_MIN, Math.round(rect[kind] + (kind === 'w' ? dx : dy) - (along ? lead : 0)))
+        return set(l, { [section ? kind : along ? 'len' : 'depth']: size })
+      })
+      // A thicker or thinner plain lane re-packs the lanes after it: their cards follow.
+      if (!section) {
+        const across = col ? 'x' : 'y', packed = cleanLanes(next)
+        const by = Object.fromEntries(packed.map(l => [l.id, l[across] - d.base.find(b => b.id === l.id)[across]]))
+        moved = id => (by[d.home[id]] ? { ...d.from[id], [across]: d.from[id][across] + by[d.home[id]] } : null)
+        next = packed
+      }
+    }
+    const still = phase === 'end' && !dx && !dy
+    if (moved && !still) setNodes(nds => {
+      const nx = nds.map(n => { const p = moved(n.id); return p ? { ...n, position: p } : n })
+      if (phase === 'end') savePositions(activeDiagram.id, nx)
+      return nx
+    })
+    if (phase !== 'end') { setLaneDraft(next); return }
+    bandDrag.current = null
+    setLaneDraft(null)
+    if (still) return
+    const clean = cleanLanes(next)
+    setActiveDiagram(a => (a ? { ...a, view_state: { ...a.view_state, lanes: clean } } : a))
+    patchViewState({ ...otherView(['lanes']), lanes: clean })
+  }
+  const lanes = laneNodes(laneCfg, laneCards)
+  // The grips ride a see-through copy of each band above the lines and cards,
+  // so a line crossing a title or an edge never takes the drag.
+  const laneGrips = canAI && activeDiagram?.id && !activeDiagram.editLocked
+    ? lanes.map(l => ({ ...l, id: `__grip_${l.data.laneId}`, type: 'laneGrips', zIndex: 1000, data: { ...l.data, onBand } }))
+    : []
   // Swimlanes already say where a flow begins (the top lane), so a diagram
   // with lanes draws no Start here pill. Same rule in render-svg.js.
   const markers = lanes.length ? { nodes: [], edges: [] } : buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)
-  const displayNodes = [...lanes, ...nodes, ...markers.nodes]
+  const displayNodes = [...lanes, ...nodes, ...markers.nodes, ...laneGrips]
   const displayEdges = [...edges, ...markers.edges]
   return (
     <DetailView
