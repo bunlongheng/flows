@@ -11,7 +11,7 @@ import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapSuggest } from './snapAlign'
 import { findService } from './services'
-import { laneNodes, laneRef, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD } from './lanes.js'
+import { laneNodes, laneRef, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD, LANE_GAP } from './lanes.js'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
@@ -1700,7 +1700,7 @@ export default function App() {
     // Snap along the band like a card does: the edge that moves latches onto
     // the nearest edge within 10 screen px, and a guide shows the line.
     let guide = null
-    if (!col && (dx || dy)) {
+    if (!col && kind !== 'h' && (dx || dy)) {
       const zoom = rfInstance.current?.getZoom?.() || 1
       const edges = kind === 'w' ? [rect.x + rect.w] : kind === 'l' ? [rect.x] : [rect.x, rect.x + rect.w]
       let best = null
@@ -1754,7 +1754,12 @@ export default function App() {
           const from = !section ? laneSpan(laneCards, col ? 'col' : 'row')[a] : mine.length ? Math.min(...mine) - SECTION_PAD : rect[a] + lead
           return set(l, { lead: Math.round(from - rect[a] - Math.min(col ? dy : dx, room)) })
         }
-        const size = Math.max(LANE_MIN, Math.round(rect[kind] + (kind === 'w' ? dx : dy) - (along ? lead : 0)))
+        let size = Math.max(LANE_MIN, Math.round(rect[kind] + (kind === 'w' ? dx : dy) - (along ? lead : 0)))
+        // A section grows inside its row, never into the next lane.
+        if (section && !along) {
+          const a = col ? 'x' : 'y', next = laneRects(d.base, laneCards).map(r => r[a]).filter(v => v > rect[a])
+          if (next.length) size = Math.min(size, Math.min(...next) - LANE_GAP - rect[a])
+        }
         return set(l, { [section ? kind : along ? 'len' : 'depth']: size })
       })
       // A thicker or thinner plain lane re-packs the lanes after it: their cards follow.
