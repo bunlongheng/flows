@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from 'react'
-import { Handle, Position, useStore, useStoreApi } from '@xyflow/react'
+import { Handle, Position, useStore, useStoreApi, useUpdateNodeInternals } from '@xyflow/react'
 import { subscribe, glowAt, motionAllowed } from '../flowClock'
 import { LANE_INK, LANE_TITLE } from '../lanes.js'
 import { hexToRgba } from '../style.js'
@@ -41,6 +41,14 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
   const grips = (section, rect, edges) => (edit ? edges.map(k => (
     <div key={k} className={`sd-lane-edge nodrag nopan ${k}`} onPointerDown={grab(k, section, rect)}
       style={k === 'w' ? { width: hit(14), right: -hit(14) / 2 } : k === 'l' ? { width: hit(14), left: -hit(14) / 2 } : { height: hit(14), bottom: -hit(14) / 2 }}><i /></div>
+  )) : null)
+  // A picked band shows a blue dot on each side, as a card does on hover: drag
+  // 1 onto a card to draw a line from the band ("lane:<id>" or, for a
+  // section, "lane:<id>/<section>"; App onConnect reads the handle id).
+  const updateInternals = useUpdateNodeInternals()
+  useEffect(() => { if (edit) updateInternals(id) }, [edit, data.picked, id, updateInternals])
+  const ports = section => (edit && data.picked === (section || '__lane') ? [Position.Top, Position.Right, Position.Bottom, Position.Left].map(p => (
+    <Handle key={p} id={`${p}|${section || ''}`} type="source" position={p} className="sd-port sd-band-port" />
   )) : null)
   const title = (text, color, section, rect) => (edit ? (
     // Only as wide as the title (plus its 16 px inset each side), never the
@@ -93,11 +101,13 @@ export const LaneNode = memo(function LaneNode({ id, data, width, height, positi
           }}>
             {title(s.title, sink, s.id, { x: ox + s.x, y: oy + s.y, w: s.w, h: s.h })}
             {grips(s.id, { x: ox + s.x, y: oy + s.y, w: s.w, h: s.h }, along)}
+            {ports(s.id)}
           </div>
         )
       }) : <>
         {title(data.title, ink, null, { x: ox, y: oy, w: width, h: height })}
         {grips(null, { x: ox, y: oy, w: width, h: height }, along)}
+        {ports(null)}
       </>}
     </div>
   )

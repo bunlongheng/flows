@@ -368,4 +368,6 @@ export const MarkerNode = memo(function MarkerNode({ data }) {
 })
 
 // eslint-disable-next-line react-refresh/only-export-components -- nodeTypes must live alongside AwsNode for <ReactFlow nodeTypes={nodeTypes}>
-export const nodeTypes = { awsNode: AwsNode, marker: MarkerNode, lane: LaneNode, laneGrips: LaneNode }
+// A section's line end: nothing drawn, 2 hidden handles for React Flow (see App sectionEnds).
+const LaneEnd = () => <><Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: 'none' }} /><Handle type="source" position={Position.Bottom} style={{ opacity: 0, pointerEvents: 'none' }} /></>
+export const nodeTypes = { awsNode: AwsNode, marker: MarkerNode, lane: LaneNode, laneGrips: LaneNode, laneEnd: LaneEnd }

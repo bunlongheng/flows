@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, laneNodeId, cardsColor, SECTION_PAD, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT, resortSections, moveLane } from "../../src/lanes.js";
+import { cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, sectionRef, laneNodeId, cardsColor, SECTION_PAD, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT, resortSections, moveLane } from "../../src/lanes.js";
 
 describe("cleanLanes", () => {
   it("keeps typed, bounded lanes and drops the rest", () => {
@@ -94,6 +94,13 @@ describe("laneRef", () => {
     expect(laneRef("apps")).toBeNull();
     expect(laneRef(undefined)).toBeNull();
     expect(laneNodeId("apps")).toBe("__lane_apps");
+  });
+
+  it("reads a section end as its lane plus the section", () => {
+    expect(laneRef("lane:apps/ext")).toBe("apps");
+    expect(sectionRef("lane:apps/ext")).toBe("ext");
+    expect(sectionRef("lane:apps")).toBeNull();
+    expect(sectionRef("apps/ext")).toBeNull();
   });
 });
 

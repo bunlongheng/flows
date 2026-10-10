@@ -25,8 +25,10 @@ export const LANE_SECTIONS_MAX = 4
 // An edge end may name a lane instead of a card: "lane:<id>". The line stops on
 // the lane's border and reads as 1 line to every card inside it. On the canvas
 // the lane is the React Flow node laneNodeId(id); the API and exports keep the
-// "lane:" form.
-export const laneRef = id => (typeof id === 'string' && id.startsWith('lane:') ? id.slice(5) : null)
+// "lane:" form. "lane:<id>/<section>" ends on 1 section of a split lane;
+// laneRef is still the lane, sectionRef the section (null for a whole lane).
+export const laneRef = id => (typeof id === 'string' && id.startsWith('lane:') ? id.slice(5).split('/')[0] : null)
+export const sectionRef = id => (laneRef(id) !== null && id.includes('/') ? id.slice(id.indexOf('/') + 1) : null)
 export const laneNodeId = id => `__lane_${id}`
 export const isLaneNode = id => typeof id === 'string' && id.startsWith('__lane_')
 
