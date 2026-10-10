@@ -67,3 +67,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .sd-panel-resizer { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; cursor: col-resize; z-index: 2; touch-action: none; }
 .sd-panel-resizer:hover, .sd-panel-resizer:active { background: rgba(15, 23, 42, 0.08); }
 .sd-lane-section { position: absolute; }
+/* The owner's grips (#468): the title moves a band, its right / bottom edge sizes it. */
+.sd-lane-grab { pointer-events: auto; cursor: grab; padding: 4px 8px; margin: -4px -8px; border-radius: 6px; }
+.sd-lane-grab:hover { background: rgba(15, 23, 42, 0.06); }
+.sd-lane-grab:active { cursor: grabbing; }
+.sd-lane-edge { position: absolute; pointer-events: auto; z-index: 1; touch-action: none; border-radius: 4px; }
+.sd-lane-edge.w { top: 12px; bottom: 12px; right: -5px; width: 10px; cursor: ew-resize; }
+.sd-lane-edge.h { left: 12px; right: 12px; bottom: -5px; height: 10px; cursor: ns-resize; }
+.sd-lane-edge:hover, .sd-lane-edge:active { background: rgba(15, 23, 42, 0.12); }

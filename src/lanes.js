@@ -40,6 +40,11 @@ export const laneAxis = lanes => (lanes[0] && 'x' in lanes[0] ? 'col' : 'row')
 // a row lane, y in a column one); the first always starts at the band's own
 // edge, so only the later ones really matter. 1 section is not a split, so it
 // is dropped and the lane draws its own band and title as before.
+// A size the owner dragged on the canvas (section w / h, a plain lane's len
+// along its band). It wins over the auto fit, but never cuts a card: the draw
+// grows it back to the cards plus HAND_MIN_PAD.
+const HAND_MIN_PAD = 8
+const handSize = v => Math.min(20000, Math.max(LANE_MIN, Math.round(v)))
 function cleanSections(raw) {
   if (!Array.isArray(raw)) return null
   const out = []
@@ -49,6 +54,7 @@ function cleanSections(raw) {
     if (!id || out.some(o => o.id === id) || !Number.isFinite(s.at)) continue
     const sec = { id, title: String(s.title ?? '').trim().slice(0, 40), at: Math.round(s.at) }
     if (typeof s.color === 'string' && /^#[0-9a-f]{6}$/i.test(s.color)) sec.color = s.color
+    for (const k of ['w', 'h']) if (Number.isFinite(s[k])) sec[k] = handSize(s[k])
     out.push(sec)
   }
   return out.length >= 2 ? out.sort((a, b) => a.at - b.at) : null
@@ -76,9 +82,12 @@ export function sectionRects(rect, axis = 'row', cards = []) {
     const next = i + 1 < cuts.length ? cuts[i + 1] : Infinity
     const mine = inBand.filter(c => c[at] + c[size] / 2 >= (i === 0 ? -Infinity : cuts[i]) && c[at] + c[size] / 2 < next)
     const start = mine.length ? Math.min(...mine.map(c => c[at])) - SECTION_PAD : cuts[i]
-    const end = mine.length ? Math.max(...mine.map(c => c[at] + c[size])) + SECTION_PAD : (next === Infinity ? hi : next - LANE_GAP)
+    const far = mine.length ? Math.max(...mine.map(c => c[at] + c[size])) : start
     const top = mine.length ? Math.min(...mine.map(c => c[across])) - SECTION_PAD : rect[across]
-    const bottom = mine.length ? Math.max(...mine.map(c => c[across] + c[deep])) + SECTION_PAD : rect[across] + rect[deep]
+    const low = mine.length ? Math.max(...mine.map(c => c[across] + c[deep])) : top
+    const fit = (hand, from, edge, auto) => (Number.isFinite(hand) ? from + Math.max(hand, edge - from + HAND_MIN_PAD) : auto)
+    const end = fit(s[size], start, far, mine.length ? far + SECTION_PAD : (next === Infinity ? hi : next - LANE_GAP))
+    const bottom = fit(s[deep], top, low, mine.length ? low + SECTION_PAD : rect[across] + rect[deep])
     return {
       id: s.id, title: s.title, size: rect.size,
       color: s.color || cardsColor(mine) || rect.color,
@@ -105,6 +114,7 @@ export function cleanLanes(raw) {
     else { lane.y = Math.round(l.y); lane.h = Math.max(LANE_MIN, Math.round(l.h)) }
     if (typeof l.color === 'string' && /^#[0-9a-f]{6}$/i.test(l.color)) lane.color = l.color
     if (Number.isFinite(l.size)) lane.size = Math.min(LANE_TITLE_MAX, Math.max(LANE_TITLE_MIN, Math.round(l.size)))
+    if (Number.isFinite(l.len)) lane.len = handSize(l.len)
     const sections = cleanSections(l.sections)
     if (sections) lane.sections = sections
     out.push(lane)
@@ -177,7 +187,13 @@ export function cardsColor(cards) {
 export function laneRects(lanes, rects) {
   const axis = laneAxis(lanes), span = laneSpan(rects, axis)
   const [at, size] = axis === 'col' ? ['x', 'w'] : ['y', 'h']
-  return fitLanes(lanes, rects).map(l => ({ l, cards: rects.filter(r => r[at] >= l[at] && r[at] < l[at] + l[size]) })).map(({ l, cards }) => ({ id: l.id, title: l.title, color: l.color || cardsColor(cards) || undefined, size: l.size, ...(l.sections ? { sections: l.sections } : {}), ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...span }))
+  // A hand len shortens (or stretches) a plain lane along its band, from the
+  // shared start, never past its own cards.
+  const [along, long] = axis === 'col' ? ['y', 'h'] : ['x', 'w']
+  const lenOf = (l, cards) => (Number.isFinite(l.len)
+    ? { [long]: Math.max(l.len, Math.max(span[along], ...cards.map(c => c[along] + c[long])) - span[along] + HAND_MIN_PAD) }
+    : {})
+  return fitLanes(lanes, rects).map(l => ({ l, cards: rects.filter(r => r[at] >= l[at] && r[at] < l[at] + l[size]) })).map(({ l, cards }) => ({ id: l.id, title: l.title, color: l.color || cardsColor(cards) || undefined, size: l.size, ...(l.sections ? { sections: l.sections } : {}), ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...span, ...lenOf(l, cards) }))
 }
 
 // The React Flow nodes that draw the lanes: 1 per lane, under the cards,
@@ -189,7 +205,7 @@ export function laneNodes(lanes, rects) {
     zIndex: -1, selectable: false, draggable: false,
     // Sections come through in the band's own coordinates: the node is already
     // placed at r.x,r.y, so LaneNode lays them out inside it.
-    data: { title: r.title, color: r.color, size: r.size, axis,
+    data: { laneId: r.id, title: r.title, color: r.color, size: r.size, axis,
       sections: sectionRects(r, axis, rects).map(s => ({ id: s.id, title: s.title, color: s.color, x: s.x - r.x, y: s.y - r.y, w: s.w, h: s.h })) },
   }))
 }
@@ -207,4 +223,27 @@ export function laneGaps(rects) {
     if (hi > lo) mids.push((lo + hi) / 2)
   }
   return { axis, mids }
+}
+
+// The owner drags bands on the canvas (issue #468). A section slides along its
+// lane: once its cards have moved, the sections re-sort by where their cards
+// now start and every cut sits SECTION_PAD before its own first card, so a
+// section dragged past another swaps places. `starts` maps a section id to
+// the near edge of its cards; a section with none keeps its `at`.
+export function resortSections(sections, starts) {
+  const key = s => (Number.isFinite(starts[s.id]) ? starts[s.id] - SECTION_PAD : s.at)
+  return sections.map(s => ({ ...s, at: Math.round(key(s)) })).sort((a, b) => a.at - b.at)
+}
+
+// A plain lane dragged across its stack: it takes its new place, the stack
+// re-packs with even gaps, and each lane says how far its band moved so its
+// cards can follow it.
+export function moveLane(lanes, id, delta) {
+  const at = laneAxis(lanes) === 'col' ? 'x' : 'y'
+  const was = Object.fromEntries(lanes.map(l => [l.id, l[at]]))
+  // The stack keeps its top where it was, whichever lane now leads it.
+  const top = Math.min(...lanes.map(l => l[at]))
+  const packed = packLanes(lanes.map(l => (l.id === id ? { ...l, [at]: l[at] + delta } : l)))
+    .map((l, _, all) => ({ ...l, [at]: l[at] - all[0][at] + top }))
+  return { lanes: packed, shift: Object.fromEntries(packed.map(l => [l.id, l[at] - was[l.id]])) }
 }
