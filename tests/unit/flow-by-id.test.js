@@ -509,6 +509,25 @@ describe("/api/flows/:id", () => {
     }
   });
 
+  it("PATCH addEdge takes a lane or section end, never 2 lanes or an unknown lane", async () => {
+    const view_state = { lanes: [{ id: "web", y: 0, h: 300 }, { id: "db", y: 340, h: 300 }] };
+    for (const [addEdge, code] of [
+      [{ id: "a-web", source: "a", target: "lane:web" }, 200],
+      [{ id: "web.s1-a", source: "lane:web/s1", target: "a" }, 200],
+      [{ id: "web-db", source: "lane:web", target: "lane:db" }, 400],
+      [{ id: "a-x", source: "a", target: "lane:nope" }, 400],
+    ]) {
+      query.mockReset();
+      query.mockResolvedValueOnce({ rows: [{ nodes: [{ id: "a" }], edges: [], view_state }] });
+      query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+      const res = mockRes();
+      const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+      r.body = { addEdge };
+      await flowById(r, res);
+      expect(res.statusCode).toBe(code);
+    }
+  });
+
   it("PATCH notes { id, info: '' } removes info", async () => {
     const stored = [{ id: "tray", position: { x: 0, y: 0 }, note: "old note", info: "old info" }];
     query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
