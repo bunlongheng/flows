@@ -964,7 +964,7 @@ export function DetailView({
               if (node.type === 'marker') { if (onCurrentChange) { setCardId(null); setCurrentOpen(true) } return }
               if (node.type === 'awsNode') { setCurrentOpen(false); setCardId(node.id) }
             }}
-            onPaneClick={() => { setCardId(null); setCurrentOpen(false); onPaneTap?.() }}
+            onPaneClick={e => { setCardId(null); setCurrentOpen(false); onPaneTap?.(e) }}
             /* Cmd/Ctrl is reserved for snap-align while dragging, so additive
                multi-select moves to Shift (box-select already uses Shift). */
             multiSelectionKeyCode="Shift"
