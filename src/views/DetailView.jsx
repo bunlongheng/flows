@@ -80,6 +80,7 @@ export function DetailView({
   showDocs, setShowDocs, copiedLabel, onCopyFormat,
   onEdgeStyleChange,
   bandPick, onBandColor,
+  onRename,
   showToastMsg,
   isPublic,
   saveState = 'idle',
@@ -290,6 +291,14 @@ export function DetailView({
   const labelsFitAt = useRef(0)
   const measuredTitle = useRef(null)
   const titleText = activeDiagram?.title || ''
+  // The owner renames in place: click the title, Enter or a click away saves,
+  // Escape drops it. null means not editing.
+  const [titleDraft, setTitleDraft] = useState(null)
+  const saveTitle = () => {
+    const next = (titleDraft || '').replace(/\s+/g, ' ').trim()
+    setTitleDraft(null)
+    if (next && next !== titleText) onRename(next)
+  }
   useLayoutEffect(() => {
     const header = headerRef.current
     if (!header || typeof ResizeObserver === 'undefined') return
@@ -496,9 +505,18 @@ export function DetailView({
             <img src={brand.icon} alt="" width={16} height={16} style={{ objectFit: 'contain' }} />
           </span>
         )}
-        <span className="sd-detail-title" style={{ fontSize: 15, fontWeight: 700, color: '#1c1e21', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
-          {activeDiagram?.title || 'Untitled diagram'}
-        </span>
+        {titleDraft != null ? (
+          <input className="sd-detail-title" autoFocus value={titleDraft} maxLength={200} aria-label="Flow title"
+            onChange={e => setTitleDraft(e.target.value)} onBlur={saveTitle} onFocus={e => e.target.select()}
+            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') setTitleDraft(null) }}
+            style={{ fontSize: 15, fontWeight: 700, color: '#1c1e21', letterSpacing: '-0.01em', minWidth: 0, flex: '0 1 420px', padding: '4px 8px', margin: '-5px 0', border: '1px solid #3b82f6', borderRadius: 8, outline: 'none', fontFamily: 'inherit' }} />
+        ) : (
+          <span className="sd-detail-title" title={onRename ? 'Click to rename' : undefined}
+            onClick={onRename ? () => setTitleDraft(titleText) : undefined}
+            style={{ fontSize: 15, fontWeight: 700, color: '#1c1e21', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, cursor: onRename ? 'text' : undefined }}>
+            {activeDiagram?.title || 'Untitled diagram'}
+          </span>
+        )}
 
         {/* Visibility pill, owner only. The owner can open every diagram, so a
             private one looks shared when it is not - the recipient gets a 404
