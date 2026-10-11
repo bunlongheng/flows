@@ -430,10 +430,11 @@ export function GradientEdge({
               style={{
                 transform: `translate(-50%, -50%) translate(${bx}px, ${by}px)`,
                 '--c1': c1, '--c2': c2,
-                ...(sunset ? { color: SUNSET.ink, background: SUNSET.tint, border: `1.5px solid ${SUNSET.border}`, textShadow: 'none' } : {}),
+                // A line on its way out wears a red tag: white text on the red
+                // of the sunset X, so it reads at a glance.
+                ...(sunset ? { color: '#fff', background: SUNSET.x, border: `1.5px solid ${SUNSET.x}`, textShadow: 'none' } : {}),
               }}
             >
-              {sunset && <SunsetX size={12} />}
               {hasStep && <span className="sd-step-chip">{data.step}</span>}
               {draft != null ? (
                 <input
@@ -478,19 +479,6 @@ export function GradientEdge({
         </EdgeLabelRenderer>
       )}
     </>
-  )
-}
-
-// The red X that marks something outdated: on the badge of every edge that
-// touches a sunset card, in or out, never on the card itself. Sits on the top-right corner of its parent.
-export function SunsetX({ size = 16 }) {
-  const r = size / 2
-  return (
-    <svg aria-label="Sunset: gets decommissioned" width={size} height={size} viewBox="0 0 16 16"
-      style={{ position: 'absolute', top: -r + 1, right: -r + 1, pointerEvents: 'none', filter: 'drop-shadow(0 0 0 #fff)' }}>
-      <circle cx="8" cy="8" r="7.5" fill={SUNSET.x} stroke="#fff" strokeWidth="1" />
-      <path d="M5 5 L11 11 M11 5 L5 11" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-    </svg>
   )
 }
 
