@@ -2025,6 +2025,14 @@ export default function App() {
   const laneGrips = canAI && activeDiagram?.id && !activeDiagram.editLocked && !edges.some(e => e.selected)
     ? lanes.map(l => ({ ...l, id: `__grip_${l.data.laneId}`, type: 'laneGrips', zIndex: 1000, data: { ...l.data, onBand, onDelete: onBandDelete, picked: selBand?.lane === l.data.laneId ? (selBand.section || '__lane') : null } }))
     : []
+  // A click anywhere inside a band picks it, not only on its title: the
+  // innermost band under the pointer wins, an empty spot clears the pick.
+  const onPaneTap = e => {
+    const p = e && laneGrips.length && rfInstance.current?.screenToFlowPosition({ x: e.clientX, y: e.clientY })
+    const hit = p && lanes.filter(l => p.x >= l.position.x && p.x < l.position.x + l.width && p.y >= l.position.y && p.y < l.position.y + l.height)
+      .sort((a, b) => a.width * a.height - b.width * b.height)[0]
+    setSelBand(hit ? { lane: hit.data.laneId, section: null } : null)
+  }
   // Swimlanes already say where a flow begins (the top lane), so a diagram
   // with lanes draws no Start here pill. Same rule in render-svg.js.
   const markers = lanes.length ? { nodes: [], edges: [] } : buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)
@@ -2046,7 +2054,7 @@ export default function App() {
       activeDiagram={activeDiagram}
       detailCodeCopied={detailCodeCopied} setDetailCodeCopied={setDetailCodeCopied}
       nodes={displayNodes} edges={displayEdges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
-      onNodeDragStop={onNodeDragStop} snapGuides={snapGuides} onPaneTap={() => setSelBand(null)}
+      onNodeDragStop={onNodeDragStop} snapGuides={snapGuides} onPaneTap={onPaneTap}
       canUndo={history.past.length > 0} canRedo={history.future.length > 0} onUndo={undo} onRedo={redo}
       shareSlug={shareSlug} shareUrl={shareUrl}
       onDeleteDiagram={canAI && activeDiagram?.id ? () => deleteDiagram(activeDiagram.id, { thenBack: true }) : undefined}
