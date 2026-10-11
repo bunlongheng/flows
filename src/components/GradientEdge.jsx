@@ -409,7 +409,10 @@ export function GradientEdge({
       }} />
       {square && bendMovable && (
         <path d={drawPath} fill="none" stroke="transparent" strokeWidth={Math.max(dot, hit)} className="nodrag nopan"
-          style={{ pointerEvents: 'stroke', cursor: 'move' }} onPointerDown={startBodyDrag} />
+          // React Flow marches a dash along every path of an animated edge;
+          // on this grab path the gaps slid under a still mouse and the cursor
+          // flickered between the line and the pane.
+          style={{ pointerEvents: 'stroke', cursor: 'move', strokeDasharray: 'none', animation: 'none' }} onPointerDown={startBodyDrag} />
       )}
         {labelOff && (tag || hasStep) && <line className={`sd-edge-lead${tag ? '' : ' is-bare'}`} x1={ax} y1={ay} x2={bx} y2={by} stroke={lineStroke} strokeWidth={1} strokeOpacity={0.7} pointerEvents="none" />}
         {port && <circle className="sd-lane-port" cx={port.x} cy={port.y} r={5} fill={port.c} stroke="#fff" strokeWidth={1.5} pointerEvents="none" />}
