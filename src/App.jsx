@@ -351,8 +351,10 @@ export default function App() {
   // the same as every editor. 50 steps is far more than anyone walks back.
   // `pins` defaults to the edges as they stand: every caller records the state
   // before its own change, and a node drag does not touch them anyway.
-  const pushHistory = useCallback((positions, kind, pins) => {
-    const step = { positions, kind, pins: pins || pinsOf(edgesRef.current) }
+  // A Tidy step also carries the panel boxes, so undoing it puts them back too.
+  const lanesRef = useRef(null)
+  const pushHistory = useCallback((positions, kind, pins, lanes) => {
+    const step = { positions, kind, pins: pins || pinsOf(edgesRef.current), ...(lanes ? { lanes } : {}) }
     setHistory(h => ({ past: [...h.past, step].slice(-50), future: [] }))
   }, [])
 
@@ -1007,17 +1009,21 @@ export default function App() {
     setNodes(next)
     if (canAI && activeDiagram?.id) savePositions(activeDiagram.id, next)
     if (step.pins) restorePins(step.pins)
+    if (step.lanes && canAI) {
+      setActiveDiagram(a => (a ? { ...a, view_state: { ...a.view_state, lanes: step.lanes } } : a))
+      patchViewState({ ...otherView(['lanes']), lanes: step.lanes })
+    }
     if (refit) setTimeout(() => rfInstance.current?.fitView({ padding: 0.15, duration: 400 }), 60)
-  }, [canAI, activeDiagram, savePositions, restorePins])
+  }, [canAI, activeDiagram, savePositions, restorePins, patchViewState, otherView])
 
   // Where the canvas stands right now, so undo can hand it to redo.
-  const snapshot = kind => ({ positions: positionsOf(nodesRef.current), pins: pinsOf(edgesRef.current), kind })
+  const snapshot = (kind, lanes) => ({ positions: positionsOf(nodesRef.current), pins: pinsOf(edgesRef.current), kind, ...(lanes ? { lanes: lanesRef.current } : {}) })
 
   const undo = useCallback(() => {
     const { past, future } = historyRef.current
     if (!past.length) return
     const step = past[past.length - 1]
-    setHistory({ past: past.slice(0, -1), future: [...future, snapshot(step.kind)] })
+    setHistory({ past: past.slice(0, -1), future: [...future, snapshot(step.kind, step.lanes)] })
     applySnapshot(step, step.kind === 'arrange')
   }, [applySnapshot])
 
@@ -1025,7 +1031,7 @@ export default function App() {
     const { past, future } = historyRef.current
     if (!future.length) return
     const step = future[future.length - 1]
-    setHistory({ past: [...past, snapshot(step.kind)], future: future.slice(0, -1) })
+    setHistory({ past: [...past, snapshot(step.kind, step.lanes)], future: future.slice(0, -1) })
     applySnapshot(step, step.kind === 'arrange')
   }, [applySnapshot])
 
@@ -1731,6 +1737,7 @@ export default function App() {
   // A card draws 180 square (NODE_W 190 is layout pitch), so a section's pad is
   // measured off the drawn card, the same on every side.
   const laneCfg = laneDraft || activeDiagram?.view_state?.lanes || []
+  lanesRef.current = activeDiagram?.view_state?.lanes || null
   const laneCards = nodes.map(n => { const s = sizeOf(n); return { id: n.id, x: n.position?.x ?? 0, y: n.position?.y ?? 0, w: n.data?.size?.w ?? 180, h: s.h + (showNotes ? getNoteHeight(n.id) : 0), color: n.data?.sunset ? null : findService(n.data || { id: n.id })?.color } })
   // The owner drags a band (#468): its title moves it with its cards, an edge
   // sizes it. The drag previews in laneDraft and the card positions; the drop
@@ -1940,19 +1947,18 @@ export default function App() {
     patchViewState({ ...otherView(['lanes']), lanes: clean })
   }
   // Tidy (src/tidy.js): rows straightened onto 1 gap, panels 1 gap apart, each
-  // hugging its cards. A saved panel box is only a home for its cards, so it
-  // keeps the old box too: an Undo puts the cards back and they still belong.
+  // hugging its cards. The panel boxes are saved exactly as tidied (a box that
+  // kept its old reach claimed the next panel's cards) and Undo restores them.
   const onTidy = () => {
     if (!activeDiagram?.id) return
     const cards = laneCards.filter(c => nodes.find(n => n.id === c.id)?.type === 'awsNode')
     const t = tidy(cards, laneCfg)
-    pushHistory(positionsOf(nodes), 'tidy')
+    pushHistory(positionsOf(nodes), 'tidy', undefined, laneAxis(laneCfg) === 'free' ? laneCfg : undefined)
     const moved = id => t.positions[id]
     if (laneAxis(laneCfg) !== 'free') {
       setNodes(nds => { const nx = nds.map(n => (moved(n.id) ? { ...n, position: moved(n.id) } : n)); savePositions(activeDiagram.id, nx); return nx })
     } else {
-      const union = (a, b) => { const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y); return { ...a, x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y } }
-      finishBand('end', laneCfg.map((l, i) => union(l, t.lanes[i])), moved, false)
+      finishBand('end', t.lanes, moved, false)
     }
     showToastMsg('Tidied')
   }
