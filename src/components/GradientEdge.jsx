@@ -236,6 +236,10 @@ export function GradientEdge({
   // diagram fitted on screen sits near 0.4). Only a selected line listens.
   const dot = useStore(s => (selected ? Math.max(14, 18 / s.transform[2]) : 14))
   const ring = dot / 7
+  // The grab zone around a line holds about 16 screen px at any zoom, so the
+  // cursor does not flip between the pane's hand and the line's on every pixel.
+  // Stepped in half octaves: zooming re-renders a line only at each step.
+  const hit = useStore(s => 24 * 2 ** Math.max(0, Math.round(-Math.log2(s.transform[2] * 1.5) * 2) / 2))
 
   const sideways = side => side === 'left' || side === 'right'
   const square = data?.style?.arrow !== 'straight' && data?.style?.arrow !== 'curved'
@@ -388,7 +392,7 @@ export function GradientEdge({
           The gradient's whole job is to say which node a line came FROM and
           which it goes TO; once the owner has chosen a colour, that is the
           statement, and a fade between it and a brand colour says neither. */}
-      <BaseEdge id={id} path={drawPath} markerEnd={hideArrow ? undefined : markerEnd} style={data?.sunsetLine ? {
+      <BaseEdge id={id} path={drawPath} interactionWidth={square && bendMovable ? 0 : hit} markerEnd={hideArrow ? undefined : markerEnd} style={data?.sunsetLine ? {
         // A line touching a sunset card, in or out, is the path on its way out:
         // flat light silver at 3/4 strength, and nothing the panel picked -
         // colour, width, dash or opacity - reaches it. Grey, always.
@@ -404,8 +408,11 @@ export function GradientEdge({
         opacity: st.opacity == null ? undefined : st.opacity / 100,
       }} />
       {square && bendMovable && (
-        <path d={drawPath} fill="none" stroke="transparent" strokeWidth={selected ? dot : 24} className="nodrag nopan"
-          style={{ pointerEvents: 'stroke', cursor: selected ? 'move' : 'pointer' }} onPointerDown={startBodyDrag} />
+        <path d={drawPath} fill="none" stroke="transparent" strokeWidth={Math.max(dot, hit)} className="nodrag nopan"
+          // React Flow marches a dash along every path of an animated edge;
+          // on this grab path the gaps slid under a still mouse and the cursor
+          // flickered between the line and the pane.
+          style={{ pointerEvents: 'stroke', cursor: 'move', strokeDasharray: 'none', animation: 'none' }} onPointerDown={startBodyDrag} />
       )}
         {labelOff && (tag || hasStep) && <line className={`sd-edge-lead${tag ? '' : ' is-bare'}`} x1={ax} y1={ay} x2={bx} y2={by} stroke={lineStroke} strokeWidth={1} strokeOpacity={0.7} pointerEvents="none" />}
         {port && <circle className="sd-lane-port" cx={port.x} cy={port.y} r={5} fill={port.c} stroke="#fff" strokeWidth={1.5} pointerEvents="none" />}
@@ -423,10 +430,11 @@ export function GradientEdge({
               style={{
                 transform: `translate(-50%, -50%) translate(${bx}px, ${by}px)`,
                 '--c1': c1, '--c2': c2,
-                ...(sunset ? { color: SUNSET.ink, background: SUNSET.tint, border: `1.5px solid ${SUNSET.border}`, textShadow: 'none' } : {}),
+                // A line on its way out wears a red tag: white text on the red
+                // of the sunset X, so it reads at a glance.
+                ...(sunset ? { color: '#fff', background: SUNSET.x, border: `1.5px solid ${SUNSET.x}`, textShadow: 'none' } : {}),
               }}
             >
-              {sunset && <SunsetX size={12} />}
               {hasStep && <span className="sd-step-chip">{data.step}</span>}
               {draft != null ? (
                 <input
@@ -471,19 +479,6 @@ export function GradientEdge({
         </EdgeLabelRenderer>
       )}
     </>
-  )
-}
-
-// The red X that marks something outdated: on the badge of every edge that
-// touches a sunset card, in or out, never on the card itself. Sits on the top-right corner of its parent.
-export function SunsetX({ size = 16 }) {
-  const r = size / 2
-  return (
-    <svg aria-label="Sunset: gets decommissioned" width={size} height={size} viewBox="0 0 16 16"
-      style={{ position: 'absolute', top: -r + 1, right: -r + 1, pointerEvents: 'none', filter: 'drop-shadow(0 0 0 #fff)' }}>
-      <circle cx="8" cy="8" r="7.5" fill={SUNSET.x} stroke="#fff" strokeWidth="1" />
-      <path d="M5 5 L11 11 M11 5 L5 11" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-    </svg>
   )
 }
 

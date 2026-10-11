@@ -179,6 +179,24 @@ describe("/api/flows/:id", () => {
     expect(params.slice(0, 2)).toEqual([null, false]);
   });
 
+  it("PATCH title renames, tidied, and refuses an empty or over-long one", async () => {
+    const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
+    query.mockResolvedValueOnce({ rows: [{ id: ID, title: "New name here" }] });
+    let res = mockRes(), r = req("PATCH", ID, undefined, cookie);
+    r.body = { title: "  New   name\nhere " };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ id: ID, title: "New name here" });
+    expect(query.mock.calls[0][0]).toMatch(/SET title = \$1/);
+    expect(query.mock.calls[0][1][0]).toBe("New name here");
+    for (const title of ["   ", "x".repeat(201)]) {
+      res = mockRes(); r = req("PATCH", ID, undefined, cookie); r.body = { title };
+      await flowById(r, res);
+      expect(res.statusCode).toBe(400);
+    }
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
   it("PATCH locked flips only the delete lock", async () => {
     query.mockResolvedValueOnce({ rows: [{ id: ID, locked: false, edit_locked: true }] });
     const res = mockRes();

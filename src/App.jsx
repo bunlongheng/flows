@@ -11,6 +11,7 @@ import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapSuggest } from './snapAlign'
 import { findService } from './services'
+import { tidy } from './tidy.js'
 import { laneNodes, laneRef, sectionRef, freeHome, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD, LANE_FIT, LANE_SECTIONS_MAX } from './lanes.js'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
 import { SUNSET, INK } from './sunset.js'
@@ -870,6 +871,19 @@ export default function App() {
   // Persist a view_state patch (panels/badge carried forward, start added or
   // dropped by the caller) and keep the local copies - activeDiagram and the
   // gallery list - in step, the same way the panel/badge effect does.
+  // Rename: links carry the id, so the title is free to change.
+  const onRename = useCallback(title => {
+    if (!activeDiagram?.id) return
+    const savingId = activeDiagram.id
+    fetch(`/api/flows/${savingId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }) })
+      .then(r => (r.ok ? r.json() : Promise.reject(r)))
+      .then(row => {
+        setActiveDiagram(a => (a?.id === savingId ? { ...a, title: row.title } : a))
+        setDiagrams(ds => ds.map(d => (d.id === savingId ? { ...d, title: row.title } : d)))
+      })
+      .catch(() => showToastMsg('Rename failed'))
+  }, [activeDiagram, showToastMsg])
+
   const patchViewState = useCallback(view_state => {
     if (!activeDiagram?.id) return
     const savingId = activeDiagram.id
@@ -1925,6 +1939,23 @@ export default function App() {
     setActiveDiagram(a => (a ? { ...a, view_state: { ...a.view_state, lanes: clean } } : a))
     patchViewState({ ...otherView(['lanes']), lanes: clean })
   }
+  // Tidy (src/tidy.js): rows straightened onto 1 gap, panels 1 gap apart, each
+  // hugging its cards. A saved panel box is only a home for its cards, so it
+  // keeps the old box too: an Undo puts the cards back and they still belong.
+  const onTidy = () => {
+    if (!activeDiagram?.id) return
+    const cards = laneCards.filter(c => nodes.find(n => n.id === c.id)?.type === 'awsNode')
+    const t = tidy(cards, laneCfg)
+    pushHistory(positionsOf(nodes), 'tidy')
+    const moved = id => t.positions[id]
+    if (laneAxis(laneCfg) !== 'free') {
+      setNodes(nds => { const nx = nds.map(n => (moved(n.id) ? { ...n, position: moved(n.id) } : n)); savePositions(activeDiagram.id, nx); return nx })
+    } else {
+      const union = (a, b) => { const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y); return { ...a, x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y } }
+      finishBand('end', laneCfg.map((l, i) => union(l, t.lanes[i])), moved, false)
+    }
+    showToastMsg('Tidied')
+  }
   // The owner deletes an empty band with its x. A section leaves its lane (1
   // left is no split); a lane goes and the lanes after it pack up, cards along.
   const onBandDelete = (laneId, sectionId) => {
@@ -2022,9 +2053,10 @@ export default function App() {
       isPublic={isDemo}
       saveState={saveState}
       onArrange={autoArrange}
+      onTidy={canAI ? onTidy : undefined}
       onNoteChange={canAI ? onNoteChange : undefined}
       onEdgeStyleChange={canAI ? onEdgeStyleChange : undefined}
-      bandPick={bandPick} onBandColor={canAI ? onBandColor : undefined}
+      bandPick={bandPick} onBandColor={canAI ? onBandColor : undefined} onRename={canAI ? onRename : undefined}
       onNodeResize={canAI ? onNodeResize : undefined}
       onConnect={canAI && activeDiagram?.id && !activeDiagram.editLocked ? onConnect : undefined}
       onIconResize={canAI ? onIconResize : undefined}

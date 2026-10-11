@@ -45,12 +45,11 @@ describe("renderDiagramSvg - saved view", () => {
     expect(badge(on, "invokes")).toContain('font-weight="800" fill="#1c1e21">2</text>');
   });
 
-  it("paints an edge into a sunset card as the silver badge with a red X", () => {
+  it("paints an edge into a sunset card as a red tag", () => {
     const nodes = [NODES[0], { ...NODES[1], sunset: true }, NODES[2]];
     const svg = renderDiagramSvg(nodes, EDGES);
-    expect(badge(svg, "calls")).toContain('stroke-width="1.5"');
+    expect(badge(svg, "calls")).toContain('fill="#dc2626"');
     expect(badge(svg, "calls")).not.toContain('fill="#1c1e21"');
-    expect(svg.match(/<circle[^>]*fill="#dc2626"|stroke="#dc2626"/g)?.length).toBeGreaterThan(0);
   });
 
   it("uses the app's own font stack and dot grid", () => {

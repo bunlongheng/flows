@@ -51,6 +51,9 @@ to drift:
    colour, which is almost always right. An explicit colour only wins when it is
    saturated; a grey or near-black is treated as a guess and replaced. Silver is
    reserved for `sunset: true`, so never paint a card grey to mean retired.
+   HARD GATE (owner rule 2026-10-11): a border never fights its own tile. When
+   1 colour plainly is a raster icon, every save repaints the card in it
+   (`lib/logo-color.js` `tileColor`), and `npm run check:colors` must print 0.
 5. **Turn the Steps chips on when order matters**: `update_flow { id, view: {
    panels: ["steps"] } }`, or `view_state` on create. Shipping a numbered flow
    with the numbers hidden makes the reader hunt for a button.

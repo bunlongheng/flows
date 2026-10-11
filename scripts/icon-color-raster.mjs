@@ -65,3 +65,43 @@ export function bytesOfDataUri(icon) {
   const m = /^data:image\/(png|jpe?g|webp);base64,(.+)$/i.exec(icon || "");
   return m ? Buffer.from(m[2], "base64") : null;
 }
+
+/**
+ * The tile an app icon sits on, or null when no 1 colour plainly IS the icon.
+ *
+ * A rounded-square app icon is 1 flat colour with a mark on top, and that
+ * colour covers most of it: the rebytes tiles measure 68 to 89%. A
+ * multi-colour mark (Chrome 16%, Caddy 39%) never gets near, so it never gets
+ * a verdict. A dark tile only counts when nothing on it has colour: a black
+ * tile with a white rocket IS black, and a yellow border round it is wrong,
+ * but a black tile with a green mark (Supabase) is the mark's, which is too
+ * small to read reliably, so it gets no verdict. A white tile never does.
+ */
+export const TILE_SHARE = 0.6;
+export async function tileFromRaster(buf) {
+  const { data, info } = await sharp(buf)
+    .resize(64, 64, { fit: "inside" })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const buckets = new Map();
+  let opaque = 0, vivid = 0;
+  for (let i = 0; i < data.length; i += info.channels) {
+    if (isTransparent(data[i + 3])) continue;
+    opaque++;
+    if (saturation(data[i], data[i + 1], data[i + 2]) >= 0.35 && Math.max(data[i], data[i + 1], data[i + 2]) >= 60) vivid++;
+    const key = [0, 1, 2].map((j) => Math.round(data[i + j] / 32)).join(",");
+    const e = buckets.get(key) || { n: 0, r: 0, g: 0, b: 0 };
+    e.n++; e.r += data[i]; e.g += data[i + 1]; e.b += data[i + 2];
+    buckets.set(key, e);
+  }
+  if (!opaque) return null;
+  const best = [...buckets.values()].sort((a, b) => b.n - a.n)[0];
+  if (best.n / opaque < TILE_SHARE) return null;
+  const [r, g, b] = [best.r, best.g, best.b].map((v) => Math.round(v / best.n));
+  const max = Math.max(r, g, b);
+  if (saturation(r, g, b) < 0.25 || max < 80) {
+    if (max >= 80 || vivid / opaque >= 0.005) return null; // white tile, or a coloured mark
+  }
+  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
