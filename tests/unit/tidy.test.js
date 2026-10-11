@@ -40,4 +40,18 @@ describe('tidy', () => {
     expect(mid.y + mid.h).toBe(moved[1].y + 230 + SECTION_PAD)
     expect(tall.y).toBe(mid.y)
   })
+  it('ends side by side panels level, so the gap under them is 1 gap', () => {
+    const lanes = [
+      { id: 'left', title: 'Left', x: 0, y: 0, w: 600, h: 800 },
+      { id: 'right', title: 'Right', x: 700, y: 0, w: 400, h: 700 },
+      { id: 'under', title: 'Under', x: 0, y: 900, w: 1100, h: 400 },
+    ]
+    const cards = [card('a', 40, 40), card('b', 40, 440), card('c', 740, 40), card('d', 740, 340), card('e', 40, 960)]
+    const t = tidy(cards, lanes)
+    const moved = cards.map(c => ({ ...c, ...t.positions[c.id] }))
+    const [left, right, under] = laneRects(t.lanes, moved)
+    expect(right.y + right.h).toBe(left.y + left.h)
+    expect(right.y + right.h).toBe(moved[3].y + 230 + SECTION_PAD)
+    expect(under.y - (left.y + left.h)).toBe(LANE_GAP)
+  })
 })

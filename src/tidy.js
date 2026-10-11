@@ -91,6 +91,25 @@ export function tidy(cards, lanes = []) {
       const above = sibs.slice(0, i).filter(a => band.some(b => overlaps(a, b, 'x', 'w')))
       const want = above.length ? Math.max(...above.map(a => a.y + a.h)) + LANE_GAP : band[0].y
       for (const b of band) if (b.y !== want) move(b.id, 'y', want - b.y)
+      // A band ends level, so the gap under it is 1 gap. A panel that nests
+      // others, or holds 1 row, is fixed and sets the height; a panel with 2
+      // or more rows moves its bottom row (up or down) to end with it. A pad
+      // never stretches, and a row never comes nearer the one above than SNAP.
+      const flex = b => {
+        const mine = cs.filter(c => home[c.id] === b.id)
+        return !kids(saved[b.id]).length && new Set(mine.map(c => c.y)).size > 1 ? mine : null
+      }
+      const fixed = band.filter(b => !flex(b))
+      const H = Math.max(...(fixed.length ? fixed : band).map(b => b.h))
+      for (const b of band) {
+        const mine = flex(b)
+        if (!mine || b.h === H) continue
+        const low = Math.max(...mine.map(c => c.y)), d = H - b.h
+        const above = mine.filter(c => c.y < low)
+        if (low + d < Math.max(...above.map(c => c.y + c.h)) + SNAP) continue
+        for (const c of mine) if (c.y === low) c.y += d
+        b.h = H
+      }
       i = j + 1
     }
     // Stacked panels whose left edges sit within SNAP share the leftmost one.
