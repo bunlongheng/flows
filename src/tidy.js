@@ -3,8 +3,9 @@
 //   1. Cards whose tops (or lefts) sit within SNAP of each other share 1 line.
 //   2. Cards side by side in 1 row, inside 1 panel, sit on 1 gap: the one that
 //      panel uses most.
-//   3. Sibling panels sit LANE_GAP apart, stacked or side by side; a panel
-//      moves with everything in it.
+//   3. Sibling panels sit LANE_GAP apart, stacked or side by side, and line
+//      up on 1 left edge; a panel moves with everything in it, so its pad
+//      never changes.
 //   4. Every free panel is saved as it draws: hugging its cards (and panels
 //      nested in it) with SECTION_PAD on all 4 sides (src/lanes.js).
 import { laneAxis, laneRects, freeHome, LANE_GAP } from './lanes.js'
@@ -90,6 +91,14 @@ export function tidy(cards, lanes = []) {
       const above = sibs.slice(0, i).filter(a => band.some(b => overlaps(a, b, 'x', 'w')))
       const want = above.length ? Math.max(...above.map(a => a.y + a.h)) + LANE_GAP : band[0].y
       for (const b of band) if (b.y !== want) move(b.id, 'y', want - b.y)
+      i = j + 1
+    }
+    // Stacked panels whose left edges sit within SNAP share the leftmost one.
+    const lefts = groups.get(g).map(of).sort((a, b) => a.x - b.x)
+    for (let i = 0; i < lefts.length;) {
+      let j = i
+      while (j + 1 < lefts.length && lefts[j + 1].x - lefts[i].x < SNAP) j++
+      for (const b of lefts.slice(i + 1, j + 1)) if (b.x !== lefts[i].x) move(b.id, 'x', lefts[i].x - b.x)
       i = j + 1
     }
     // Side by side: LANE_GAP right of the nearest earlier panel on its level.

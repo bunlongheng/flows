@@ -26,4 +26,18 @@ describe('tidy', () => {
     expect(side.y).toBe(low.y)
     expect(side.x - (low.x + low.w)).toBe(LANE_GAP)
   })
+  it('lines stacked panels up on 1 left edge and never stretches a pad', () => {
+    const lanes = [
+      { id: 'top', title: 'Top', x: 0, y: 0, w: 600, h: 400 },
+      { id: 'mid', title: 'Mid', x: 0, y: 450, w: 600, h: 400 },
+      { id: 'tall', title: 'Tall', x: 700, y: 450, w: 400, h: 700 },
+    ]
+    const cards = [card('a', 40, 40), card('b', 52, 490), card('c', 740, 490), card('d', 740, 800)]
+    const t = tidy(cards, lanes)
+    const moved = cards.map(c => ({ ...c, ...t.positions[c.id] }))
+    const [top, mid, tall] = laneRects(t.lanes, moved)
+    expect(mid.x).toBe(top.x)
+    expect(mid.y + mid.h).toBe(moved[1].y + 230 + SECTION_PAD)
+    expect(tall.y).toBe(mid.y)
+  })
 })
