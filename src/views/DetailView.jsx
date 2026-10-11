@@ -20,6 +20,9 @@ import { SUNSET, INK } from '../sunset.js'
 import { CodeBlock } from '../components/CodeBlock.jsx'
 import { PanelResizer } from '../components/PanelResizer.jsx'
 
+// Beta features show only with ?beta=1 in the URL.
+const BETA = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('beta') === '1'
+
 
 // History row time: fresh saves read as "4 min ago"; once the wall clock has
 // rolled past midnight the day is worth naming again, so "yesterday 14:02".
@@ -84,6 +87,7 @@ export function DetailView({
   isPublic,
   saveState = 'idle',
   onArrange,
+  onTidy,
   canUndo, canRedo, onUndo, onRedo,
   onDeleteDiagram,
   // Two locks, both on for every flow until the owner lifts one. The delete
@@ -629,8 +633,22 @@ export function DetailView({
           {/* Arrange and undo are the owner's; a visitor has no group here to fence. */}
           {canEdit && <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />}
 
-          {/* Auto-arrange: a small menu picks the style, then re-lay-out and fit */}
-          {canEditNow && <div ref={arrangeRef} style={{ position: 'relative' }}>
+          {/* Tidy: straighten rows, 1 gap, every panel hugging its cards (src/tidy.js). */}
+          {canEditNow && onTidy && <button className="sd-hide-mobile sd-show-mobile sd-hide-tablet" onClick={onTidy} title="Tidy: align rows, even gaps, same panel padding" style={{
+            display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
+            background: 'transparent', color: '#64748b', cursor: 'pointer', fontSize: 13, fontWeight: 400, transition: 'all 0.1s', fontFamily: 'inherit',
+          }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 4h18M3 20h18"/><rect x="5" y="8" width="5" height="8" rx="1"/><rect x="14" y="8" width="5" height="8" rx="1"/>
+            </svg>
+            <span className="sd-btn-label">Tidy</span>
+          </button>}
+
+          {/* Auto-arrange is a Beta feature (owner 2026-10-11): only with ?beta=1. */}
+          {canEditNow && BETA && <div ref={arrangeRef} style={{ position: 'relative' }}>
             <button className="sd-hide-mobile sd-show-mobile sd-hide-tablet" onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setArrangeMenu(m => m ? null : { top: r.bottom + 6, left: Math.max(8, Math.min(r.left, window.innerWidth - 226)) }) }} title="Arrange the layout" style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
