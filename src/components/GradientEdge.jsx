@@ -392,7 +392,7 @@ export function GradientEdge({
           The gradient's whole job is to say which node a line came FROM and
           which it goes TO; once the owner has chosen a colour, that is the
           statement, and a fade between it and a brand colour says neither. */}
-      <BaseEdge id={id} path={drawPath} interactionWidth={hit} markerEnd={hideArrow ? undefined : markerEnd} style={data?.sunsetLine ? {
+      <BaseEdge id={id} path={drawPath} interactionWidth={square && bendMovable ? 0 : hit} markerEnd={hideArrow ? undefined : markerEnd} style={data?.sunsetLine ? {
         // A line touching a sunset card, in or out, is the path on its way out:
         // flat light silver at 3/4 strength, and nothing the panel picked -
         // colour, width, dash or opacity - reaches it. Grey, always.
