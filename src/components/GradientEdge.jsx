@@ -236,6 +236,10 @@ export function GradientEdge({
   // diagram fitted on screen sits near 0.4). Only a selected line listens.
   const dot = useStore(s => (selected ? Math.max(14, 18 / s.transform[2]) : 14))
   const ring = dot / 7
+  // The grab zone around a line holds about 16 screen px at any zoom, so the
+  // cursor does not flip between the pane's hand and the line's on every pixel.
+  // Stepped in half octaves: zooming re-renders a line only at each step.
+  const hit = useStore(s => 24 * 2 ** Math.max(0, Math.round(-Math.log2(s.transform[2] * 1.5) * 2) / 2))
 
   const sideways = side => side === 'left' || side === 'right'
   const square = data?.style?.arrow !== 'straight' && data?.style?.arrow !== 'curved'
@@ -388,7 +392,7 @@ export function GradientEdge({
           The gradient's whole job is to say which node a line came FROM and
           which it goes TO; once the owner has chosen a colour, that is the
           statement, and a fade between it and a brand colour says neither. */}
-      <BaseEdge id={id} path={drawPath} markerEnd={hideArrow ? undefined : markerEnd} style={data?.sunsetLine ? {
+      <BaseEdge id={id} path={drawPath} interactionWidth={hit} markerEnd={hideArrow ? undefined : markerEnd} style={data?.sunsetLine ? {
         // A line touching a sunset card, in or out, is the path on its way out:
         // flat light silver at 3/4 strength, and nothing the panel picked -
         // colour, width, dash or opacity - reaches it. Grey, always.
@@ -404,8 +408,8 @@ export function GradientEdge({
         opacity: st.opacity == null ? undefined : st.opacity / 100,
       }} />
       {square && bendMovable && (
-        <path d={drawPath} fill="none" stroke="transparent" strokeWidth={selected ? dot : 24} className="nodrag nopan"
-          style={{ pointerEvents: 'stroke', cursor: selected ? 'move' : 'pointer' }} onPointerDown={startBodyDrag} />
+        <path d={drawPath} fill="none" stroke="transparent" strokeWidth={Math.max(dot, hit)} className="nodrag nopan"
+          style={{ pointerEvents: 'stroke', cursor: 'move' }} onPointerDown={startBodyDrag} />
       )}
         {labelOff && (tag || hasStep) && <line className={`sd-edge-lead${tag ? '' : ' is-bare'}`} x1={ax} y1={ay} x2={bx} y2={by} stroke={lineStroke} strokeWidth={1} strokeOpacity={0.7} pointerEvents="none" />}
         {port && <circle className="sd-lane-port" cx={port.x} cy={port.y} r={5} fill={port.c} stroke="#fff" strokeWidth={1.5} pointerEvents="none" />}
