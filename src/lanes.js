@@ -44,18 +44,53 @@ export function freeHome(lanes, cards) {
   const home = {}
   for (const c of cards) {
     const cx = c.x + c.w / 2, cy = c.y + c.h / 2
-    const l = lanes.find(l => cx >= l.x && cx < l.x + l.w && cy >= l.y && cy < l.y + l.h)
+    // The innermost box wins, so a Prod server panel inside a VPS one keeps its cards.
+    const l = lanes.filter(l => cx >= l.x && cx < l.x + l.w && cy >= l.y && cy < l.y + l.h)
+      .reduce((a, l) => (!a || l.w * l.h < a.w * a.h ? l : a), null)
     if (l) home[c.id] = l.id
   }
   return home
 }
+// Owner rule 2026-10-11: the same padding everywhere. A panel with cards HUGS
+// them, and any panel nested inside it, with SECTION_PAD on all 4 sides; its
+// saved size is only a home for the cards. Sibling panels whose edges land
+// within PANEL_ALIGN of each other share that edge, so 2 panels side by side
+// start and end on 1 line. An empty panel draws its saved box.
+export const PANEL_ALIGN = 60
+const within = (o, l) => o !== l && o.x >= l.x && o.y >= l.y && o.x + o.w <= l.x + l.w && o.y + o.h <= l.y + l.h
+// Edges within PANEL_ALIGN of the first in their run move to the run's outermost.
+function alignEdges(rects, edge, set, pick) {
+  const sorted = [...rects].sort((a, b) => edge(a) - edge(b))
+  for (let i = 0; i < sorted.length;) {
+    let j = i
+    while (j + 1 < sorted.length && edge(sorted[j + 1]) - edge(sorted[i]) < PANEL_ALIGN) j++
+    const to = edge(sorted[pick === 'min' ? i : j])
+    for (const r of sorted.slice(i, j + 1)) set(r, to)
+    i = j + 1
+  }
+}
 function freeRects(lanes, cards) {
-  const home = freeHome(lanes, cards)
+  const home = freeHome(lanes, cards), box = new Map()
+  const fit = l => {
+    if (box.has(l.id)) return box.get(l.id)
+    const held = [...cards.filter(c => home[c.id] === l.id), ...lanes.filter(o => within(o, l)).map(fit)]
+    const x = Math.min(...held.map(c => c.x)) - SECTION_PAD, y = Math.min(...held.map(c => c.y)) - SECTION_PAD
+    const r = held.length ? { x, y, w: Math.max(...held.map(c => c.x + c.w)) + SECTION_PAD - x, h: Math.max(...held.map(c => c.y + c.h)) + SECTION_PAD - y } : { x: l.x, y: l.y, w: l.w, h: l.h }
+    box.set(l.id, r)
+    return r
+  }
+  lanes.forEach(fit)
+  // A panel's parent is the smallest saved box holding it; siblings share 1.
+  const parent = l => lanes.filter(o => within(l, o)).reduce((a, o) => (!a || o.w * o.h < a.w * a.h ? o : a), null)?.id ?? ''
+  const groups = new Map()
+  for (const l of lanes) groups.set(parent(l), [...(groups.get(parent(l)) || []), box.get(l.id)])
+  for (const sibs of groups.values()) {
+    alignEdges(sibs, r => r.y, (r, to) => { r.h += r.y - to; r.y = to }, 'min')
+    alignEdges(sibs, r => r.y + r.h, (r, to) => { r.h = to - r.y }, 'max')
+  }
   return lanes.map(l => {
     const mine = cards.filter(c => home[c.id] === l.id)
-    const x = Math.min(l.x, ...mine.map(c => c.x - SECTION_PAD)), y = Math.min(l.y, ...mine.map(c => c.y - SECTION_PAD))
-    const r = Math.max(l.x + l.w, ...mine.map(c => c.x + c.w + SECTION_PAD)), b = Math.max(l.y + l.h, ...mine.map(c => c.y + c.h + SECTION_PAD))
-    return { id: l.id, title: l.title, color: l.color || cardsColor(mine) || undefined, size: l.size, free: true, x, y, w: r - x, h: b - y }
+    return { id: l.id, title: l.title, color: l.color || cardsColor(mine) || undefined, size: l.size, free: true, ...box.get(l.id) }
   })
 }
 

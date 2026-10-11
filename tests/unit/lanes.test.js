@@ -257,10 +257,10 @@ describe("free panels", () => {
     expect(laneAxis(free)).toBe("free");
     expect(cleanLanes(free).map((l) => [l.x, l.y, l.w, l.h])).toEqual([[0, 0, 400, 300], [1000, 37, 200, 200]]);
   });
-  it("draws a box grown to its own cards plus the pad, and leaves the others alone", () => {
+  it("draws a box hugging its own cards with the pad on all 4 sides, and leaves an empty one alone", () => {
     const cards = [{ id: "c", x: 300, y: 200, w: 180, h: 180 }];
     const [a, b] = laneRects(cleanLanes(free), cards);
-    expect([a.x, a.y, a.w, a.h]).toEqual([0, 0, 300 + 180 + SECTION_PAD, 200 + 180 + SECTION_PAD]);
+    expect([a.x, a.y, a.w, a.h]).toEqual([300 - SECTION_PAD, 200 - SECTION_PAD, 180 + 2 * SECTION_PAD, 180 + 2 * SECTION_PAD]);
     expect([b.x, b.y, b.w, b.h]).toEqual([1000, 37, 200, 200]);
     expect(laneGaps(laneRects(cleanLanes(free), cards))).toBeNull();
   });
