@@ -870,6 +870,19 @@ export default function App() {
   // Persist a view_state patch (panels/badge carried forward, start added or
   // dropped by the caller) and keep the local copies - activeDiagram and the
   // gallery list - in step, the same way the panel/badge effect does.
+  // Rename: links carry the id, so the title is free to change.
+  const onRename = useCallback(title => {
+    if (!activeDiagram?.id) return
+    const savingId = activeDiagram.id
+    fetch(`/api/flows/${savingId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }) })
+      .then(r => (r.ok ? r.json() : Promise.reject(r)))
+      .then(row => {
+        setActiveDiagram(a => (a?.id === savingId ? { ...a, title: row.title } : a))
+        setDiagrams(ds => ds.map(d => (d.id === savingId ? { ...d, title: row.title } : d)))
+      })
+      .catch(() => showToastMsg('Rename failed'))
+  }, [activeDiagram, showToastMsg])
+
   const patchViewState = useCallback(view_state => {
     if (!activeDiagram?.id) return
     const savingId = activeDiagram.id
@@ -2024,7 +2037,7 @@ export default function App() {
       onArrange={autoArrange}
       onNoteChange={canAI ? onNoteChange : undefined}
       onEdgeStyleChange={canAI ? onEdgeStyleChange : undefined}
-      bandPick={bandPick} onBandColor={canAI ? onBandColor : undefined}
+      bandPick={bandPick} onBandColor={canAI ? onBandColor : undefined} onRename={canAI ? onRename : undefined}
       onNodeResize={canAI ? onNodeResize : undefined}
       onConnect={canAI && activeDiagram?.id && !activeDiagram.editLocked ? onConnect : undefined}
       onIconResize={canAI ? onIconResize : undefined}
