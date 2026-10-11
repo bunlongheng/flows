@@ -12,7 +12,7 @@ import { rowToDiagram } from './rowToDiagram'
 import { snapSuggest } from './snapAlign'
 import { findService } from './services'
 import { tidy } from './tidy.js'
-import { laneNodes, laneRef, sectionRef, freeHome, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD, LANE_FIT, LANE_SECTIONS_MAX } from './lanes.js'
+import { NOTE_CLEAR, laneNodes, laneRef, sectionRef, freeHome, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD, LANE_FIT, LANE_SECTIONS_MAX } from './lanes.js'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
@@ -1738,7 +1738,7 @@ export default function App() {
   // measured off the drawn card, the same on every side.
   const laneCfg = laneDraft || activeDiagram?.view_state?.lanes || []
   lanesRef.current = activeDiagram?.view_state?.lanes || null
-  const laneCards = nodes.map(n => { const s = sizeOf(n); return { id: n.id, x: n.position?.x ?? 0, y: n.position?.y ?? 0, w: n.data?.size?.w ?? 180, h: s.h + (showNotes ? getNoteHeight(n.id) : 0), color: n.data?.sunset ? null : findService(n.data || { id: n.id })?.color } })
+  const laneCards = nodes.map(n => { const s = sizeOf(n); return { id: n.id, x: n.position?.x ?? 0, y: n.position?.y ?? 0, w: n.data?.size?.w ?? 180, h: s.h + (showNotes && getNoteHeight(n.id) ? getNoteHeight(n.id) - NOTE_CLEAR : 0), color: n.data?.sunset ? null : findService(n.data || { id: n.id })?.color } })
   // The owner drags a band (#468): its title moves it with its cards, an edge
   // sizes it. The drag previews in laneDraft and the card positions; the drop
   // saves the lanes and the cards together.

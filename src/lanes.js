@@ -13,6 +13,8 @@ import { isNeutralColor } from './iconColor.js'
 
 export const LANE_PAD = 100 // past the outermost card on each side
 export const LANE_MIN = 80 // the thinnest lane
+// Clearance under a card's note for lines (AwsNode); a panel's pad does not count it.
+export const NOTE_CLEAR = 14
 export const LANE_GAP = 40 // the 1 gap between lanes, always the same
 export const LANE_MAX = 24
 export const LANE_FIT = 36 // past the last card (and its note) inside a lane

@@ -7,6 +7,7 @@ import { SUNSET, INK } from '../sunset.js'
 import { FONT_STACK, borderStyleOf, hexToRgba } from '../style.js'
 import { subscribe, glowAt, motionAllowed } from '../flowClock'
 import { LaneNode } from './LaneNode'
+import { NOTE_CLEAR } from '../lanes.js'
 
 // An unstretched logo fills whatever the card leaves above its label, about
 // 120px of a 180px card, so it reads as the card's subject even when Fit
@@ -46,7 +47,6 @@ export const runStyle = r => ({
 })
 
 const NOTE_GAP = 5
-const NOTE_CLEAR = 14
 
 const NOTE_BOX = {
   fontSize: 10, lineHeight: 1.4, color: '#111111', background: '#ffffff',
