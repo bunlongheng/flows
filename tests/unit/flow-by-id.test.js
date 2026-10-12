@@ -15,6 +15,7 @@ const notify = vi.fn();
 vi.mock("../../lib/share-alert.js", async (orig) => ({ ...(await orig()), notifyShareView: (...a) => notify(...a) }));
 
 const { default: flowById } = await import("../../lib/handlers/flow-by-id.js");
+const { hashPasscode, unlockToken, unlockCookieName } = await import("../../lib/passcode.js");
 
 function mockRes() {
   return {
@@ -84,7 +85,50 @@ describe("/api/flows/:id", () => {
     const res = mockRes();
     await flowById(req("GET", ID), res);
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual(row);
+    expect(res.body).toEqual({ ...row, has_passcode: false });
+  });
+
+  // The Stickies private share: a passcode-locked flow serves nothing until
+  // the visitor holds the unlock cookie the lock screen hands out.
+  describe("share passcode", () => {
+    const locked = async () => ({ id: ID, title: "Secret", nodes: [], edges: [], is_public: true, passcode_hash: await hashPasscode("1234") });
+
+    it("answers 401 passcode_required to a visitor without the cookie, for JSON and pictures alike", async () => {
+      for (const format of [undefined, "svg", "gif", "thumb", "drawio"]) {
+        query.mockResolvedValueOnce({ rows: [await locked()] });
+        const res = mockRes();
+        await flowById(req("GET", ID, undefined, undefined, format ? { format } : {}), res);
+        expect(res.statusCode).toBe(401);
+        expect(res.body).toEqual({ error: "Passcode required", passcode_required: true, id: ID });
+      }
+      expect(notify).not.toHaveBeenCalled();
+    });
+
+    it("serves the row to a visitor holding a valid unlock cookie, never the hash, never cached", async () => {
+      const row = await locked();
+      query.mockResolvedValueOnce({ rows: [row] });
+      const res = mockRes();
+      await flowById(req("GET", ID, undefined, `${unlockCookieName(ID)}=${unlockToken(ID, row.passcode_hash)}`), res);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.passcode_hash).toBeUndefined();
+      expect(res.body.has_passcode).toBe(true);
+      expect(res.headers["Cache-Control"]).toBe("private, no-store");
+    });
+
+    it("rejects a cookie minted for an older passcode", async () => {
+      const old = await hashPasscode("old");
+      query.mockResolvedValueOnce({ rows: [await locked()] });
+      const res = mockRes();
+      await flowById(req("GET", ID, undefined, `${unlockCookieName(ID)}=${unlockToken(ID, old)}`), res);
+      expect(res.statusCode).toBe(401);
+    });
+
+    it("lets the owner straight through", async () => {
+      query.mockResolvedValueOnce({ rows: [await locked()] });
+      const res = mockRes();
+      await flowById(req("GET", ID, `Bearer ${SECRET}`), res);
+      expect(res.statusCode).toBe(200);
+    });
   });
 
   it("GET ?format=gif serves a kept render without rendering, and keeps a fresh one", async () => {

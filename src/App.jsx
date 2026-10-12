@@ -1198,13 +1198,28 @@ export default function App() {
   }, [nodes])
 
 
+  // A shared read: a passcode-locked flow answers 401 passcode_required, and
+  // the visitor goes to its lock screen (the Stickies safe). The unlock sends
+  // them back here with a cookie, so the same read then succeeds.
+  function readShared(r) {
+    if (r.ok) return r.json()
+    if (r.status === 401) {
+      return r.json().catch(() => ({})).then(b => {
+        if (!b.passcode_required) throw new Error('HTTP 401')
+        window.location.replace(`/api/flows/${b.id}/unlock`)
+        return new Promise(() => {}) // the page is leaving; keep the spinner up
+      })
+    }
+    return Promise.reject(new Error(`HTTP ${r.status}`))
+  }
+
   // Load a saved design when the URL has ?id= (the URL the artifact API returns).
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('id')
     if (!id) return
     setLoadingId(true)
     fetch(`/api/flows/${id}`)
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(readShared)
       .then(d => {
         openDiagram(rowToDiagram(d))
         // A link opens straight onto the canvas, so the flow plays on its own:
@@ -1232,7 +1247,7 @@ export default function App() {
     // design: the owner list returns only private rows and the public list only
     // the curated demos, so sharing a diagram broke its own link.
     fetch(`/api/flows/${encodeURIComponent(name)}`)
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(readShared)
       .then(row => {
         openDiagram(rowToDiagram(row))
         flowClock.setPlaying(true) // same as ?id=: a shared link plays itself
@@ -1255,7 +1270,7 @@ export default function App() {
       if (!key) return backToGallery()
       setLoadingId(true)
       fetch(`/api/flows/${encodeURIComponent(key)}`)
-        .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+        .then(readShared)
         .then(row => { openDiagram(rowToDiagram(row)); setLoadingId(false) })
         .catch(failedLoad)
     }
@@ -1679,6 +1694,34 @@ export default function App() {
     }
   }
 
+  // The passcode button: set, change or clear the share passcode. Setting one
+  // also publishes the flow, so the link opens to the lock screen, not a 404.
+  async function editPasscode() {
+    if (!canAI || !activeDiagram?.id) return
+    const had = activeDiagram.hasPasscode
+    const entered = window.prompt(had
+      ? 'New passcode for the share link (leave blank to remove it):'
+      : 'Set a passcode for the share link:', '')
+    if (entered === null) return
+    const passcode = entered.trim()
+    if (!passcode && !had) return
+    try {
+      const r = await fetch(`/api/flows/${activeDiagram.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passcode }),
+      })
+      if (!r.ok) throw new Error()
+      const { is_public, has_passcode } = await r.json()
+      const patch = d => (d.id === activeDiagram.id ? { ...d, is_public, hasPasscode: has_passcode } : d)
+      setActiveDiagram(a => (a ? patch(a) : a))
+      setDiagrams(ds => ds.map(patch))
+      showToastMsg(has_passcode ? 'Passcode set - the link opens to a lock screen' : 'Passcode removed')
+    } catch {
+      showToastMsg('Could not change the passcode')
+    }
+  }
+
   async function copyLink() {
     await ensureShareable()
     const url = shareUrl
@@ -2063,6 +2106,8 @@ export default function App() {
       isDiagramPublic={activeDiagram?.is_public !== false}
       canEdit={canAI}
       onToggleVisibility={canAI && activeDiagram?.id ? toggleVisibility : undefined}
+      hasPasscode={!!activeDiagram?.hasPasscode}
+      onPasscode={canAI && activeDiagram?.id ? editPasscode : undefined}
       onShareOpen={canAI && activeDiagram?.id ? ensureShareable : undefined}
       current={current} onCurrentChange={canAI && activeDiagram?.id ? setCurrent : undefined}
       sizing={sizing} onSizingChange={canAI && activeDiagram?.id ? setSizing : undefined}

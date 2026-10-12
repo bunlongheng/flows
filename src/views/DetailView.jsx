@@ -107,7 +107,7 @@ export function DetailView({
   onIconResize,
   // Owner only: is the open diagram public, and a click to flip it. Undefined
   // for anyone else, which hides the pill.
-  isDiagramPublic, onToggleVisibility,
+  isDiagramPublic, onToggleVisibility, hasPasscode, onPasscode,
   // A visitor on /demo or a shared link sees the diagram exactly as the owner
   // left it: nodes are locked, and the tools that change or take a copy of it
   // (Arrange, Undo/Redo, Code, Share, every export) are not rendered. They keep
@@ -544,6 +544,28 @@ export function DetailView({
               ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
               : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
             <span className="sd-vis-label">{isDiagramPublic ? 'Public' : 'Private'}</span>
+          </button>
+        )}
+
+        {/* Passcode, owner only: the Stickies private share. With one set, the
+            link opens to a lock screen until the visitor types it. */}
+        {onPasscode && (
+          <button type="button" className="sd-passcode" aria-pressed={!!hasPasscode}
+            onClick={onPasscode}
+            aria-label={hasPasscode ? 'Passcode on: change or remove it' : 'Add a passcode to the share link'}
+            title={hasPasscode
+              ? 'Passcode on: the link opens to a lock screen. Click to change or remove it.'
+              : 'Add a passcode: the link opens to a lock screen until it is typed.'}
+            style={{
+              flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5,
+              height: 28, padding: '0 10px 0 8px', borderRadius: 999, cursor: 'pointer',
+              fontSize: 11, fontWeight: 700, letterSpacing: '0.02em',
+              background: hasPasscode ? '#0f172a' : '#f8fafc',
+              color: hasPasscode ? '#fff' : '#475569',
+              border: `1px solid ${hasPasscode ? '#0f172a' : '#e2e8f0'}`,
+            }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg>
+            <span className="sd-vis-label">{hasPasscode ? 'Passcode on' : 'Passcode'}</span>
           </button>
         )}
 
