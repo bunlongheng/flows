@@ -11,6 +11,8 @@ export function rowToDiagram(r) {
     // will refuse to delete.
     locked: !!r.locked,
     editLocked: !!r.edit_locked,
+    // A share passcode is set (the hash itself never reaches the client).
+    hasPasscode: !!r.has_passcode,
     title: r.title,
     description: r.description || '',
     pattern: r.pattern || '',
