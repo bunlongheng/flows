@@ -78,6 +78,23 @@ to drift:
    grows when the line is too short), and the check fails on 2 tags touching.
    Never drop a hand `labelT` on top of another tag.
 
+## Status, lines and legend payload (2026-10-13)
+
+| Field | Where | Values | Effect |
+|---|---|---|---|
+| `sunset` | node | `true` | red card, cracked, red dashed lines, red X on badges |
+| `new` | node | `true` | green border and wash, NEW pill |
+| `tooltip` | node | text, max 200 | shown on hover; not in the SVG |
+| `style.head` | edge | `end` (default), `start`, `both`, `none` | arrowhead direction |
+| `style.bs` | edge | `solid` (default), `dashed`, `dotted` | dashed = interim or optional path |
+| `panels` | `view_state` / MCP `view` | `arrows-off`, `legend-off` | hide arrowheads / the bottom-left legend (both on by default) |
+| `passcode` | HTTP `PATCH` only, owner | text, `""` clears | locks the share behind a passcode |
+
+Node fields go through `create_flow` / `update_flow` (whole `nodes` list) or
+`PATCH { notes: [{ id, sunset?, new?, tooltip? }] }`. The legend lists only what
+the diagram uses. A running MCP server is a snapshot: restart it after a deploy
+or these fields are silently stripped. Field detail: `docs/API.md`, `mcp/README.md`.
+
 ## Which door to use
 
 - **MCP** (`mcp/server.mjs`) for anything about content: creating a diagram,
