@@ -61,6 +61,50 @@ function BarButton({ on, label, title, onClick, children }) {
   )
 }
 
+// The share passcode: 1 field, Enter or Set saves it, Remove clears it. The
+// same control sits in the Share panel and the Lock menu. Masked like the
+// Stickies safe (text + text-security, so password managers stay out of it).
+function PasscodeField({ on, onSave }) {
+  const [value, setValue] = useState('')
+  const [busy, setBusy] = useState(false)
+  const save = async (v) => {
+    if (busy) return
+    setBusy(true)
+    if (await onSave(v)) setValue('')
+    setBusy(false)
+  }
+  const ready = Boolean(value.trim())
+  return (
+    <div onClick={e => e.stopPropagation()}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg>
+        Passcode
+        <span style={{ marginLeft: 'auto', fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: on ? '#0f172a' : '#f1f5f9', color: on ? '#fff' : '#64748b' }}>{on ? 'ON' : 'OFF'}</span>
+      </div>
+      <div style={{ fontSize: 11.5, color: '#64748b', margin: '3px 0 8px', lineHeight: 1.4 }}>
+        {on ? 'The link opens to a lock screen. Type a new one to change it.' : 'Lock the share link: visitors type it to open the flow.'}
+      </div>
+      <form onSubmit={e => { e.preventDefault(); if (ready) save(value.trim()) }} style={{ display: 'flex', gap: 6 }}>
+        <input value={value} onChange={e => setValue(e.target.value)} onKeyDown={e => e.stopPropagation()}
+          type="text" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
+          data-lpignore="true" data-1p-ignore="" data-bwignore="" data-form-type="other"
+          placeholder={on ? 'new passcode' : 'passcode'} aria-label="Passcode" maxLength={200}
+          style={{ flex: 1, minWidth: 0, height: 32, padding: '0 10px', fontSize: 16, borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#0f172a', fontFamily: 'inherit', WebkitTextSecurity: 'disc', outline: 'none' }} />
+        <button type="submit" disabled={busy || !ready}
+          style={{ height: 32, padding: '0 12px', borderRadius: 8, border: 'none', background: '#0f172a', color: '#fff', fontSize: 12, fontWeight: 700, cursor: ready ? 'pointer' : 'default', opacity: ready ? 1 : 0.4, fontFamily: 'inherit' }}>
+          {on ? 'Change' : 'Set'}
+        </button>
+      </form>
+      {on && (
+        <button type="button" onClick={() => save('')} disabled={busy}
+          style={{ marginTop: 6, padding: 0, border: 'none', background: 'none', color: '#b91c1c', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Remove passcode
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ─── Detail (canvas) view ───────────────────────────────────────────────────
 
 export function DetailView({
@@ -107,7 +151,7 @@ export function DetailView({
   onIconResize,
   // Owner only: is the open diagram public, and a click to flip it. Undefined
   // for anyone else, which hides the pill.
-  isDiagramPublic, onToggleVisibility, hasPasscode, onPasscode,
+  isDiagramPublic, onToggleVisibility, hasPasscode, onSetPasscode,
   // A visitor on /demo or a shared link sees the diagram exactly as the owner
   // left it: nodes are locked, and the tools that change or take a copy of it
   // (Arrange, Undo/Redo, Code, Share, every export) are not rendered. They keep
@@ -549,9 +593,9 @@ export function DetailView({
 
         {/* Passcode, owner only: the Stickies private share. With one set, the
             link opens to a lock screen until the visitor types it. */}
-        {onPasscode && (
+        {onSetPasscode && (
           <button type="button" className="sd-passcode" aria-pressed={!!hasPasscode}
-            onClick={onPasscode}
+            onClick={() => setShowSharePanel(true)}
             aria-label={hasPasscode ? 'Passcode on: change or remove it' : 'Add a passcode to the share link'}
             title={hasPasscode
               ? 'Passcode on: the link opens to a lock screen. Click to change or remove it.'
@@ -885,6 +929,7 @@ export function DetailView({
               <span className="sd-btn-label">{isLocked || isEditLocked ? 'Locked' : 'Lock'}</span>
             </button>
             {lockMenu && <div role="menu" style={{ position: 'fixed', top: lockMenu.top, left: lockMenu.left, zIndex: 1000, minWidth: 250, padding: 4, background: '#fff', border: '1px solid #e4e6e8', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)' }}>
+              {onSetPasscode && <div style={{ padding: '6px 10px 8px', borderBottom: '1px solid #f1f5f9', marginBottom: 4 }}><PasscodeField on={hasPasscode} onSave={onSetPasscode} /></div>}
               {[
                 ['locked', 'Delete lock', isLocked, isLocked ? 'On - nobody can delete it, you included, until this is off' : 'Off - you can delete it; agents still cannot'],
                 ['edit_locked', 'Edit lock', isEditLocked, isEditLocked ? 'On - nothing moves: not agents, not your own drags on this canvas' : 'Off - you and agents (MCP, API) can change it'],
@@ -1208,6 +1253,12 @@ export function DetailView({
         {showSharePanel && (
           <div className="sd-share-panel" style={PANEL}>
             <div style={{ ...PANEL_CAPTION, marginBottom: 16 }}>Export & Share</div>
+
+            {canEdit && onSetPasscode && (
+              <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid #eef0f3' }}>
+                <PasscodeField on={hasPasscode} onSave={onSetPasscode} />
+              </div>
+            )}
 
             {/* Sneak peek: the exact 1200x630 card Slack, iMessage and X will
                 render for this link. Shown only for a saved design with a slug -
