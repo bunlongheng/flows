@@ -86,14 +86,15 @@ to drift:
 | `cracked` | node | `false` | a sunset card stays whole (no crack), still red; default cracked |
 | `new` | node | `true` | green border and wash, NEW pill |
 | `tooltip` | node | text, max 200 | shown on hover; not in the SVG |
+| `pinTooltip` | node | `true` | the tooltip stays visible above the card as a red callout (app and SVG); needs `tooltip` |
 | `style.head` | edge | `end` (default), `start`, `both`, `none` | arrowhead direction |
 | `style.bs` | edge | `solid` (default), `dashed`, `dotted` | dashed = interim or optional path |
-| `panels` | `view_state` / MCP `view` | `arrows-off`, `legend-off` | hide arrowheads / the bottom-left legend (both on by default) |
+| `panels` | `view_state` / MCP `view` | `arrows-off`, `legend-off`, `badge-x-off` | hide arrowheads / the bottom-left legend / the red X on retiring badges (all on by default) |
 | `fonts` | `view_state` / MCP `view` | `{ title 10-32, sub 8-24, tag 8-20 }` px | text size for the whole diagram (default 12 / 10 / 8.5); send only what changes |
 | `passcode` | HTTP `PATCH` only, owner | text, `""` clears | locks the share behind a passcode |
 
 Node fields go through `create_flow` / `update_flow` (whole `nodes` list) or
-`PATCH { notes: [{ id, sunset?, cracked?, new?, tooltip? }] }`. The legend lists only what
+`PATCH { notes: [{ id, sunset?, cracked?, new?, tooltip?, pinTooltip? }] }`. The legend lists only what
 the diagram uses. A running MCP server is a snapshot: restart it after a deploy
 or these fields are silently stripped. Field detail: `docs/API.md`, `mcp/README.md`.
 

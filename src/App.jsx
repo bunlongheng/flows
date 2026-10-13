@@ -288,6 +288,7 @@ export default function App() {
   // Arrowheads and the legend show too, unless toggled off ('arrows-off', 'legend-off').
   const [showArrows, setShowArrows] = useState(true)
   const [showLegend, setShowLegend] = useState(true)
+  const [showBadgeX, setShowBadgeX] = useState(true)
   // A note growing or shrinking changes how far its lane reaches, so the lanes redraw with the notes.
   useSyncExternalStore(subscribeNoteHeights, noteHeightsVersion)
   const [badgeMode, setBadgeMode] = useState('dark') // dark | silver | color | plain
@@ -739,7 +740,7 @@ export default function App() {
     const mode = sizingOf(d.view_state, raw), lines = lineCounts(d.data.edges)
     const n = raw.map(nd => {
       const size = sizedCard(nd, mode, lines)
-      return { ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, new: nd.new === true, cracked: nd.cracked !== false, tooltip: nd.tooltip, iconFrame: nd.iconFrame === true, size, handSize: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: nd.position } : {}), ...(size ? { width: size.w, height: size.h } : {}) }
+      return { ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, new: nd.new === true, cracked: nd.cracked !== false, tooltip: nd.tooltip, pinTooltip: nd.pinTooltip === true, iconFrame: nd.iconFrame === true, size, handSize: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: nd.position } : {}), ...(size ? { width: size.w, height: size.h } : {}) }
     })
     const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined, d.view_state?.lanes || [], canAI ? onLabelEdit : undefined)
     return { nodes: hasSaved ? n : layoutFanOut(n, e), edges: e }
@@ -798,6 +799,7 @@ export default function App() {
     setShowNotes(!open.includes('notes-off'))
     setShowArrows(!open.includes('arrows-off'))
     setShowLegend(!open.includes('legend-off'))
+    setShowBadgeX(!open.includes('badge-x-off'))
   }
   useEffect(() => {
     if (!authChecked) return
@@ -1311,7 +1313,7 @@ export default function App() {
       fetch(`/api/flows/${savingId}?format=gif`, { cache: 'no-store' }).catch(() => {})
     }, 1500)
     return () => clearTimeout(thumbTimer.current)
-  }, [view, canAI, activeDiagram, badgeMode, showNotes, showArrows, showLegend])
+  }, [view, canAI, activeDiagram, badgeMode, showNotes, showArrows, showLegend, showBadgeX])
 
   // Save the open panel + badge style back to the row, debounced, owner only.
   // Only ONE panel is ever open, so this collapses to a single value rather than
@@ -1322,7 +1324,7 @@ export default function App() {
   const viewSavePending = useRef(null)
   const openPanels = [
     showSteps && 'steps', showDetailCode && 'code',
-    !showNotes && 'notes-off', !showArrows && 'arrows-off', !showLegend && 'legend-off',
+    !showNotes && 'notes-off', !showArrows && 'arrows-off', !showLegend && 'legend-off', !showBadgeX && 'badge-x-off',
   ].filter(Boolean)
   const panelKey = openPanels.join(',')
   useEffect(() => {
@@ -2105,7 +2107,7 @@ export default function App() {
       onRestored={canAI && activeDiagram?.id ? onRestored : undefined}
       showSteps={showSteps} setShowSteps={setShowSteps}
       showNotes={showNotes} setShowNotes={setShowNotes}
-      showArrows={showArrows} setShowArrows={setShowArrows}
+      showArrows={showArrows} setShowArrows={setShowArrows} showBadgeX={showBadgeX}
       showLegend={showLegend} setShowLegend={setShowLegend}
       isLocked={!!activeDiagram?.locked} isEditLocked={!!activeDiagram?.editLocked} onSetLocks={canAI ? setLocks : undefined}
       badgeMode={badgeMode} setBadgeMode={setBadgeMode}

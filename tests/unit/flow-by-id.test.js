@@ -452,6 +452,20 @@ describe("/api/flows/:id", () => {
     expect(tray.note).toBe("old note");
   });
 
+  it("PATCH notes { id, pinTooltip } pins a tooltip, and drops the pin when the tooltip goes", async () => {
+    const stored = [{ id: "integry", position: { x: 0, y: 0 }, tooltip: "Notice due 4/1/2027" }, { id: "x", position: { x: 1, y: 1 } }];
+    query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { notes: [{ id: "integry", pinTooltip: true }, { id: "x", pinTooltip: true }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
+    expect(written.find((n) => n.id === "integry")).toMatchObject({ tooltip: "Notice due 4/1/2027", pinTooltip: true });
+    expect(written.find((n) => n.id === "x")).not.toHaveProperty("pinTooltip");
+  });
+
   // The format panel's payload. It is sent WHOLE every time, never merged: the
   // panel always knows a node's full look, and a merge would make "back to
   // default" impossible to express.

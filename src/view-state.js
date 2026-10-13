@@ -16,7 +16,7 @@ import { cleanSizing } from "./card-size.js";
 // save and nothing has to migrate.
 // "arrows-off" and "legend-off" are inverted the same way: arrowheads and the
 // legend show by default, the key is what hides them.
-export const PANELS = ["steps", "share", "code", "notes-off", "arrows-off", "legend-off"];
+export const PANELS = ["steps", "share", "code", "notes-off", "arrows-off", "legend-off", "badge-x-off"];
 export const BADGES = ["dark", "silver", "color", "plain"];
 
 /** The panels of `v`, filtered to the legal set. Always an array. */

@@ -6,7 +6,7 @@ import '@xyflow/react/dist/style.css'
 import diagramData from '../data/diagram.json'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { nodeTypes } from '../components/AwsNode'
-import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, ShowArrowsContext, FontsContext } from '../components/noteEditContext'
+import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, ShowArrowsContext, ShowBadgeXContext, FontsContext } from '../components/noteEditContext'
 import { fontsOf } from '../view-state.js'
 import { Legend } from '../components/Legend'
 import { legendRows } from '../legend.js'
@@ -139,7 +139,7 @@ export function DetailView({
   showHistoryPanel, setShowHistoryPanel, onRestored,
   showSteps, setShowSteps,
   showNotes, setShowNotes,
-  showArrows = true, setShowArrows,
+  showArrows = true, setShowArrows, showBadgeX = true,
   showLegend = true, setShowLegend,
   badgeMode, setBadgeMode,
   activeDiagram,
@@ -1081,6 +1081,7 @@ export function DetailView({
         <div style={{ flex: 1, position: 'relative', background: '#ffffff' }}>
           <ShowNotesContext.Provider value={showNotes}>
           <ShowArrowsContext.Provider value={showArrows}>
+          <ShowBadgeXContext.Provider value={showBadgeX}>
           <FontsContext.Provider value={fonts}>
           <NoteEditContext.Provider value={viewOnly ? null : onNoteChange || null}>
           <NodeResizeContext.Provider value={viewOnly || sizing !== 'custom' ? null : onNodeResize || null}>
@@ -1156,6 +1157,7 @@ export function DetailView({
           </NodeResizeContext.Provider>
           </NoteEditContext.Provider>
           </FontsContext.Provider>
+          </ShowBadgeXContext.Provider>
           </ShowArrowsContext.Provider>
           </ShowNotesContext.Provider>
           {showLegend && <Legend rows={legend} />}
@@ -1534,6 +1536,8 @@ export function DetailView({
           opacity: 0; visibility: hidden; transition: opacity 0.12s; pointer-events: none; z-index: 30;
         }
         .sd-edge-badge[data-tip]:hover::after { opacity: 1; visibility: visible; }
+        /* A pinned tooltip (node.pinTooltip): always shown, a red callout for an important date. */
+        .sd-card-tip-pin[data-tip]::after { opacity: 1; visibility: visible; background: #dc2626; font-weight: 700; text-align: center; }
         /* A card's optional tooltip (node.tooltip), the same dark tip above it. */
         .sd-card-tip[data-tip]::after {
           content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 10px);

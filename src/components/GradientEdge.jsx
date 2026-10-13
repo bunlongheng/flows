@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, useStore, useStoreApi } from '@xyflow/react'
-import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion, ShowArrowsContext, FontsContext } from './noteEditContext'
+import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion, ShowArrowsContext, ShowBadgeXContext, FontsContext } from './noteEditContext'
 import { subscribe, currentPhase, motionAllowed, dotAt, ambientAt } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
@@ -190,6 +190,7 @@ export function GradientEdge({
   // the frame.
   const { cards: nodeRects, gaps } = geo
   const arrowsOn = useContext(ShowArrowsContext)
+  const badgeX = useContext(ShowBadgeXContext)
   const tagFs = useContext(FontsContext).tag
   const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelOff } = routeEdge({
     taken: takenBefore(id, allNodes, allEdges, tagFs),
@@ -473,7 +474,7 @@ export function GradientEdge({
                   }}
                 />
               ) : tag && <span>{tag}</span>}
-              {sunset && draft == null && (
+              {sunset && badgeX && draft == null && (
                 <svg aria-label="Gets decommissioned" preserveAspectRatio="none" viewBox="0 0 100 100"
                   style={{ position: 'absolute', top: -3, left: 'calc(50% - 15px)', width: 30, height: 'calc(100% + 6px)', pointerEvents: 'none', overflow: 'visible' }}>
                   <path d="M0 0 L100 100 M0 100 L100 0" stroke={SUNSET.x} strokeWidth="2.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" fill="none" />

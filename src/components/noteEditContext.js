@@ -27,6 +27,8 @@ export const ShowNotesContext = createContext(true)
 // Whether a line with no arrowhead of its own (style.head) draws one at its
 // target. On by default; the toolbar's Arrows toggle turns it off.
 export const ShowArrowsContext = createContext(true)
+// The red X on the badge of a line into a retiring card; "badge-x-off" hides it.
+export const ShowBadgeXContext = createContext(true)
 
 // The diagram's text sizes in px, view_state.fonts with defaults filled in:
 // card titles and subs (AwsNode) and line tags (GradientEdge).
