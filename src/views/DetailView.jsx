@@ -18,6 +18,7 @@ import { CurrentPanel } from '../components/CurrentPanel.jsx'
 import { findService } from '../services.js'
 import { SUNSET, INK } from '../sunset.js'
 import { CodeBlock } from '../components/CodeBlock.jsx'
+import { UnlockReveal } from '../components/UnlockReveal'
 import { PanelResizer } from '../components/PanelResizer.jsx'
 
 // Beta features show only with ?beta=1 in the URL.
@@ -1040,6 +1041,7 @@ export function DetailView({
           </div>
         )}
 
+        <UnlockReveal ready={nodes.length > 0} />
         {/* Canvas */}
         <div style={{ flex: 1, position: 'relative', background: '#ffffff' }}>
           <ShowNotesContext.Provider value={showNotes}>
