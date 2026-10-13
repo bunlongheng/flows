@@ -1700,17 +1700,11 @@ export default function App() {
     }
   }
 
-  // The passcode button: set, change or clear the share passcode. Setting one
-  // also publishes the flow, so the link opens to the lock screen, not a 404.
-  async function editPasscode() {
-    if (!canAI || !activeDiagram?.id) return
-    const had = activeDiagram.hasPasscode
-    const entered = window.prompt(had
-      ? 'New passcode for the share link (leave blank to remove it):'
-      : 'Set a passcode for the share link:', '')
-    if (entered === null) return
-    const passcode = entered.trim()
-    if (!passcode && !had) return
+  // Set, change or clear ("") the share passcode, from the Share panel or the
+  // Lock menu. Setting one also publishes the flow, so the link opens to the
+  // lock screen, not a 404. Resolves true when the server took it.
+  async function setPasscode(passcode) {
+    if (!canAI || !activeDiagram?.id) return false
     try {
       const r = await fetch(`/api/flows/${activeDiagram.id}`, {
         method: 'PATCH',
@@ -1723,8 +1717,10 @@ export default function App() {
       setActiveDiagram(a => (a ? patch(a) : a))
       setDiagrams(ds => ds.map(patch))
       showToastMsg(has_passcode ? 'Passcode set - the link opens to a lock screen' : 'Passcode removed')
+      return true
     } catch {
       showToastMsg('Could not change the passcode')
+      return false
     }
   }
 
@@ -2121,7 +2117,7 @@ export default function App() {
       canEdit={canAI}
       onToggleVisibility={canAI && activeDiagram?.id ? toggleVisibility : undefined}
       hasPasscode={!!activeDiagram?.hasPasscode}
-      onPasscode={canAI && activeDiagram?.id ? editPasscode : undefined}
+      onSetPasscode={canAI && activeDiagram?.id ? setPasscode : undefined}
       onShareOpen={canAI && activeDiagram?.id ? ensureShareable : undefined}
       current={current} onCurrentChange={canAI && activeDiagram?.id ? setCurrent : undefined}
       sizing={sizing} onSizingChange={canAI && activeDiagram?.id ? setSizing : undefined}
