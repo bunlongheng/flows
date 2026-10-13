@@ -1,7 +1,6 @@
 import { PANEL, PANEL_CAPTION, PANEL_CLOSE } from '../panel.js'
 import { SPEEDS, AMOUNTS, CURRENT_DEFAULT, FONT_DEFAULT, FONT_MIN, FONT_MAX } from '../view-state.js'
 import { SIZINGS } from '../card-size.js'
-import { STEP_MS } from '../flowClock'
 
 // The current's own panel, opened by clicking the Start here pill (owner
 // 2026-10-09: "if I click on start here, show right panel for me to control
@@ -44,22 +43,32 @@ function Row({ caption: title, values, value, format, onPick, hint: text }) {
           <button key={v} type="button" onClick={() => onPick(v)} style={chip(v === value)}>{format(v)}</button>
         ))}
       </div>
-      <div style={hint}>{text}</div>
+      {text && <div style={hint}>{text}</div>}
     </section>
   )
 }
 
-// One slider sizes title, subtitle and tag together at the default ratios;
-// the payload still takes each size on its own (view_state.fonts).
+// A slider over a fixed list of steps: the value shows on the right, nothing else.
+function StepSlider({ caption: title, values, value, format, onPick }) {
+  const at = Math.max(0, values.indexOf(value))
+  return (
+    <section style={block}>
+      <div style={{ ...caption, display: 'flex', justifyContent: 'space-between' }}><span>{title}</span><span>{format(values[at])}</span></div>
+      <input type="range" min={0} max={values.length - 1} step={1} value={at} aria-label={title}
+        onChange={e => onPick(values[Number(e.target.value)])}
+        style={{ width: '100%', accentColor: '#6965db', cursor: 'pointer' }} />
+    </section>
+  )
+}
+
+// 2 sliders: 1 sizes the card title and subtitle together at the default
+// ratio, the other sizes the line badges on their own (view_state.fonts).
 const half = n => Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round(n * 2) / 2))
-const scaled = v => ({ title: half(v), sub: half(v * FONT_DEFAULT.sub / FONT_DEFAULT.title), tag: half(v * FONT_DEFAULT.tag / FONT_DEFAULT.title) })
+const scaled = v => ({ title: half(v), sub: half(v * FONT_DEFAULT.sub / FONT_DEFAULT.title) })
 
 export function CurrentPanel({ value, onChange, onClose, pattern, description, sizing, onSizing, fonts, onFonts }) {
   const speed = value?.speed ?? CURRENT_DEFAULT.speed
   const amount = value?.amount ?? CURRENT_DEFAULT.amount
-  // What the multiplier actually means on the clock, so the number is a time
-  // and not a feel. Trailing zeros trimmed: 2.8s, 1.4s, 0.93s, 0.7s.
-  const perLine = (STEP_MS / speed / 1000).toFixed(2).replace(/0$/, '').replace(/\.$/, '')
 
   return (
     <aside className="sd-current-panel" data-testid="current-panel" style={PANEL}>
@@ -82,23 +91,8 @@ export function CurrentPanel({ value, onChange, onClose, pattern, description, s
         </section>
       )}
 
-      <Row
-        caption="Speed"
-        values={SPEEDS}
-        value={speed}
-        format={v => `${v}x`}
-        onPick={v => onChange({ speed: v })}
-        hint={`The big dot crosses 1 line in ${perLine}s, and the small dots drift at a quarter of that. 2x is as fast as it reads; 0.5x is for watching a dense map.`}
-      />
-
-      <Row
-        caption="Amount"
-        values={AMOUNTS}
-        value={amount}
-        format={v => v}
-        onPick={v => onChange({ amount: v })}
-        hint={`${amount} small dots spread over the whole diagram, however many lines it has. The 1 big dot always says which step is live.`}
-      />
+      <StepSlider caption="Speed" values={SPEEDS} value={speed} format={v => `${v}x`} onPick={v => onChange({ speed: v })} />
+      <StepSlider caption="Amount" values={AMOUNTS} value={amount} format={v => v} onPick={v => onChange({ amount: v })} />
 
       {onSizing && (
         <Row
@@ -107,11 +101,6 @@ export function CurrentPanel({ value, onChange, onClose, pattern, description, s
           value={sizing}
           format={v => v[0].toUpperCase() + v.slice(1)}
           onPick={onSizing}
-          hint={{
-            match: 'Every card the same square, whatever you resized.',
-            auto: 'A card grows 10% for every line in or out past the first, up to 1.5x, so the busy ones read first.',
-            custom: 'The sizes you set by hand. Drag a selected card\'s corner to resize it.',
-          }[sizing]}
         />
       )}
 
@@ -119,7 +108,14 @@ export function CurrentPanel({ value, onChange, onClose, pattern, description, s
         <section style={block}>
           <div style={{ ...caption, display: 'flex', justifyContent: 'space-between' }}><span>Text size</span><span>{fonts.title} px</span></div>
           <input type="range" min={FONT_MIN} max={FONT_MAX} step={0.5} value={fonts.title}
-            aria-label="Text size" onChange={e => onFonts(scaled(Number(e.target.value)))}
+            aria-label="Text size" onChange={e => onFonts({ ...fonts, ...scaled(Number(e.target.value)) })}
+            style={{ width: '100%', accentColor: '#6965db', cursor: 'pointer' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#6b7280' }}>
+            <span>{FONT_MIN}</span><span>{FONT_MAX}</span>
+          </div>
+          <div style={{ ...caption, display: 'flex', justifyContent: 'space-between', marginTop: 12 }}><span>Badge size</span><span>{fonts.tag} px</span></div>
+          <input type="range" min={FONT_MIN} max={FONT_MAX} step={0.5} value={fonts.tag}
+            aria-label="Badge size" onChange={e => onFonts({ ...fonts, tag: half(Number(e.target.value)) })}
             style={{ width: '100%', accentColor: '#6965db', cursor: 'pointer' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#6b7280' }}>
             <span>{FONT_MIN}</span><span>{FONT_MAX}</span>
@@ -127,7 +123,6 @@ export function CurrentPanel({ value, onChange, onClose, pattern, description, s
         </section>
       )}
 
-      <div style={{ ...hint, marginTop: 0 }}>Press Play to watch it. Every setting belongs to THIS diagram and is saved with it, so a picture or GIF export draws the same current and the same card sizes.</div>
     </aside>
   )
 }

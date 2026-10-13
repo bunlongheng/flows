@@ -353,12 +353,12 @@ describe("current panel", () => {
   ];
   const clickPill = () => fireEvent.click(document.querySelector('.react-flow__node[data-id="__start_user"]'));
 
-  it("opens on the Start pill with both rows of presets", () => {
+  it("opens on the Start pill with a Speed and an Amount slider", () => {
     setup({ nodes, current: { speed: 1, amount: 20 }, onCurrentChange: vi.fn() });
     clickPill();
     const panel = within(screen.getByTestId("current-panel"));
-    for (const s of ["0.5x", "1x", "1.5x", "2x"]) expect(panel.getByRole("button", { name: s })).toBeInTheDocument();
-    for (const a of ["20", "50", "100", "200", "500", "1000", "2000", "5000"]) expect(panel.getByRole("button", { name: a })).toBeInTheDocument();
+    expect(panel.getByRole("slider", { name: "Speed" })).toHaveValue("1");
+    expect(panel.getByRole("slider", { name: "Amount" })).toHaveValue("0");
   });
 
   it("reports a picked speed and a picked amount, 1 key at a time", () => {
@@ -366,8 +366,8 @@ describe("current panel", () => {
     setup({ nodes, current: { speed: 1, amount: 10 }, onCurrentChange });
     clickPill();
     const panel = within(screen.getByTestId("current-panel"));
-    fireEvent.click(panel.getByRole("button", { name: "0.5x" }));
-    fireEvent.click(panel.getByRole("button", { name: "500" }));
+    fireEvent.change(panel.getByRole("slider", { name: "Speed" }), { target: { value: "0" } });
+    fireEvent.change(panel.getByRole("slider", { name: "Amount" }), { target: { value: "4" } });
     expect(onCurrentChange.mock.calls).toEqual([[{ speed: 0.5 }], [{ amount: 500 }]]);
   });
 
@@ -396,8 +396,8 @@ describe("current panel", () => {
     expect(document.querySelector('.react-flow__node[data-id="__start_user"]')).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /control the current/i }));
     const panel = within(screen.getByTestId("current-panel"));
-    expect(panel.getByRole("button", { name: "2x" })).toBeInTheDocument();
-    expect(panel.getByRole("button", { name: "500" })).toBeInTheDocument();
+    expect(panel.getByRole("slider", { name: "Speed" })).toBeInTheDocument();
+    expect(panel.getByRole("slider", { name: "Amount" })).toBeInTheDocument();
   });
 
   // The badge used to unfold the summary card, so the summary rides along in
