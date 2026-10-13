@@ -33,7 +33,7 @@ describe("renderDiagramSvg - sunset node", () => {
     expect(pinned).toContain('fill="#dc2626"/><text');
     expect(pinned).toContain(">Integry termination</text>");
     expect(pinned).toContain(">notice due ~4/1/2027</text>");
-    expect(pinned).toContain(">Important date</text>");
+    expect(pinned).not.toContain(">Important date</text>");
     const hover = renderDiagramSvg([{ id: "user", position: { x: 0, y: 0 }, tooltip: tip }], []);
     expect(hover).not.toContain("Integry termination");
   });
