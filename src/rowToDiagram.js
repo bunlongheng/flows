@@ -13,6 +13,8 @@ export function rowToDiagram(r) {
     editLocked: !!r.edit_locked,
     // A share passcode is set (the hash itself never reaches the client).
     hasPasscode: !!r.has_passcode,
+    // The owner's own reads carry it in plain, for the Passcode box.
+    passcode: r.passcode || '',
     title: r.title,
     description: r.description || '',
     pattern: r.pattern || '',

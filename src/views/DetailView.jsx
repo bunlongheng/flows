@@ -61,19 +61,21 @@ function BarButton({ on, label, title, onClick, children }) {
   )
 }
 
-// The share passcode: 1 field, Enter or Set saves it, Remove clears it. The
-// same control sits in the Share panel and the Lock menu. Masked like the
-// Stickies safe (text + text-security, so password managers stay out of it).
-function PasscodeField({ on, onSave }) {
-  const [value, setValue] = useState('')
+// The share passcode: 1 field, Enter or Save stores it, Remove clears it. The
+// same control sits in the Share panel and the Lock menu. Only the owner sees
+// this, so the box shows the current passcode in plain text to read or edit.
+function PasscodeField({ on, current = '', onSave }) {
+  const [value, setValue] = useState(current)
   const [busy, setBusy] = useState(false)
+  // A save, or another flow opened, brings a new current passcode.
+  useEffect(() => { setValue(current) }, [current])
   const save = async (v) => {
     if (busy) return
     setBusy(true)
-    if (await onSave(v)) setValue('')
+    await onSave(v)
     setBusy(false)
   }
-  const ready = Boolean(value.trim())
+  const ready = Boolean(value.trim()) && value.trim() !== current
   return (
     <div onClick={e => e.stopPropagation()}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
@@ -82,17 +84,17 @@ function PasscodeField({ on, onSave }) {
         <span style={{ marginLeft: 'auto', fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: on ? '#0f172a' : '#f1f5f9', color: on ? '#fff' : '#64748b' }}>{on ? 'ON' : 'OFF'}</span>
       </div>
       <div style={{ fontSize: 11.5, color: '#64748b', margin: '3px 0 8px', lineHeight: 1.4 }}>
-        {on ? 'The link opens to a lock screen. Type a new one to change it.' : 'Lock the share link: visitors type it to open the flow.'}
+        {on ? 'The link opens to a lock screen. Edit it here to change it.' : 'Lock the share link: visitors type it to open the flow.'}
       </div>
       <form onSubmit={e => { e.preventDefault(); if (ready) save(value.trim()) }} style={{ display: 'flex', gap: 6 }}>
         <input value={value} onChange={e => setValue(e.target.value)} onKeyDown={e => e.stopPropagation()}
           type="text" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
           data-lpignore="true" data-1p-ignore="" data-bwignore="" data-form-type="other"
-          placeholder={on ? 'new passcode' : 'passcode'} aria-label="Passcode" maxLength={200}
-          style={{ flex: 1, minWidth: 0, height: 32, padding: '0 10px', fontSize: 16, borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#0f172a', fontFamily: 'inherit', WebkitTextSecurity: 'disc', outline: 'none' }} />
+          placeholder={on ? 'set - type a new one' : 'passcode'} aria-label="Passcode" maxLength={200}
+          style={{ flex: 1, minWidth: 0, height: 32, padding: '0 10px', fontSize: 16, borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#0f172a', fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace", letterSpacing: '0.04em', outline: 'none' }} />
         <button type="submit" disabled={busy || !ready}
           style={{ height: 32, padding: '0 12px', borderRadius: 8, border: 'none', background: '#0f172a', color: '#fff', fontSize: 12, fontWeight: 700, cursor: ready ? 'pointer' : 'default', opacity: ready ? 1 : 0.4, fontFamily: 'inherit' }}>
-          {on ? 'Change' : 'Set'}
+          {on ? 'Save' : 'Set'}
         </button>
       </form>
       {on && (
@@ -151,7 +153,7 @@ export function DetailView({
   onIconResize,
   // Owner only: is the open diagram public, and a click to flip it. Undefined
   // for anyone else, which hides the pill.
-  isDiagramPublic, onToggleVisibility, hasPasscode, onSetPasscode,
+  isDiagramPublic, onToggleVisibility, hasPasscode, passcode, onSetPasscode,
   // A visitor on /demo or a shared link sees the diagram exactly as the owner
   // left it: nodes are locked, and the tools that change or take a copy of it
   // (Arrange, Undo/Redo, Code, Share, every export) are not rendered. They keep
@@ -929,7 +931,7 @@ export function DetailView({
               <span className="sd-btn-label">{isLocked || isEditLocked ? 'Locked' : 'Lock'}</span>
             </button>
             {lockMenu && <div role="menu" style={{ position: 'fixed', top: lockMenu.top, left: lockMenu.left, zIndex: 1000, width: 290, boxSizing: 'border-box', padding: 4, background: '#fff', border: '1px solid #e4e6e8', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)' }}>
-              {onSetPasscode && <div style={{ padding: '6px 10px 8px', borderBottom: '1px solid #f1f5f9', marginBottom: 4 }}><PasscodeField on={hasPasscode} onSave={onSetPasscode} /></div>}
+              {onSetPasscode && <div style={{ padding: '6px 10px 8px', borderBottom: '1px solid #f1f5f9', marginBottom: 4 }}><PasscodeField on={hasPasscode} current={passcode} onSave={onSetPasscode} /></div>}
               {[
                 ['locked', 'Delete lock', isLocked, isLocked ? 'On - nobody can delete it, you included, until this is off' : 'Off - you can delete it; agents still cannot'],
                 ['edit_locked', 'Edit lock', isEditLocked, isEditLocked ? 'On - nothing moves: not agents, not your own drags on this canvas' : 'Off - you and agents (MCP, API) can change it'],
@@ -1256,7 +1258,7 @@ export function DetailView({
 
             {canEdit && onSetPasscode && (
               <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid #eef0f3' }}>
-                <PasscodeField on={hasPasscode} onSave={onSetPasscode} />
+                <PasscodeField on={hasPasscode} current={passcode} onSave={onSetPasscode} />
               </div>
             )}
 
