@@ -290,6 +290,7 @@ export default function App() {
   const [showArrows, setShowArrows] = useState(true)
   const [showLegend, setShowLegend] = useState(true)
   const [showBadgeX, setShowBadgeX] = useState(true)
+  const [tagsAbove, setTagsAbove] = useState(false)
   // A note growing or shrinking changes how far its lane reaches, so the lanes redraw with the notes.
   useSyncExternalStore(subscribeNoteHeights, noteHeightsVersion)
   const [badgeMode, setBadgeMode] = useState('dark') // dark | silver | color | plain
@@ -801,6 +802,7 @@ export default function App() {
     setShowArrows(!open.includes('arrows-off'))
     setShowLegend(!open.includes('legend-off'))
     setShowBadgeX(!open.includes('badge-x-off'))
+    setTagsAbove(open.includes('tags-above'))
   }
   useEffect(() => {
     if (!authChecked) return
@@ -1343,7 +1345,7 @@ export default function App() {
       fetch(`/api/flows/${savingId}?format=gif`, { cache: 'no-store' }).catch(() => {})
     }, 1500)
     return () => clearTimeout(thumbTimer.current)
-  }, [view, canAI, activeDiagram, badgeMode, showNotes, showArrows, showLegend, showBadgeX])
+  }, [view, canAI, activeDiagram, badgeMode, showNotes, showArrows, showLegend, showBadgeX, tagsAbove])
 
   // Save the open panel + badge style back to the row, debounced, owner only.
   // Only ONE panel is ever open, so this collapses to a single value rather than
@@ -1354,7 +1356,7 @@ export default function App() {
   const viewSavePending = useRef(null)
   const openPanels = [
     showSteps && 'steps', showDetailCode && 'code',
-    !showNotes && 'notes-off', !showArrows && 'arrows-off', !showLegend && 'legend-off', !showBadgeX && 'badge-x-off',
+    !showNotes && 'notes-off', !showArrows && 'arrows-off', !showLegend && 'legend-off', !showBadgeX && 'badge-x-off', tagsAbove && 'tags-above',
   ].filter(Boolean)
   const panelKey = openPanels.join(',')
   useEffect(() => {
@@ -2121,7 +2123,7 @@ export default function App() {
       onRestored={canAI && activeDiagram?.id ? onRestored : undefined}
       showSteps={showSteps} setShowSteps={setShowSteps}
       showNotes={showNotes} setShowNotes={setShowNotes}
-      showArrows={showArrows} setShowArrows={setShowArrows} showBadgeX={showBadgeX}
+      showArrows={showArrows} setShowArrows={setShowArrows} showBadgeX={showBadgeX} tagsAbove={tagsAbove}
       showLegend={showLegend} setShowLegend={setShowLegend}
       isLocked={!!activeDiagram?.locked} isEditLocked={!!activeDiagram?.editLocked} onSetLocks={canAI ? setLocks : undefined}
       badgeMode={badgeMode} setBadgeMode={setBadgeMode}

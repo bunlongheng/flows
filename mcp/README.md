@@ -111,7 +111,7 @@ Edges are directed `{ source, target, label?, description?, id?, style? }` using
 `create_flow` takes the same thing as `view_state`.
 
 - `panels` - any of `steps`, `share`, `code`, `notes-off`, `arrows-off`,
-  `legend-off`, `badge-x-off`. The `-off` flags hide notes, arrowheads, the red X on retiring badges or the bottom-left
+  `legend-off`, `badge-x-off`, `tags-above` (badges sit just off their line, no leader). The `-off` flags hide notes, arrowheads, the red X on retiring badges or the bottom-left
   legend, which all show by default. **Turn `steps` on for
   anything a reader has to follow in order** instead of leaving them to find the
   button. `notes-off` is inverted on purpose: notes show by default, so the
