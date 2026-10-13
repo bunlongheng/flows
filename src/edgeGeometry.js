@@ -936,10 +936,15 @@ export function pointAlongPath(d, t) {
 // by hand stays put but counts as placed. The box is an estimate shared by the
 // canvas and the renderer, so both pick the same spot.
 const BADGE_GAP = 4
-export function badgeBox(tag, step) {
+// A tag's text size (view_state.fonts.tag, default 8.5) and the pill height it
+// needs: 17.5 at the default. Shared so the canvas, the export and the overlap
+// check agree on 1 box.
+export const TAG_FS = 8.5
+export const tagH = (fs = TAG_FS) => Math.round(fs * 2.06 * 2) / 2
+export function badgeBox(tag, step, fs = TAG_FS) {
   let w = 0
   for (const ch of String(tag || '')) w += ch === ' ' ? 0.28 : /[il.,:;'|!I[\]()jft]/.test(ch) ? 0.3 : /[mwMW@%]/.test(ch) ? 0.9 : /[A-Z]/.test(ch) ? 0.68 : 0.58
-  return { w: 16 + w * 8.5 * 1.16 + (step ? 20 : 0), h: 18 } // 10% over the renderer width: the browser draws a touch wider
+  return { w: 16 + w * fs * 1.16 + (step ? 20 : 0), h: tagH(fs) + 0.5 } // 10% over the renderer width: the browser draws a touch wider
 }
 export function clearBadge(path, at, box, off, placed) {
   const { dx, dy } = badgeShift(off, box.w, box.h)

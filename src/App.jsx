@@ -19,7 +19,7 @@ import { cleanDesc } from './tag'
 import { cleanEdgeLabel } from './note.js'
 import { fireflies } from './fireflies'
 import { makeThumbnail } from './thumbnail'
-import { currentOf, cleanCurrent } from './view-state.js'
+import { currentOf, cleanCurrent, cleanFonts } from './view-state.js'
 import { sizingOf, lineCounts, cardSize } from './card-size.js'
 
 // A card's drawn size for the diagram's sizing mode; a picture card scales
@@ -906,6 +906,7 @@ export default function App() {
       ...(keep('start') ? { start: prev.start } : {}),
       ...(keep('current') ? { current: prev.current } : {}),
       ...(keep('sizing') ? { sizing: prev.sizing } : {}),
+      ...(keep('fonts') ? { fonts: prev.fonts } : {}),
     }
   }, [activeDiagram])
 
@@ -938,6 +939,15 @@ export default function App() {
       return { ...rest, ...(size ? { width: size.w, height: size.h } : {}), data: { ...n.data, size } }
     }))
   }, [activeDiagram, otherView, patchViewState])
+
+  // Title, subtitle and tag sizes for the whole diagram, from the same panel.
+  // Drawn at once (the canvas reads activeDiagram), saved on the row so the
+  // exports draw the same.
+  const setFonts = useCallback(f => {
+    const view_state = { ...otherView(['fonts']), ...cleanFonts(f) }
+    setActiveDiagram(a => (a ? { ...a, view_state } : a))
+    patchViewState(view_state)
+  }, [otherView, patchViewState])
 
   // The owner dragged a node's resize handle. Store the new size on the node
   // (both top-level, for React Flow's own sizing, and in data, for AwsNode's
@@ -1077,15 +1087,10 @@ export default function App() {
     // Arrange is a reset to automatic - a Start pill the owner placed by hand
     // no longer means anything once the layout underneath it has moved.
     if (canAI && activeDiagram?.view_state?.start) {
-      const prev = activeDiagram.view_state
-      patchViewState({
-        ...(prev.panels ? { panels: prev.panels } : {}),
-        ...(prev.badge ? { badge: prev.badge } : {}),
-        ...(prev.lanes ? { lanes: prev.lanes } : {}),
-      })
+      patchViewState(otherView(['start']))
     }
     setTimeout(() => rfInstance.current?.fitView({ padding: 0.15, duration: 400 }), 60)
-  }, [edges, canAI, activeDiagram, savePositions, patchViewState, pushHistory])
+  }, [edges, canAI, activeDiagram, savePositions, patchViewState, pushHistory, otherView])
 
   // Let nodes be dragged around the canvas (positions live in React state, and
   // are saved to the DB on drag-end when the owner can edit).
@@ -1335,7 +1340,7 @@ export default function App() {
       // Carry the owner's Start placement through a plain panel/badge save -
       // this effect only ever meant to touch those two, and rebuilding the
       // object from scratch would otherwise silently clear the placement.
-      const view_state = { panels: panelKey ? panelKey.split(',') : [], badge: badgeMode, ...(prev.start ? { start: prev.start } : {}), ...(prev.lanes ? { lanes: prev.lanes } : {}), ...(prev.current ? { current: prev.current } : {}) }
+      const view_state = { panels: panelKey ? panelKey.split(',') : [], badge: badgeMode, ...(prev.start ? { start: prev.start } : {}), ...(prev.lanes ? { lanes: prev.lanes } : {}), ...(prev.current ? { current: prev.current } : {}), ...(prev.sizing ? { sizing: prev.sizing } : {}), ...(prev.fonts ? { fonts: prev.fonts } : {}) }
       return fetch(`/api/flows/${savingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -2136,6 +2141,7 @@ export default function App() {
       onShareOpen={canAI && activeDiagram?.id ? ensureShareable : undefined}
       current={current} onCurrentChange={canAI && activeDiagram?.id ? setCurrent : undefined}
       sizing={sizing} onSizingChange={canAI && activeDiagram?.id ? setSizing : undefined}
+      onFontsChange={canAI && activeDiagram?.id ? setFonts : undefined}
     />
   )
 }

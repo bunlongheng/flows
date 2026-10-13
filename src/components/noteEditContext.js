@@ -1,4 +1,5 @@
 import { createContext } from 'react'
+import { FONT_DEFAULT } from '../view-state.js'
 
 // The owner's note editor, handed to every node through React Flow's tree. The
 // value is (nodeId, note) => void when signed in, and null on a shared /demo
@@ -26,6 +27,10 @@ export const ShowNotesContext = createContext(true)
 // Whether a line with no arrowhead of its own (style.head) draws one at its
 // target. On by default; the toolbar's Arrows toggle turns it off.
 export const ShowArrowsContext = createContext(true)
+
+// The diagram's text sizes in px, view_state.fonts with defaults filled in:
+// card titles and subs (AwsNode) and line tags (GradientEdge).
+export const FontsContext = createContext(FONT_DEFAULT)
 
 // ─── Measured note heights ────────────────────────────────────────────────────
 // A note hangs BELOW the card (position: absolute, top: 100%), so React Flow

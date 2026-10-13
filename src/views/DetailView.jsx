@@ -6,7 +6,8 @@ import '@xyflow/react/dist/style.css'
 import diagramData from '../data/diagram.json'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { nodeTypes } from '../components/AwsNode'
-import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, ShowArrowsContext } from '../components/noteEditContext'
+import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, ShowArrowsContext, FontsContext } from '../components/noteEditContext'
+import { fontsOf } from '../view-state.js'
 import { Legend } from '../components/Legend'
 import { legendRows } from '../legend.js'
 import { edgeTypes } from '../components/GradientEdge'
@@ -190,6 +191,7 @@ export function DetailView({
   // Match / Auto / Custom card sizes, picked in the same panel. Only Custom
   // shows the resize handles: the other 2 decide the size themselves.
   sizing, onSizingChange,
+  onFontsChange,
 }) {
   const [codeWidth, setCodeWidth] = useState(340)
   const brand = brandFor(activeDiagram?.title)
@@ -359,6 +361,8 @@ export function DetailView({
   // reader may edit right now - never on a phone outside edit, never locked.
   const canvasNodes = useMemo(() => (canEditNow ? nodes : nodes.filter(n => n.type !== 'laneGrips')), [nodes, canEditNow])
   // What the bottom-left legend explains: only the looks this diagram uses.
+  // The diagram's text sizes (view_state.fonts) for every card and tag.
+  const fonts = useMemo(() => fontsOf(activeDiagram?.view_state), [activeDiagram])
   const legend = useMemo(() => legendRows(
     nodes.filter(n => n.type === 'awsNode').map(n => n.data || {}),
     edges.filter(e => e.type === 'gradient').map(e => ({ style: e.data?.style, sunset: !!e.data?.sunsetLine })),
@@ -1077,6 +1081,7 @@ export function DetailView({
         <div style={{ flex: 1, position: 'relative', background: '#ffffff' }}>
           <ShowNotesContext.Provider value={showNotes}>
           <ShowArrowsContext.Provider value={showArrows}>
+          <FontsContext.Provider value={fonts}>
           <NoteEditContext.Provider value={viewOnly ? null : onNoteChange || null}>
           <NodeResizeContext.Provider value={viewOnly || sizing !== 'custom' ? null : onNodeResize || null}>
           <IconResizeContext.Provider value={viewOnly ? null : onIconResize || null}>
@@ -1150,6 +1155,7 @@ export function DetailView({
           </IconResizeContext.Provider>
           </NodeResizeContext.Provider>
           </NoteEditContext.Provider>
+          </FontsContext.Provider>
           </ShowArrowsContext.Provider>
           </ShowNotesContext.Provider>
           {showLegend && <Legend rows={legend} />}
@@ -1319,7 +1325,7 @@ export function DetailView({
             alongside Share or History - the same 1 extra panel slot. */}
         {currentOpen && !card && !narrow && onCurrentChange && (
           <CurrentPanel value={current} onChange={onCurrentChange} onClose={() => setCurrentOpen(false)}
-            sizing={sizing} onSizing={onSizingChange}
+            sizing={sizing} onSizing={onSizingChange} fonts={fonts} onFonts={onFontsChange}
             pattern={activeDiagram?.pattern} description={activeDiagram?.description} />
         )}
 

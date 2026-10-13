@@ -83,6 +83,16 @@ describe("renderDiagramSvg - saved view", () => {
     expect(whole).toContain("#fef2f2");
   });
 
+  it("draws titles, subs and tags at the diagram's view_state.fonts sizes", () => {
+    const plain = renderDiagramSvg(NODES, EDGES);
+    expect(plain).toContain('font-size="12" font-weight="700"');
+    expect(plain).toMatch(/<g class="sd-tag" [^>]*><rect width="[\d.]+" height="17.5"/);
+    const big = renderDiagramSvg(NODES, EDGES, { view: { fonts: { title: 20, sub: 14, tag: 12 } } });
+    expect(big).toContain('font-size="20" font-weight="700"');
+    expect(big).toContain('font-size="12" font-weight="700" letter-spacing="0.085"');
+    expect(big).toMatch(/<g class="sd-tag" [^>]*><rect width="[\d.]+" height="24.5"/);
+  });
+
   it("uses the app's own font stack and dot grid", () => {
     const svg = renderDiagramSvg(NODES, EDGES);
     expect(svg).toMatch(/<svg [^>]*font-family="Inter,/);
