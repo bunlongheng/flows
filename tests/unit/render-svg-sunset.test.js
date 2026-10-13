@@ -36,4 +36,9 @@ describe("renderDiagramSvg - sunset node", () => {
     const hover = renderDiagramSvg([{ id: "user", position: { x: 0, y: 0 }, tooltip: tip }], []);
     expect(hover).not.toContain("Integry termination");
   });
+  it("frames a pinned callout above a top-row card inside the viewBox", () => {
+    const svg = renderDiagramSvg([{ id: "user", position: { x: 0, y: 0 }, tooltip: "Notice due 4/1/2027", pinTooltip: true }], []);
+    const minY = Number(svg.match(/viewBox="[-\d.]+ ([-\d.]+) /)[1]);
+    expect(minY).toBeLessThanOrEqual(-24 - 10);
+  });
 });
