@@ -2,7 +2,7 @@
 // reader knows what red, green and a dash mean. Shared by the canvas
 // (components/Legend.jsx) and the export (lib/render-svg.js), which draw the
 // same rows in the same order. A diagram using none of them draws no legend.
-import { SUNSET, NEW } from './sunset.js'
+import { SUNSET, NEW, CALLOUT } from './sunset.js'
 
 export const LEGEND_ROWS = {
   path: { label: 'Path', kind: 'line' },
@@ -10,6 +10,7 @@ export const LEGEND_ROWS = {
   removed: { label: 'Today, being removed', kind: 'removed' },
   sunset: { label: 'Decommissioned', kind: 'x' },
   new: { label: 'New component', kind: 'new' },
+  callout: { label: 'Important date', kind: 'callout' },
 }
 
 /**
@@ -21,8 +22,9 @@ export function legendRows(nodes = [], edges = []) {
   const fresh = nodes.some(n => n.new === true && n.sunset !== true)
   const dashed = edges.some(e => !e.sunset && (e.style?.bs === 'dashed' || e.style?.bs === 'dotted'))
   const removed = edges.some(e => e.sunset)
-  if (!sunset && !fresh && !dashed) return []
-  return ['path', dashed && 'dashed', removed && 'removed', sunset && 'sunset', fresh && 'new'].filter(Boolean)
+  const pinned = nodes.some(n => n.pinTooltip === true && typeof n.tooltip === 'string' && n.tooltip.trim())
+  if (!sunset && !fresh && !dashed && !pinned) return []
+  return ['path', dashed && 'dashed', removed && 'removed', sunset && 'sunset', fresh && 'new', pinned && 'callout'].filter(Boolean)
 }
 
-export const LEGEND_INK = { line: '#374151', dash: '#9ca3af', removed: SUNSET.line, x: SUNSET.x, xTint: SUNSET.tint, xBorder: SUNSET.border, new: NEW.border }
+export const LEGEND_INK = { line: '#374151', dash: '#9ca3af', removed: SUNSET.line, x: SUNSET.x, xTint: SUNSET.tint, xBorder: SUNSET.border, new: NEW.border, callout: CALLOUT.fill }

@@ -3,6 +3,7 @@ import { LEGEND_ROWS, LEGEND_INK as K } from '../legend.js'
 // The swatch for 1 legend row, 28 x 14: a line, a dash, a red dash, a red X
 // tile or the NEW pill.
 function Swatch({ kind }) {
+  if (kind === 'callout') return <span style={{ display: 'inline-block', width: 30, height: 12, background: K.callout, borderRadius: 4 }} />
   if (kind === 'new') return <span style={{ background: K.new, color: '#fff', fontSize: 8, fontWeight: 800, letterSpacing: '0.06em', lineHeight: '14px', padding: '0 5px', borderRadius: 999 }}>NEW</span>
   return (
     <svg width="28" height="14" viewBox="0 0 28 14" aria-hidden="true">

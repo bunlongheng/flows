@@ -13,6 +13,9 @@ export const SUNSET = {
 
 // The new look: a node marked `new: true` is being added. Green means new: a
 // green border and wash, and a NEW pill on the top-right corner.
+// A pinned tooltip: a red callout above its card for an important date (legend: Important date).
+export const CALLOUT = { fill: '#dc2626', ink: '#ffffff', fs: 13, wrap: 22 }
+
 export const NEW = {
   border: '#16a34a',
   tint: '#f0fdf4',
