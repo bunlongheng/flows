@@ -25,7 +25,7 @@ describe("okImageSource", () => {
 });
 
 describe("toNodeImage", () => {
-  it("resizes to 640x480 cover-cropped JPEG under the char budget", async () => {
+  it("resizes to a 640x480 JPEG under the char budget", async () => {
     const bytes = await png(1200, 900);
     const uri = await toNodeImage(bytes);
     expect(uri.startsWith("data:image/jpeg;base64,")).toBe(true);
@@ -35,6 +35,26 @@ describe("toNodeImage", () => {
     expect(meta.width).toBe(IMAGE_W);
     expect(meta.height).toBe(IMAGE_H);
     expect(meta.format).toBe("jpeg");
+  });
+
+  // Owner rule 2026-10-13: a screenshot is never cropped. A wide shot keeps its
+  // left and right edges and gets white bars above and below instead.
+  it("never crops: a wide image keeps both edges and is padded white", async () => {
+    const w = 1600, h = 400;
+    const raw = Buffer.alloc(w * h * 3, 0);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 3;
+      if (x < 80) raw[i] = 255; else if (x >= w - 80) raw[i + 2] = 255; else raw[i + 1] = 255;
+    }
+    const bytes = await sharp(raw, { raw: { width: w, height: h, channels: 3 } }).png().toBuffer();
+    const uri = await toNodeImage(bytes);
+    const out = sharp(Buffer.from(uri.slice(uri.indexOf(",") + 1), "base64"));
+    const { data, info } = await out.raw().toBuffer({ resolveWithObject: true });
+    const px = (x, y) => { const i = (y * info.width + x) * info.channels; return [data[i], data[i + 1], data[i + 2]]; };
+    const mid = Math.round(info.height / 2);
+    const [lr, lg, lb] = px(5, mid); expect(lr).toBeGreaterThan(180); expect(lg).toBeLessThan(90); expect(lb).toBeLessThan(90);
+    const [rr, rg, rb] = px(info.width - 6, mid); expect(rb).toBeGreaterThan(180); expect(rr).toBeLessThan(90); expect(rg).toBeLessThan(90);
+    for (const c of px(info.width / 2, 5)) expect(c).toBeGreaterThan(240);
   });
 });
 
