@@ -228,7 +228,15 @@ export function DetailView({
   const [lockMenu, setLockMenu] = useState(null)
   // Lock access switched on but no passcode typed yet: the box is open.
   const [passOpen, setPassOpen] = useState(false)
-  const toggleAccess = () => { if (hasPasscode) onSetPasscode(''); setPassOpen(!hasPasscode && !passOpen) }
+  // Switching Lock access off and on again in the same visit puts the same
+  // passcode back; another flow or a reload starts clean.
+  const lastPass = useRef('')
+  useEffect(() => { lastPass.current = '' }, [activeDiagram?.id])
+  const toggleAccess = () => {
+    if (hasPasscode) { lastPass.current = passcode || ''; onSetPasscode(''); setPassOpen(false); return }
+    if (lastPass.current) { onSetPasscode(lastPass.current); return }
+    setPassOpen(!passOpen)
+  }
   const savePasscode = async v => { const ok = await onSetPasscode(v); if (ok) { setPassOpen(false); if (v) setLockMenu(null) } return ok }
   const lockRef = useRef(null)
   useEffect(() => {
