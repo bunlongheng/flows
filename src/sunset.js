@@ -1,14 +1,21 @@
 // The sunset look: a node marked `sunset: true` is today's path and gets
-// decommissioned, so it is drawn light silver and dimmed, its icon in
-// greyscale. The red X marks its badges only, never the card. Silver is reserved for this
-// state - nothing else in the app is painted silver, and a node with no colour
-// of its own falls back to ink instead. Shared by the canvas and the exports.
+// decommissioned. Red means on its way out (owner rule 2026-10-13): a light red
+// card in a red border, cracked open, its icon half greyscale, and every line
+// touching it a red dash. The red X marks its badges. Shared by the canvas and
+// the exports.
 export const SUNSET = {
-  border: '#b9bfc7',   // silver line: the card border
-  line: '#adb5be',     // every edge touching the card, in or out: light silver at 0.75 opacity, immune to any picked line style
-  tint: '#f2f3f5',     // light silver card fill
-  ink: '#9ca3af',      // greyed label, sub and badge text
+  border: '#f87171',   // the card border and the crack
+  line: '#dc2626',     // every edge touching the card, in or out: a red dash, immune to any picked line style
+  tint: '#fef2f2',     // light red card fill
+  ink: '#6b7280',      // label, sub and badge text
   x: '#dc2626',        // the red X
+}
+
+// The new look: a node marked `new: true` is being added. Green means new: a
+// green border and wash, and a NEW pill on the top-right corner.
+export const NEW = {
+  border: '#16a34a',
+  tint: '#f0fdf4',
 }
 
 // The egg crack across a sunset card, in a 0..100 box (canvas +

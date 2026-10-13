@@ -3,7 +3,7 @@ import { Handle, Position, NodeResizer, useReactFlow, useStore } from '@xyflow/r
 import { findService } from '../services'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, setNoteHeight } from './noteEditContext'
 import { NOTE_MAX, cleanNote, noteRuns, linkLabel } from '../note'
-import { SUNSET, INK, CRACK, CRACK_HALVES } from '../sunset.js'
+import { SUNSET, NEW, INK, CRACK, CRACK_HALVES } from '../sunset.js'
 import { FONT_STACK, borderStyleOf, hexToRgba } from '../style.js'
 import { subscribe, glowAt, motionAllowed } from '../flowClock'
 import { LaneNode } from './LaneNode'
@@ -159,11 +159,14 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   // badges only. Silver is reserved for this state, so a node with no colour
   // of its own is ink, never grey.
   const sunset = data.sunset === true
+  // New: being added. Green border and wash, a NEW pill on the corner. Sunset wins if both are set.
+  const isNew = data.new === true && !sunset
+  const tooltip = typeof data.tooltip === 'string' && data.tooltip.trim() ? data.tooltip.trim() : undefined
   // The format panel's overrides. Sunset still wins on colour: silver is the
   // one state the whole app reads at a glance, so a styled card that is on its
   // way out still looks like it (src/sunset.js).
   const st = data.style || {}
-  const color = sunset ? SUNSET.border : (st.stroke || svc.color || INK)
+  const color = sunset ? SUNSET.border : isNew ? NEW.border : (st.stroke || svc.color || INK)
   const label = svc.label || data.label || data.id
   const sub = svc.sub || data.sub
   const note = cleanNote(data.note)
@@ -255,9 +258,10 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
     // not to be an 8% wash of it. "transparent" still paints white, because
     // an opaque card is what keeps a line from appearing to run through it.
     background: sunset ? SUNSET.tint
+      : isNew && !st.bg ? NEW.tint
       : st.bg ? (st.bg === 'transparent' ? '#ffffff' : st.bg)
       : `linear-gradient(${color}14, ${color}14), #ffffff`,
-    border: `${st.bw || 1}px ${borderStyleOf(st.bs)} ${color}`, borderRadius: st.radius || 0,
+    border: `${st.bw || (isNew ? 2 : 1)}px ${borderStyleOf(st.bs)} ${color}`, borderRadius: st.radius || 0,
     opacity: st.opacity == null ? 1 : st.opacity / 100,
     // A node is a fixed-size box the owner can resize by dragging a corner. A
     // label or sub carrying a whole sentence is bounded and clamped inside it
@@ -315,7 +319,8 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   )
 
   return (
-    <div style={sunset ? { position: 'relative', width: cardStyle.width, height: cardStyle.height } : cardStyle}>
+    <div className={tooltip ? 'sd-card-tip' : undefined} data-tip={tooltip}
+      style={sunset ? { position: 'relative', width: cardStyle.width, height: cardStyle.height } : cardStyle}>
       {canResize && <NodeResizer isVisible={selected} minWidth={130} minHeight={130} maxWidth={600} maxHeight={600} keepAspectRatio={!!picture}
         lineStyle={{ borderColor: color, borderWidth: 1 }}
         handleStyle={{ width: 9, height: 9, borderRadius: 0, background: color, border: '1px solid #fff' }}
@@ -338,6 +343,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       <Handle id="r" type="source" position={Position.Right}  className="sd-port" />
       <Handle id="b" type="source" position={Position.Bottom} className="sd-port" />
       {!sunset && face(true)}
+      {isNew && <span className="sd-new-pill" style={{ position: 'absolute', top: -9, right: 8, background: NEW.border, color: '#fff', fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', lineHeight: '16px', padding: '0 7px', borderRadius: 999, boxShadow: '0 1px 2px rgba(0,0,0,0.15)', pointerEvents: 'none' }}>NEW</span>}
       <NodeNote id={data.id} note={note} />
     </div>
   )

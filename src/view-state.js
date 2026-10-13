@@ -14,7 +14,9 @@ import { cleanSizing } from "./card-size.js";
 // before the toggle existed. A row saved before the Details panel was removed
 // still carries "details"; it is not in this list, so it is dropped on the next
 // save and nothing has to migrate.
-export const PANELS = ["steps", "share", "code", "notes-off"];
+// "arrows-off" and "legend-off" are inverted the same way: arrowheads and the
+// legend show by default, the key is what hides them.
+export const PANELS = ["steps", "share", "code", "notes-off", "arrows-off", "legend-off"];
 export const BADGES = ["dark", "silver", "color", "plain"];
 
 /** The panels of `v`, filtered to the legal set. Always an array. */

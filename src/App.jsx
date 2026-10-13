@@ -69,8 +69,8 @@ const edgePins = edges => edges.map((e, i) => ({
   ...(e.bend ? { bend: e.bend } : {}),
 }))
 
-// Every edge renders as a gradient (source color -> target color) and is
-// animated with marching motion. Node id === service key, so we can look up
+// Every edge renders as a gradient (source color -> target color), a solid
+// line; only a line into or out of a sunset card is a red dash. Node id === service key, so we can look up
 // each endpoint's brand color directly.
 // onLabelMove and onEndMove are threaded into every edge's data so a badge or a
 // pinned end can be dragged. Both are omitted for the bundled sample and for a
@@ -110,7 +110,6 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove, lane
     target: rfId(e.target),
     label: e.label,
     type: 'gradient',
-    animated: true,
     data: {
       sourceColor: edgeColor(e.source), targetColor: edgeColor(e.target), step: i + 1,
       ...(sunsetOf(e.source) || sunsetOf(e.target) ? { sunset: true } : {}),
@@ -286,6 +285,9 @@ export default function App() {
   const [showSteps, setShowSteps] = useState(false)
   // Notes show unless a diagram has been toggled off - see 'notes-off' below.
   const [showNotes, setShowNotes] = useState(true)
+  // Arrowheads and the legend show too, unless toggled off ('arrows-off', 'legend-off').
+  const [showArrows, setShowArrows] = useState(true)
+  const [showLegend, setShowLegend] = useState(true)
   // A note growing or shrinking changes how far its lane reaches, so the lanes redraw with the notes.
   useSyncExternalStore(subscribeNoteHeights, noteHeightsVersion)
   const [badgeMode, setBadgeMode] = useState('dark') // dark | silver | color | plain
@@ -752,7 +754,7 @@ export default function App() {
     const mode = sizingOf(d.view_state, raw), lines = lineCounts(d.data.edges)
     const n = raw.map(nd => {
       const size = sizedCard(nd, mode, lines)
-      return { ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, iconFrame: nd.iconFrame === true, size, handSize: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: nd.position } : {}), ...(size ? { width: size.w, height: size.h } : {}) }
+      return { ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, new: nd.new === true, tooltip: nd.tooltip, iconFrame: nd.iconFrame === true, size, handSize: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: nd.position } : {}), ...(size ? { width: size.w, height: size.h } : {}) }
     })
     const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined, d.view_state?.lanes || [], canAI ? onLabelEdit : undefined)
     return { nodes: hasSaved ? n : layoutFanOut(n, e), edges: e }
@@ -809,6 +811,8 @@ export default function App() {
     // Inverted: stored when notes are OFF, so a row that predates the toggle
     // (and every row a visitor loads) still shows the notes its author wrote.
     setShowNotes(!open.includes('notes-off'))
+    setShowArrows(!open.includes('arrows-off'))
+    setShowLegend(!open.includes('legend-off'))
   }
   useEffect(() => {
     if (!authChecked) return
@@ -1317,7 +1321,7 @@ export default function App() {
       fetch(`/api/flows/${savingId}?format=gif`, { cache: 'no-store' }).catch(() => {})
     }, 1500)
     return () => clearTimeout(thumbTimer.current)
-  }, [view, canAI, activeDiagram, badgeMode, showNotes])
+  }, [view, canAI, activeDiagram, badgeMode, showNotes, showArrows, showLegend])
 
   // Save the open panel + badge style back to the row, debounced, owner only.
   // Only ONE panel is ever open, so this collapses to a single value rather than
@@ -1328,7 +1332,7 @@ export default function App() {
   const viewSavePending = useRef(null)
   const openPanels = [
     showSteps && 'steps', showDetailCode && 'code',
-    !showNotes && 'notes-off',
+    !showNotes && 'notes-off', !showArrows && 'arrows-off', !showLegend && 'legend-off',
   ].filter(Boolean)
   const panelKey = openPanels.join(',')
   useEffect(() => {
@@ -2111,6 +2115,8 @@ export default function App() {
       onRestored={canAI && activeDiagram?.id ? onRestored : undefined}
       showSteps={showSteps} setShowSteps={setShowSteps}
       showNotes={showNotes} setShowNotes={setShowNotes}
+      showArrows={showArrows} setShowArrows={setShowArrows}
+      showLegend={showLegend} setShowLegend={setShowLegend}
       isLocked={!!activeDiagram?.locked} isEditLocked={!!activeDiagram?.editLocked} onSetLocks={canAI ? setLocks : undefined}
       badgeMode={badgeMode} setBadgeMode={setBadgeMode}
       activeDiagram={activeDiagram}

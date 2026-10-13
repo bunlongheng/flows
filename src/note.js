@@ -9,6 +9,9 @@ export const cleanNote = v => (typeof v === 'string' ? v.trim().slice(0, NOTE_MA
 // '' means "no info" everywhere - the key is dropped rather than stored empty.
 export const INFO_MAX = 600
 export const cleanInfo = v => (typeof v === 'string' ? v.trim().slice(0, INFO_MAX) : '')
+// A card's optional hover tooltip: plain text, 1 short line or 2.
+export const TOOLTIP_MAX = 200
+export const cleanTooltip = v => (typeof v === 'string' ? v.trim().slice(0, TOOLTIP_MAX) : '')
 
 // An edge label is the badge ON the line: what travels, in a few words. It is
 // drawn on 1 line and never wraps, so it is bounded far shorter than a note and

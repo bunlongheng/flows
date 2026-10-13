@@ -45,12 +45,34 @@ describe("renderDiagramSvg - saved view", () => {
     expect(badge(on, "invokes")).toContain('font-weight="800" fill="#1c1e21">2</text>');
   });
 
-  it("paints an edge into a sunset card as a grey tag struck through in red", () => {
+  it("paints an edge into a sunset card as a red tag struck through in red, on a red dash", () => {
     const nodes = [NODES[0], { ...NODES[1], sunset: true }, NODES[2]];
     const svg = renderDiagramSvg(nodes, EDGES);
-    expect(badge(svg, "calls")).toContain('fill="#f2f3f5"');
+    expect(badge(svg, "calls")).toContain('fill="#fef2f2"');
     expect(svg).toContain('stroke="#dc2626" stroke-width="2.5"');
     expect(badge(svg, "calls")).not.toContain('fill="#1c1e21"');
+    expect(svg).toMatch(/stroke="#dc2626" stroke-width="1.5" stroke-dasharray="7.5 4.5"/);
+  });
+
+  it("draws solid lines with an arrowhead at the target, off with arrows-off or head none", () => {
+    const svg = renderDiagramSvg(NODES, EDGES);
+    expect(svg).not.toContain("stroke-dasharray");
+    expect(svg.match(/marker-end="url\(#ah-e-\d+\)"/g)).toHaveLength(2);
+    expect(renderDiagramSvg(NODES, EDGES, { view: { panels: ["arrows-off"] } })).not.toContain("marker-end");
+    const both = renderDiagramSvg(NODES, [{ ...EDGES[0], style: { head: "both", bs: "dashed" } }, { ...EDGES[1], style: { head: "none" } }]);
+    expect(both.match(/marker-end=/g)).toHaveLength(1);
+    expect(both).toContain('marker-start="url(#ah-s-0)"');
+    expect(both).toContain("stroke-dasharray");
+  });
+
+  it("marks a new card with the green NEW pill and draws the legend only when it explains something", () => {
+    expect(renderDiagramSvg(NODES, EDGES)).not.toContain("sd-legend");
+    const nodes = [NODES[0], { ...NODES[1], new: true }, { ...NODES[2], sunset: true }];
+    const svg = renderDiagramSvg(nodes, EDGES);
+    expect(svg).toContain(">NEW</text>");
+    expect(svg).toContain("sd-legend");
+    for (const t of ["Path", "Today, being removed", "Decommissioned", "New component"]) expect(svg).toContain(`>${t}</text>`);
+    expect(renderDiagramSvg(nodes, EDGES, { view: { panels: ["legend-off"] } })).not.toContain("sd-legend");
   });
 
   it("uses the app's own font stack and dot grid", () => {

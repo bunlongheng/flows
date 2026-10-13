@@ -23,6 +23,9 @@ export const ALIGNS = ["left", "center", "right"];
 // Line only. "step" is what the canvas already routes - a squared-off elbow that
 // dodges whatever boxes sit in between - so it is the default.
 export const ARROWS = ["step", "curved", "straight"];
+// Line only: which end(s) carry an arrowhead. "end" points at the target, the
+// way the line reads; unset follows the diagram's Arrows toggle (view_state).
+export const HEADS = ["end", "start", "both", "none"];
 
 // What a card or a line already looks like before anyone has styled it. The
 // panel lights these so an untouched selection shows its current values instead
@@ -73,6 +76,8 @@ export function cleanStyle(s) {
   if (align) out.align = align;
   const arrow = pick(s.arrow, ARROWS);
   if (arrow) out.arrow = arrow;
+  const head = pick(s.head, HEADS);
+  if (head) out.head = head;
   // A slider, so it is a range rather than a pick - and 0 is legal (invisible
   // on purpose is a thing people do).
   if (Number.isFinite(s.opacity)) out.opacity = Math.max(0, Math.min(100, Math.round(s.opacity)));

@@ -24,7 +24,7 @@ import { ownerId } from '../lib/auth-owner.js'
 import { SERVICES } from '../src/services.js'
 import { resolveNodeIcons } from '../lib/resolve-icon.js'
 import { resolveNodeImages } from '../lib/resolve-image.js'
-import { cleanNote, cleanInfo } from '../src/note.js'
+import { cleanNote, cleanInfo, cleanTooltip } from '../src/note.js'
 import { cleanStyle } from '../src/style.js'
 import { PANELS, BADGES, SPEEDS, AMOUNTS, CURRENT_DEFAULT } from '../src/view-state.js'
 import { SIZINGS } from '../src/card-size.js'
@@ -93,7 +93,8 @@ const fail = msg => ({ isError: true, content: [{ type: 'text', text: msg }] })
 const STYLE_KEYS =
   'stroke #hex, bg #hex or "transparent", bw 1|2|4, bs solid|dashed|dotted, radius 0|12, ' +
   'font sans|serif|mono, fs 12|14|18|24, align left|center|right, arrow step|curved|straight, ' +
-  'opacity 0-100 (a line uses only stroke, bw, bs, arrow, opacity). ' +
+  'head end|start|both|none (which end of a line carries the arrowhead, i.e. its direction; omit to follow the diagram\'s Arrows toggle, on by default, pointing at the target), ' +
+  'opacity 0-100 (a line uses only stroke, bw, bs, arrow, head, opacity; bs dashed is how to draw an interim or optional path). ' +
   'An illegal key or value is dropped, exactly as it is on a save from the canvas.'
 // z.record needs BOTH a key and a value type in zod 4. With 1 argument it still
 // parses, so nothing fails at runtime - but z.toJSONSchema throws on it, which
@@ -104,6 +105,8 @@ const zBox = (lo, hi) => z.object({ w: z.number().min(lo).max(hi), h: z.number()
 
 // Shared by create_flow and update_flow, which carried 2 copies of this and drifted.
 const zNodeFields = {
+  new: z.boolean().optional().describe('true marks a node that is being added: green border and wash, a NEW pill on its corner, and a "New component" row in the legend. Green means new, red means sunset; never set both.'),
+  tooltip: z.string().max(200).optional().describe('Plain text shown when the reader hovers the card, max 200 chars. Optional; for a one-line hint, while info stays the longer "what it is".'),
   size: zBox(130, 600).describe('Card size in canvas units, { w, h }, clamped 130-600. Omit for the default 180 x 180 (240 x 225 for a picture node). A note hangs BELOW the card and is not part of this height.'),
   iconSize: zBox(16, 600).describe('Logo tile size inside the card, { w, h }, clamped 16-600. Omit unless a wide wordmark is unreadable at the stock tile.'),
   style: zStyle.describe(`Per-card look: ${STYLE_KEYS} A card with no style draws in its own brand colour, which is almost always what you want - set this only to say something the colour cannot.`),
@@ -126,6 +129,8 @@ function toStoredNodes(nodes) {
     ...(cleanNote(n.note) ? { note: cleanNote(n.note) } : {}),
     ...(cleanInfo(n.info) ? { info: cleanInfo(n.info) } : {}),
     ...(n.sunset === true ? { sunset: true } : {}),
+    ...(n.new === true ? { new: true } : {}),
+    ...(cleanTooltip(n.tooltip) ? { tooltip: cleanTooltip(n.tooltip) } : {}),
     ...(n.iconFrame === true ? { iconFrame: true } : {}),
     ...(n.image ? { image: n.image } : {}),
     // The 3 the canvas writes and this used to drop on the floor: a resized
@@ -280,7 +285,7 @@ server.registerTool(
         color: z.string().optional().describe('Brand hex color for the node border/tint, e.g. "#FF7A59"'),
         note: z.string().max(400).optional().describe('Note shown under this node (bottom-left, black text in a black frame) in the app, on every shared link and in the SVG. Light markdown: **bold**, *italic*, __underline__, ~~strike~~, `code`, 1 level. A URL becomes a blue link showing its ticket key (SHAR-7977) or its bare address. 1-2 sentences on what this step does or why it is there, e.g. "Reads the account\'s Recurly subscriptions, looks the user up in MBD, branches per app."'),
         info: z.string().max(600).optional().describe('What this thing is and why it is in this diagram, 1-3 sentences. Hidden in the app until the reader hovers or clicks the i badge on the card (1 open at a time), so it never crowds the diagram; not in the SVG. Shown as "<card name> is <text>", so write it to read after "is". Different from note, which is always visible under the card.'),
-        sunset: z.boolean().optional().describe('true marks a node that is today\'s path and gets decommissioned. Drawn light silver and dimmed, icon in greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) light silver, immune to any line style; no X on the card. Silver is reserved for this state: never paint a node grey or silver, set sunset instead.'),
+        sunset: z.boolean().optional().describe('true marks a node that is today\'s path and gets decommissioned. Drawn red: light red card in a red border, cracked open, icon half greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) a red dash, immune to any line style. Red means decommissioned, green (new: true) means new: never paint a node red or grey to mean retired, set sunset instead.'),
         iconFrame: z.boolean().optional().describe('true draws a 1 px grey frame around the icon tile. Set by itself when most of a PNG icon\'s outer ring is white (a white tile on a white card has no edge); pass it to force or, with false, to skip.'),
         ...zNodeFields,
       })).min(1).describe('The services in the diagram'),
@@ -376,7 +381,7 @@ server.registerTool(
         label: z.string().optional(), sub: z.string().optional(), color: z.string().optional(),
         note: z.string().max(400).optional().describe('Note under the node, light markdown and links as in create_flow. Omit to leave a node without one.'),
         info: z.string().max(600).optional().describe('What this thing is and why it is in this diagram, 1-3 sentences. Hidden in the app until the reader hovers or clicks the i badge on the card (1 open at a time), so it never crowds the diagram; not in the SVG. Shown as "<card name> is <text>", so write it to read after "is". Different from note, which is always visible under the card.'),
-        sunset: z.boolean().optional().describe('true marks a node that is today\'s path and gets decommissioned. Drawn light silver and dimmed, icon in greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) light silver, immune to any line style; no X on the card. Silver is reserved for this state: never paint a node grey or silver, set sunset instead.'),
+        sunset: z.boolean().optional().describe('true marks a node that is today\'s path and gets decommissioned. Drawn red: light red card in a red border, cracked open, icon half greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) a red dash, immune to any line style. Red means decommissioned, green (new: true) means new: never paint a node red or grey to mean retired, set sunset instead.'),
         iconFrame: z.boolean().optional().describe('true draws a 1 px grey frame around the icon tile. Set by itself when most of a PNG icon\'s outer ring is white (a white tile on a white card has no edge); pass it to force or, with false, to skip.'),
         ...zNodeFields,
       })).optional().describe('Replaces the whole list. A card you leave out is GONE, so send every node, not only the changed one. Anything the owner set by hand that you omit (size, iconSize, style) is carried over from the stored card rather than wiped.'),
@@ -388,7 +393,7 @@ server.registerTool(
       public: z.boolean().optional().describe('true publishes (anyone with the link can open it, real preview card); false makes it private again. Omit to leave visibility alone.'),
       view: z.object({
         panels: z.array(z.enum(PANELS)).optional()
-          .describe('Which reading aids the diagram OPENS with. "steps" prints a numbered chip on every line, 1..N in edges order - turn it on for anything a reader has to follow in order. "notes-off" HIDES the notes, which show by default, so the key is inverted on purpose. Replaces the whole list; [] is the plain canvas.'),
+          .describe('Which reading aids the diagram OPENS with. "steps" prints a numbered chip on every line, 1..N in edges order - turn it on for anything a reader has to follow in order. "notes-off" HIDES the notes, "arrows-off" drops every arrowhead a line does not set itself (style.head), "legend-off" hides the bottom-left legend; all 3 show by default, so those keys are inverted on purpose. Replaces the whole list; [] is the plain canvas.'),
         badge: z.enum(BADGES).optional().describe('How a step chip is painted. Omit for dark.'),
         current: z.object({
           speed: z.union(SPEEDS.map((n) => z.literal(n))).optional().describe(`How fast the current runs: ${SPEEDS.join(', ')}. 1x crosses 1 line in 1.4 s, 2x is the cap (faster is a blur) and 0.5x is for watching a dense map. Omit for ${CURRENT_DEFAULT.speed}x.`),
@@ -729,10 +734,10 @@ server.registerTool(
       'A node may carry `size` { w, h } (clamped 130-600) to resize its card, and `iconSize` { w, h } (clamped 16-600) to stretch the logo tile inside it. Omit both unless a wide wordmark is unreadable at the stock tile; a note hangs BELOW the card and is not part of `size`.',
       'A node or an edge may carry `style`, the same object the format panel writes: stroke #hex, bg #hex or "transparent", bw 1|2|4, bs solid|dashed|dotted, radius 0|12, font sans|serif|mono, fs 12|14|18|24, align left|center|right, arrow step|curved|straight, opacity 0-100. A line uses only stroke, bw, bs, arrow and opacity. An illegal key or value is dropped. Leave `style` off a card unless you need to say something its brand colour cannot: a card with no style draws in its own logo colour, which is almost always right.',
       'update_flow REPLACES the whole nodes and edges arrays, so send every one, not only the changed one. Anything the owner set by hand that you omit (node size, iconSize, style; edge style, labelT, bend) is carried over from the stored row rather than wiped - but a node or edge you leave out of the array entirely is GONE.',
-      'update_flow { id, view: { panels, badge } } sets how the diagram OPENS. panels is any of ["steps","share","code","notes-off"]: "steps" prints the numbered chip on every line, "notes-off" HIDES the notes (they show by default, so the key is inverted). badge is dark|silver|color|plain, default dark. Turn "steps" on for anything a reader has to follow in order - do not leave them to find the button.',
+      'update_flow { id, view: { panels, badge } } sets how the diagram OPENS. panels is any of ["steps","share","code","notes-off","arrows-off","legend-off"]: "steps" prints the numbered chip on every line, "notes-off" HIDES the notes, "arrows-off" drops the default arrowheads, "legend-off" hides the bottom-left legend (all 3 show by default, so those keys are inverted). badge is dark|silver|color|plain, default dark. Turn "steps" on for anything a reader has to follow in order - do not leave them to find the button.',
       'A node may carry a `note` (max 400 chars, light markdown: **bold**, *italic*, __underline__, ~~strike~~, `code`; a URL becomes a link showing its ticket key): 1-2 sentences on what that step does. It renders under the card, bottom-left, in the app, on every shared link and in the SVG - so put the per-step explanation THERE, not only in the title or edge labels.',
       'A node may also carry a plain-text `info` (max 600 chars): what this thing is and why it is in this diagram, shown only on hover/click of the i badge on the card, and never in the SVG.',
-      'A node may carry `sunset: true` to mark it as today\'s path being decommissioned - drawn light silver and dimmed, icon in greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) light silver, immune to any line style; no X on the card. Silver is reserved for this state; never paint a node grey or silver to mean retired, set sunset instead.',
+      'A node may carry `sunset: true` to mark it as today\'s path being decommissioned - drawn red: light red card in a red border, cracked open, icon half greyscale, the red X on the badge of every edge into it, and every edge touching it (in or out) a red dash, immune to any line style. Red means decommissioned, green (`new: true`) means new; never paint a node red or grey to mean retired, set sunset instead. Either one adds its row to the bottom-left legend.',
       'NO 2 LINES ON 1 TRACK, EVER: the app routes every line and moves a later one off any track an earlier line already holds, but only where there is room. Keep the card pitch (340 a column, 275 a row) so 2 lines can pass between any 2 cards; never pack cards tighter to save space. After a create or a move, the owner checks with npm run check:overlaps, which must print 0.',
       'NO TAG ON A TAG, EVER: the app slides an auto-placed tag along its own line clear of every earlier tag, and npm run check:overlaps fails on 2 touching tags. Leave labelT unset unless the owner asked; a hand labelT must never park a tag on another one.',
       'Swimlanes are set with update_flow { id, lanes } (the owner can also drag a band by its title and size it by its left or right edge on the canvas, saved as section w / lead and lane len / lead: send those back untouched): rows [{ id, title, y, h, color? }] for a top-down layout or columns [{ id, title, x, w, color? }] for a left-to-right one, or free panels [{ id, title, x, y, w, h, color? }] that each sit where they are put and grow to hold the cards whose centre is inside them (never packed, no sections), 1 kind per diagram, max 24, thinnest 80, packed with 40 px gaps, each spanning the whole diagram on its other axis. A card is 180 x 180 (a picture card 240 x 225) plus its note below, so size every lane around the cards it holds. A lane may carry sections [{ id, title, at, color? }], 2 to 8, to split its 1 band into titled bands across its other axis instead of stacking 2 lanes: at is where a section starts (the x in a row lane) and the one before it ends 40 px short of that, the same gap that separates 2 lanes, so set at 140 px past the last card of the section before it. A split lane draws no band of its own and shows its sections titles, not its own. [] clears them. With lanes on, no Start pill is drawn.',
