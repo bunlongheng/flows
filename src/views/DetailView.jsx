@@ -1501,8 +1501,9 @@ export function DetailView({
         /* Edge label badge - shared layout; per-edge gradient comes from
            --c1/--c2 set inline. Appearance switches by wrapper mode class. */
         .sd-edge-badge {
-          position: absolute; display: flex; align-items: center; gap: 4px;
-          padding: 3px 8px; border-radius: 999px;
+          /* Padding and gap in em, so a bigger badge text gets roomier padding too. */
+          position: absolute; display: flex; align-items: center; gap: 0.47em;
+          padding: 0.35em 0.95em; border-radius: 999px;
           font-size: 8.5px; font-weight: 700; line-height: 1.35;
           letter-spacing: 0.01em; white-space: nowrap; pointer-events: none;
         }
@@ -1703,8 +1704,9 @@ export function DetailView({
           /* Deliberately smaller than the badge's text line, so the circle sits
              INSIDE the pill with clearance top and bottom instead of pressing
              against the border. */
-          min-width: 12px; height: 12px; padding: 0 2.5px; border-radius: 999px;
-          font-size: 8px; font-weight: 800; line-height: 1;
+          /* In em, so the chip grows with the badge text size (view_state.fonts.tag). */
+          min-width: 1.5em; height: 1.5em; padding: 0 0.3em; border-radius: 999px;
+          font-size: 0.94em; font-weight: 800; line-height: 1;
           background: #1c1e21; color: #fff; flex-shrink: 0;
         }
         /* On a dark badge a dark chip would vanish - flip it. */

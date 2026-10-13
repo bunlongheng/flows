@@ -59,4 +59,15 @@ describe("renderDiagramSvg - sunset node", () => {
     const svg = renderDiagramSvg([{ id: "user", position: { x: 0, y: 0 }, tooltip: "Due soon", pinTooltip: true }], []);
     expect(svg).toMatch(/<polygon points="[^"]+" fill="#dc2626"\/>/);
   });
+  it("grows the step chip and the badge padding with the badge text size", () => {
+    const nodes = [{ id: "user", position: { x: 0, y: 0 } }, { id: "lambda", position: { x: 400, y: 0 } }];
+    const chip = (fs) => {
+      const svg = renderDiagramSvg(nodes, [{ source: "user", target: "lambda", label: "go" }], { view: { panels: ["steps"], fonts: { tag: fs } } });
+      const m = svg.match(/<g class="sd-tag"[^>]*><rect [^>]*\/><rect x="([\d.]+)" y="[\d.]+" width="[\d.]+" height="([\d.]+)"/);
+      return { x: Number(m[1]), h: Number(m[2]) };
+    };
+    const small = chip(8.5), big = chip(17);
+    expect(big.h).toBeGreaterThan(small.h * 1.8);
+    expect(big.x).toBeGreaterThan(small.x * 1.8);
+  });
 });
