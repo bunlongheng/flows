@@ -901,6 +901,22 @@ export function DetailView({
             <span className="sd-btn-label">Notes</span>
           </button>
 
+          {setShowArrows && <button className={showArrows ? "is-on" : ""} onClick={() => setShowArrows(v => !v)} title={showArrows ? 'Hide the arrowheads' : 'Show which way each line goes'}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
+              background: showArrows ? '#f1f5f9' : 'transparent', color: showArrows ? '#1e293b' : '#64748b',
+              cursor: 'pointer', fontSize: 13, fontWeight: showArrows ? 600 : 400, transition: 'all 0.1s', fontFamily: 'inherit' }}>
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+            <span className="sd-btn-label">Arrows</span>
+          </button>}
+
+          {setShowLegend && legend.length > 0 && <button className={showLegend ? "is-on" : ""} onClick={() => setShowLegend(v => !v)} title={showLegend ? 'Hide the legend' : 'Show what the colours and dashes mean'}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
+              background: showLegend ? '#f1f5f9' : 'transparent', color: showLegend ? '#1e293b' : '#64748b',
+              cursor: 'pointer', fontSize: 13, fontWeight: showLegend ? 600 : 400, transition: 'all 0.1s', fontFamily: 'inherit' }}>
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="15" x2="16" y2="15"/></svg>
+            <span className="sd-btn-label">Legend</span>
+          </button>}
+
           {/* Kept on a phone: Steps and the badge style are the 2 actions left in
               the bar there, and without a line between them they read as 1 control. */}
           <div className="sd-divider sd-divider-phone sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
