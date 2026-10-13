@@ -6,7 +6,7 @@ import '@xyflow/react/dist/style.css'
 import diagramData from '../data/diagram.json'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { nodeTypes } from '../components/AwsNode'
-import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, ShowArrowsContext, ShowBadgeXContext, FontsContext } from '../components/noteEditContext'
+import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, ShowArrowsContext, ShowBadgeXContext, TagsAboveContext, FontsContext } from '../components/noteEditContext'
 import { fontsOf } from '../view-state.js'
 import { Legend } from '../components/Legend'
 import { legendRows } from '../legend.js'
@@ -139,7 +139,7 @@ export function DetailView({
   showHistoryPanel, setShowHistoryPanel, onRestored,
   showSteps, setShowSteps,
   showNotes, setShowNotes,
-  showArrows = true, setShowArrows, showBadgeX = true,
+  showArrows = true, setShowArrows, showBadgeX = true, tagsAbove = false,
   showLegend = true, setShowLegend,
   badgeMode, setBadgeMode,
   activeDiagram,
@@ -1068,6 +1068,7 @@ export function DetailView({
           <ShowNotesContext.Provider value={showNotes}>
           <ShowArrowsContext.Provider value={showArrows}>
           <ShowBadgeXContext.Provider value={showBadgeX}>
+          <TagsAboveContext.Provider value={tagsAbove}>
           <FontsContext.Provider value={fonts}>
           <NoteEditContext.Provider value={viewOnly ? null : onNoteChange || null}>
           <NodeResizeContext.Provider value={viewOnly || sizing !== 'custom' ? null : onNodeResize || null}>
@@ -1143,6 +1144,7 @@ export function DetailView({
           </NodeResizeContext.Provider>
           </NoteEditContext.Provider>
           </FontsContext.Provider>
+          </TagsAboveContext.Provider>
           </ShowBadgeXContext.Provider>
           </ShowArrowsContext.Provider>
           </ShowNotesContext.Provider>

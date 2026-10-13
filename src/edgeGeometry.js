@@ -977,3 +977,21 @@ export function headsOf(head, arrowsOn, r) {
 export const markerSize = bw => 7 + 2 * bw
 export const headPath = start => (start ? 'M10 0 L0 5 L10 10 Z' : 'M0 0 L10 5 L0 10 Z')
 
+
+// "tags-above" (owner 2026-10-13): the badge sits just off its line instead of
+// on it - above a level leg, to the right of an upright one - so the line and
+// its arrowhead stay visible. No leader line. `pt(t)` is the path sampler.
+export function aboveShift(pt, at, box) {
+  let best = 0, bd = Infinity
+  for (let k = 0; k <= 60; k++) {
+    const p = pt(k / 60)
+    if (!p) continue
+    const d = (p.x - at.x) ** 2 + (p.y - at.y) ** 2
+    if (d < bd) { bd = d; best = k / 60 }
+  }
+  const a = pt(Math.max(0, best - 0.02)), b = pt(Math.min(1, best + 0.02))
+  if (!a || !b) return { dx: 0, dy: 0 }
+  return Math.abs(b.x - a.x) >= Math.abs(b.y - a.y)
+    ? { dx: 0, dy: -(box.h / 2 + 4) }
+    : { dx: box.w / 2 + 6, dy: 0 }
+}

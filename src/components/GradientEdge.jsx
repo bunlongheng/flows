@@ -1,10 +1,10 @@
 import { useContext, useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, useStore, useStoreApi } from '@xyflow/react'
-import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion, ShowArrowsContext, ShowBadgeXContext, FontsContext } from './noteEditContext'
+import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion, ShowArrowsContext, ShowBadgeXContext, TagsAboveContext, FontsContext } from './noteEditContext'
 import { subscribe, currentPhase, motionAllowed, dotAt, ambientAt } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
-import { routeEdge, badgeShift, badgeBox, clearBadge, pointAlongPath, bendPoint, bendFor, isElbow, elbowFor, elbowHandle, nearestEnd, headsOf, markerSize, headPath, T_MIN, T_MAX } from '../edgeGeometry.js'
+import { routeEdge, badgeShift, badgeBox, clearBadge, pointAlongPath, bendPoint, bendFor, isElbow, elbowFor, elbowHandle, nearestEnd, headsOf, markerSize, headPath, T_MIN, T_MAX, aboveShift } from '../edgeGeometry.js'
 import { laneGaps, isLaneNode } from '../lanes.js'
 import { tagText } from '../tag.js'
 import { EDGE_LABEL_MAX } from '../note.js'
@@ -191,6 +191,7 @@ export function GradientEdge({
   const { cards: nodeRects, gaps } = geo
   const arrowsOn = useContext(ShowArrowsContext)
   const badgeX = useContext(ShowBadgeXContext)
+  const tagsAbove = useContext(TagsAboveContext)
   const tagFs = useContext(FontsContext).tag
   const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelOff } = routeEdge({
     taken: takenBefore(id, allNodes, allEdges, tagFs),
@@ -376,7 +377,7 @@ export function GradientEdge({
   // outside. The shift uses the same estimated box as the placement pass and
   // render-svg.js, so the canvas and the export put every badge in 1 spot.
   const box = badgeBox(tag, true, tagFs)
-  const { dx, dy } = badgeShift(labelOff, box.w, box.h, onPath ? 0 : auto?.lead)
+  const { dx, dy } = tagsAbove ? aboveShift(u => pointOnPath(path, u), { x: ax, y: ay }, box) : badgeShift(labelOff, box.w, box.h, onPath ? 0 : auto?.lead)
   const bx = ax + dx
   const by = ay + dy
   const lineStroke = data?.sunsetLine ? SUNSET.line : (st.stroke || `url(#${gid})`)
@@ -432,7 +433,7 @@ export function GradientEdge({
           // flickered between the line and the pane.
           style={{ pointerEvents: 'stroke', cursor: 'move', strokeDasharray: 'none', animation: 'none' }} onPointerDown={startBodyDrag} />
       )}
-        {labelOff && (tag || hasStep) && <line className={`sd-edge-lead${tag ? '' : ' is-bare'}`} x1={ax} y1={ay} x2={bx} y2={by} stroke={lineStroke} strokeWidth={1} strokeOpacity={0.7} pointerEvents="none" />}
+        {labelOff && !tagsAbove && (tag || hasStep) && <line className={`sd-edge-lead${tag ? '' : ' is-bare'}`} x1={ax} y1={ay} x2={bx} y2={by} stroke={lineStroke} strokeWidth={1} strokeOpacity={0.7} pointerEvents="none" />}
         {port && <circle className="sd-lane-port" cx={port.x} cy={port.y} r={5} fill={port.c} stroke="#fff" strokeWidth={1.5} pointerEvents="none" />}
         <FlowDot edgeId={id} path={path} color={c1} />
       </g>

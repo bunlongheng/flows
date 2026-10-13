@@ -29,6 +29,8 @@ export const ShowNotesContext = createContext(true)
 export const ShowArrowsContext = createContext(true)
 // The red X on the badge of a line into a retiring card; "badge-x-off" hides it.
 export const ShowBadgeXContext = createContext(true)
+// "tags-above": every badge sits just off its line, so the line and arrowhead show.
+export const TagsAboveContext = createContext(false)
 
 // The diagram's text sizes in px, view_state.fonts with defaults filled in:
 // card titles and subs (AwsNode) and line tags (GradientEdge).
