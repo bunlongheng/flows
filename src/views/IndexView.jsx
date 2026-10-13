@@ -145,7 +145,7 @@ export function IndexView({
               own work. Public /demo never shows it. */}
           {!isDemo && canAI && (
             <div className="sd-tabs" style={{ display: 'inline-flex', background: '#f0f1f3', borderRadius: 9, padding: 3, flexShrink: 0 }}>
-              {[['mine', 'My Diagrams', 'Mine'], ['linked', 'Linked'], ['demos', 'Demos']].map(([key, label, short]) => (
+              {[['mine', 'My Diagrams', 'Mine'], ['linked', 'Linked'], ['demos', 'Demos'], ['trash', 'Trash']].map(([key, label, short]) => (
                 <button key={key} onClick={() => setGalleryTab(key)}
                   style={{
                     padding: '6px 13px', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
@@ -216,8 +216,8 @@ export function IndexView({
             <div style={{ width: 48, height: 48, borderRadius: 12, background: '#e4e6e8', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
               <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#8a8d91" strokeWidth={1.5} strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/></svg>
             </div>
-            <p style={{ fontSize: 14, color: '#1c1e21', fontWeight: 600, margin: 0 }}>{search ? 'No diagrams found' : 'No diagrams yet'}</p>
-            <p style={{ fontSize: 13, color: '#8a8d91', marginTop: 6 }}>{search ? 'Try a different search' : 'Paste Mermaid code to get started'}</p>
+            <p style={{ fontSize: 14, color: '#1c1e21', fontWeight: 600, margin: 0 }}>{search ? 'No diagrams found' : galleryTab === 'trash' ? 'Trash is empty' : 'No diagrams yet'}</p>
+            <p style={{ fontSize: 13, color: '#8a8d91', marginTop: 6 }}>{search ? 'Try a different search' : galleryTab === 'trash' ? 'A deleted flow lands here. Click it to restore.' : 'Paste Mermaid code to get started'}</p>
           </div>
         )}
 
@@ -253,7 +253,7 @@ export function IndexView({
                 difficulty={d.difficulty}
                 onOpen={() => onOpen(d)}
                 onViewCode={canAI ? () => onViewCode(d) : undefined}
-                onDelete={canAI && !d.sample ? () => onDeleteDiagram(d.id) : undefined}
+                onDelete={canAI && !d.sample && galleryTab !== 'trash' ? () => onDeleteDiagram(d.id) : undefined}
                 isPrivate={canAI && d.is_public === false}
                 isLocked={canAI && !!d.locked}
                 thumbnailAt={d.thumbnailAt}

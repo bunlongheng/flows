@@ -179,6 +179,23 @@ describe("/api/flows/:id", () => {
     expect(params.slice(0, 2)).toEqual([null, false]);
   });
 
+  // The Trash tab's Restore: only a row that IS in trash comes back.
+  it("PATCH restore clears deleted_at on a trashed flow, 404 otherwise", async () => {
+    const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    let res = mockRes(), r = req("PATCH", ID, undefined, cookie);
+    r.body = { restore: true };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ id: ID, restored: true });
+    expect(query.mock.calls[0][0]).toMatch(/SET deleted_at = NULL[^]*deleted_at IS NOT NULL/);
+    query.mockResolvedValueOnce({ rows: [] });
+    res = mockRes(); r = req("PATCH", ID, undefined, cookie);
+    r.body = { restore: true };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(404);
+  });
+
   it("PATCH title renames, tidied, and refuses an empty or over-long one", async () => {
     const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
     query.mockResolvedValueOnce({ rows: [{ id: ID, title: "New name here" }] });
