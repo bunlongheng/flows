@@ -3,7 +3,7 @@ import { Handle, Position, NodeResizer, useReactFlow, useStore } from '@xyflow/r
 import { findService } from '../services'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, setNoteHeight } from './noteEditContext'
 import { NOTE_MAX, cleanNote, noteRuns, linkLabel } from '../note'
-import { SUNSET, INK, CRACK, CRACK_HALVES } from '../sunset.js'
+import { SUNSET, INK, CRACK, CRACK_HALVES, CRACK_GAP } from '../sunset.js'
 import { FONT_STACK, borderStyleOf, hexToRgba } from '../style.js'
 import { subscribe, glowAt, motionAllowed } from '../flowClock'
 import { LaneNode } from './LaneNode'
@@ -143,13 +143,23 @@ function Crack({ box }) {
   const half = side => (
     <g transform={`translate(${side === 'left' ? -CRACK.open : CRACK.open} 0)`}>
       {CRACK[side].shards.map(d => <path key={d} d={d} fill={SUNSET.tint} stroke="#4b5563" strokeWidth="1.2" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />)}
-      <path d={CRACK.main} fill="none" stroke="#374151" strokeWidth="1.4" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />
+      <path d={CRACK.main} fill="none" stroke="#374151" strokeWidth="1" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />
       {CRACK[side].branches.map(d => <path key={d} d={d} fill="none" stroke="#4b5563" strokeWidth="1" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />)}
     </g>
   )
   return (
     <svg aria-label="Gets decommissioned" viewBox="0 0 100 100" preserveAspectRatio="none"
       style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', ...box, pointerEvents: 'none', overflow: 'visible' }}>
+      {/* Depth: the gap goes dim and each half throws a soft shadow into it. */}
+      <defs>
+        <clipPath id="crack-gap"><polygon points={CRACK_GAP.join(' ')} /></clipPath>
+        <filter id="crack-soft" x="-50%" y="-10%" width="200%" height="120%"><feGaussianBlur stdDeviation="1.6" /></filter>
+      </defs>
+      <g clipPath="url(#crack-gap)">
+        <polygon points={CRACK_GAP.join(' ')} fill="#000" fillOpacity="0.08" />
+        <path d={CRACK.main} transform={`translate(${2 - CRACK.open} 0)`} fill="none" stroke="#000" strokeOpacity="0.45" strokeWidth="4" filter="url(#crack-soft)" />
+        <path d={CRACK.main} transform={`translate(${CRACK.open - 1} 0)`} fill="none" stroke="#000" strokeOpacity="0.2" strokeWidth="2" filter="url(#crack-soft)" />
+      </g>
       {half('left')}{half('right')}
     </svg>
   )
