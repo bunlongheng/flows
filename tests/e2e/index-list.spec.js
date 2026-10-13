@@ -21,7 +21,7 @@ const tiles = (page) => page.locator(".dc-card");
 test("the index lists, searches and opens, and back gets out again", async ({ page, baseURL }) => {
   const api = await request.newContext({ baseURL });
   // A word that cannot collide with a real row, so the count is exact.
-  const tag = `Zqx${Date.now()}`;
+  const tag = `Zqx${Date.now()}${Math.floor(Math.random() * 1e6)}`;
   const made = [];
   for (const n of [1, 2]) {
     const r = await api.post("/api/ai/flows", { headers: { Authorization: `Bearer ${SECRET}` }, data: DESIGN(`${tag} Flow ${n}`) });
@@ -50,17 +50,19 @@ test("the index lists, searches and opens, and back gets out again", async ({ pa
     await page.click("button:has-text('Demos')");
     await page.waitForTimeout(1200);
     await page.click("button:has-text('My Diagrams')");
-    await expect(tiles(page)).toHaveCount(all);
+    // Our own 2 rows, not the exact total: parallel specs create and purge rows,
+    // so the owner's full count can shift between the 2 reads.
+    await expect(tiles(page).filter({ hasText: tag })).toHaveCount(2);
 
     // Opening one leaves the list for the canvas and names it in the URL.
     await page.fill("input[placeholder*='Search']", tag);
     await expect(tiles(page)).toHaveCount(2);
     await page.click(".dc-card .dc-open");
     await page.waitForSelector(".react-flow__node");
-    expect(page.url()).toContain("name=");
+    expect(page.url()).toContain("id=");
 
-    // The header arrow clears ?name= as well as changing the view. Leaving the
-    // slug behind meant the address bar still named a flow while the list was
+    // The header arrow clears ?id= as well as changing the view. Leaving the
+    // id behind meant the address bar still named a flow while the list was
     // up, so a reload or a copied link went straight back into it.
     await page.click("button[aria-label='Back to gallery']");
     await page.waitForSelector(".dc-card");
@@ -78,7 +80,7 @@ test("the index lists, searches and opens, and back gets out again", async ({ pa
     // Forward returns to the flow, since the entry is a real one now.
     await page.goForward();
     await page.waitForSelector(".react-flow__node");
-    expect(page.url()).toContain("name=");
+    expect(page.url()).toContain("id=");
   } finally {
     for (const id of made) {
       await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked

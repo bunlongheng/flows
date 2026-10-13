@@ -47,7 +47,8 @@ test("undo and redo cover both dragging and Arrange", async ({ page, context, ba
   await context.addCookies([{ name: "sd_session", value: OWNER_COOKIE.split("=")[1], url: baseURL }]);
 
   try {
-    await page.goto(`/?id=${id}`);
+    // Arrange is a Beta feature since 2026-10-11: the button exists only with ?beta=1.
+    await page.goto(`/?id=${id}&beta=1`);
     await page.waitForSelector(".react-flow__node-awsNode");
 
     const undo = page.locator("header button", { hasText: /^Undo$/ });
