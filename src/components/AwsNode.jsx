@@ -3,7 +3,7 @@ import { Handle, Position, NodeResizer, useReactFlow, useStore } from '@xyflow/r
 import { findService } from '../services'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, setNoteHeight } from './noteEditContext'
 import { NOTE_MAX, cleanNote, noteRuns, linkLabel } from '../note'
-import { SUNSET, INK, CRACK, CRACK_HALVES, CRACK_GAP } from '../sunset.js'
+import { SUNSET, INK, CRACK, CRACK_HALVES } from '../sunset.js'
 import { FONT_STACK, borderStyleOf, hexToRgba } from '../style.js'
 import { subscribe, glowAt, motionAllowed } from '../flowClock'
 import { LaneNode } from './LaneNode'
@@ -132,35 +132,22 @@ function NodeNote({ id, note }) {
   )
 }
 
-// A sunset card's icon, cracked open like an eggshell: the icon is split along
-// the crack and each half pushed CRACK.open % outward (src/sunset.js).
+// A sunset card, cracked open like an eggshell: the whole card is drawn twice,
+// each copy clipped to 1 side of the crack and tipped CRACK.angle degrees out on
+// a hinge at the bottom of the crack (src/sunset.js).
 const halfClip = side => `polygon(${CRACK_HALVES[side].map(([x, y]) => `${x}% ${y}%`).join(', ')})`
-const halfStyle = side => ({ clipPath: halfClip(side), transform: `translateX(${side === 'left' ? -CRACK.open : CRACK.open}%)` })
 
-// The broken edges, hairline branches and chipped shards, riding on each half.
-// `box` sizes the overlay to the icon it sits on.
-function Crack({ box }) {
-  const half = side => (
-    <g transform={`translate(${side === 'left' ? -CRACK.open : CRACK.open} 0)`}>
-      {CRACK[side].shards.map(d => <path key={d} d={d} fill={SUNSET.tint} stroke="#4b5563" strokeWidth="1.2" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />)}
-      <path d={CRACK.main} fill="none" stroke="#374151" strokeWidth="1" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />
-      {CRACK[side].branches.map(d => <path key={d} d={d} fill="none" stroke="#4b5563" strokeWidth="1" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />)}
-    </g>
-  )
+// The broken edge in the card's own grey border, plus that half's hairline
+// branches and chipped shards. Drawn inside the clipped half, so the edge
+// stroke is doubled to leave its border width showing.
+function CrackEdge({ side }) {
+  const line = { fill: 'none', stroke: SUNSET.border, strokeLinejoin: 'miter', vectorEffect: 'non-scaling-stroke' }
   return (
-    <svg aria-label="Gets decommissioned" viewBox="0 0 100 100" preserveAspectRatio="none"
-      style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', ...box, pointerEvents: 'none', overflow: 'visible' }}>
-      {/* Depth: the gap goes dim and each half throws a soft shadow into it. */}
-      <defs>
-        <clipPath id="crack-gap"><polygon points={CRACK_GAP.join(' ')} /></clipPath>
-        <filter id="crack-soft" x="-50%" y="-10%" width="200%" height="120%"><feGaussianBlur stdDeviation="1.6" /></filter>
-      </defs>
-      <g clipPath="url(#crack-gap)">
-        <polygon points={CRACK_GAP.join(' ')} fill="#000" fillOpacity="0.08" />
-        <path d={CRACK.main} transform={`translate(${2 - CRACK.open} 0)`} fill="none" stroke="#000" strokeOpacity="0.45" strokeWidth="4" filter="url(#crack-soft)" />
-        <path d={CRACK.main} transform={`translate(${CRACK.open - 1} 0)`} fill="none" stroke="#000" strokeOpacity="0.2" strokeWidth="2" filter="url(#crack-soft)" />
-      </g>
-      {half('left')}{half('right')}
+    <svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none"
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
+      {CRACK[side].shards.map(d => <path key={d} d={d} {...line} fill={SUNSET.tint} strokeWidth="1.2" />)}
+      <path d={CRACK.main} {...line} strokeWidth="3" />
+      {CRACK[side].branches.map(d => <path key={d} d={d} {...line} strokeWidth="1" />)}
     </svg>
   )
 }
@@ -261,73 +248,54 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   const iconWrapStyle = { position: 'relative', display: 'inline-flex', justifyContent: 'center', maxWidth: '100%', minHeight: 0, ...(iconBox ? { flex: '0 1 auto' } : { flex: 1, width: '100%' }),
     ...(iconHandle ? { outline: `1px dashed ${color}`, outlineOffset: 2 } : {}) }
 
-  return (
-    <div style={{
-      // Tint blended over solid white: an opaque card hides any edge routed
-      // beneath it, so a line never appears to run through a box.
-      // An explicit background is taken flat: it was picked to be that colour,
-      // not to be an 8% wash of it. "transparent" still paints white, because
-      // an opaque card is what keeps a line from appearing to run through it.
-      background: sunset ? SUNSET.tint
-        : st.bg ? (st.bg === 'transparent' ? '#ffffff' : st.bg)
-        : `linear-gradient(${color}14, ${color}14), #ffffff`,
-      border: `${st.bw || 1}px ${borderStyleOf(st.bs)} ${color}`, borderRadius: st.radius || 0,
-      opacity: st.opacity == null ? 1 : st.opacity / 100,
-      // A node is a fixed-size box the owner can resize by dragging a corner. A
-      // label or sub carrying a whole sentence is bounded and clamped inside it
-      // rather than stretching the card, so every unresized card reads the same
-      // size and the full text stays available on hover.
-      width: box ? box.w : (picture ? 240 : 180), height: box ? box.h : (picture ? 225 : 180),
-      // The same 10px inside every edge; the logo or photo fills the room the
-      // label leaves, and the text is never squeezed - see flex: none below.
-      padding: 10, boxSizing: 'border-box',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: 6, position: 'relative',
-      // The resting shadow, plus the arrival ring and halo while the glow lasts.
-      boxShadow: glow
-        ? `0 1px 3px rgba(0,0,0,0.10), 0 0 0 ${(3 * glow).toFixed(1)}px ${hexToRgba(color, 0.45 * glow)}, 0 0 ${Math.round(22 * glow)}px ${hexToRgba(color, 0.7 * glow)}`
-        : '0 1px 3px rgba(0,0,0,0.10)',
-    }}>
-      {canResize && <NodeResizer isVisible={selected} minWidth={130} minHeight={130} maxWidth={600} maxHeight={600} keepAspectRatio={!!picture}
-        lineStyle={{ borderColor: color, borderWidth: 1 }}
-        handleStyle={{ width: 9, height: 9, borderRadius: 0, background: color, border: '1px solid #fff' }}
-        onResize={(_, p) => setLive({ w: p.width, h: p.height })}
-        onResizeEnd={(_, p) => { onResize(data.id, { w: Math.round(p.width), h: Math.round(p.height) }); setLive(null) }} />}
-      {/* A dot in the middle of each side, shown on hover to the owner: drag
-          from it onto another card to draw a line (connectionMode loose, so
-          any of the 4 starts or ends one). Hidden and inert for a reader. */}
-      <Handle id="l" type="target" position={Position.Left}   className="sd-port" />
-      <Handle id="t" type="target" position={Position.Top}    className="sd-port" />
-      <Handle id="r" type="source" position={Position.Right}  className="sd-port" />
-      <Handle id="b" type="source" position={Position.Bottom} className="sd-port" />
+  const cardStyle = {
+    // Tint blended over solid white: an opaque card hides any edge routed
+    // beneath it, so a line never appears to run through a box.
+    // An explicit background is taken flat: it was picked to be that colour,
+    // not to be an 8% wash of it. "transparent" still paints white, because
+    // an opaque card is what keeps a line from appearing to run through it.
+    background: sunset ? SUNSET.tint
+      : st.bg ? (st.bg === 'transparent' ? '#ffffff' : st.bg)
+      : `linear-gradient(${color}14, ${color}14), #ffffff`,
+    border: `${st.bw || 1}px ${borderStyleOf(st.bs)} ${color}`, borderRadius: st.radius || 0,
+    opacity: st.opacity == null ? 1 : st.opacity / 100,
+    // A node is a fixed-size box the owner can resize by dragging a corner. A
+    // label or sub carrying a whole sentence is bounded and clamped inside it
+    // rather than stretching the card, so every unresized card reads the same
+    // size and the full text stays available on hover.
+    width: box ? box.w : (picture ? 240 : 180), height: box ? box.h : (picture ? 225 : 180),
+    // The same 10px inside every edge; the logo or photo fills the room the
+    // label leaves, and the text is never squeezed - see flex: none below.
+    padding: 10, boxSizing: 'border-box',
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center', gap: 6, position: 'relative',
+    // The resting shadow, plus the arrival ring and halo while the glow lasts.
+    boxShadow: glow
+      ? `0 1px 3px rgba(0,0,0,0.10), 0 0 0 ${(3 * glow).toFixed(1)}px ${hexToRgba(color, 0.45 * glow)}, 0 0 ${Math.round(22 * glow)}px ${hexToRgba(color, 0.7 * glow)}`
+      : '0 1px 3px rgba(0,0,0,0.10)',
+  }
+  // Icon and text, drawn once, or once per half on a cracked sunset card.
+  const face = primary => (
+    <>
       {/* Logo only - no frame, never an emoji. Every known service has an icon;
           the letter fallback only guards against a bad id the gate should reject. */}
       {picture
         ? <span style={iconWrapStyle}>
-            <img ref={imgRef} src={picture} alt={label} style={{ ...(iconBox
+            <img ref={primary ? imgRef : undefined} src={picture} alt={label} style={{ ...(iconBox
               ? { width: iconBox.w, height: iconBox.h, maxWidth: '100%', flex: 'none', objectFit: 'cover', display: 'block', borderRadius: 2 }
-              : { width: '100%', flex: 1, minHeight: 0, objectFit: 'cover', display: 'block', borderRadius: 2 }), ...(sunset ? { filter: 'grayscale(1) opacity(0.55)', ...halfStyle('left') } : {}) }} />
-            {sunset && <img src={picture} alt="" aria-hidden="true" style={{ position: 'absolute', top: 0, objectFit: 'cover', display: 'block', borderRadius: 2,
-              ...(iconBox ? { width: iconBox.w, height: iconBox.h } : { width: '100%', height: '100%' }), filter: 'grayscale(1) opacity(0.55)', ...halfStyle('right') }} />}
-            {sunset && <Crack box={iconBox ? { width: iconBox.w, height: iconBox.h } : { width: '100%', height: '100%' }} />}
-            {iconHandle}
+              : { width: '100%', flex: 1, minHeight: 0, objectFit: 'cover', display: 'block', borderRadius: 2 }), ...(sunset ? { filter: 'grayscale(1) opacity(0.55)' } : {}) }} />
+            {primary && iconHandle}
           </span>
         : svc.icon
         ? <span style={iconWrapStyle}>
-            <img ref={imgRef} src={svc.icon} alt={label} {...(iconBox ? { width: iconBox.w, height: iconBox.h } : {})}
+            <img ref={primary ? imgRef : undefined} src={svc.icon} alt={label} {...(iconBox ? { width: iconBox.w, height: iconBox.h } : {})}
               style={{ ...(iconBox
                 ? { objectFit: 'contain', maxWidth: '100%', maxHeight: '100%' }
                 : { width: 'auto', height: '100%', maxWidth: '100%', objectFit: 'contain', display: 'block' }),
                 // A white-edged tile on the white card: the 1 px grey frame at the iOS corner (lib/icon-frame.js decided it).
                 ...(data.iconFrame ? { borderRadius: '22%', boxShadow: '0 0 0 1px #cfd4da' } : {}),
-                ...(sunset ? { filter: 'grayscale(1) opacity(0.55)', ...halfStyle('left') } : {}) }} />
-            {sunset && <img src={svc.icon} alt="" aria-hidden="true" {...(iconBox ? { width: iconBox.w, height: iconBox.h } : {})}
-              style={{ position: 'absolute', top: 0, objectFit: 'contain', display: 'block', maxWidth: '100%',
-                ...(iconBox ? { maxHeight: '100%' } : { width: 'auto', height: '100%' }),
-                ...(data.iconFrame ? { borderRadius: '22%', boxShadow: '0 0 0 1px #cfd4da' } : {}),
-                filter: 'grayscale(1) opacity(0.55)', ...halfStyle('right') }} />}
-            {sunset && <Crack box={iconBox ? { width: iconBox.w, height: iconBox.h } : { height: '100%', aspectRatio: '1' }} />}
-            {iconHandle}
+                ...(sunset ? { filter: 'grayscale(1) opacity(0.55)' } : {}) }} />
+            {primary && iconHandle}
           </span>
         : <span style={{ fontSize: 26, fontWeight: 700, color, marginTop: 2, lineHeight: 1 }}>{label[0]?.toUpperCase()}</span>
       }
@@ -343,6 +311,33 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
           ...CLAMP_2,
         }}>{sub}</div>}
       </div>
+    </>
+  )
+
+  return (
+    <div style={sunset ? { position: 'relative', width: cardStyle.width, height: cardStyle.height } : cardStyle}>
+      {canResize && <NodeResizer isVisible={selected} minWidth={130} minHeight={130} maxWidth={600} maxHeight={600} keepAspectRatio={!!picture}
+        lineStyle={{ borderColor: color, borderWidth: 1 }}
+        handleStyle={{ width: 9, height: 9, borderRadius: 0, background: color, border: '1px solid #fff' }}
+        onResize={(_, p) => setLive({ w: p.width, h: p.height })}
+        onResizeEnd={(_, p) => { onResize(data.id, { w: Math.round(p.width), h: Math.round(p.height) }); setLive(null) }} />}
+      {/* A sunset card, split down the crack and tipped open (CrackEdge). */}
+      {sunset && ['left', 'right'].map(side => (
+        <div key={side} style={{ position: 'absolute', inset: 0, transformOrigin: '50% 100%', transform: `rotate(${side === 'left' ? -CRACK.angle : CRACK.angle}deg)`, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.22))' }}>
+          <div style={{ ...cardStyle, position: 'absolute', inset: 0, boxShadow: 'none', clipPath: halfClip(side) }}>
+            {face(side === 'left')}
+            <CrackEdge side={side} />
+          </div>
+        </div>
+      ))}
+      {/* A dot in the middle of each side, shown on hover to the owner: drag
+          from it onto another card to draw a line (connectionMode loose, so
+          any of the 4 starts or ends one). Hidden and inert for a reader. */}
+      <Handle id="l" type="target" position={Position.Left}   className="sd-port" />
+      <Handle id="t" type="target" position={Position.Top}    className="sd-port" />
+      <Handle id="r" type="source" position={Position.Right}  className="sd-port" />
+      <Handle id="b" type="source" position={Position.Bottom} className="sd-port" />
+      {!sunset && face(true)}
       <NodeNote id={data.id} note={note} />
     </div>
   )
