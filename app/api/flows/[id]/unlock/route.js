@@ -2,6 +2,8 @@ import db from "../../../../../lib/db.js";
 import { rateLimit } from "../../../../../lib/rate-limit.js";
 import { verifyPasscode, unlockToken, unlockCookieName } from "../../../../../lib/passcode.js";
 import { gatePage, unlockedPage } from "../../../../../lib/passcode-pages.js";
+import { renderDiagramSvg } from "../../../../../lib/render-svg.js";
+import { Resvg } from "@resvg/resvg-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,19 +22,33 @@ const html = (body, status = 200) => new Response(body, {
 async function load(id) {
   if (!UUID.test(id || "")) return null;
   const { rows } = await db.query(
-    "SELECT id, title, is_public, passcode_hash FROM flows WHERE id = $1 AND deleted_at IS NULL", [id],
+    "SELECT id, title, is_public, passcode_hash, nodes, edges, view_state FROM flows WHERE id = $1 AND deleted_at IS NULL", [id],
   ).catch(() => ({ rows: [] }));
   return rows[0] || null;
 }
 
 const back = (id) => `/?id=${id}`;
 
+// The diagram behind the safe, as an 80 px wide PNG: a card is a few pixels,
+// so nothing in it can be read, and the page blurs it further. Only this
+// thumbnail ever leaves the server; null (a black room) if it cannot render.
+function backdrop(row) {
+  try {
+    const view = { ...(row.view_state || {}), panels: ["notes-off", "legend-off"] };
+    const svg = renderDiagramSvg(row.nodes || [], row.edges || [], { view });
+    const png = new Resvg(svg, { fitTo: { mode: "width", value: 80 } }).render().asPng();
+    return `data:image/png;base64,${Buffer.from(png).toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request, ctx) {
   const { id } = await ctx.params;
   const row = await load(id);
   if (!row || row.is_public === false) return new Response("Not found", { status: 404 });
   if (!row.passcode_hash) return new Response(null, { status: 302, headers: { Location: back(id) } });
-  return html(gatePage({ action: `/api/flows/${id}/unlock`, title: row.title || "Locked flow" }));
+  return html(gatePage({ action: `/api/flows/${id}/unlock`, title: row.title || "Locked flow", backdrop: backdrop(row) }));
 }
 
 export async function POST(request, ctx) {
@@ -51,7 +67,7 @@ export async function POST(request, ctx) {
   const form = await request.formData().catch(() => null);
   const passcode = String(form?.get("passcode") ?? "").trim().toLowerCase();
   if (!(await verifyPasscode(passcode, row.passcode_hash))) {
-    return html(gatePage({ action: `/api/flows/${id}/unlock`, title: row.title || "Locked flow", bad: true }), 401);
+    return html(gatePage({ action: `/api/flows/${id}/unlock`, title: row.title || "Locked flow", bad: true, backdrop: backdrop(row) }), 401);
   }
   const res = html(unlockedPage({ target: back(id), nonce: request.headers.get("x-nonce") }));
   const secure = request.url.startsWith("https://") ? "; Secure" : "";
