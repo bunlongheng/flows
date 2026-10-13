@@ -116,7 +116,7 @@ function NodeNote({ id, note }) {
           style={{ ...NOTE_BOX, display: 'inline-block', maxWidth: '100%', cursor: canEdit ? 'text' : 'default', ...CLAMP_10 }}>
           {noteRuns(note).map((part, i) => part.url
             ? <a key={i} href={part.url} title={part.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                style={{ color: '#1d4ed8', textDecoration: 'underline', whiteSpace: 'nowrap' }}>{linkLabel(part.url)}</a>
+                style={{ color: '#1d4ed8', textDecoration: 'underline', whiteSpace: 'nowrap' }}>{linkLabel(part.url, part.label)}</a>
             : <span key={i} style={runStyle(part)}>{part.text}</span>)}
         </div>
       )}

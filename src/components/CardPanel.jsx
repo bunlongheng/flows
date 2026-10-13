@@ -24,25 +24,21 @@ function endIcon(id, nodes) {
     || (typeof d.icon === 'string' && d.icon) || findService(d).icon || null
 }
 
-// The lane band and section band a card's centre sits in, by name. Lane nodes
-// ride in the same nodes array (type "lane") with their sections in the band's
-// own coordinates, so no view_state is needed here.
-function placeOf(node, nodes) {
-  const w = node.measured?.width ?? node.width ?? 180, h = node.measured?.height ?? node.height ?? 180
-  const cx = (node.position?.x ?? 0) + w / 2, cy = (node.position?.y ?? 0) + h / 2
-  const inside = (r, x, y) => cx >= x + r.x && cx <= x + r.x + r.w && cy >= y + r.y && cy <= y + r.y + r.h
-  const lane = nodes.find(n => n.type === 'lane' && inside({ x: 0, y: 0, w: n.width ?? 0, h: n.height ?? 0 }, n.position?.x ?? 0, n.position?.y ?? 0))
-  if (!lane) return null
-  const section = (lane.data?.sections || []).find(s => inside(s, lane.position?.x ?? 0, lane.position?.y ?? 0))
-  return { lane: lane.data?.title || '', section: section?.title || '' }
-}
-
 const caption = { ...PANEL_CAPTION, marginBottom: 8 }
 const body = { fontSize: 12.5, lineHeight: 1.5, color: '#1a2129', whiteSpace: 'pre-wrap' }
 const block = { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }
 const key = { fontSize: 11, color: '#6b7280' }
-const val = { fontSize: 12, color: '#1a2129', fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }
 const empty = { fontSize: 11.5, color: '#94a3b8' }
+
+// Text with inline `code`, **bold**, *italic*, __underline__, ~~strike~~,
+// [label](url) and bare links, the marks a card note takes (src/note.js).
+const Rich = ({ text }) => (
+  <div style={body}>
+    {noteRuns(text).map((part, i) => part.url
+      ? <a key={i} href={part.url} title={part.url} target="_blank" rel="noopener noreferrer" style={{ color: '#1d4ed8', textDecoration: 'underline' }}>{linkLabel(part.url, part.label)}</a>
+      : <span key={i} style={runStyle(part)}>{part.text}</span>)}
+  </div>
+)
 
 const Section = ({ title, children }) => (
   <section style={block}>
@@ -52,7 +48,7 @@ const Section = ({ title, children }) => (
 )
 
 // Read-only card detail panel, the reading twin of FormatPanel's line editor:
-// a clicked card, in 5 blocks - the card's facts, what it is, its note, then
+// a clicked card, in 4 blocks - what it is, its note, then
 // every line into it and out of it, the 2 lists together at the foot of the
 // panel. Same look as the Share panel
 // (DetailView.jsx) - width, background, border, slide-in - a different body.
@@ -65,19 +61,11 @@ export function CardPanel({ node, nodes, edges, onPick, onClose }) {
   const info = typeof data.info === 'string' ? data.info.trim() : ''
   const icon = typeof data.image === 'string' && data.image.startsWith('data:') ? data.image
     : (typeof data.icon === 'string' && data.icon) || svc.icon
-  const place = placeOf(node, nodes)
 
   const byStep = (a, b) => (a.data?.step || 0) - (b.data?.step || 0)
   const out = edges.filter(e => e.source === node.id).sort(byStep)
   const into = edges.filter(e => e.target === node.id).sort(byStep)
 
-  const facts = [
-    ['Type', sub],
-    ['Status', data.sunset === true ? 'Sunset' : 'Active'],
-    ['Lane', place?.lane],
-    ['Section', place?.section],
-    ['Lines', `${out.length} out, ${into.length} in`],
-  ].filter(([, v]) => v)
 
   const row = (e, otherId, arrow) => {
     const sunset = !!e.data?.sunset
@@ -116,30 +104,17 @@ export function CardPanel({ node, nodes, edges, onPick, onClose }) {
         <button type="button" onClick={onClose} aria-label="Close card panel" style={PANEL_CLOSE}>✕</button>
       </div>
 
-      <Section title="Card">
-        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', rowGap: 6, columnGap: 12 }}>
-          {facts.map(([k, v]) => [<span key={k + 'k'} style={key}>{k}</span>, <span key={k + 'v'} style={val}>{v}</span>])}
-        </div>
-      </Section>
-
       <Section title="What it is">
-        {info ? <div style={body}>{info}</div> : <div style={empty}>No description</div>}
+        {info ? <Rich text={info} /> : <div style={empty}>No description</div>}
       </Section>
 
       <Section title="Notes">
-        {note ? (
-          <div style={body}>
-            {noteRuns(note).map((part, i) => part.url
-              ? <a key={i} href={part.url} title={part.url} target="_blank" rel="noopener noreferrer" style={{ color: '#1d4ed8', textDecoration: 'underline' }}>{linkLabel(part.url)}</a>
-              : <span key={i} style={runStyle(part)}>{part.text}</span>)}
-          </div>
-        ) : <div style={empty}>No notes</div>}
+        {note ? <Rich text={note} /> : <div style={empty}>No notes</div>}
       </Section>
 
       {/* The 2 connection lists sit together under the note (owner 2026-10-09:
           "connection in and out should next to each other in the details panel,
-          below notes"). In first, then out - a reader thinks in, then out - and
-          both below the card's own facts, which is what you came to read. They
+          below notes"). In first, then out - a reader thinks in, then out. They
           are also the longest blocks, so the short ones are not pushed off the
           top of the panel by a card with 9 lines. */}
       <Section title={`Connections in (${into.length})`}>
