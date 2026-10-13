@@ -3,7 +3,7 @@ import { Handle, Position, NodeResizer, useReactFlow, useStore } from '@xyflow/r
 import { findService } from '../services'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, FontsContext, setNoteHeight } from './noteEditContext'
 import { NOTE_MAX, cleanNote, noteRuns, linkLabel } from '../note'
-import { SUNSET, NEW, INK, CRACK, CRACK_HALVES } from '../sunset.js'
+import { SUNSET, NEW, INK, CRACK, CRACK_HALVES, cleanTipColor, tipInk } from '../sunset.js'
 import { FONT_STACK, borderStyleOf, hexToRgba } from '../style.js'
 import { subscribe, glowAt, motionAllowed } from '../flowClock'
 import { LaneNode } from './LaneNode'
@@ -164,6 +164,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   // cracked: false keeps the red sunset look on a whole card.
   const split = sunset && data.cracked !== false
   const tooltip = typeof data.tooltip === 'string' && data.tooltip.trim() ? data.tooltip.trim() : undefined
+  const tipBg = cleanTipColor(data.tooltipColor)
   // The format panel's overrides. Sunset still wins on colour: silver is the
   // one state the whole app reads at a glance, so a styled card that is on its
   // way out still looks like it (src/sunset.js).
@@ -323,7 +324,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
 
   return (
     <div className={tooltip ? (data.pinTooltip ? 'sd-card-tip sd-card-tip-pin' : 'sd-card-tip') : undefined} data-tip={tooltip}
-      style={split ? { position: 'relative', width: cardStyle.width, height: cardStyle.height } : cardStyle}>
+      style={{ ...(split ? { position: 'relative', width: cardStyle.width, height: cardStyle.height } : cardStyle), ...(tipBg ? { '--tip-bg': tipBg, '--tip-ink': tipInk(tipBg) } : {}) }}>
       {canResize && <NodeResizer isVisible={selected} minWidth={130} minHeight={130} maxWidth={600} maxHeight={600} keepAspectRatio={!!picture}
         lineStyle={{ borderColor: color, borderWidth: 1 }}
         handleStyle={{ width: 9, height: 9, borderRadius: 0, background: color, border: '1px solid #fff' }}

@@ -740,7 +740,7 @@ export default function App() {
     const mode = sizingOf(d.view_state, raw), lines = lineCounts(d.data.edges)
     const n = raw.map(nd => {
       const size = sizedCard(nd, mode, lines)
-      return { ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, new: nd.new === true, cracked: nd.cracked !== false, tooltip: nd.tooltip, pinTooltip: nd.pinTooltip === true, iconFrame: nd.iconFrame === true, size, handSize: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: nd.position } : {}), ...(size ? { width: size.w, height: size.h } : {}) }
+      return { ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, new: nd.new === true, cracked: nd.cracked !== false, tooltip: nd.tooltip, pinTooltip: nd.pinTooltip === true, tooltipColor: nd.tooltipColor, iconFrame: nd.iconFrame === true, size, handSize: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: nd.position } : {}), ...(size ? { width: size.w, height: size.h } : {}) }
     })
     const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined, d.view_state?.lanes || [], canAI ? onLabelEdit : undefined)
     return { nodes: hasSaved ? n : layoutFanOut(n, e), edges: e }
