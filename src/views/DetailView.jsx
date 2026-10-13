@@ -949,13 +949,13 @@ export function DetailView({
               <span aria-hidden="true" style={{ position: 'absolute', top: -6, left: lockMenu.caret, width: 12, height: 12, background: '#fff', borderLeft: '1px solid #eef0f3', borderTop: '1px solid #eef0f3', transform: 'rotate(45deg)' }} />
               <div>
                 {onSetPasscode && <SwitchRow on={hasPasscode || passOpen} name="Lock access" icon={<EyeIcon />} onClick={toggleAccess}
-                  sub={hasPasscode ? 'Protected with a passcode' : 'Require a passcode to view'} />}
+                  sub={hasPasscode ? 'Viewers need the passcode' : 'Anyone with the link views it'} />}
                 {onSetPasscode && (hasPasscode || passOpen) && <div style={{ padding: '4px 0 12px 48px' }}><PasscodeField on={hasPasscode} current={passcode} onSave={savePasscode} /></div>}
                 <SwitchRow on={isLocked} name="Lock delete" onClick={() => onSetLocks({ locked: !isLocked })}
-                  sub={isLocked ? 'Nobody can delete it, you included' : 'You can delete it; agents cannot'}
+                  sub={isLocked ? 'Nobody can delete it' : 'Only you can delete it'}
                   icon={<svg {...ICON}><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" /></svg>} />
-                <SwitchRow on={isEditLocked} name="Lock edits" onClick={() => onSetLocks({ edit_locked: !isEditLocked })}
-                  sub={isEditLocked ? 'Nothing moves: not agents, not you' : 'You and agents can change it'}
+                <SwitchRow on={isEditLocked} name="Lock edit" onClick={() => onSetLocks({ edit_locked: !isEditLocked })}
+                  sub={isEditLocked ? 'Nobody can edit it' : 'You and agents can edit it'}
                   icon={<svg {...ICON}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>} />
               </div>
             </div>}
@@ -1269,7 +1269,7 @@ export function DetailView({
             {canEdit && onSetPasscode && (
               <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid #eef0f3' }}>
                 <SwitchRow on={hasPasscode || passOpen} name="Lock access" icon={<EyeIcon />} onClick={toggleAccess}
-                  sub={hasPasscode ? 'Passcode required' : 'Anyone with the link'} />
+                  sub={hasPasscode ? 'Viewers need the passcode' : 'Anyone with the link views it'} />
                 {(hasPasscode || passOpen) && <div style={{ marginTop: 8 }}><PasscodeField on={hasPasscode} current={passcode} onSave={savePasscode} /></div>}
               </div>
             )}
