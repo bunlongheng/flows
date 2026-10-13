@@ -155,7 +155,7 @@ function CrackEdge({ side }) {
 export const AwsNode = memo(function AwsNode({ data, selected }) {
   const svc = findService(data)
   // Sunset: today's path, about to be unplugged. The card goes light silver
-  // and dimmed, the icon greyscale. No red X on the card: the X marks the
+  // and dimmed, the icon half greyscale (the crack carries the rest). No red X on the card: the X marks the
   // badges only. Silver is reserved for this state, so a node with no colour
   // of its own is ink, never grey.
   const sunset = data.sunset === true
@@ -283,7 +283,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
         ? <span style={iconWrapStyle}>
             <img ref={primary ? imgRef : undefined} src={picture} alt={label} style={{ ...(iconBox
               ? { width: iconBox.w, height: iconBox.h, maxWidth: '100%', flex: 'none', objectFit: 'cover', display: 'block', borderRadius: 2 }
-              : { width: '100%', flex: 1, minHeight: 0, objectFit: 'cover', display: 'block', borderRadius: 2 }), ...(sunset ? { filter: 'grayscale(1) opacity(0.55)' } : {}) }} />
+              : { width: '100%', flex: 1, minHeight: 0, objectFit: 'cover', display: 'block', borderRadius: 2 }), ...(sunset ? { filter: 'grayscale(0.5) opacity(0.8)' } : {}) }} />
             {primary && iconHandle}
           </span>
         : svc.icon
@@ -294,7 +294,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
                 : { width: 'auto', height: '100%', maxWidth: '100%', objectFit: 'contain', display: 'block' }),
                 // A white-edged tile on the white card: the 1 px grey frame at the iOS corner (lib/icon-frame.js decided it).
                 ...(data.iconFrame ? { borderRadius: '22%', boxShadow: '0 0 0 1px #cfd4da' } : {}),
-                ...(sunset ? { filter: 'grayscale(1) opacity(0.55)' } : {}) }} />
+                ...(sunset ? { filter: 'grayscale(0.5) opacity(0.8)' } : {}) }} />
             {primary && iconHandle}
           </span>
         : <span style={{ fontSize: 26, fontWeight: 700, color, marginTop: 2, lineHeight: 1 }}>{label[0]?.toUpperCase()}</span>
