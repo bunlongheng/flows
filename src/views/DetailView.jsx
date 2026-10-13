@@ -1537,7 +1537,7 @@ export function DetailView({
         }
         .sd-edge-badge[data-tip]:hover::after { opacity: 1; visibility: visible; }
         /* A pinned tooltip (node.pinTooltip): always shown, a red callout for an important date. */
-        .sd-card-tip-pin[data-tip]::after { opacity: 1; visibility: visible; background: #dc2626; font-weight: 700; text-align: center; }
+        .sd-card-tip-pin[data-tip]::after { opacity: 1; visibility: visible; background: #dc2626; font-size: 13px; font-weight: 700; line-height: 17px; text-align: center; max-width: 180px; padding: 6px 12px; border-radius: 6px; bottom: calc(100% + 8px); box-shadow: none; }
         /* A card's optional tooltip (node.tooltip), the same dark tip above it. */
         .sd-card-tip[data-tip]::after {
           content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 10px);
