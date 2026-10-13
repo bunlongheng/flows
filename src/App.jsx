@@ -12,7 +12,7 @@ import { rowToDiagram } from './rowToDiagram'
 import { snapSuggest } from './snapAlign'
 import { findService } from './services'
 import { tidy } from './tidy.js'
-import { laneNodes, laneRef, sectionRef, freeHome, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD, LANE_FIT, LANE_SECTIONS_MAX } from './lanes.js'
+import { NOTE_CLEAR, laneNodes, laneRef, sectionRef, freeHome, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD, LANE_FIT, LANE_SECTIONS_MAX } from './lanes.js'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
 import { SUNSET, INK } from './sunset.js'
 import { cleanDesc } from './tag'
@@ -301,7 +301,7 @@ export default function App() {
   // Logged-in home has two tabs (top-right button group): 'mine' = my personal
   // (non-demo) diagrams, 'demos' = the 12 curated public demos so the owner can
   // reopen + re-arrange them and have the layout persist. Public /demo ignores this.
-  const [galleryTab, setGalleryTab] = useState('mine') // 'mine' | 'linked' | 'demos'
+  const [galleryTab, setGalleryTab] = useState('mine') // 'mine' | 'linked' | 'demos' | 'trash'
   // Work vs personal. Twenty diagrams in one list meant hunting for the one that
   // matters; this splits the day job from stock bots and practice designs.
   const [loadingId, setLoadingId] = useState(false)
@@ -351,8 +351,10 @@ export default function App() {
   // the same as every editor. 50 steps is far more than anyone walks back.
   // `pins` defaults to the edges as they stand: every caller records the state
   // before its own change, and a node drag does not touch them anyway.
-  const pushHistory = useCallback((positions, kind, pins) => {
-    const step = { positions, kind, pins: pins || pinsOf(edgesRef.current) }
+  // A Tidy step also carries the panel boxes, so undoing it puts them back too.
+  const lanesRef = useRef(null)
+  const pushHistory = useCallback((positions, kind, pins, lanes) => {
+    const step = { positions, kind, pins: pins || pinsOf(edgesRef.current), ...(lanes ? { lanes } : {}) }
     setHistory(h => ({ past: [...h.past, step].slice(-50), future: [] }))
   }, [])
 
@@ -381,19 +383,21 @@ export default function App() {
     // Showcase view = the public /demo route OR the owner's "Demos" tab -> the 12
     // curated public designs. Otherwise the owner's personal (non-demo) diagrams.
     const showcase = isDemo || galleryTab === 'demos'
-    return fetch(showcase ? '/api/flows/public' : '/api/flows')
+    // The Trash tab has nothing to fall back to: an empty trash is just empty.
+    const trash = !isDemo && galleryTab === 'trash'
+    return fetch(showcase ? '/api/flows/public' : trash ? '/api/flows?trash=1' : '/api/flows')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then(rows => {
         const mapped = rows.map(rowToDiagram)
         // Never fall back to the IFTTT SEED sample in a showcase view - only real demos.
         setListError(false)
-        setDiagrams(mapped.length ? mapped : (showcase ? [] : SEED))
+        setDiagrams(mapped.length ? mapped : (showcase || trash ? [] : SEED))
       })
       .catch(() => {
         // An unreachable API used to look identical to "you have one diagram":
         // it fell through to the sample and the gallery said nothing. Say it.
         setListError(true)
-        setDiagrams(showcase ? [] : SEED)
+        setDiagrams(showcase || trash ? [] : SEED)
       })
       .finally(() => setListLoading(false))
   }, [isDemo, galleryTab])
@@ -1007,17 +1011,21 @@ export default function App() {
     setNodes(next)
     if (canAI && activeDiagram?.id) savePositions(activeDiagram.id, next)
     if (step.pins) restorePins(step.pins)
+    if (step.lanes && canAI) {
+      setActiveDiagram(a => (a ? { ...a, view_state: { ...a.view_state, lanes: step.lanes } } : a))
+      patchViewState({ ...otherView(['lanes']), lanes: step.lanes })
+    }
     if (refit) setTimeout(() => rfInstance.current?.fitView({ padding: 0.15, duration: 400 }), 60)
-  }, [canAI, activeDiagram, savePositions, restorePins])
+  }, [canAI, activeDiagram, savePositions, restorePins, patchViewState, otherView])
 
   // Where the canvas stands right now, so undo can hand it to redo.
-  const snapshot = kind => ({ positions: positionsOf(nodesRef.current), pins: pinsOf(edgesRef.current), kind })
+  const snapshot = (kind, lanes) => ({ positions: positionsOf(nodesRef.current), pins: pinsOf(edgesRef.current), kind, ...(lanes ? { lanes: lanesRef.current } : {}) })
 
   const undo = useCallback(() => {
     const { past, future } = historyRef.current
     if (!past.length) return
     const step = past[past.length - 1]
-    setHistory({ past: past.slice(0, -1), future: [...future, snapshot(step.kind)] })
+    setHistory({ past: past.slice(0, -1), future: [...future, snapshot(step.kind, step.lanes)] })
     applySnapshot(step, step.kind === 'arrange')
   }, [applySnapshot])
 
@@ -1025,7 +1033,7 @@ export default function App() {
     const { past, future } = historyRef.current
     if (!future.length) return
     const step = future[future.length - 1]
-    setHistory({ past: [...past, snapshot(step.kind)], future: future.slice(0, -1) })
+    setHistory({ past: [...past, snapshot(step.kind, step.lanes)], future: future.slice(0, -1) })
     applySnapshot(step, step.kind === 'arrange')
   }, [applySnapshot])
 
@@ -1198,13 +1206,28 @@ export default function App() {
   }, [nodes])
 
 
+  // A shared read: a passcode-locked flow answers 401 passcode_required, and
+  // the visitor goes to its lock screen (the Stickies safe). The unlock sends
+  // them back here with a cookie, so the same read then succeeds.
+  function readShared(r) {
+    if (r.ok) return r.json()
+    if (r.status === 401) {
+      return r.json().catch(() => ({})).then(b => {
+        if (!b.passcode_required) throw new Error('HTTP 401')
+        window.location.replace(`/api/flows/${b.id}/unlock`)
+        return new Promise(() => {}) // the page is leaving; keep the spinner up
+      })
+    }
+    return Promise.reject(new Error(`HTTP ${r.status}`))
+  }
+
   // Load a saved design when the URL has ?id= (the URL the artifact API returns).
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('id')
     if (!id) return
     setLoadingId(true)
     fetch(`/api/flows/${id}`)
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(readShared)
       .then(d => {
         openDiagram(rowToDiagram(d))
         // A link opens straight onto the canvas, so the flow plays on its own:
@@ -1232,7 +1255,7 @@ export default function App() {
     // design: the owner list returns only private rows and the public list only
     // the curated demos, so sharing a diagram broke its own link.
     fetch(`/api/flows/${encodeURIComponent(name)}`)
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(readShared)
       .then(row => {
         openDiagram(rowToDiagram(row))
         flowClock.setPlaying(true) // same as ?id=: a shared link plays itself
@@ -1255,7 +1278,7 @@ export default function App() {
       if (!key) return backToGallery()
       setLoadingId(true)
       fetch(`/api/flows/${encodeURIComponent(key)}`)
-        .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+        .then(readShared)
         .then(row => { openDiagram(rowToDiagram(row)); setLoadingId(false) })
         .catch(failedLoad)
     }
@@ -1354,6 +1377,24 @@ export default function App() {
     setLoadingId(false)
   }
 
+  // A card in the Trash tab: bring the flow back, drop it from this list and
+  // open it, so the owner sees what they rescued.
+  async function restoreDiagram(d) {
+    try {
+      const r = await fetch(`/api/flows/${d.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restore: true }),
+      })
+      if (!r.ok) throw new Error()
+      setDiagrams(ds => ds.filter(x => x.id !== d.id))
+      showToastMsg('Restored from trash')
+      openDiagram(d)
+    } catch {
+      showToastMsg('Could not restore it')
+    }
+  }
+
   function backToGallery() {
     setLoadError(false)
     const url = new URL(window.location.href)
@@ -1392,7 +1433,7 @@ export default function App() {
   // diagram made for a repo (README, PR, audit) lists under Linked only, so
   // the daily list is the owner's own work. The demo roster is neither.
   const showcase = isDemo || galleryTab === 'demos'
-  const own = diagrams.filter(d => showcase || (d.tags || []).includes('linked') === (galleryTab === 'linked'))
+  const own = diagrams.filter(d => showcase || galleryTab === 'trash' || (d.tags || []).includes('linked') === (galleryTab === 'linked'))
   const filtered = own.filter(d => !search.trim() || d.title.toLowerCase().includes(search.toLowerCase()))
 
   // ── ?id LOADING / ERROR STATES ──────────────────────────────────────────────
@@ -1417,7 +1458,7 @@ export default function App() {
   if (loadError) {
     return (
       <ClosedFlowScreen status={loadError} signedIn={Boolean(user) || IS_DEV}
-        flowId={new URLSearchParams(window.location.search).get('id')} onBack={backToGallery} />
+        onBack={backToGallery} onOpenTrash={() => { setGalleryTab('trash'); backToGallery() }} />
     )
   }
 
@@ -1445,7 +1486,7 @@ export default function App() {
         copiedLabel={copiedLabel} onCopyFormat={copyFormat}
         filtered={filtered}
         onRefresh={loadDiagrams}
-        onOpen={openDiagram}
+        onOpen={galleryTab === 'trash' ? restoreDiagram : openDiagram}
         onViewCode={setCodeDiagram}
         onDeleteDiagram={deleteDiagram}
         signOut={signOut}
@@ -1679,6 +1720,33 @@ export default function App() {
     }
   }
 
+  // Set, change or clear ("") the share passcode, from the Share panel or the
+  // Lock menu. Setting one also publishes the flow, so the link opens to the
+  // lock screen, not a 404. Resolves true when the server took it.
+  async function setPasscode(passcode) {
+    if (!canAI || !activeDiagram?.id) return false
+    try {
+      const r = await fetch(`/api/flows/${activeDiagram.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passcode }),
+      })
+      if (!r.ok) throw new Error()
+      const { is_public, has_passcode, passcode: saved } = await r.json()
+      const patch = d => (d.id === activeDiagram.id ? { ...d, is_public, hasPasscode: has_passcode, passcode: saved || '' } : d)
+      setActiveDiagram(a => (a ? patch(a) : a))
+      setDiagrams(ds => ds.map(patch))
+      if (!has_passcode) showToastMsg('Passcode removed')
+      else navigator.clipboard.writeText(shareUrl).then(
+        () => showToastMsg('Passcode set - link copied'),
+        () => showToastMsg('Passcode set - the link opens to a lock screen'))
+      return true
+    } catch {
+      showToastMsg('Could not change the passcode')
+      return false
+    }
+  }
+
   async function copyLink() {
     await ensureShareable()
     const url = shareUrl
@@ -1731,7 +1799,8 @@ export default function App() {
   // A card draws 180 square (NODE_W 190 is layout pitch), so a section's pad is
   // measured off the drawn card, the same on every side.
   const laneCfg = laneDraft || activeDiagram?.view_state?.lanes || []
-  const laneCards = nodes.map(n => { const s = sizeOf(n); return { id: n.id, x: n.position?.x ?? 0, y: n.position?.y ?? 0, w: n.data?.size?.w ?? 180, h: s.h + (showNotes ? getNoteHeight(n.id) : 0), color: n.data?.sunset ? null : findService(n.data || { id: n.id })?.color } })
+  lanesRef.current = activeDiagram?.view_state?.lanes || null
+  const laneCards = nodes.map(n => { const s = sizeOf(n); return { id: n.id, x: n.position?.x ?? 0, y: n.position?.y ?? 0, w: n.data?.size?.w ?? 180, h: s.h + (showNotes && getNoteHeight(n.id) ? getNoteHeight(n.id) - NOTE_CLEAR : 0), color: n.data?.sunset ? null : findService(n.data || { id: n.id })?.color } })
   // The owner drags a band (#468): its title moves it with its cards, an edge
   // sizes it. The drag previews in laneDraft and the card positions; the drop
   // saves the lanes and the cards together.
@@ -1940,19 +2009,18 @@ export default function App() {
     patchViewState({ ...otherView(['lanes']), lanes: clean })
   }
   // Tidy (src/tidy.js): rows straightened onto 1 gap, panels 1 gap apart, each
-  // hugging its cards. A saved panel box is only a home for its cards, so it
-  // keeps the old box too: an Undo puts the cards back and they still belong.
+  // hugging its cards. The panel boxes are saved exactly as tidied (a box that
+  // kept its old reach claimed the next panel's cards) and Undo restores them.
   const onTidy = () => {
     if (!activeDiagram?.id) return
     const cards = laneCards.filter(c => nodes.find(n => n.id === c.id)?.type === 'awsNode')
     const t = tidy(cards, laneCfg)
-    pushHistory(positionsOf(nodes), 'tidy')
+    pushHistory(positionsOf(nodes), 'tidy', undefined, laneAxis(laneCfg) === 'free' ? laneCfg : undefined)
     const moved = id => t.positions[id]
     if (laneAxis(laneCfg) !== 'free') {
       setNodes(nds => { const nx = nds.map(n => (moved(n.id) ? { ...n, position: moved(n.id) } : n)); savePositions(activeDiagram.id, nx); return nx })
     } else {
-      const union = (a, b) => { const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y); return { ...a, x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y } }
-      finishBand('end', laneCfg.map((l, i) => union(l, t.lanes[i])), moved, false)
+      finishBand('end', t.lanes, moved, false)
     }
     showToastMsg('Tidied')
   }
@@ -2019,6 +2087,14 @@ export default function App() {
   const laneGrips = canAI && activeDiagram?.id && !activeDiagram.editLocked && !edges.some(e => e.selected)
     ? lanes.map(l => ({ ...l, id: `__grip_${l.data.laneId}`, type: 'laneGrips', zIndex: 1000, data: { ...l.data, onBand, onDelete: onBandDelete, picked: selBand?.lane === l.data.laneId ? (selBand.section || '__lane') : null } }))
     : []
+  // A click anywhere inside a band picks it, not only on its title: the
+  // innermost band under the pointer wins, an empty spot clears the pick.
+  const onPaneTap = e => {
+    const p = e && laneGrips.length && rfInstance.current?.screenToFlowPosition({ x: e.clientX, y: e.clientY })
+    const hit = p && lanes.filter(l => p.x >= l.position.x && p.x < l.position.x + l.width && p.y >= l.position.y && p.y < l.position.y + l.height)
+      .sort((a, b) => a.width * a.height - b.width * b.height)[0]
+    setSelBand(hit ? { lane: hit.data.laneId, section: null } : null)
+  }
   // Swimlanes already say where a flow begins (the top lane), so a diagram
   // with lanes draws no Start here pill. Same rule in render-svg.js.
   const markers = lanes.length ? { nodes: [], edges: [] } : buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)
@@ -2040,7 +2116,7 @@ export default function App() {
       activeDiagram={activeDiagram}
       detailCodeCopied={detailCodeCopied} setDetailCodeCopied={setDetailCodeCopied}
       nodes={displayNodes} edges={displayEdges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
-      onNodeDragStop={onNodeDragStop} snapGuides={snapGuides} onPaneTap={() => setSelBand(null)}
+      onNodeDragStop={onNodeDragStop} snapGuides={snapGuides} onPaneTap={onPaneTap}
       canUndo={history.past.length > 0} canRedo={history.future.length > 0} onUndo={undo} onRedo={redo}
       shareSlug={shareSlug} shareUrl={shareUrl}
       onDeleteDiagram={canAI && activeDiagram?.id ? () => deleteDiagram(activeDiagram.id, { thenBack: true }) : undefined}
@@ -2063,6 +2139,9 @@ export default function App() {
       isDiagramPublic={activeDiagram?.is_public !== false}
       canEdit={canAI}
       onToggleVisibility={canAI && activeDiagram?.id ? toggleVisibility : undefined}
+      hasPasscode={!!activeDiagram?.hasPasscode}
+      passcode={activeDiagram?.passcode || ''}
+      onSetPasscode={canAI && activeDiagram?.id ? setPasscode : undefined}
       onShareOpen={canAI && activeDiagram?.id ? ensureShareable : undefined}
       current={current} onCurrentChange={canAI && activeDiagram?.id ? setCurrent : undefined}
       sizing={sizing} onSizingChange={canAI && activeDiagram?.id ? setSizing : undefined}

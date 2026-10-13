@@ -36,7 +36,7 @@ export async function designMetadata(searchParams, path) {
   let rows = [];
   try {
     ({ rows } = await db.query(
-      `SELECT id, title, slug, description, pattern, nodes, EXTRACT(EPOCH FROM updated_at)::bigint AS v FROM flows WHERE ${name ? "slug = $1" : "id = $1::uuid"} AND is_public = true AND deleted_at IS NULL LIMIT 1`,
+      `SELECT id, title, slug, description, pattern, nodes, EXTRACT(EPOCH FROM updated_at)::bigint AS v FROM flows WHERE ${name ? "slug = $1" : "id = $1::uuid"} AND is_public = true AND passcode_hash IS NULL AND deleted_at IS NULL LIMIT 1`,
       [name || id],
     ));
   } catch {

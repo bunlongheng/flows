@@ -70,8 +70,8 @@ describe("DetailView", () => {
     const onSetLocks = vi.fn();
     setup({ isLocked: true, isEditLocked: true, onSetLocks });
     fireEvent.click(screen.getByRole("button", { name: /^locked$/i }));
-    const del = screen.getByRole("menuitemcheckbox", { name: /delete lock/i });
-    const edit = screen.getByRole("menuitemcheckbox", { name: /edit lock/i });
+    const del = screen.getByRole("menuitemcheckbox", { name: /lock delete/i });
+    const edit = screen.getByRole("menuitemcheckbox", { name: /lock edit/i });
     expect(del).toHaveAttribute("aria-checked", "true");
     expect(edit).toHaveAttribute("aria-checked", "true");
     fireEvent.click(edit);
