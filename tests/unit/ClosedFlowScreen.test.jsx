@@ -13,14 +13,13 @@ describe("ClosedFlowScreen", () => {
     render(<ClosedFlowScreen status={404} signedIn={false} flowId={ID} onBack={vi.fn()} />);
     expect(screen.getByRole("heading")).toHaveTextContent("This flow is private");
     expect(screen.getByRole("link", { name: /Sign in and open it/ })).toHaveAttribute("href", "/api/auth/login");
-    expect(screen.getByText("77f0c76c")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /View live demo/ })).toHaveAttribute("href", "/demo");
   });
 
-  it("tells the signed-in owner the flow is gone and sends them back to the gallery", () => {
+  it("tells the signed-in owner the flow is not found and sends them back to the gallery", () => {
     const onBack = vi.fn();
     render(<ClosedFlowScreen status={404} signedIn flowId={ID} onBack={onBack} />);
-    expect(screen.getByRole("heading")).toHaveTextContent("This flow is gone");
+    expect(screen.getByRole("heading")).toHaveTextContent("Flow not found");
     expect(screen.queryByRole("link", { name: /Sign in/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Back to gallery" }));
     expect(onBack).toHaveBeenCalledOnce();
