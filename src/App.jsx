@@ -1736,7 +1736,10 @@ export default function App() {
       const patch = d => (d.id === activeDiagram.id ? { ...d, is_public, hasPasscode: has_passcode, passcode: saved || '' } : d)
       setActiveDiagram(a => (a ? patch(a) : a))
       setDiagrams(ds => ds.map(patch))
-      showToastMsg(has_passcode ? 'Passcode set - the link opens to a lock screen' : 'Passcode removed')
+      if (!has_passcode) showToastMsg('Passcode removed')
+      else navigator.clipboard.writeText(shareUrl).then(
+        () => showToastMsg('Passcode set - link copied'),
+        () => showToastMsg('Passcode set - the link opens to a lock screen'))
       return true
     } catch {
       showToastMsg('Could not change the passcode')

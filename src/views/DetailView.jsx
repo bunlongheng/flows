@@ -229,7 +229,7 @@ export function DetailView({
   // Lock access switched on but no passcode typed yet: the box is open.
   const [passOpen, setPassOpen] = useState(false)
   const toggleAccess = () => { if (hasPasscode) onSetPasscode(''); setPassOpen(!hasPasscode && !passOpen) }
-  const savePasscode = async v => { const ok = await onSetPasscode(v); if (ok) setPassOpen(false); return ok }
+  const savePasscode = async v => { const ok = await onSetPasscode(v); if (ok) { setPassOpen(false); if (v) setLockMenu(null) } return ok }
   const lockRef = useRef(null)
   useEffect(() => {
     if (!lockMenu) return
