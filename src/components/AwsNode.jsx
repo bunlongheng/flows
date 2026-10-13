@@ -3,7 +3,7 @@ import { Handle, Position, NodeResizer, useReactFlow, useStore } from '@xyflow/r
 import { findService } from '../services'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, setNoteHeight } from './noteEditContext'
 import { NOTE_MAX, cleanNote, noteRuns, linkLabel } from '../note'
-import { SUNSET, INK } from '../sunset.js'
+import { SUNSET, INK, CRACK_PATH } from '../sunset.js'
 import { FONT_STACK, borderStyleOf, hexToRgba } from '../style.js'
 import { subscribe, glowAt, motionAllowed } from '../flowClock'
 import { LaneNode } from './LaneNode'
@@ -129,6 +129,17 @@ function NodeNote({ id, note }) {
             border: '1px solid #000', background: '#fff', color: '#000', fontSize: 12, lineHeight: '16px', cursor: 'pointer' }}>×</button>
       )}
     </div>
+  )
+}
+
+// A sunset card's icon, torn down the middle like ripped paper.
+function Crack() {
+  return (
+    <svg aria-label="Gets decommissioned" viewBox="0 0 100 100" preserveAspectRatio="none"
+      style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', height: '100%', aspectRatio: '1', transform: 'translateX(-50%)', pointerEvents: 'none', overflow: 'visible' }}>
+      <path d={CRACK_PATH} fill="none" stroke={SUNSET.tint} strokeWidth="7" vectorEffect="non-scaling-stroke" />
+      <path d={CRACK_PATH} fill="none" stroke="#4b5563" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+    </svg>
   )
 }
 
@@ -274,6 +285,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
             <img ref={imgRef} src={picture} alt={label} style={{ ...(iconBox
               ? { width: iconBox.w, height: iconBox.h, maxWidth: '100%', flex: 'none', objectFit: 'cover', display: 'block', borderRadius: 2 }
               : { width: '100%', flex: 1, minHeight: 0, objectFit: 'cover', display: 'block', borderRadius: 2 }), ...(sunset ? { filter: 'grayscale(1) opacity(0.55)' } : {}) }} />
+            {sunset && <Crack />}
             {iconHandle}
           </span>
         : svc.icon
@@ -285,6 +297,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
                 // A white-edged tile on the white card: the 1 px grey frame at the iOS corner (lib/icon-frame.js decided it).
                 ...(data.iconFrame ? { borderRadius: '22%', boxShadow: '0 0 0 1px #cfd4da' } : {}),
                 ...(sunset ? { filter: 'grayscale(1) opacity(0.55)' } : {}) }} />
+            {sunset && <Crack />}
             {iconHandle}
           </span>
         : <span style={{ fontSize: 26, fontWeight: 700, color, marginTop: 2, lineHeight: 1 }}>{label[0]?.toUpperCase()}</span>

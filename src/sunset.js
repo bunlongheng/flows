@@ -11,6 +11,10 @@ export const SUNSET = {
   x: '#dc2626',        // the red X
 }
 
+// The crack torn down the middle of a sunset card's icon, like ripped paper,
+// in a 0..100 square. Drawn as a pale gap with a dark seam (canvas + exports).
+export const CRACK_PATH = 'M53 -2 L45 12 L57 24 L44 37 L58 50 L45 63 L56 76 L46 89 L52 102'
+
 // Ink: what a node with no colour of its own is painted, and the border colour
 // of a node that stays. Never grey, so it cannot be mistaken for sunset.
 export const INK = '#111827'

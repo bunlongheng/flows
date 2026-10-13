@@ -430,9 +430,8 @@ export function GradientEdge({
               style={{
                 transform: `translate(-50%, -50%) translate(${bx}px, ${by}px)`,
                 '--c1': c1, '--c2': c2,
-                // A line on its way out wears a red tag: white text on the red
-                // of the sunset X, so it reads at a glance.
-                ...(sunset ? { color: '#fff', background: SUNSET.x, border: `1.5px solid ${SUNSET.x}`, textShadow: 'none' } : {}),
+                // A line on its way out: a grey tag struck through by a big red X.
+                ...(sunset ? { color: SUNSET.ink, background: SUNSET.tint, border: `1.5px solid ${SUNSET.border}`, textShadow: 'none' } : {}),
               }}
             >
               {hasStep && <span className="sd-step-chip">{data.step}</span>}
@@ -450,6 +449,12 @@ export function GradientEdge({
                   }}
                 />
               ) : tag && <span>{tag}</span>}
+              {sunset && draft == null && (
+                <svg aria-label="Gets decommissioned" preserveAspectRatio="none" viewBox="0 0 100 100"
+                  style={{ position: 'absolute', inset: -3, width: 'calc(100% + 6px)', height: 'calc(100% + 6px)', pointerEvents: 'none', overflow: 'visible' }}>
+                  <path d="M0 0 L100 100 M0 100 L100 0" stroke={SUNSET.x} strokeWidth="2.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" fill="none" />
+                </svg>
+              )}
             </div>
           )}
           {endMovable && selected && [['s', sx, sy, data?.sourceColor], ['t', tx, ty, data?.targetColor]].map(([which, x, y, color]) => (
