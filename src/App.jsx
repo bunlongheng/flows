@@ -1087,15 +1087,10 @@ export default function App() {
     // Arrange is a reset to automatic - a Start pill the owner placed by hand
     // no longer means anything once the layout underneath it has moved.
     if (canAI && activeDiagram?.view_state?.start) {
-      const prev = activeDiagram.view_state
-      patchViewState({
-        ...(prev.panels ? { panels: prev.panels } : {}),
-        ...(prev.badge ? { badge: prev.badge } : {}),
-        ...(prev.lanes ? { lanes: prev.lanes } : {}),
-      })
+      patchViewState(otherView(['start']))
     }
     setTimeout(() => rfInstance.current?.fitView({ padding: 0.15, duration: 400 }), 60)
-  }, [edges, canAI, activeDiagram, savePositions, patchViewState, pushHistory])
+  }, [edges, canAI, activeDiagram, savePositions, patchViewState, pushHistory, otherView])
 
   // Let nodes be dragged around the canvas (positions live in React state, and
   // are saved to the DB on drag-end when the owner can edit).
