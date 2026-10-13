@@ -83,6 +83,7 @@ to drift:
 | Field | Where | Values | Effect |
 |---|---|---|---|
 | `sunset` | node | `true` | red card, cracked, red dashed lines, red X on badges |
+| `cracked` | node | `false` | a sunset card stays whole (no crack), still red; default cracked |
 | `new` | node | `true` | green border and wash, NEW pill |
 | `tooltip` | node | text, max 200 | shown on hover; not in the SVG |
 | `style.head` | edge | `end` (default), `start`, `both`, `none` | arrowhead direction |
@@ -91,7 +92,7 @@ to drift:
 | `passcode` | HTTP `PATCH` only, owner | text, `""` clears | locks the share behind a passcode |
 
 Node fields go through `create_flow` / `update_flow` (whole `nodes` list) or
-`PATCH { notes: [{ id, sunset?, new?, tooltip? }] }`. The legend lists only what
+`PATCH { notes: [{ id, sunset?, cracked?, new?, tooltip? }] }`. The legend lists only what
 the diagram uses. A running MCP server is a snapshot: restart it after a deploy
 or these fields are silently stripped. Field detail: `docs/API.md`, `mcp/README.md`.
 
