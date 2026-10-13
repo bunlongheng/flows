@@ -4,6 +4,12 @@ import { noteParts, noteRuns, linkLabel, infoLead } from "../../src/note.js";
 // The owner links tickets in notes, so a URL has to come out as its own part
 // and everything around it as text - and a full stop after the link is text.
 describe("noteParts", () => {
+  it("keeps the label of a markdown link", () => {
+    expect(noteParts("Read [the spec](https://example.com/spec) first")).toEqual([
+      { text: "Read " }, { url: "https://example.com/spec", label: "the spec" }, { text: " first" },
+    ]);
+    expect(linkLabel("https://example.com/spec", "the spec")).toBe("the spec");
+  });
   it("leaves a plain note as one text run", () => {
     expect(noteParts("Target for the router.")).toEqual([{ text: "Target for the router." }]);
   });

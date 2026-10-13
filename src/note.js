@@ -20,15 +20,21 @@ export const cleanEdgeLabel = v => (typeof v === 'string' ? v.replace(/\s+/g, ' 
 // the text is split into plain runs and links. Only http(s) counts - a bare
 // ticket key has no base to point at. Trailing punctuation stays text, so a
 // link at the end of a sentence does not swallow the full stop.
-const URL_RE = /https?:\/\/[^\s<>"']+/g
+// A markdown link [label](url) keeps its label; a bare URL is labelled by linkLabel.
+const URL_RE = /\[([^\]\n]+)\]\((https?:\/\/[^\s<>"')]+)\)|https?:\/\/[^\s<>"']+/g
 export function noteParts(text) {
   const out = []
   let last = 0
   for (const m of String(text || '').matchAll(URL_RE)) {
+    if (m.index > last) out.push({ text: text.slice(last, m.index) })
+    if (m[2]) {
+      out.push({ url: m[2], label: m[1] })
+      last = m.index + m[0].length
+      continue
+    }
     let url = m[0]
     const trail = url.match(/[.,;:!?)\]]+$/)
     if (trail) url = url.slice(0, -trail[0].length)
-    if (m.index > last) out.push({ text: text.slice(last, m.index) })
     out.push({ url })
     last = m.index + url.length
   }
@@ -40,7 +46,8 @@ export function noteParts(text) {
 // Jira URL is a note nobody can read, so a link wears its ticket key when the
 // URL carries one (SHAR-7977) and otherwise its address minus the scheme and
 // www, cut short. The full URL stays on the anchor's title and href.
-export function linkLabel(url) {
+export function linkLabel(url, label) {
+  if (label) return label
   const pr = String(url || '').match(/github\.com\/[^/]+\/[^/]+\/pull\/(\d+)/)
   if (pr) return `PR ${pr[1]}`
   const key = String(url || '').match(/[A-Z][A-Z0-9]+-\d+/)

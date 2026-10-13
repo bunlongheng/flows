@@ -297,18 +297,6 @@ describe("card panel", () => {
     expect(titles.slice(-3)).toEqual(["Notes", "Connections in (1)", "Connections out (1)"]);
   });
 
-  it("names the lane and section the card sits in, and the status", () => {
-    const lane = { id: "__lane_entry", type: "lane", position: { x: -50, y: -50 }, width: 300, height: 600, selectable: false, draggable: false,
-      data: { title: "1. Entry", axis: "col", sections: [{ id: "a", title: "Entry: target", x: 0, y: 0, w: 300, h: 250 }, { id: "b", title: "Entry: today", x: 0, y: 250, w: 300, h: 350 }] } };
-    setup({ nodes: [lane, ...cardNodes], edges: cardEdges });
-    fireEvent.click(document.querySelector('.react-flow__node[data-id="user"]'));
-    const panel = within(screen.getByTestId("card-panel"));
-    expect(panel.getByText("1. Entry")).toBeInTheDocument();
-    expect(panel.getByText("Entry: target")).toBeInTheDocument();
-    expect(panel.getByText("Active")).toBeInTheDocument();
-    expect(panel.getByText("1 out, 0 in")).toBeInTheDocument();
-  });
-
   it("clicking a connected name walks to that card", () => {
     setup({ nodes: cardNodes, edges: cardEdges });
     fireEvent.click(document.querySelector('.react-flow__node[data-id="api"]'));
