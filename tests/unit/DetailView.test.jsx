@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, within, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import { ReactFlowProvider } from "@xyflow/react";
@@ -295,6 +295,19 @@ describe("card panel", () => {
     const titles = [...screen.getByTestId("card-panel").querySelectorAll("section")]
       .map((s) => s.firstChild.textContent);
     expect(titles.slice(-3)).toEqual(["Notes", "Connections in (1)", "Connections out (1)"]);
+  });
+
+  it("tapping a step tag opens the step panel, not the line", () => {
+    const edges = [{ ...cardEdges[0], data: { step: 1, description: "Signs in with `oauth`" } }, cardEdges[1]];
+    setup({ nodes: cardNodes, edges });
+    act(() => { document.dispatchEvent(new CustomEvent("sd-step-open", { detail: "e1" })); });
+    return waitFor(() => {
+      const panel = within(screen.getByTestId("step-panel"));
+      expect(panel.getByText("opens")).toBeInTheDocument();
+      expect(panel.getByText("oauth")).toBeInTheDocument();
+      expect(panel.getByText("Entry point.")).toBeInTheDocument();
+      expect(panel.getByText("Stateless.")).toBeInTheDocument();
+    });
   });
 
   it("clicking a connected name walks to that card", () => {

@@ -128,3 +128,61 @@ export function CardPanel({ node, nodes, edges, onPick, onClose }) {
     </aside>
   )
 }
+
+// Read-only step panel: a clicked tag's step number and text, what the line
+// is (its description), what it does (which card hands off to which), and the
+// notes of the 2 cards it joins. Same slot and look as the card panel.
+export function StepPanel({ edge, nodes, onPick, onClose }) {
+  const d = edge.data || {}
+  const sunset = !!d.sunset
+  const desc = typeof d.description === 'string' ? d.description.trim() : ''
+  const tag = edge.label || desc || 'Step'
+  const end = id => {
+    const n = laneRef(id) ? null : nodes.find(x => x.id === id)
+    const icon = endIcon(id, nodes)
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        {icon && <img src={icon} alt="" width={16} height={16} style={{ flexShrink: 0, objectFit: 'contain', filter: sunset ? 'grayscale(0.5)' : undefined }} />}
+        {n
+          ? <button type="button" onClick={() => onPick(id)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 600, color: '#1a2129', cursor: 'pointer', textAlign: 'left' }}>{endName(id, nodes)}</button>
+          : <span style={{ fontWeight: 600, color: '#1a2129' }}>{endName(id, nodes)}</span>}
+      </span>
+    )
+  }
+  const notes = [edge.source, edge.target]
+    .map(id => ({ id, note: laneRef(id) ? '' : cleanNote(nodes.find(x => x.id === id)?.data?.note) }))
+    .filter(x => x.note)
+
+  return (
+    <aside className="sd-card-panel" data-testid="step-panel" style={PANEL}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
+        {d.step != null && <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: sunset ? '#94a3b8' : '#1a2129', borderRadius: 999, padding: '2px 8px', flexShrink: 0 }}>{d.step}</span>}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2129' }}>{tag}</div>
+          <div style={{ fontSize: 11.5, color: '#6b7280' }}>{sunset ? 'Step on its way out (sunset)' : d.step != null ? `Step ${d.step}` : 'Line'}</div>
+        </div>
+        <button type="button" onClick={onClose} aria-label="Close step panel" style={PANEL_CLOSE}>✕</button>
+      </div>
+
+      <Section title="What it is">
+        {desc ? <Rich text={desc} /> : <div style={empty}>No description</div>}
+      </Section>
+
+      <Section title="What it does">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12 }}>
+          {end(edge.source)}<span aria-hidden="true" style={{ color: '#6b7280' }}>→</span>{end(edge.target)}
+        </div>
+      </Section>
+
+      <Section title="Notes">
+        {notes.length
+          ? notes.map(({ id, note }) => (
+              <div key={id} style={{ marginTop: 4 }}>
+                <div style={{ ...key, marginBottom: 2 }}>{endName(id, nodes)}</div>
+                <Rich text={note} />
+              </div>))
+          : <div style={empty}>No notes</div>}
+      </Section>
+    </aside>
+  )
+}
