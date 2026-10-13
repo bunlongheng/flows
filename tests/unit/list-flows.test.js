@@ -71,6 +71,17 @@ describe("GET /api/flows (list)", () => {
     expect(sql).toMatch(/SELECT[^]*\bview_state\b[^]*FROM flows/);
   });
 
+  // The Trash tab: only soft-deleted rows, newest delete first.
+  it("?trash=1 lists the owner's trashed flows", async () => {
+    query.mockResolvedValueOnce({ rows: [] });
+    const r = req("GET");
+    r.query = { trash: "1" };
+    const res = mockRes();
+    await listFlows(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(query.mock.calls[0][0]).toMatch(/deleted_at IS NOT NULL[^]*ORDER BY deleted_at DESC/);
+  });
+
   // The owner looks for what they last worked on, so the newest edit leads.
   it("orders the list by the latest update first", async () => {
     query.mockResolvedValueOnce({ rows: [] });

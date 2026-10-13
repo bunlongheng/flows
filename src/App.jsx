@@ -301,7 +301,7 @@ export default function App() {
   // Logged-in home has two tabs (top-right button group): 'mine' = my personal
   // (non-demo) diagrams, 'demos' = the 12 curated public demos so the owner can
   // reopen + re-arrange them and have the layout persist. Public /demo ignores this.
-  const [galleryTab, setGalleryTab] = useState('mine') // 'mine' | 'linked' | 'demos'
+  const [galleryTab, setGalleryTab] = useState('mine') // 'mine' | 'linked' | 'demos' | 'trash'
   // Work vs personal. Twenty diagrams in one list meant hunting for the one that
   // matters; this splits the day job from stock bots and practice designs.
   const [loadingId, setLoadingId] = useState(false)
@@ -383,19 +383,21 @@ export default function App() {
     // Showcase view = the public /demo route OR the owner's "Demos" tab -> the 12
     // curated public designs. Otherwise the owner's personal (non-demo) diagrams.
     const showcase = isDemo || galleryTab === 'demos'
-    return fetch(showcase ? '/api/flows/public' : '/api/flows')
+    // The Trash tab has nothing to fall back to: an empty trash is just empty.
+    const trash = !isDemo && galleryTab === 'trash'
+    return fetch(showcase ? '/api/flows/public' : trash ? '/api/flows?trash=1' : '/api/flows')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then(rows => {
         const mapped = rows.map(rowToDiagram)
         // Never fall back to the IFTTT SEED sample in a showcase view - only real demos.
         setListError(false)
-        setDiagrams(mapped.length ? mapped : (showcase ? [] : SEED))
+        setDiagrams(mapped.length ? mapped : (showcase || trash ? [] : SEED))
       })
       .catch(() => {
         // An unreachable API used to look identical to "you have one diagram":
         // it fell through to the sample and the gallery said nothing. Say it.
         setListError(true)
-        setDiagrams(showcase ? [] : SEED)
+        setDiagrams(showcase || trash ? [] : SEED)
       })
       .finally(() => setListLoading(false))
   }, [isDemo, galleryTab])
@@ -1375,6 +1377,24 @@ export default function App() {
     setLoadingId(false)
   }
 
+  // A card in the Trash tab: bring the flow back, drop it from this list and
+  // open it, so the owner sees what they rescued.
+  async function restoreDiagram(d) {
+    try {
+      const r = await fetch(`/api/flows/${d.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restore: true }),
+      })
+      if (!r.ok) throw new Error()
+      setDiagrams(ds => ds.filter(x => x.id !== d.id))
+      showToastMsg('Restored from trash')
+      openDiagram(d)
+    } catch {
+      showToastMsg('Could not restore it')
+    }
+  }
+
   function backToGallery() {
     setLoadError(false)
     const url = new URL(window.location.href)
@@ -1413,7 +1433,7 @@ export default function App() {
   // diagram made for a repo (README, PR, audit) lists under Linked only, so
   // the daily list is the owner's own work. The demo roster is neither.
   const showcase = isDemo || galleryTab === 'demos'
-  const own = diagrams.filter(d => showcase || (d.tags || []).includes('linked') === (galleryTab === 'linked'))
+  const own = diagrams.filter(d => showcase || galleryTab === 'trash' || (d.tags || []).includes('linked') === (galleryTab === 'linked'))
   const filtered = own.filter(d => !search.trim() || d.title.toLowerCase().includes(search.toLowerCase()))
 
   // ── ?id LOADING / ERROR STATES ──────────────────────────────────────────────
@@ -1438,7 +1458,7 @@ export default function App() {
   if (loadError) {
     return (
       <ClosedFlowScreen status={loadError} signedIn={Boolean(user) || IS_DEV}
-        flowId={new URLSearchParams(window.location.search).get('id')} onBack={backToGallery} />
+        onBack={backToGallery} onOpenTrash={() => { setGalleryTab('trash'); backToGallery() }} />
     )
   }
 
@@ -1466,7 +1486,7 @@ export default function App() {
         copiedLabel={copiedLabel} onCopyFormat={copyFormat}
         filtered={filtered}
         onRefresh={loadDiagrams}
-        onOpen={openDiagram}
+        onOpen={galleryTab === 'trash' ? restoreDiagram : openDiagram}
         onViewCode={setCodeDiagram}
         onDeleteDiagram={deleteDiagram}
         signOut={signOut}
