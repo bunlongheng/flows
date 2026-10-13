@@ -49,8 +49,12 @@ to drift:
    reader should read the diagram, not the order you happened to discover things.
 4. **Do not set `color`, and usually not `style`.** A card draws in its own logo
    colour, which is almost always right. An explicit colour only wins when it is
-   saturated; a grey or near-black is treated as a guess and replaced. Silver is
-   reserved for `sunset: true`, so never paint a card grey to mean retired.
+   saturated; a grey or near-black is treated as a guess and replaced. Status is a
+   flag, never a colour (owner rule 2026-10-13): `sunset: true` draws red and
+   cracked with a red dashed line, `new: true` draws green with a NEW pill, so
+   never paint a card red, green or grey to mean retired or new. Lines are solid
+   with an arrowhead; `style.bs: "dashed"` is an interim path and `style.head`
+   (end, start, both, none) sets direction. The legend explains whatever is used.
    HARD GATE (owner rule 2026-10-11): a border never fights its own tile. When
    1 colour plainly is a raster icon, every save repaints the card in it
    (`lib/logo-color.js` `tileColor`), and `npm run check:colors` must print 0.
