@@ -88,7 +88,7 @@ function SwitchRow({ on, name, sub, icon, onClick }) {
 function PasscodeField({ on, current = '', onSave }) {
   const [value, setValue] = useState(current)
   const [busy, setBusy] = useState(false)
-  const [shown, setShown] = useState(false)
+  const [shown, setShown] = useState(true)
   // A save, or another flow opened, brings a new current passcode.
   useEffect(() => { setValue(current) }, [current])
   const ready = Boolean(value.trim()) && value.trim() !== current
@@ -107,7 +107,7 @@ function PasscodeField({ on, current = '', onSave }) {
             type="text" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
             data-lpignore="true" data-1p-ignore="" data-bwignore="" data-form-type="other"
             placeholder={on ? 'Enter new passcode' : 'Choose a passcode'} aria-label="Passcode" maxLength={200}
-            style={{ flex: 1, minWidth: 0, height: 38, padding: '0 38px 0 12px', fontSize: 16, borderRadius: 10, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#0f172a', fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace", WebkitTextSecurity: shown ? 'none' : 'disc', outline: 'none' }} />
+            style={{ flex: 1, minWidth: 0, height: 38, padding: '0 38px 0 12px', fontSize: 13.5, fontWeight: 600, borderRadius: 10, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#dc2626', fontFamily: 'inherit', WebkitTextSecurity: shown ? 'none' : 'disc', outline: 'none' }} />
           <button type="button" onClick={() => setShown(!shown)} aria-label={shown ? 'Hide passcode' : 'Show passcode'} title={shown ? 'Hide' : 'Show'}
             style={{ position: 'absolute', right: 4, top: 4, width: 30, height: 30, display: 'grid', placeItems: 'center', border: 'none', background: 'none', color: '#64748b', cursor: 'pointer', outline: 'none' }}>
             {shown ? <EyeIcon /> : <EyeOffIcon />}
