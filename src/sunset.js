@@ -12,7 +12,7 @@ export const SUNSET = {
 }
 
 // The new look: a node marked `new: true` is being added. Green means new: a
-// green border and wash, and a NEW pill on the top-left corner.
+// green border and wash, and a NEW pill inside the top-left corner.
 // A pinned tooltip: a red callout above its card for an important date (legend: Important date).
 export const CALLOUT = { fill: '#dc2626', ink: '#ffffff', fs: 13, wrap: 22 }
 // node.tooltipColor: the callout and tooltip fill, a 6-digit hex; '' when junk.
