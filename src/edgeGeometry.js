@@ -944,7 +944,7 @@ export const tagH = (fs = TAG_FS) => Math.round(fs * 2.06 * 2) / 2
 export function badgeBox(tag, step, fs = TAG_FS) {
   let w = 0
   for (const ch of String(tag || '')) w += ch === ' ' ? 0.28 : /[il.,:;'|!I[\]()jft]/.test(ch) ? 0.3 : /[mwMW@%]/.test(ch) ? 0.9 : /[A-Z]/.test(ch) ? 0.68 : 0.58
-  return { w: 16 + w * fs * 1.16 + (step ? 20 : 0), h: tagH(fs) + 0.5 } // 10% over the renderer width: the browser draws a touch wider
+  return { w: 1.9 * fs + w * fs * 1.16 + (step ? 20 * fs / TAG_FS : 0), h: tagH(fs) + 0.5 } // 10% over the renderer width: the browser draws a touch wider
 }
 export function clearBadge(path, at, box, off, placed) {
   const { dx, dy } = badgeShift(off, box.w, box.h)

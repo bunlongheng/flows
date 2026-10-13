@@ -455,8 +455,7 @@ export function GradientEdge({
               style={{
                 transform: `translate(-50%, -50%) translate(${bx}px, ${by}px)`,
                 '--c1': c1, '--c2': c2, fontSize: tagFs,
-                // A line on its way out: a grey tag struck through by a big red X.
-                ...(sunset ? { color: SUNSET.ink, background: SUNSET.tint, border: `1.5px solid ${SUNSET.border}`, textShadow: 'none' } : {}),
+                // A line on its way out keeps the picked badge style; the red dash and the optional X say it is going.
               }}
             >
               {hasStep && <span className="sd-step-chip">{data.step}</span>}

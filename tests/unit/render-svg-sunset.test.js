@@ -14,9 +14,9 @@ describe("renderDiagramSvg - sunset node", () => {
     expect(svg).toContain("sunset-gray");
     expect(svg).toContain(SUNSET.border);
   });
-  it("marks the badge grey and struck through by a red X on an edge leaving a sunset node too", () => {
+  it("keeps the picked badge style and strikes it with a red X on an edge leaving a sunset node", () => {
     const svg = renderDiagramSvg(NODES, [{ source: "lambda", target: "user", label: "old path out" }]);
-    expect(svg).toMatch(new RegExp(`<rect [^>]*fill="${SUNSET.tint}" stroke="${SUNSET.border}"[^>]*/><text [^>]*fill="${SUNSET.ink}">old path out</text><path [^>]*stroke="${SUNSET.x}"`));
+    expect(svg).toMatch(new RegExp(`<rect [^>]*fill="#1c1e21"/><text [^>]*fill="#fff">old path out</text><path [^>]*stroke="${SUNSET.x}"`));
   });
   it("hides the red X on retiring badges with badge-x-off, keeping the grey tag", () => {
     const svg = renderDiagramSvg(NODES, EDGES, { view: { panels: ["badge-x-off"] } });
@@ -58,5 +58,16 @@ describe("renderDiagramSvg - sunset node", () => {
   it("points the pinned callout down at its card", () => {
     const svg = renderDiagramSvg([{ id: "user", position: { x: 0, y: 0 }, tooltip: "Due soon", pinTooltip: true }], []);
     expect(svg).toMatch(/<polygon points="[^"]+" fill="#dc2626"\/>/);
+  });
+  it("grows the step chip and the badge padding with the badge text size", () => {
+    const nodes = [{ id: "user", position: { x: 0, y: 0 } }, { id: "lambda", position: { x: 400, y: 0 } }];
+    const chip = (fs) => {
+      const svg = renderDiagramSvg(nodes, [{ source: "user", target: "lambda", label: "go" }], { view: { panels: ["steps"], fonts: { tag: fs } } });
+      const m = svg.match(/<g class="sd-tag"[^>]*><rect [^>]*\/><rect x="([\d.]+)" y="[\d.]+" width="[\d.]+" height="([\d.]+)"/);
+      return { x: Number(m[1]), h: Number(m[2]) };
+    };
+    const small = chip(8.5), big = chip(17);
+    expect(big.h).toBeGreaterThan(small.h * 1.8);
+    expect(big.x).toBeGreaterThan(small.x * 1.8);
   });
 });

@@ -1501,8 +1501,9 @@ export function DetailView({
         /* Edge label badge - shared layout; per-edge gradient comes from
            --c1/--c2 set inline. Appearance switches by wrapper mode class. */
         .sd-edge-badge {
-          position: absolute; display: flex; align-items: center; gap: 4px;
-          padding: 3px 8px; border-radius: 999px;
+          /* Padding and gap in em, so a bigger badge text gets roomier padding too. */
+          position: absolute; display: flex; align-items: center; gap: 0.47em;
+          padding: 0.35em 0.95em; border-radius: 999px;
           font-size: 8.5px; font-weight: 700; line-height: 1.35;
           letter-spacing: 0.01em; white-space: nowrap; pointer-events: none;
         }
@@ -1522,9 +1523,6 @@ export function DetailView({
           opacity: 0; visibility: hidden; transition: opacity 0.12s; pointer-events: none; z-index: 30;
         }
         .sd-edge-badge[data-tip]:hover::after { opacity: 1; visibility: visible; }
-        /* A pinned tooltip (node.pinTooltip): always shown, a red callout for an important date. */
-        .sd-card-tip-pin[data-tip]::before { content: ''; position: absolute; left: 50%; bottom: calc(100% + 1px); transform: translateX(-50%); border: 7px solid transparent; border-bottom: 0; border-top-color: var(--tip-bg, #dc2626); z-index: 30; pointer-events: none; }
-        .sd-card-tip-pin[data-tip]::after { opacity: 1; visibility: visible; background: var(--tip-bg, #dc2626); color: var(--tip-ink, #fff); font-size: 13px; font-weight: 700; line-height: 17px; text-align: center; max-width: 180px; padding: 6px 12px; border-radius: 6px; bottom: calc(100% + 8px); box-shadow: none; }
         /* A card's optional tooltip (node.tooltip), the same dark tip above it. */
         .sd-card-tip[data-tip]::after {
           content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 10px);
@@ -1536,6 +1534,10 @@ export function DetailView({
         }
         .sd-card-tip[data-tip]:hover::after { opacity: 1; visibility: visible; }
         .react-flow__node:has(.sd-card-tip:hover) { z-index: 1001 !important; }
+        /* A pinned tooltip (node.pinTooltip): always shown, a red callout for an important date.  After the hover rule and 1 class stronger, so it always shows. */
+        .sd-card-tip.sd-card-tip-pin[data-tip]::before { content: ''; position: absolute; left: 50%; bottom: calc(100% + 1px); transform: translateX(-50%); border: 7px solid transparent; border-bottom: 0; border-top-color: var(--tip-bg, #dc2626); z-index: 30; pointer-events: none; }
+        .sd-card-tip.sd-card-tip-pin[data-tip]::after { opacity: 1; visibility: visible; background: var(--tip-bg, #dc2626); color: var(--tip-ink, #fff); font-size: 13px; font-weight: 700; line-height: 17px; text-align: center; max-width: 180px; padding: 6px 12px; border-radius: 6px; bottom: calc(100% + 8px); box-shadow: none; }
+        .react-flow__node:has(.sd-card-tip-pin) { z-index: 1000; }
         /* The tag layer paints under the cards, so a hovered tag climbs over
            every card (a selected card sits at 1000) and its tip is never
            covered by the box next to it. */
@@ -1702,8 +1704,9 @@ export function DetailView({
           /* Deliberately smaller than the badge's text line, so the circle sits
              INSIDE the pill with clearance top and bottom instead of pressing
              against the border. */
-          min-width: 12px; height: 12px; padding: 0 2.5px; border-radius: 999px;
-          font-size: 8px; font-weight: 800; line-height: 1;
+          /* In em, so the chip grows with the badge text size (view_state.fonts.tag). */
+          min-width: 1.5em; height: 1.5em; padding: 0 0.3em; border-radius: 999px;
+          font-size: 0.94em; font-weight: 800; line-height: 1;
           background: #1c1e21; color: #fff; flex-shrink: 0;
         }
         /* On a dark badge a dark chip would vanish - flip it. */
