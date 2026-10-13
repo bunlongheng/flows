@@ -288,8 +288,8 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       {picture
         ? <span style={iconWrapStyle}>
             <img ref={primary ? imgRef : undefined} src={picture} alt={label} style={{ ...(iconBox
-              ? { width: iconBox.w, height: iconBox.h, maxWidth: '100%', flex: 'none', objectFit: 'cover', display: 'block', borderRadius: 2 }
-              : { width: '100%', flex: 1, minHeight: 0, objectFit: 'cover', display: 'block', borderRadius: 2 }), ...(sunset ? { filter: 'grayscale(0.5) opacity(0.8)' } : {}) }} />
+              ? { width: iconBox.w, height: iconBox.h, maxWidth: '100%', flex: 'none', objectFit: 'contain', display: 'block', borderRadius: 2 }
+              : { width: '100%', flex: 1, minHeight: 0, objectFit: 'contain', display: 'block', borderRadius: 2 }), ...(sunset ? { filter: 'grayscale(0.5) opacity(0.8)' } : {}) }} />
             {primary && iconHandle}
           </span>
         : svc.icon
