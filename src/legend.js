@@ -22,9 +22,9 @@ export function legendRows(nodes = [], edges = []) {
   const fresh = nodes.some(n => n.new === true && n.sunset !== true)
   const dashed = edges.some(e => !e.sunset && (e.style?.bs === 'dashed' || e.style?.bs === 'dotted'))
   const removed = edges.some(e => e.sunset)
-  const pinned = nodes.some(n => n.pinTooltip === true && typeof n.tooltip === 'string' && n.tooltip.trim())
-  if (!sunset && !fresh && !dashed && !pinned) return []
-  return ['path', dashed && 'dashed', removed && 'removed', sunset && 'sunset', fresh && 'new', pinned && 'callout'].filter(Boolean)
+  // A pinned callout explains itself, so it gets no legend row (owner 2026-10-13).
+  if (!sunset && !fresh && !dashed) return []
+  return ['path', dashed && 'dashed', removed && 'removed', sunset && 'sunset', fresh && 'new'].filter(Boolean)
 }
 
 export const LEGEND_INK = { line: '#374151', dash: '#9ca3af', removed: SUNSET.line, x: SUNSET.x, xTint: SUNSET.tint, xBorder: SUNSET.border, new: NEW.border, callout: CALLOUT.fill }
