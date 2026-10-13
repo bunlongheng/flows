@@ -954,7 +954,9 @@ export function DetailView({
             {lockMenu && <div role="menu" style={{ position: 'fixed', top: lockMenu.top, left: lockMenu.left, zIndex: 1000, width: 340, boxSizing: 'border-box', padding: '10px 18px', background: '#fff', border: '1px solid #eef0f3', borderRadius: 16, boxShadow: '0 16px 40px rgba(15,23,42,0.14)' }}>
               <span aria-hidden="true" style={{ position: 'absolute', top: -6, left: lockMenu.caret, width: 12, height: 12, background: '#fff', borderLeft: '1px solid #eef0f3', borderTop: '1px solid #eef0f3', transform: 'rotate(45deg)' }} />
               <div>
-                {onToggleVisibility && <SwitchRow on={!!isDiagramPublic} name="Publish" onClick={onToggleVisibility}
+                {/* A passcode lock needs the link public (the server publishes it),
+                    so Publish is only a choice while Lock access is off. */}
+                {onToggleVisibility && !(hasPasscode || passOpen) && <SwitchRow on={!!isDiagramPublic} name="Publish" onClick={onToggleVisibility}
                   sub={isDiagramPublic ? 'Anyone with the link can open it' : 'Only you can open it'}
                   icon={<svg {...ICON}><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>} />}
                 {onSetPasscode && <SwitchRow on={hasPasscode || passOpen} name="Lock access" icon={<EyeIcon />} onClick={toggleAccess}
