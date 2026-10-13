@@ -61,60 +61,63 @@ function BarButton({ on, label, title, onClick, children }) {
   )
 }
 
-const SECTION = { fontSize: 10.5, fontWeight: 700, letterSpacing: '0.08em', color: '#64748b', textTransform: 'uppercase' }
+const ICON = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
+const EyeIcon = () => <svg {...ICON}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+const EyeOffIcon = () => <svg {...ICON}><path d="M9.9 4.2A9.6 9.6 0 0 1 12 4c6.4 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.6 8 10 8a9.4 9.4 0 0 0 5.4-1.6M2 2l20 20M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
 
-// 1 permission row: an icon tile, a name with its state, the switch on the right.
+// 1 row of the Lock menu: an icon tile, a name with its state, the switch on
+// the right. Every lock, the passcode included, is 1 of these.
 function SwitchRow({ on, name, sub, icon, onClick }) {
   return (
-    <button type="button" role="menuitemcheckbox" aria-checked={on} onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '8px 0', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}>
-      <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 17, flexShrink: 0, background: '#f1f5f9', color: '#0f172a', display: 'grid', placeItems: 'center' }}>{icon}</span>
+    <button type="button" role="menuitemcheckbox" aria-checked={on} onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '7px 0', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}>
+      <span style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: '#f1f5f9', color: '#0f172a', display: 'grid', placeItems: 'center' }}>{icon}</span>
       <span style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{name}</div>
-        <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 1 }}>{sub}</div>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a' }}>{name}</div>
+        <div style={{ fontSize: 12, color: '#64748b', marginTop: 1 }}>{sub}</div>
       </span>
-      <span aria-hidden="true" style={{ width: 34, height: 20, borderRadius: 10, flexShrink: 0, background: on ? '#3b82f6' : '#cbd5e1', position: 'relative', transition: 'background 0.15s' }}>
-        <span style={{ position: 'absolute', top: 2, left: on ? 16 : 2, width: 16, height: 16, borderRadius: 8, background: '#fff', boxShadow: '0 1px 2px rgba(15,23,42,0.2)', transition: 'left 0.15s' }} />
+      <span aria-hidden="true" style={{ width: 38, height: 22, borderRadius: 11, flexShrink: 0, background: on ? '#2563eb' : '#cbd5e1', position: 'relative', transition: 'background 0.15s' }}>
+        <span style={{ position: 'absolute', top: 2, left: on ? 18 : 2, width: 18, height: 18, borderRadius: 9, background: '#fff', boxShadow: '0 1px 2px rgba(15,23,42,0.25)', transition: 'left 0.15s' }} />
       </span>
     </button>
   )
 }
 
-// The share passcode: 1 box, Enter or Update stores it, Remove clears it.
-// Only the owner sees this, so the box shows the current passcode in plain
-// text to read or edit. Same control in the Share panel and the Lock menu.
+// The passcode box: masked, with an eye to show it (only the owner ever sees
+// this, so the stored passcode is in it to read or edit). Enter or Update
+// saves; switching Lock access off is what removes it.
 function PasscodeField({ on, current = '', onSave }) {
   const [value, setValue] = useState(current)
   const [busy, setBusy] = useState(false)
+  const [shown, setShown] = useState(false)
   // A save, or another flow opened, brings a new current passcode.
   useEffect(() => { setValue(current) }, [current])
-  const save = async (v) => {
-    if (busy) return
+  const ready = Boolean(value.trim()) && value.trim() !== current
+  const save = async () => {
+    if (busy || !ready) return
     setBusy(true)
-    await onSave(v)
+    await onSave(value.trim())
     setBusy(false)
   }
-  const ready = Boolean(value.trim()) && value.trim() !== current
   return (
     <div onClick={e => e.stopPropagation()}>
-      <div style={SECTION}>Passcode</div>
-      <form onSubmit={e => { e.preventDefault(); if (ready) save(value.trim()) }} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-        <input value={value} onChange={e => setValue(e.target.value)} onKeyDown={e => e.stopPropagation()}
-          type="text" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
-          data-lpignore="true" data-1p-ignore="" data-bwignore="" data-form-type="other"
-          placeholder={on ? 'Enter new passcode' : 'Add a passcode'} aria-label="Passcode" maxLength={200}
-          style={{ flex: 1, minWidth: 0, height: 36, padding: '0 12px', fontSize: 16, borderRadius: 9, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#0f172a', fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace", outline: 'none' }} />
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: '#64748b', letterSpacing: '0.02em' }}>Passcode</div>
+      <form onSubmit={e => { e.preventDefault(); save() }} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <span style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex' }}>
+          <input value={value} onChange={e => setValue(e.target.value)} onKeyDown={e => e.stopPropagation()} autoFocus={!on}
+            type="text" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
+            data-lpignore="true" data-1p-ignore="" data-bwignore="" data-form-type="other"
+            placeholder={on ? 'Enter new passcode' : 'Choose a passcode'} aria-label="Passcode" maxLength={200}
+            style={{ flex: 1, minWidth: 0, height: 38, padding: '0 38px 0 12px', fontSize: 16, borderRadius: 10, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#0f172a', fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace", WebkitTextSecurity: shown ? 'none' : 'disc', outline: 'none' }} />
+          <button type="button" onClick={() => setShown(!shown)} aria-label={shown ? 'Hide passcode' : 'Show passcode'} title={shown ? 'Hide' : 'Show'}
+            style={{ position: 'absolute', right: 4, top: 4, width: 30, height: 30, display: 'grid', placeItems: 'center', border: 'none', background: 'none', color: '#64748b', cursor: 'pointer' }}>
+            {shown ? <EyeIcon /> : <EyeOffIcon />}
+          </button>
+        </span>
         <button type="submit" disabled={busy || !ready}
-          style={{ height: 36, padding: '0 16px', borderRadius: 9, border: 'none', background: '#3b82f6', color: '#fff', fontSize: 13, fontWeight: 600, cursor: ready ? 'pointer' : 'default', opacity: ready ? 1 : 0.45, fontFamily: 'inherit' }}>
+          style={{ height: 38, padding: '0 16px', borderRadius: 10, border: 'none', background: '#2563eb', color: '#fff', fontSize: 13, fontWeight: 600, cursor: ready ? 'pointer' : 'default', opacity: ready ? 1 : 0.45, fontFamily: 'inherit' }}>
           {on ? 'Update' : 'Set'}
         </button>
       </form>
-      {on && (
-        <button type="button" onClick={() => save('')} disabled={busy}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, padding: 0, border: 'none', background: 'none', color: '#dc2626', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>
-          Remove passcode
-        </button>
-      )}
     </div>
   )
 }
@@ -223,6 +226,10 @@ export function DetailView({
   }, [arrangeMenu])
   // The Lock button opens the same kind of menu, one row per lock.
   const [lockMenu, setLockMenu] = useState(null)
+  // Lock access switched on but no passcode typed yet: the box is open.
+  const [passOpen, setPassOpen] = useState(false)
+  const toggleAccess = () => { if (hasPasscode) onSetPasscode(''); setPassOpen(!hasPasscode && !passOpen) }
+  const savePasscode = async v => { const ok = await onSetPasscode(v); if (ok) setPassOpen(false); return ok }
   const lockRef = useRef(null)
   useEffect(() => {
     if (!lockMenu) return
@@ -920,7 +927,7 @@ export function DetailView({
               shows the tighter state and opens a menu with one switch per lock. */}
           {onSetLocks && <div ref={lockRef} className="sd-hide-mobile" style={{ position: 'relative', flexShrink: 0 }}>
             <button aria-haspopup="menu" aria-expanded={!!lockMenu}
-              onClick={e => { const r = e.currentTarget.getBoundingClientRect(); const left = Math.max(8, Math.min(r.right - 330, window.innerWidth - 338)); setLockMenu(lockMenu ? null : { top: r.bottom + 10, left, caret: Math.max(16, Math.min(r.left + r.width / 2 - left - 6, 300)) }) }}
+              onClick={e => { const r = e.currentTarget.getBoundingClientRect(); const left = Math.max(8, Math.min(r.right - 340, window.innerWidth - 348)); setLockMenu(lockMenu ? null : { top: r.bottom + 10, left, caret: Math.max(16, Math.min(r.left + r.width / 2 - left - 6, 300)) }) }}
               title={isLocked || isEditLocked ? 'Locked - open to see which lock is on and lift one' : 'Both locks are off - open to lock delete or edits'} style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
@@ -938,27 +945,18 @@ export function DetailView({
               </svg>
               <span className="sd-btn-label">{isLocked || isEditLocked ? 'Locked' : 'Lock'}</span>
             </button>
-            {lockMenu && <div role="menu" style={{ position: 'fixed', top: lockMenu.top, left: lockMenu.left, zIndex: 1000, width: 330, boxSizing: 'border-box', padding: '16px 18px 10px', background: '#fff', border: '1px solid #eef0f3', borderRadius: 16, boxShadow: '0 16px 40px rgba(15,23,42,0.14)' }}>
+            {lockMenu && <div role="menu" style={{ position: 'fixed', top: lockMenu.top, left: lockMenu.left, zIndex: 1000, width: 340, boxSizing: 'border-box', padding: '10px 18px', background: '#fff', border: '1px solid #eef0f3', borderRadius: 16, boxShadow: '0 16px 40px rgba(15,23,42,0.14)' }}>
               <span aria-hidden="true" style={{ position: 'absolute', top: -6, left: lockMenu.caret, width: 12, height: 12, background: '#fff', borderLeft: '1px solid #eef0f3', borderTop: '1px solid #eef0f3', transform: 'rotate(45deg)' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 17, background: '#f1f5f9', color: '#0f172a', display: 'grid', placeItems: 'center' }}>
-                  <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                </span>
-                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Link security</span>
-                {(() => { const active = hasPasscode || isLocked || isEditLocked; return (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: active ? '#ecfdf5' : '#f1f5f9', color: active ? '#15803d' : '#64748b' }}>
-                    <span style={{ width: 7, height: 7, borderRadius: 4, background: active ? '#22c55e' : '#94a3b8' }} />{active ? 'Active' : 'Off'}
-                  </span>) })()}
-              </div>
-              {onSetPasscode && <div style={{ paddingBottom: 14, marginBottom: 12, borderBottom: '1px solid #eef0f3' }}><PasscodeField on={hasPasscode} current={passcode} onSave={onSetPasscode} /></div>}
-              <div style={SECTION}>Permissions</div>
-              <div style={{ marginTop: 4 }}>
+              <div>
+                {onSetPasscode && <SwitchRow on={hasPasscode || passOpen} name="Lock access" icon={<EyeIcon />} onClick={toggleAccess}
+                  sub={hasPasscode ? 'Protected with a passcode' : 'Require a passcode to view'} />}
+                {onSetPasscode && (hasPasscode || passOpen) && <div style={{ padding: '4px 0 12px 48px' }}><PasscodeField on={hasPasscode} current={passcode} onSave={savePasscode} /></div>}
                 <SwitchRow on={isLocked} name="Lock delete" onClick={() => onSetLocks({ locked: !isLocked })}
                   sub={isLocked ? 'Nobody can delete it, you included' : 'You can delete it; agents cannot'}
-                  icon={<svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" /></svg>} />
+                  icon={<svg {...ICON}><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" /></svg>} />
                 <SwitchRow on={isEditLocked} name="Lock edits" onClick={() => onSetLocks({ edit_locked: !isEditLocked })}
                   sub={isEditLocked ? 'Nothing moves: not agents, not you' : 'You and agents can change it'}
-                  icon={<svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>} />
+                  icon={<svg {...ICON}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>} />
               </div>
             </div>}
           </div>}
@@ -1270,7 +1268,9 @@ export function DetailView({
 
             {canEdit && onSetPasscode && (
               <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid #eef0f3' }}>
-                <PasscodeField on={hasPasscode} current={passcode} onSave={onSetPasscode} />
+                <SwitchRow on={hasPasscode || passOpen} name="Lock access" icon={<EyeIcon />} onClick={toggleAccess}
+                  sub={hasPasscode ? 'Passcode required' : 'Anyone with the link'} />
+                {(hasPasscode || passOpen) && <div style={{ marginTop: 8 }}><PasscodeField on={hasPasscode} current={passcode} onSave={savePasscode} /></div>}
               </div>
             )}
 
