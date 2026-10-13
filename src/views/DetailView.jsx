@@ -228,7 +228,15 @@ export function DetailView({
   const [lockMenu, setLockMenu] = useState(null)
   // Lock access switched on but no passcode typed yet: the box is open.
   const [passOpen, setPassOpen] = useState(false)
-  const toggleAccess = () => { if (hasPasscode) onSetPasscode(''); setPassOpen(!hasPasscode && !passOpen) }
+  // Switching Lock access off and on again in the same visit puts the same
+  // passcode back; another flow or a reload starts clean.
+  const lastPass = useRef('')
+  useEffect(() => { lastPass.current = '' }, [activeDiagram?.id])
+  const toggleAccess = () => {
+    if (hasPasscode) { lastPass.current = passcode || ''; onSetPasscode(''); setPassOpen(false); return }
+    if (lastPass.current) { onSetPasscode(lastPass.current); return }
+    setPassOpen(!passOpen)
+  }
   const savePasscode = async v => { const ok = await onSetPasscode(v); if (ok) { setPassOpen(false); if (v) setLockMenu(null) } return ok }
   const lockRef = useRef(null)
   useEffect(() => {
@@ -601,7 +609,9 @@ export function DetailView({
         {/* Visibility pill, owner only. The owner can open every diagram, so a
             private one looks shared when it is not - the recipient gets a 404
             and Slack a generic card. This says which it is, and flips it. */}
-        {onToggleVisibility && (
+        {/* 1 status icon, never 2: a passcode-locked link is not public, so
+            with a passcode set the key below stands alone. */}
+        {onToggleVisibility && !hasPasscode && (
           <button type="button" className="sd-visibility" data-public={isDiagramPublic ? '1' : '0'}
             role="switch" aria-checked={isDiagramPublic} aria-label={isDiagramPublic ? 'Public: anyone with the link can open it' : 'Private: only you can open it'}
             onClick={onToggleVisibility}
@@ -621,21 +631,17 @@ export function DetailView({
           </button>
         )}
 
-        {/* Passcode, owner only: the Stickies private share. With one set, the
-            link opens to a lock screen until the visitor types it. */}
-        {onSetPasscode && (
-          <button type="button" className="sd-passcode sd-hide-mobile" aria-pressed={!!hasPasscode}
+        {/* Passcode on, owner only: the link opens to a lock screen until the
+            visitor types it. Adding one lives in the Lock menu. */}
+        {onSetPasscode && hasPasscode && (
+          <button type="button" className="sd-passcode sd-hide-mobile"
             onClick={() => lockRef.current?.querySelector('button')?.click()}
-            aria-label={hasPasscode ? 'Passcode on: change or remove it' : 'Add a passcode to the share link'}
-            title={hasPasscode
-              ? 'Passcode on: the link opens to a lock screen. Click to change or remove it.'
-              : 'Add a passcode: the link opens to a lock screen until it is typed.'}
+            aria-label="Passcode on: change or remove it"
+            title="Passcode on: the link opens to a lock screen. Click to change or remove it."
             style={{
               flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: 28, height: 28, padding: 0, borderRadius: 999, cursor: 'pointer',
-              background: hasPasscode ? '#0f172a' : '#f8fafc',
-              color: hasPasscode ? '#fff' : '#475569',
-              border: `1px solid ${hasPasscode ? '#0f172a' : '#e2e8f0'}`,
+              background: '#0f172a', color: '#fff', border: '1px solid #0f172a',
             }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg>
           </button>
@@ -959,6 +965,11 @@ export function DetailView({
             {lockMenu && <div role="menu" style={{ position: 'fixed', top: lockMenu.top, left: lockMenu.left, zIndex: 1000, width: 340, boxSizing: 'border-box', padding: '10px 18px', background: '#fff', border: '1px solid #eef0f3', borderRadius: 16, boxShadow: '0 16px 40px rgba(15,23,42,0.14)' }}>
               <span aria-hidden="true" style={{ position: 'absolute', top: -6, left: lockMenu.caret, width: 12, height: 12, background: '#fff', borderLeft: '1px solid #eef0f3', borderTop: '1px solid #eef0f3', transform: 'rotate(45deg)' }} />
               <div>
+                {/* A passcode lock needs the link public (the server publishes it),
+                    so Publish is only a choice while Lock access is off. */}
+                {onToggleVisibility && !(hasPasscode || passOpen) && <SwitchRow on={!!isDiagramPublic} name="Publish" onClick={onToggleVisibility}
+                  sub={isDiagramPublic ? 'Anyone with the link can open it' : 'Only you can open it'}
+                  icon={<svg {...ICON}><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>} />}
                 {onSetPasscode && <SwitchRow on={hasPasscode || passOpen} name="Lock access" icon={<EyeIcon />} onClick={toggleAccess}
                   sub={hasPasscode ? 'Viewers need the passcode' : 'Anyone with the link views it'} />}
                 {onSetPasscode && (hasPasscode || passOpen) && <div style={{ padding: '4px 0 12px 48px' }}><PasscodeField on={hasPasscode} current={passcode} onSave={savePasscode} /></div>}
