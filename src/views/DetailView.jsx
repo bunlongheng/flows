@@ -910,7 +910,7 @@ export function DetailView({
               shows the tighter state and opens a menu with one switch per lock. */}
           {onSetLocks && <div ref={lockRef} className="sd-hide-mobile" style={{ position: 'relative', flexShrink: 0 }}>
             <button aria-haspopup="menu" aria-expanded={!!lockMenu}
-              onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setLockMenu(lockMenu ? null : { top: r.bottom + 6, left: r.left }) }}
+              onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setLockMenu(lockMenu ? null : { top: r.bottom + 6, left: Math.max(8, Math.min(r.left, window.innerWidth - 298)) }) }}
               title={isLocked || isEditLocked ? 'Locked - open to see which lock is on and lift one' : 'Both locks are off - open to lock delete or edits'} style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
@@ -928,7 +928,7 @@ export function DetailView({
               </svg>
               <span className="sd-btn-label">{isLocked || isEditLocked ? 'Locked' : 'Lock'}</span>
             </button>
-            {lockMenu && <div role="menu" style={{ position: 'fixed', top: lockMenu.top, left: lockMenu.left, zIndex: 1000, minWidth: 250, padding: 4, background: '#fff', border: '1px solid #e4e6e8', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)' }}>
+            {lockMenu && <div role="menu" style={{ position: 'fixed', top: lockMenu.top, left: lockMenu.left, zIndex: 1000, width: 290, boxSizing: 'border-box', padding: 4, background: '#fff', border: '1px solid #e4e6e8', borderRadius: 10, boxShadow: '0 8px 24px rgba(15,23,42,0.12)' }}>
               {onSetPasscode && <div style={{ padding: '6px 10px 8px', borderBottom: '1px solid #f1f5f9', marginBottom: 4 }}><PasscodeField on={hasPasscode} onSave={onSetPasscode} /></div>}
               {[
                 ['locked', 'Delete lock', isLocked, isLocked ? 'On - nobody can delete it, you included, until this is off' : 'Off - you can delete it; agents still cannot'],
