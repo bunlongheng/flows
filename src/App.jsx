@@ -409,24 +409,9 @@ export default function App() {
   // Owner sign-in state + one-time feedback from the OAuth redirect (?auth=).
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => {
-      if (d.authenticated) return setUser(d)
-      // The owner opening their own shared link in a browser that is signed
-      // into Google but not into Flows should land in the editor, not the
-      // read-only view, without hunting for a Sign in button that a shared
-      // link no longer has. So a shared link asks Google once, silently, and
-      // comes straight back either way (see auth-login ?silent). Once per tab:
-      // a stranger's browser answers no every time, and the round trip is not
-      // free. The demo and the index have their own screens and never ask,
-      // and a local build never asks: Google only sends a browser back to
-      // the deployed origin, and a local owner has the dev bypass.
-      const q = new URLSearchParams(window.location.search)
-      const local = /^([a-z0-9-]+\.)*(localhost|127\.0\.0\.1)$/i.test(window.location.hostname)
-      if (IS_DEV || local || window.location.pathname === '/demo' || !(q.get('id') || q.get('name'))) return
-      try {
-        if (sessionStorage.getItem('sd_silent_auth')) return
-        sessionStorage.setItem('sd_silent_auth', '1')
-      } catch { return }
-      window.location.replace('/api/auth/login?silent=1')
+      // A shared link asks Google silently on the server, before the page is
+      // sent (app/page.jsx), so this only reads the answer.
+      if (d.authenticated) setUser(d)
     }).catch(() => {}).finally(() => setAuthChecked(true))
     const p = new URLSearchParams(window.location.search).get('auth')
     if (p === 'denied') showToastMsg('That Google account is not authorized')

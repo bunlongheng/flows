@@ -57,6 +57,34 @@ describe("GET /api/auth/login on another production alias", () => {
     expect(res.headers["Set-Cookie"]).toBeUndefined();
   });
 
+  // The server-side silent check on a shared link (app/page.jsx) names the
+  // page to come back to, and marks the browser so it is asked only once.
+  it("carries ?next= through the hop, remembers it, and marks the silent check as tried", async () => {
+    const hop = req();
+    hop.headers.host = "system-design-bheng.vercel.app";
+    hop.query = { silent: "1", next: "/?id=abc" };
+    const hopRes = mockRes();
+    await authLogin(hop, hopRes);
+    expect(hopRes.headers.Location).toBe("https://flows-bheng.vercel.app/api/auth/login?silent=1&next=%2F%3Fid%3Dabc");
+    const r = req();
+    r.query = { silent: "1", next: "/?id=abc" };
+    const res = mockRes();
+    await authLogin(r, res);
+    const set = res.headers["Set-Cookie"].join("\n");
+    expect(set).toContain(`sd_oauth_next=${encodeURIComponent("/?id=abc")}`);
+    expect(set).toMatch(/sd_silent_tried=1; Path=\/; HttpOnly; SameSite=Lax; Secure(\n|$)/);
+  });
+
+  it("never remembers a ?next= that leaves the site", async () => {
+    for (const next of ["//evil.com", "/\\evil.com", "https://evil.com"]) {
+      const r = req();
+      r.query = { silent: "1", next };
+      const res = mockRes();
+      await authLogin(r, res);
+      expect(res.headers["Set-Cookie"].join("\n")).not.toContain("sd_oauth_next");
+    }
+  });
+
   it("stays put on the host Google knows", async () => {
     const res = mockRes();
     await authLogin(req(), res);
