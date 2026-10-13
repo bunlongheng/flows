@@ -103,7 +103,7 @@ function PasscodeField({ on, current = '', onSave }) {
       <div style={{ fontSize: 12.5, fontWeight: 600, color: '#64748b', letterSpacing: '0.02em' }}>Passcode</div>
       <form onSubmit={e => { e.preventDefault(); save() }} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <span style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex' }}>
-          <input value={value} onChange={e => setValue(e.target.value)} onKeyDown={e => e.stopPropagation()} autoFocus={!on}
+          <input value={value} onChange={e => setValue(e.target.value.toLowerCase())} onKeyDown={e => e.stopPropagation()} autoFocus={!on}
             type="text" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
             data-lpignore="true" data-1p-ignore="" data-bwignore="" data-form-type="other"
             placeholder={on ? 'Enter new passcode' : 'Choose a passcode'} aria-label="Passcode" maxLength={200}

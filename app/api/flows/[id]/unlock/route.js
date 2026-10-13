@@ -49,7 +49,7 @@ export async function POST(request, ctx) {
   if (!row.passcode_hash) return new Response(null, { status: 303, headers: { Location: back(id) } });
 
   const form = await request.formData().catch(() => null);
-  const passcode = String(form?.get("passcode") ?? "").trim();
+  const passcode = String(form?.get("passcode") ?? "").trim().toLowerCase();
   if (!(await verifyPasscode(passcode, row.passcode_hash))) {
     return html(gatePage({ action: `/api/flows/${id}/unlock`, title: row.title || "Locked flow", bad: true }), 401);
   }
