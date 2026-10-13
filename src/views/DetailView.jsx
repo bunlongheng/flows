@@ -613,7 +613,7 @@ export function DetailView({
         {/* Passcode, owner only: the Stickies private share. With one set, the
             link opens to a lock screen until the visitor types it. */}
         {onSetPasscode && (
-          <button type="button" className="sd-passcode" aria-pressed={!!hasPasscode}
+          <button type="button" className="sd-passcode sd-hide-mobile" aria-pressed={!!hasPasscode}
             onClick={() => setShowSharePanel(true)}
             aria-label={hasPasscode ? 'Passcode on: change or remove it' : 'Add a passcode to the share link'}
             title={hasPasscode
