@@ -90,7 +90,7 @@ to drift:
 | `style.head` | edge | `end` (default), `start`, `both`, `none` | arrowhead direction |
 | `style.bs` | edge | `solid` (default), `dashed`, `dotted` | dashed = interim or optional path |
 | `panels` | `view_state` / MCP `view` | `arrows-off`, `legend-off`, `badge-x-off` | hide arrowheads / the bottom-left legend / the red X on retiring badges (all on by default) |
-| `fonts` | `view_state` / MCP `view` | `{ title 10-32, sub 8-24, tag 8-20 }` px | text size for the whole diagram (default 12 / 10 / 8.5); send only what changes |
+| `fonts` | `view_state` / MCP `view` | `{ title, sub, tag }, each 8-22` px | text size for the whole diagram (default 12 / 10 / 8.5); send only what changes; the panel's 1 Text size slider scales all 3 together at those ratios |
 | `passcode` | HTTP `PATCH` only, owner | text, `""` clears | locks the share behind a passcode |
 
 Node fields go through `create_flow` / `update_flow` (whole `nodes` list) or

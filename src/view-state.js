@@ -73,11 +73,12 @@ export const cleanCurrent = (v) => {
 // read"): every card title and sub and every line tag. A card's own style.fs
 // still wins for that card. Only a size off the default is stored.
 export const FONT_DEFAULT = { title: 12, sub: 10, tag: 8.5 };
-const FONT_RANGE = { title: [10, 32], sub: [8, 24], tag: [8, 20] };
+export const FONT_MIN = 8;
+export const FONT_MAX = 22;
 
 /** The diagram's text sizes from a view_state, defaults filled in. Always all 3 keys. */
 export const fontsOf = (v) => Object.fromEntries(Object.entries(FONT_DEFAULT).map(([k, d]) => {
-  const n = Number(v?.fonts?.[k]), [lo, hi] = FONT_RANGE[k];
+  const n = Number(v?.fonts?.[k]), [lo, hi] = [FONT_MIN, FONT_MAX];
   return [k, v?.fonts?.[k] != null && Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n * 2) / 2)) : d];
 }));
 

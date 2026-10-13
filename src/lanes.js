@@ -56,7 +56,7 @@ export function freeHome(lanes, cards) {
 // Owner rule 2026-10-11: the same padding everywhere. A panel with cards HUGS
 // them, and any panel nested inside it, with SECTION_PAD on all 4 sides; its
 // saved size is only a home for the cards. An edge is never stretched to line
-// up with a neighbour, since that breaks the pad: Tidy (src/tidy.js) lines
+// up with a neighbour, since that breaks the pad: Arrange lines
 // panels up by moving them. An empty panel draws its saved box.
 const within = (o, l) => o !== l && o.x >= l.x && o.y >= l.y && o.x + o.w <= l.x + l.w && o.y + o.h <= l.y + l.h
 function freeRects(lanes, cards) {

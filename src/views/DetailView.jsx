@@ -155,7 +155,6 @@ export function DetailView({
   isPublic,
   saveState = 'idle',
   onArrange,
-  onTidy,
   canUndo, canRedo, onUndo, onRedo,
   onDeleteDiagram,
   // Two locks, both on for every flow until the owner lifts one. The delete
@@ -771,19 +770,6 @@ export function DetailView({
           {/* Arrange and undo are the owner's; a visitor has no group here to fence. */}
           {canEdit && <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />}
 
-          {/* Tidy: straighten rows, 1 gap, every panel hugging its cards (src/tidy.js). */}
-          {canEditNow && onTidy && <button className="sd-hide-mobile sd-show-mobile sd-hide-tablet" onClick={onTidy} title="Tidy: align rows, even gaps, same panel padding" style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
-            background: 'transparent', color: '#64748b', cursor: 'pointer', fontSize: 13, fontWeight: 400, transition: 'all 0.1s', fontFamily: 'inherit',
-          }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 4h18M3 20h18"/><rect x="5" y="8" width="5" height="8" rx="1"/><rect x="14" y="8" width="5" height="8" rx="1"/>
-            </svg>
-            <span className="sd-btn-label">Tidy</span>
-          </button>}
 
           {/* Auto-arrange is a Beta feature (owner 2026-10-11): only with ?beta=1. */}
           {canEditNow && BETA && <div ref={arrangeRef} style={{ position: 'relative' }}>
@@ -906,7 +892,7 @@ export function DetailView({
             <span className="sd-btn-label">Notes</span>
           </button>
 
-          {setShowArrows && <button className={showArrows ? "is-on" : ""} onClick={() => setShowArrows(v => !v)} title={showArrows ? 'Hide the arrowheads' : 'Show which way each line goes'}
+          {setShowArrows && <button className={`sd-hide-mobile${showArrows ? " is-on" : ""}`} onClick={() => setShowArrows(v => !v)} title={showArrows ? 'Hide the arrowheads' : 'Show which way each line goes'}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
               background: showArrows ? '#f1f5f9' : 'transparent', color: showArrows ? '#1e293b' : '#64748b',
               cursor: 'pointer', fontSize: 13, fontWeight: showArrows ? 600 : 400, transition: 'all 0.1s', fontFamily: 'inherit' }}>

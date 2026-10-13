@@ -11,7 +11,6 @@ import { layoutFanOut } from './layoutFan.js'
 import { rowToDiagram } from './rowToDiagram'
 import { snapSuggest } from './snapAlign'
 import { findService } from './services'
-import { tidy } from './tidy.js'
 import { NOTE_CLEAR, laneNodes, laneRef, sectionRef, freeHome, laneNodeId, LANE_INK, LANE_MIN, cardsColor, cleanLanes, laneAxis, laneRects, laneSpan, sectionRects, resortSections, moveLane, HAND_MIN_PAD, SECTION_PAD, LANE_FIT, LANE_SECTIONS_MAX } from './lanes.js'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './components/noteEditContext'
 import { SUNSET, INK } from './sunset.js'
@@ -354,7 +353,7 @@ export default function App() {
   // the same as every editor. 50 steps is far more than anyone walks back.
   // `pins` defaults to the edges as they stand: every caller records the state
   // before its own change, and a node drag does not touch them anyway.
-  // A Tidy step also carries the panel boxes, so undoing it puts them back too.
+  // A step can also carry the panel boxes, so undoing it puts them back too.
   const lanesRef = useRef(null)
   const pushHistory = useCallback((positions, kind, pins, lanes) => {
     const step = { positions, kind, pins: pins || pinsOf(edgesRef.current), ...(lanes ? { lanes } : {}) }
@@ -945,10 +944,14 @@ export default function App() {
   // Title, subtitle and tag sizes for the whole diagram, from the same panel.
   // Drawn at once (the canvas reads activeDiagram), saved on the row so the
   // exports draw the same.
+  // The slider fires on every step, so the save waits 400 ms: 1 drag = 1 save.
+  const fontsTimer = useRef(null)
+  useEffect(() => () => clearTimeout(fontsTimer.current), [])
   const setFonts = useCallback(f => {
     const view_state = { ...otherView(['fonts']), ...cleanFonts(f) }
     setActiveDiagram(a => (a ? { ...a, view_state } : a))
-    patchViewState(view_state)
+    clearTimeout(fontsTimer.current)
+    fontsTimer.current = setTimeout(() => patchViewState(view_state), 400)
   }, [otherView, patchViewState])
 
   // The owner dragged a node's resize handle. Store the new size on the node
@@ -1078,7 +1081,7 @@ export default function App() {
   // Auto-arrange: 2 styles, rows (dagre - start on the left, spread out, steps
   // ordered top-to-bottom, labels clear of nodes) and fan (layoutFan.js - a
   // tree that fans out from the start node). Either way: fit-zoom, and persist
-  // for the owner so the tidy layout sticks.
+  // for the owner so the layout sticks.
   const autoArrange = useCallback((style = 'fan') => {
     const current = nodesRef.current
     const flow = current.filter(n => n.type === 'awsNode')
@@ -2004,22 +2007,6 @@ export default function App() {
     setActiveDiagram(a => (a ? { ...a, view_state: { ...a.view_state, lanes: clean } } : a))
     patchViewState({ ...otherView(['lanes']), lanes: clean })
   }
-  // Tidy (src/tidy.js): rows straightened onto 1 gap, panels 1 gap apart, each
-  // hugging its cards. The panel boxes are saved exactly as tidied (a box that
-  // kept its old reach claimed the next panel's cards) and Undo restores them.
-  const onTidy = () => {
-    if (!activeDiagram?.id) return
-    const cards = laneCards.filter(c => nodes.find(n => n.id === c.id)?.type === 'awsNode')
-    const t = tidy(cards, laneCfg)
-    pushHistory(positionsOf(nodes), 'tidy', undefined, laneAxis(laneCfg) === 'free' ? laneCfg : undefined)
-    const moved = id => t.positions[id]
-    if (laneAxis(laneCfg) !== 'free') {
-      setNodes(nds => { const nx = nds.map(n => (moved(n.id) ? { ...n, position: moved(n.id) } : n)); savePositions(activeDiagram.id, nx); return nx })
-    } else {
-      finishBand('end', t.lanes, moved, false)
-    }
-    showToastMsg('Tidied')
-  }
   // The owner deletes an empty band with its x. A section leaves its lane (1
   // left is no split); a lane goes and the lanes after it pack up, cards along.
   const onBandDelete = (laneId, sectionId) => {
@@ -2127,7 +2114,6 @@ export default function App() {
       isPublic={isDemo}
       saveState={saveState}
       onArrange={autoArrange}
-      onTidy={canAI ? onTidy : undefined}
       onNoteChange={canAI ? onNoteChange : undefined}
       onEdgeStyleChange={canAI ? onEdgeStyleChange : undefined}
       bandPick={bandPick} onBandColor={canAI ? onBandColor : undefined} onRename={canAI ? onRename : undefined}
