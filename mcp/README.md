@@ -116,6 +116,10 @@ Edges are directed `{ source, target, label?, description?, id?, style? }` using
   flag's job is to hide them.
 - Edge `style.head` - `end` (default), `start`, `both` or `none`, the arrowhead
   direction; `style.bs: "dashed"` is an interim or optional path. Lines are solid.
+- `fonts` - `{ title, sub, tag }` text sizes in px for the whole diagram
+  (title 10-32 default 12, sub 8-24 default 10, tag 8-20 default 8.5). Send
+  only what changes; `{}` resets. A big diagram that reads too small wants
+  `{ title: 16, sub: 12, tag: 12 }` or so.
 - `badge` - `dark` (default), `silver`, `color` or `plain`, how a step chip is
   painted.
 - Only the keys you send change. The owner's lanes and hand-placed Start pill

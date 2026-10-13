@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, useStore, useStoreApi } from '@xyflow/react'
-import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion, ShowArrowsContext } from './noteEditContext'
+import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion, ShowArrowsContext, FontsContext } from './noteEditContext'
 import { subscribe, currentPhase, motionAllowed, dotAt, ambientAt } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
@@ -113,10 +113,10 @@ function frameGeo(nodes) {
   return geoCache
 }
 
-let takenCache = { geo: null, edges: null, before: new Map(), badgeAt: new Map() }
-function takenBefore(id, nodes, edges) {
+let takenCache = { geo: null, edges: null, fs: null, before: new Map(), badgeAt: new Map() }
+function takenBefore(id, nodes, edges, tagFs) {
   const geo = frameGeo(nodes)
-  if (takenCache.geo !== geo || takenCache.edges !== edges) {
+  if (takenCache.geo !== geo || takenCache.edges !== edges || takenCache.fs !== tagFs) {
     const { nodeOf, cards, gaps } = geo, nodeRects = cards
     const before = new Map(), taken = [], badgeAt = new Map(), badges = [], jobs = []
     for (const e of edges) {
@@ -136,7 +136,7 @@ function takenBefore(id, nodes, edges) {
     // The owner's hand-slid badges first, so an auto badge clears all of them
     // (render-svg.js places in the same order).
     for (const { e, r, hand } of [...jobs.filter(j => j.hand), ...jobs.filter(j => !j.hand)]) {
-      const box = badgeBox(tagText(e.label, e.data?.description), true)
+      const box = badgeBox(tagText(e.label, e.data?.description), true, tagFs)
       const at = hand
         ? pointAlongPath(r.path, Math.min(T_MAX, Math.max(T_MIN, e.data.labelT))) || { x: r.labelX, y: r.labelY }
         : clearBadge(r.path, { x: r.labelX, y: r.labelY }, box, r.labelOff, badges)
@@ -144,7 +144,7 @@ function takenBefore(id, nodes, edges) {
       const s = badgeShift(r.labelOff, box.w, box.h, at.lead)
       badges.push({ ...box, x: at.x + s.dx, y: at.y + s.dy })
     }
-    takenCache = { geo, edges, before, badgeAt }
+    takenCache = { geo, edges, fs: tagFs, before, badgeAt }
   }
   return takenCache.before.get(id) || []
 }
@@ -190,8 +190,9 @@ export function GradientEdge({
   // the frame.
   const { cards: nodeRects, gaps } = geo
   const arrowsOn = useContext(ShowArrowsContext)
+  const tagFs = useContext(FontsContext).tag
   const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelOff } = routeEdge({
-    taken: takenBefore(id, allNodes, allEdges),
+    taken: takenBefore(id, allNodes, allEdges, tagFs),
     id, source, target, sourceNode, targetNode, nodeOf, edges: allEdges, obstacles, nodeRects, gaps,
     bend, endS, endT, arrow: data?.style?.arrow, label, description: data?.description,
     fallback: { sx: sourceX, sy: sourceY, tx: targetX, ty: targetY },
@@ -373,7 +374,7 @@ export function GradientEdge({
   // A paired line's badge hangs off the line on a short leader, on the pair's
   // outside. The shift uses the same estimated box as the placement pass and
   // render-svg.js, so the canvas and the export put every badge in 1 spot.
-  const box = badgeBox(tag, true)
+  const box = badgeBox(tag, true, tagFs)
   const { dx, dy } = badgeShift(labelOff, box.w, box.h, onPath ? 0 : auto?.lead)
   const bx = ax + dx
   const by = ay + dy
@@ -452,7 +453,7 @@ export function GradientEdge({
               title={!desc && (movable || editable) ? 'Double-click to rewrite; drag along the line to move it; alt+double-click puts it back' : undefined}
               style={{
                 transform: `translate(-50%, -50%) translate(${bx}px, ${by}px)`,
-                '--c1': c1, '--c2': c2,
+                '--c1': c1, '--c2': c2, fontSize: tagFs,
                 // A line on its way out: a grey tag struck through by a big red X.
                 ...(sunset ? { color: SUNSET.ink, background: SUNSET.tint, border: `1.5px solid ${SUNSET.border}`, textShadow: 'none' } : {}),
               }}

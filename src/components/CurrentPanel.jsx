@@ -49,7 +49,11 @@ function Row({ caption: title, values, value, format, onPick, hint: text }) {
   )
 }
 
-export function CurrentPanel({ value, onChange, onClose, pattern, description, sizing, onSizing }) {
+// Text sizes offered for the whole diagram, in px; the first is the default.
+// The payload takes any size in range (view_state.fonts, src/view-state.js).
+const FONT_STEPS = { title: [12, 14, 16, 20], sub: [10, 12, 14, 16], tag: [8.5, 10, 12, 14] }
+
+export function CurrentPanel({ value, onChange, onClose, pattern, description, sizing, onSizing, fonts, onFonts }) {
   const speed = value?.speed ?? CURRENT_DEFAULT.speed
   const amount = value?.amount ?? CURRENT_DEFAULT.amount
   // What the multiplier actually means on the clock, so the number is a time
@@ -109,6 +113,12 @@ export function CurrentPanel({ value, onChange, onClose, pattern, description, s
           }[sizing]}
         />
       )}
+
+      {onFonts && fonts && [['title', 'Title size'], ['sub', 'Subtitle size'], ['tag', 'Tag size']].map(([k, label]) => (
+        <Row key={k} caption={label} values={FONT_STEPS[k]} value={fonts[k]} format={v => v}
+          onPick={v => onFonts({ ...fonts, [k]: v })}
+          hint={k === 'tag' ? 'Text size in px for every card title, subtitle and line tag in this diagram.' : undefined} />
+      ))}
 
       <div style={{ ...hint, marginTop: 0 }}>Press Play to watch it. Every setting belongs to THIS diagram and is saved with it, so a picture or GIF export draws the same current and the same card sizes.</div>
     </aside>

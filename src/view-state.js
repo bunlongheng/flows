@@ -69,6 +69,24 @@ export const cleanCurrent = (v) => {
   return c.speed === CURRENT_DEFAULT.speed && c.amount === CURRENT_DEFAULT.amount ? {} : { current: c };
 };
 
+// Text sizes for the whole diagram, in px (owner 2026-10-13: "too small to
+// read"): every card title and sub and every line tag. A card's own style.fs
+// still wins for that card. Only a size off the default is stored.
+export const FONT_DEFAULT = { title: 12, sub: 10, tag: 8.5 };
+const FONT_RANGE = { title: [10, 32], sub: [8, 24], tag: [8, 20] };
+
+/** The diagram's text sizes from a view_state, defaults filled in. Always all 3 keys. */
+export const fontsOf = (v) => Object.fromEntries(Object.entries(FONT_DEFAULT).map(([k, d]) => {
+  const n = Number(v?.fonts?.[k]), [lo, hi] = FONT_RANGE[k];
+  return [k, v?.fonts?.[k] != null && Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n * 2) / 2)) : d];
+}));
+
+/** `fonts` for storage: only the sizes that differ from the default. */
+export const cleanFonts = (v) => {
+  const kept = Object.entries(fontsOf({ fonts: v })).filter(([k, n]) => n !== FONT_DEFAULT[k]);
+  return kept.length ? { fonts: Object.fromEntries(kept) } : {};
+};
+
 /** The full canvas-state half of view_state, lanes excluded. */
 export const cleanView = (v) => ({
   panels: cleanPanels(v?.panels),
@@ -76,4 +94,5 @@ export const cleanView = (v) => ({
   ...cleanStart(v?.start),
   ...cleanCurrent(v?.current),
   ...cleanSizing(v?.sizing),
+  ...cleanFonts(v?.fonts),
 });

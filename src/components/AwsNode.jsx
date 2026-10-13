@@ -1,7 +1,7 @@
 import { memo, useContext, useEffect, useRef, useState } from 'react'
 import { Handle, Position, NodeResizer, useReactFlow, useStore } from '@xyflow/react'
 import { findService } from '../services'
-import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, setNoteHeight } from './noteEditContext'
+import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, FontsContext, setNoteHeight } from './noteEditContext'
 import { NOTE_MAX, cleanNote, noteRuns, linkLabel } from '../note'
 import { SUNSET, NEW, INK, CRACK, CRACK_HALVES } from '../sunset.js'
 import { FONT_STACK, borderStyleOf, hexToRgba } from '../style.js'
@@ -192,6 +192,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   // The owner's resize handler, or null on a shared/read-only view - absence
   // is what hides the resize handles below.
   const onResize = useContext(NodeResizeContext)
+  const fonts = useContext(FontsContext)
   const canResize = typeof onResize === 'function'
   // The owner's saved size, or the shape's default when never resized.
   const size = data.size
@@ -307,13 +308,13 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       }
       <div style={{ textAlign: st.align || 'center', width: '100%', flex: 'none', fontFamily: FONT_STACK[st.font] || 'inherit' }}>
         <div title={label} style={{
-          fontSize: st.fs || 12, fontWeight: 700, color: sunset ? SUNSET.ink : '#111827', letterSpacing: '-0.1px', lineHeight: 1.3,
+          fontSize: st.fs || fonts.title, fontWeight: 700, color: sunset ? SUNSET.ink : '#111827', letterSpacing: '-0.1px', lineHeight: 1.3,
           ...CLAMP_2,
         }}>{label}</div>
         {sub && <div title={sub} style={{
           // The sub stays proportional to the label rather than fixed at 10px,
           // so bumping the card to XL does not leave a caption the same size.
-          fontSize: st.fs ? Math.round(st.fs * 0.82) : 10, color: sunset ? SUNSET.ink : '#6b7280', marginTop: 2, fontWeight: 600, lineHeight: 1.35,
+          fontSize: st.fs ? Math.round(st.fs * 0.82) : fonts.sub, color: sunset ? SUNSET.ink : '#6b7280', marginTop: 2, fontWeight: 600, lineHeight: 1.35,
           ...CLAMP_2,
         }}>{sub}</div>}
       </div>
