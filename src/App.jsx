@@ -1706,8 +1706,8 @@ export default function App() {
         body: JSON.stringify({ passcode }),
       })
       if (!r.ok) throw new Error()
-      const { is_public, has_passcode } = await r.json()
-      const patch = d => (d.id === activeDiagram.id ? { ...d, is_public, hasPasscode: has_passcode } : d)
+      const { is_public, has_passcode, passcode: saved } = await r.json()
+      const patch = d => (d.id === activeDiagram.id ? { ...d, is_public, hasPasscode: has_passcode, passcode: saved || '' } : d)
       setActiveDiagram(a => (a ? patch(a) : a))
       setDiagrams(ds => ds.map(patch))
       showToastMsg(has_passcode ? 'Passcode set - the link opens to a lock screen' : 'Passcode removed')
@@ -2103,6 +2103,7 @@ export default function App() {
       canEdit={canAI}
       onToggleVisibility={canAI && activeDiagram?.id ? toggleVisibility : undefined}
       hasPasscode={!!activeDiagram?.hasPasscode}
+      passcode={activeDiagram?.passcode || ''}
       onSetPasscode={canAI && activeDiagram?.id ? setPasscode : undefined}
       onShareOpen={canAI && activeDiagram?.id ? ensureShareable : undefined}
       current={current} onCurrentChange={canAI && activeDiagram?.id ? setCurrent : undefined}
