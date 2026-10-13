@@ -159,7 +159,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   // badges only. Silver is reserved for this state, so a node with no colour
   // of its own is ink, never grey.
   const sunset = data.sunset === true
-  // New: being added. Green border and wash, a NEW pill on the corner. Sunset wins if both are set.
+  // New: being added. Green border and wash, a NEW pill on the top-left corner. Sunset wins if both are set.
   const isNew = data.new === true && !sunset
   // cracked: false keeps the red sunset look on a whole card.
   const split = sunset && data.cracked !== false
@@ -347,7 +347,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       <Handle id="r" type="source" position={Position.Right}  className="sd-port" />
       <Handle id="b" type="source" position={Position.Bottom} className="sd-port" />
       {!split && face(true)}
-      {isNew && <span className="sd-new-pill" style={{ position: 'absolute', top: -9, right: 8, background: NEW.border, color: '#fff', fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', lineHeight: '16px', padding: '0 7px', borderRadius: 999, boxShadow: '0 1px 2px rgba(0,0,0,0.15)', pointerEvents: 'none' }}>NEW</span>}
+      {isNew && <span className="sd-new-pill" style={{ position: 'absolute', top: -9, left: 8, background: NEW.border, color: '#fff', fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', lineHeight: '16px', padding: '0 7px', borderRadius: 999, boxShadow: '0 1px 2px rgba(0,0,0,0.15)', pointerEvents: 'none' }}>NEW</span>}
       <NodeNote id={data.id} note={note} />
     </div>
   )
