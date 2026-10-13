@@ -84,7 +84,7 @@ A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, suns
 - `info` - plain text, max 600 chars, 1-3 sentences on what this thing is and why it is in this diagram. Hidden until the reader hovers or clicks the i badge on the card, 1 popover open at a time; not in the SVG. Shown as `<card name> is <text>` with the name in bold, so write it to read after "is" ("the embedded iPaaS behind every rebuilt integration"). Different from `note`, which is always visible.
 - `sunset` - a boolean; `true` marks a node that is today's path and gets decommissioned: a light red card in a red border, cracked open, and every edge touching it a red dash with the red X on its badge, immune to any line style.
 - `cracked` - only with `sunset`. Default true (cracked open); `false` keeps the red card whole, for a more formal diagram.
-- `new` - a boolean; `true` marks a component being added: green border and wash, NEW pill top-left. Status is a flag, never a colour: never paint a card red, green or grey to mean retired or new.
+- `new` - a boolean; `true` marks a component being added: green border and wash, NEW pill inside the top-left corner. Status is a flag, never a colour: never paint a card red, green or grey to mean retired or new.
 - `tooltipColor` - `#rrggbb` fill for the tooltip and its pinned callout (default red); the text turns white or ink to stay readable.
 - `pinTooltip` - `true` keeps the tooltip always visible above the card as a red callout (needs `tooltip`).
 - `tooltip` - plain text, max 200 chars, shown when the reader hovers the card. Optional; not in the SVG. A node with no colour of its own falls back to black.

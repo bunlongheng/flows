@@ -106,7 +106,7 @@ const zBox = (lo, hi) => z.object({ w: z.number().min(lo).max(hi), h: z.number()
 
 // Shared by create_flow and update_flow, which carried 2 copies of this and drifted.
 const zNodeFields = {
-  new: z.boolean().optional().describe('true marks a node that is being added: green border and wash, a NEW pill on its top-left corner, and a "New component" row in the legend. Green means new, red means sunset; never set both.'),
+  new: z.boolean().optional().describe('true marks a node that is being added: green border and wash, a NEW pill inside its top-left corner, and a "New component" row in the legend. Green means new, red means sunset; never set both.'),
   cracked: z.boolean().optional().describe('Only for a sunset node. Default true: the card is drawn cracked open. false keeps the red sunset look with the card whole, for a more formal diagram.'),
   tooltip: z.string().max(200).optional().describe('Plain text shown when the reader hovers the card, max 200 chars. Optional; for a one-line hint, while info stays the longer "what it is".'),
   tooltipColor: z.string().optional().describe('#rrggbb fill for the tooltip and its pinned callout. Default red #dc2626; the text turns white or ink to stay readable.'),
