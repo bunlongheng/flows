@@ -142,9 +142,9 @@ const halfStyle = side => ({ clipPath: halfClip(side), transform: `translateX(${
 function Crack({ box }) {
   const half = side => (
     <g transform={`translate(${side === 'left' ? -CRACK.open : CRACK.open} 0)`}>
-      {CRACK[side].shards.map(d => <path key={d} d={d} fill={SUNSET.tint} stroke="#4b5563" strokeWidth="1.2" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />)}
-      <path d={CRACK.main} fill="none" stroke="#374151" strokeWidth="1" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />
-      {CRACK[side].branches.map(d => <path key={d} d={d} fill="none" stroke="#4b5563" strokeWidth="1" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />)}
+      {CRACK[side].shards.map(d => <path key={d} d={d} fill={SUNSET.tint} stroke={SUNSET.border} strokeWidth="1.2" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />)}
+      <path d={CRACK.main} fill="none" stroke={SUNSET.border} strokeWidth="1.5" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />
+      {CRACK[side].branches.map(d => <path key={d} d={d} fill="none" stroke={SUNSET.border} strokeWidth="1" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />)}
     </g>
   )
   return (
