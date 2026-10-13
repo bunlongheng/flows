@@ -6,6 +6,7 @@ import '@xyflow/react/dist/style.css'
 import diagramData from '../data/diagram.json'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { nodeTypes } from '../components/AwsNode'
+import { UnlockReveal } from '../components/UnlockReveal'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext } from '../components/noteEditContext'
 import { edgeTypes } from '../components/GradientEdge'
 import { Toast } from '../components/Toast'
@@ -1040,6 +1041,7 @@ export function DetailView({
           </div>
         )}
 
+        <UnlockReveal ready={nodes.length > 0} />
         {/* Canvas */}
         <div style={{ flex: 1, position: 'relative', background: '#ffffff' }}>
           <ShowNotesContext.Provider value={showNotes}>

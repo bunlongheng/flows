@@ -1,7 +1,7 @@
 import db from "../../../../../lib/db.js";
 import { rateLimit } from "../../../../../lib/rate-limit.js";
 import { verifyPasscode, unlockToken, unlockCookieName } from "../../../../../lib/passcode.js";
-import { gatePage, unlockedPage } from "../../../../../lib/passcode-pages.js";
+import { gatePage } from "../../../../../lib/passcode-pages.js";
 import { renderDiagramSvg } from "../../../../../lib/render-svg.js";
 import { Resvg } from "@resvg/resvg-js";
 
@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 // GET  /api/flows/:id/unlock -> the lock screen (the app sends a visitor here
 //                               when the flow answers 401 passcode_required).
 // POST /api/flows/:id/unlock -> check the passcode; right sets a 30-day unlock
-//                               cookie and plays the access-granted beat on the
-//                               way back to /?id=, wrong redraws the safe.
+//                               cookie and goes back to /?id=...&reveal=1,
+//                               wrong redraws the safe.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const html = (body, status = 200) => new Response(body, {
@@ -69,7 +69,8 @@ export async function POST(request, ctx) {
   if (!(await verifyPasscode(passcode, row.passcode_hash))) {
     return html(gatePage({ action: `/api/flows/${id}/unlock`, title: row.title || "Locked flow", bad: true, backdrop: backdrop(row) }), 401);
   }
-  const res = html(unlockedPage({ target: back(id), nonce: request.headers.get("x-nonce") }));
+  // Straight on to the flow, which plays the reveal (src/components/UnlockReveal.jsx).
+  const res = new Response(null, { status: 303, headers: { Location: `${back(id)}&reveal=1`, "Cache-Control": "no-store" } });
   const secure = request.url.startsWith("https://") ? "; Secure" : "";
   res.headers.append("Set-Cookie",
     `${unlockCookieName(id)}=${unlockToken(id, row.passcode_hash)}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax${secure}`);
