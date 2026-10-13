@@ -590,7 +590,9 @@ export function DetailView({
         {/* Visibility pill, owner only. The owner can open every diagram, so a
             private one looks shared when it is not - the recipient gets a 404
             and Slack a generic card. This says which it is, and flips it. */}
-        {onToggleVisibility && (
+        {/* 1 status icon, never 2: a passcode-locked link is not public, so
+            with a passcode set the key below stands alone. */}
+        {onToggleVisibility && !hasPasscode && (
           <button type="button" className="sd-visibility" data-public={isDiagramPublic ? '1' : '0'}
             role="switch" aria-checked={isDiagramPublic} aria-label={isDiagramPublic ? 'Public: anyone with the link can open it' : 'Private: only you can open it'}
             onClick={onToggleVisibility}
@@ -610,21 +612,17 @@ export function DetailView({
           </button>
         )}
 
-        {/* Passcode, owner only: the Stickies private share. With one set, the
-            link opens to a lock screen until the visitor types it. */}
-        {onSetPasscode && (
-          <button type="button" className="sd-passcode sd-hide-mobile" aria-pressed={!!hasPasscode}
+        {/* Passcode on, owner only: the link opens to a lock screen until the
+            visitor types it. Adding one lives in the Lock menu. */}
+        {onSetPasscode && hasPasscode && (
+          <button type="button" className="sd-passcode sd-hide-mobile"
             onClick={() => lockRef.current?.querySelector('button')?.click()}
-            aria-label={hasPasscode ? 'Passcode on: change or remove it' : 'Add a passcode to the share link'}
-            title={hasPasscode
-              ? 'Passcode on: the link opens to a lock screen. Click to change or remove it.'
-              : 'Add a passcode: the link opens to a lock screen until it is typed.'}
+            aria-label="Passcode on: change or remove it"
+            title="Passcode on: the link opens to a lock screen. Click to change or remove it."
             style={{
               flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: 28, height: 28, padding: 0, borderRadius: 999, cursor: 'pointer',
-              background: hasPasscode ? '#0f172a' : '#f8fafc',
-              color: hasPasscode ? '#fff' : '#475569',
-              border: `1px solid ${hasPasscode ? '#0f172a' : '#e2e8f0'}`,
+              background: '#0f172a', color: '#fff', border: '1px solid #0f172a',
             }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg>
           </button>
