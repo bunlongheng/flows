@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
@@ -18,5 +19,13 @@ describe("CurrentPanel text and badge sizes", () => {
     render(<CurrentPanel value={{}} onChange={() => {}} onClose={() => {}} fonts={{ ...fonts, tag: 14 }} onFonts={onFonts} />);
     fireEvent.change(screen.getByLabelText("Text size"), { target: { value: "18" } });
     expect(onFonts).toHaveBeenLastCalledWith({ title: 18, sub: 15, tag: 14 });
+  });
+  it("speed and amount are sliders over their steps", () => {
+    const onChange = vi.fn();
+    render(<CurrentPanel value={{ speed: 1, amount: 20 }} onChange={onChange} onClose={() => {}} />);
+    fireEvent.change(screen.getByLabelText("Speed"), { target: { value: "3" } });
+    expect(onChange).toHaveBeenLastCalledWith({ speed: 2 });
+    fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "2" } });
+    expect(onChange).toHaveBeenLastCalledWith({ amount: 100 });
   });
 });
