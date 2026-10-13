@@ -45,12 +45,12 @@ describe("renderDiagramSvg - saved view", () => {
     expect(badge(on, "invokes")).toContain('font-weight="800" fill="#1c1e21">2</text>');
   });
 
-  it("paints an edge into a sunset card as a red tag struck through in red, on a red dash", () => {
+  it("keeps the picked badge style on an edge into a sunset card, struck through in red, on a red dash", () => {
     const nodes = [NODES[0], { ...NODES[1], sunset: true }, NODES[2]];
     const svg = renderDiagramSvg(nodes, EDGES);
-    expect(badge(svg, "calls")).toContain('fill="#fef2f2"');
+    expect(badge(svg, "calls")).toContain('fill="#1c1e21"');
     expect(svg).toContain('stroke="#dc2626" stroke-width="2.5"');
-    expect(badge(svg, "calls")).not.toContain('fill="#1c1e21"');
+    expect(badge(svg, "calls")).not.toContain('fill="#fef2f2"');
     expect(svg).toMatch(/stroke="#dc2626" stroke-width="1.5" stroke-dasharray="7.5 4.5"/);
   });
 
