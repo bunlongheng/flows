@@ -614,7 +614,7 @@ export function DetailView({
             link opens to a lock screen until the visitor types it. */}
         {onSetPasscode && (
           <button type="button" className="sd-passcode sd-hide-mobile" aria-pressed={!!hasPasscode}
-            onClick={() => setShowSharePanel(true)}
+            onClick={() => lockRef.current?.querySelector('button')?.click()}
             aria-label={hasPasscode ? 'Passcode on: change or remove it' : 'Add a passcode to the share link'}
             title={hasPasscode
               ? 'Passcode on: the link opens to a lock screen. Click to change or remove it.'
@@ -1266,13 +1266,6 @@ export function DetailView({
           <div className="sd-share-panel" style={PANEL}>
             <div style={{ ...PANEL_CAPTION, marginBottom: 16 }}>Export & Share</div>
 
-            {canEdit && onSetPasscode && (
-              <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid #eef0f3' }}>
-                <SwitchRow on={hasPasscode || passOpen} name="Lock access" icon={<EyeIcon />} onClick={toggleAccess}
-                  sub={hasPasscode ? 'Viewers need the passcode' : 'Anyone with the link views it'} />
-                {(hasPasscode || passOpen) && <div style={{ marginTop: 8 }}><PasscodeField on={hasPasscode} current={passcode} onSave={savePasscode} /></div>}
-              </div>
-            )}
 
             {/* Sneak peek: the exact 1200x630 card Slack, iMessage and X will
                 render for this link. Shown only for a saved design with a slug -
