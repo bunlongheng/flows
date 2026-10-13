@@ -50,4 +50,13 @@ describe("renderDiagramSvg - sunset node", () => {
     const junk = renderDiagramSvg([{ id: "user", position: { x: 0, y: 0 }, tooltip: "Due soon", pinTooltip: true, tooltipColor: "red" }], []);
     expect(junk).toMatch(/fill="#dc2626"\/><text [^>]*fill="#ffffff">Due soon</);
   });
+  it("draws a red X across a retiring card's icon, and none on a live card", () => {
+    const xs = (svg) => (svg.match(new RegExp(`<path d="M[^"]+" stroke="${SUNSET.x}" stroke-width="3"`, "g")) || []).length;
+    expect(xs(renderDiagramSvg([{ id: "lambda", position: { x: 0, y: 0 }, sunset: true, cracked: false }], []))).toBe(1);
+    expect(xs(renderDiagramSvg([{ id: "lambda", position: { x: 0, y: 0 } }], []))).toBe(0);
+  });
+  it("points the pinned callout down at its card", () => {
+    const svg = renderDiagramSvg([{ id: "user", position: { x: 0, y: 0 }, tooltip: "Due soon", pinTooltip: true }], []);
+    expect(svg).toMatch(/<polygon points="[^"]+" fill="#dc2626"\/>/);
+  });
 });

@@ -252,6 +252,12 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   // exactly as the un-wrapped img did before.
   // The ring marks the icon box whenever its drag handle is shown, so what the
   // handle stretches is visible. outline, not border, so the layout never moves.
+  // A retiring card: a red X drawn across its icon or picture, on the canvas and in every export.
+  const iconX = sunset
+    ? <svg aria-label="Gets decommissioned" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: '8%', width: '84%', height: '84%', pointerEvents: 'none', overflow: 'visible' }}>
+        <path d="M0 0 L100 100 M0 100 L100 0" stroke={SUNSET.x} strokeWidth="3" strokeLinecap="round" vectorEffect="non-scaling-stroke" fill="none" />
+      </svg>
+    : null
   const iconWrapStyle = { position: 'relative', display: 'inline-flex', justifyContent: 'center', maxWidth: '100%', minHeight: 0, ...(iconBox ? { flex: '0 1 auto' } : { flex: 1, width: '100%' }),
     ...(iconHandle ? { outline: `1px dashed ${color}`, outlineOffset: 2 } : {}) }
 
@@ -292,6 +298,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
             <img ref={primary ? imgRef : undefined} src={picture} alt={label} style={{ ...(iconBox
               ? { width: iconBox.w, height: iconBox.h, maxWidth: '100%', flex: 'none', objectFit: 'contain', display: 'block', borderRadius: 2 }
               : { width: '100%', flex: 1, minHeight: 0, objectFit: 'contain', display: 'block', borderRadius: 2 }), ...(sunset ? { filter: 'grayscale(0.5) opacity(0.8)' } : {}) }} />
+            {iconX}
             {primary && iconHandle}
           </span>
         : svc.icon
@@ -303,6 +310,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
                 // A white-edged tile on the white card: the 1 px grey frame at the iOS corner (lib/icon-frame.js decided it).
                 ...(data.iconFrame ? { borderRadius: '22%', boxShadow: '0 0 0 1px #cfd4da' } : {}),
                 ...(sunset ? { filter: 'grayscale(0.5) opacity(0.8)' } : {}) }} />
+            {iconX}
             {primary && iconHandle}
           </span>
         : <span style={{ fontSize: 26, fontWeight: 700, color, marginTop: 2, lineHeight: 1 }}>{label[0]?.toUpperCase()}</span>
