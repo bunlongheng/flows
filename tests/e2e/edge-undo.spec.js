@@ -24,11 +24,12 @@ const DESIGN = {
 };
 
 // An SVG path has no box Playwright will call visible, so the line is clicked
-// by coordinate at its own midpoint.
+// by coordinate a quarter of the way along. Not the midpoint: the step badge sits
+// there, and a tap on the badge opens the step panel instead of selecting the line.
 const midOfEdge = (page) => page.evaluate(() => {
   const path = document.querySelector(".react-flow__edge-path");
   const m = path.ownerSVGElement.getScreenCTM();
-  const q = path.getPointAtLength(path.getTotalLength() / 2);
+  const q = path.getPointAtLength(path.getTotalLength() / 4);
   return { x: q.x * m.a + q.y * m.c + m.e, y: q.x * m.b + q.y * m.d + m.f };
 });
 const pathD = (page) => page.$eval(".react-flow__edge-path", (e) => e.getAttribute("d"));

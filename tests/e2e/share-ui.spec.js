@@ -72,15 +72,15 @@ test("Share on a private diagram publishes it, previews the card, and hands out 
     const pub = await (await api.get(`/api/flows/${id}`)).json();
     expect(pub.is_public).toBe(true);
 
-    // 2. The clipboard holds the readable ?name= link on the public origin -
+    // 2. The clipboard holds the stable ?id= link on the public origin -
     //    never a localhost URL, which is useless to the person receiving it.
     const copied = await page.evaluate(() => navigator.clipboard.readText());
-    expect(copied).toContain(`?name=${slug}`);
+    expect(copied).toContain(`?id=${id}`);
     expect(copied).not.toContain("localhost");
     // It MUST be the /demo route. Vercel resolves "/" from the filesystem before
     // rewrites run, so a link off "/" never reaches the share function and
     // previews as the generic site card.
-    expect(copied).toContain(`/demo?name=${slug}`);
+    expect(copied).toContain(`/demo?id=${id}`);
 
     // And that exact copied URL is the one that serves this design's own tags.
     // Asserted on the tags themselves - the x-sd-share header existed only to
@@ -254,7 +254,9 @@ test("a step badge slides ALONG its edge, persists, and double-click resets it",
     };
 
     const box = await badge().boundingBox();
-    const saved = page.waitForResponse((r) => r.request().method() === "PATCH" && r.status() === 200);
+    // The badge save itself, not any PATCH: under load another save can land first.
+    const saved = page.waitForResponse((r) => r.request().method() === "PATCH" && r.status() === 200
+      && (r.request().postData() || "").includes("labelT"));
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
     // Drag hard AWAY from the line - the badge must refuse to leave it.
@@ -274,9 +276,14 @@ test("a step badge slides ALONG its edge, persists, and double-click resets it",
     expect(dist(await at(), moved)).toBeLessThan(10);
     expect(await distanceFromEdge()).toBeLessThan(14);
 
-    // Double-click hands it back to the computed spot.
+    // Alt+double-click hands it back to the computed spot (a plain double-click
+    // now rewrites the tag). Aimed at the badge's left end: slid to the end of
+    // its line, its centre sits under the target card's port.
     const reset = page.waitForResponse((r) => r.request().method() === "PATCH" && r.status() === 200);
-    await badge().dblclick();
+    const end = await badge().boundingBox();
+    await page.keyboard.down("Alt");
+    await page.mouse.dblclick(end.x + 4, end.y + end.height / 2);
+    await page.keyboard.up("Alt");
     await reset;
     await open();
     expect(dist(await at(), before)).toBeLessThan(10);

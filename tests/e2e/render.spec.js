@@ -77,8 +77,8 @@ test("the /?name= URL renders the design in the browser", async ({ page, baseURL
     await page.goto(`/?name=${row.slug}`);
     await page.waitForSelector(".react-flow__node", { timeout: 15000 });
     expect(await page.locator(".react-flow__node-awsNode").count()).toBe(DESIGN.nodes.length);
-    // The param survives the load - a shared link stays shareable.
-    expect(page.url()).toContain(`name=${row.slug}`);
+    // The slug resolves, and the app rewrites the address to the stable ?id= link.
+    expect(page.url()).toContain(`id=${id}`);
   } finally {
     await api.patch(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE, "Content-Type": "application/json" }, data: { locked: false } }); // every flow starts delete-locked
     await api.delete(`/api/flows/${id}`, { headers: { Cookie: OWNER_COOKIE } });

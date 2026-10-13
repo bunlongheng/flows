@@ -68,7 +68,7 @@ async function withPublicDesign(baseURL, body) {
 }
 
 test("a shared design URL serves its OWN og tags, not the generic site card", async ({ baseURL }) => {
-  await withPublicDesign(baseURL, async (api, _id, slug) => {
+  await withPublicDesign(baseURL, async (api, id, slug) => {
     const res = await api.get(`/demo?name=${slug}`);
     expect(res.status()).toBe(200);
     const html = await res.text();
@@ -78,9 +78,9 @@ test("a shared design URL serves its OWN og tags, not the generic site card", as
     expect(meta(html, "og:type")).toBe("article");
     expect(titleTag(html)).toBe(`${DESIGN.title} · Flows`);
 
-    // The card points at the per-design renderer, and the canonical url keeps ?name=.
+    // The card points at the per-design renderer, and the canonical url is the ?id= link (links moved off ?name= on 2026-10-09).
     expect(html).toMatch(new RegExp(`og:image" content="[^"]*/api/og\\?name=${slug}(&amp;v=\\d+)?"`));
-    expect(html).toMatch(new RegExp(`og:url" content="[^"]*/demo\\?name=${slug}"`));
+    expect(html).toMatch(new RegExp(`og:url" content="[^"]*/demo\\?id=${id}"`));
 
     // And it is still the real app shell - a human gets the app, not a stub.
     // (Vite's <div id="root"> and /assets/ bundle are gone; Next ships its own.)
