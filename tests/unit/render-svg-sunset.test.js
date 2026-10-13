@@ -14,9 +14,9 @@ describe("renderDiagramSvg - sunset node", () => {
     expect(svg).toContain("sunset-gray");
     expect(svg).toContain(SUNSET.border);
   });
-  it("marks the badge grey and struck through by a red X on an edge leaving a sunset node too", () => {
+  it("keeps the picked badge style and strikes it with a red X on an edge leaving a sunset node", () => {
     const svg = renderDiagramSvg(NODES, [{ source: "lambda", target: "user", label: "old path out" }]);
-    expect(svg).toMatch(new RegExp(`<rect [^>]*fill="${SUNSET.tint}" stroke="${SUNSET.border}"[^>]*/><text [^>]*fill="${SUNSET.ink}">old path out</text><path [^>]*stroke="${SUNSET.x}"`));
+    expect(svg).toMatch(new RegExp(`<rect [^>]*fill="#1c1e21"/><text [^>]*fill="#fff">old path out</text><path [^>]*stroke="${SUNSET.x}"`));
   });
   it("hides the red X on retiring badges with badge-x-off, keeping the grey tag", () => {
     const svg = renderDiagramSvg(NODES, EDGES, { view: { panels: ["badge-x-off"] } });
