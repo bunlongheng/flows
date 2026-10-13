@@ -17,6 +17,7 @@ beforeAll(async () => {
       // Every module the lifted body reaches for has to be handed over, or the
       // helper fails with a bare "x is not defined" that looks like a rule bug.
       `import { cleanNote, cleanInfo, cleanTooltip } from "${pathToFileURL("src/note.js").href}";\n` +
+      `import { cleanTipColor } from "${pathToFileURL("src/sunset.js").href}";\n` +
       `import { okColor } from "${pathToFileURL("lib/validate-design.js").href}";\n` +
       `import { cleanStyle } from "${pathToFileURL("src/style.js").href}";\n` +
       `import { okBox, roundBox } from "${pathToFileURL("lib/owner-work.js").href}";\n` +
