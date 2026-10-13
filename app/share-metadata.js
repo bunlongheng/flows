@@ -36,7 +36,7 @@ export async function designMetadata(searchParams, path) {
   let rows = [];
   try {
     ({ rows } = await db.query(
-      `SELECT id, title, slug, description, pattern, nodes, EXTRACT(EPOCH FROM updated_at)::bigint AS v FROM flows WHERE ${name ? "slug = $1" : "id = $1::uuid"} AND is_public = true AND passcode_hash IS NULL AND deleted_at IS NULL LIMIT 1`,
+      `SELECT id, title, slug, description, pattern, nodes, EXTRACT(EPOCH FROM updated_at)::bigint AS v, passcode_hash IS NOT NULL AS locked FROM flows WHERE ${name ? "slug = $1" : "id = $1::uuid"} AND is_public = true AND deleted_at IS NULL LIMIT 1`,
       [name || id],
     ));
   } catch {
@@ -46,12 +46,13 @@ export async function designMetadata(searchParams, path) {
   if (!rows.length) return {};
 
   const row = rows[0];
-  const description = describe(row);
+  // A locked flow previews as locked: its title, never its node labels.
+  const description = row.locked ? "Passcode protected. Type the passcode to open it." : describe(row);
   const url = `${path}?id=${row.id}`;
   // Crawlers cache an image by its URL for days. Stamping the last edit onto the
   // URL means a diagram that changed previews as it is now, not as it was when
   // the link was first pasted.
-  const image = `/api/og?name=${encodeURIComponent(row.slug)}${row.v ? `&v=${row.v}` : ""}`;
+  const image = `/api/og?name=${encodeURIComponent(row.slug)}${row.v ? `&v=${row.v}` : ""}${row.locked ? "&l=1" : ""}`;
   const alt = `${row.title} - architecture diagram`;
   return {
     title: `${row.title} · Flows`,

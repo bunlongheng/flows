@@ -155,6 +155,7 @@ export default function ClosedFlowScreen({ status, signedIn, onBack, onOpenTrash
             <button type="button" className="cf-btn" onClick={onOpenTrash} style={LIGHT}><TrashIcon /> Open trash</button>
           )}
         </div>
+        <a href="/demo" style={{ display: 'inline-block', marginTop: 22, fontSize: 14, fontWeight: 600, color: '#7c3aed', textDecoration: 'none' }}>View live demo &rarr;</a>
       </div>
     </div>
   )
