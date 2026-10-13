@@ -1,5 +1,5 @@
 import { PANEL, PANEL_CAPTION, PANEL_CLOSE } from '../panel.js'
-import { SPEEDS, AMOUNTS, CURRENT_DEFAULT } from '../view-state.js'
+import { SPEEDS, AMOUNTS, CURRENT_DEFAULT, FONT_DEFAULT, FONT_MIN, FONT_MAX } from '../view-state.js'
 import { SIZINGS } from '../card-size.js'
 import { STEP_MS } from '../flowClock'
 
@@ -49,9 +49,10 @@ function Row({ caption: title, values, value, format, onPick, hint: text }) {
   )
 }
 
-// Text sizes offered for the whole diagram, in px; the first is the default.
-// The payload takes any size in range (view_state.fonts, src/view-state.js).
-const FONT_STEPS = { title: [12, 14, 16, 20], sub: [10, 12, 14, 16], tag: [8.5, 10, 12, 14] }
+// One slider sizes title, subtitle and tag together at the default ratios;
+// the payload still takes each size on its own (view_state.fonts).
+const half = n => Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round(n * 2) / 2))
+const scaled = v => ({ title: half(v), sub: half(v * FONT_DEFAULT.sub / FONT_DEFAULT.title), tag: half(v * FONT_DEFAULT.tag / FONT_DEFAULT.title) })
 
 export function CurrentPanel({ value, onChange, onClose, pattern, description, sizing, onSizing, fonts, onFonts }) {
   const speed = value?.speed ?? CURRENT_DEFAULT.speed
@@ -114,11 +115,17 @@ export function CurrentPanel({ value, onChange, onClose, pattern, description, s
         />
       )}
 
-      {onFonts && fonts && [['title', 'Title size'], ['sub', 'Subtitle size'], ['tag', 'Tag size']].map(([k, label]) => (
-        <Row key={k} caption={label} values={FONT_STEPS[k]} value={fonts[k]} format={v => v}
-          onPick={v => onFonts({ ...fonts, [k]: v })}
-          hint={k === 'tag' ? 'Text size in px for every card title, subtitle and line tag in this diagram.' : undefined} />
-      ))}
+      {onFonts && fonts && (
+        <section style={block}>
+          <div style={{ ...caption, display: 'flex', justifyContent: 'space-between' }}><span>Text size</span><span>{fonts.title} px</span></div>
+          <input type="range" min={FONT_MIN} max={FONT_MAX} step={0.5} value={fonts.title}
+            aria-label="Text size" onChange={e => onFonts(scaled(Number(e.target.value)))}
+            style={{ width: '100%', accentColor: '#6965db', cursor: 'pointer' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#6b7280' }}>
+            <span>{FONT_MIN}</span><span>{FONT_MAX}</span>
+          </div>
+        </section>
+      )}
 
       <div style={{ ...hint, marginTop: 0 }}>Press Play to watch it. Every setting belongs to THIS diagram and is saved with it, so a picture or GIF export draws the same current and the same card sizes.</div>
     </aside>
