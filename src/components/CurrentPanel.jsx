@@ -49,10 +49,10 @@ function Row({ caption: title, values, value, format, onPick, hint: text }) {
   )
 }
 
-// One slider sizes title, subtitle and tag together at the default ratios;
-// the payload still takes each size on its own (view_state.fonts).
+// 2 sliders: 1 sizes the card title and subtitle together at the default
+// ratio, the other sizes the line badges on their own (view_state.fonts).
 const half = n => Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round(n * 2) / 2))
-const scaled = v => ({ title: half(v), sub: half(v * FONT_DEFAULT.sub / FONT_DEFAULT.title), tag: half(v * FONT_DEFAULT.tag / FONT_DEFAULT.title) })
+const scaled = v => ({ title: half(v), sub: half(v * FONT_DEFAULT.sub / FONT_DEFAULT.title) })
 
 export function CurrentPanel({ value, onChange, onClose, pattern, description, sizing, onSizing, fonts, onFonts }) {
   const speed = value?.speed ?? CURRENT_DEFAULT.speed
@@ -119,7 +119,14 @@ export function CurrentPanel({ value, onChange, onClose, pattern, description, s
         <section style={block}>
           <div style={{ ...caption, display: 'flex', justifyContent: 'space-between' }}><span>Text size</span><span>{fonts.title} px</span></div>
           <input type="range" min={FONT_MIN} max={FONT_MAX} step={0.5} value={fonts.title}
-            aria-label="Text size" onChange={e => onFonts(scaled(Number(e.target.value)))}
+            aria-label="Text size" onChange={e => onFonts({ ...fonts, ...scaled(Number(e.target.value)) })}
+            style={{ width: '100%', accentColor: '#6965db', cursor: 'pointer' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#6b7280' }}>
+            <span>{FONT_MIN}</span><span>{FONT_MAX}</span>
+          </div>
+          <div style={{ ...caption, display: 'flex', justifyContent: 'space-between', marginTop: 12 }}><span>Badge size</span><span>{fonts.tag} px</span></div>
+          <input type="range" min={FONT_MIN} max={FONT_MAX} step={0.5} value={fonts.tag}
+            aria-label="Badge size" onChange={e => onFonts({ ...fonts, tag: half(Number(e.target.value)) })}
             style={{ width: '100%', accentColor: '#6965db', cursor: 'pointer' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#6b7280' }}>
             <span>{FONT_MIN}</span><span>{FONT_MAX}</span>
