@@ -13,7 +13,7 @@ import { SnapGuides } from '../components/SnapGuides'
 import { Footer } from '../components/Footer'
 import { brandFor } from '../brands'
 import { FormatPanel, BandPanel } from '../components/FormatPanel.jsx'
-import { CardPanel } from '../components/CardPanel.jsx'
+import { CardPanel, StepPanel } from '../components/CardPanel.jsx'
 import { CurrentPanel } from '../components/CurrentPanel.jsx'
 import { findService } from '../services.js'
 import { SUNSET, INK } from '../sunset.js'
@@ -246,13 +246,17 @@ export function DetailView({
   const [cardId, setCardId] = useState(null)
   const card = cardId ? nodes.find(n => n.id === cardId) : null
   useEffect(() => { setCardId(null) }, [activeDiagram?.id])
+  // The step panel: a tapped tag's line, read back live like the card panel.
+  const [stepId, setStepId] = useState(null)
+  const step = stepId ? edges.find(e => e.id === stepId) : null
+  useEffect(() => { setStepId(null) }, [activeDiagram?.id])
   // The current panel, opened by clicking the Start here pill (owner
   // 2026-10-09). Same slot as the card panel, so opening either closes the other.
   const [currentOpen, setCurrentOpen] = useState(false)
   useEffect(() => { setCurrentOpen(false) }, [activeDiagram?.id])
   // Never 2 panels at once (owner rule 2026-10-09): opening one closes whichever
   // was open, so the latest opened is the only one on screen.
-  const openPanels = { share: showSharePanel, history: showHistoryPanel, code: showDetailCode, card: !!cardId, current: currentOpen, band: bandPick?.key || null }
+  const openPanels = { share: showSharePanel, history: showHistoryPanel, code: showDetailCode, card: !!cardId, step: !!stepId, current: currentOpen, band: bandPick?.key || null }
   const prevPanels = useRef(openPanels)
   useEffect(() => {
     const prev = prevPanels.current
@@ -264,17 +268,24 @@ export function DetailView({
     if (keep !== 'history' && showHistoryPanel) setShowHistoryPanel(false)
     if (keep !== 'code' && showDetailCode) setShowDetailCode(false)
     if (keep !== 'card' && cardId) setCardId(null)
+    if (keep !== 'step' && stepId) setStepId(null)
     if (keep !== 'current' && currentOpen) setCurrentOpen(false)
     if (keep !== 'band' && bandPick) onPaneTap?.()
     // Reacts to a panel opening, nothing else; the setters are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSharePanel, showHistoryPanel, showDetailCode, cardId, currentOpen, bandPick?.key])
+  }, [showSharePanel, showHistoryPanel, showDetailCode, cardId, stepId, currentOpen, bandPick?.key])
   useEffect(() => {
-    if (!cardId && !currentOpen) return
-    const onKeyDown = e => { if (e.key === 'Escape') { setCardId(null); setCurrentOpen(false) } }
+    if (!cardId && !stepId && !currentOpen) return
+    const onKeyDown = e => { if (e.key === 'Escape') { setCardId(null); setStepId(null); setCurrentOpen(false) } }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [cardId, currentOpen])
+  }, [cardId, stepId, currentOpen])
+  // A tapped tag (GradientEdge) opens its step, never the line under it.
+  useEffect(() => {
+    const onStep = e => { setCurrentOpen(false); setStepId(e.detail) }
+    document.addEventListener('sd-step-open', onStep)
+    return () => document.removeEventListener('sd-step-open', onStep)
+  }, [])
   // A phone is about 1/7 as wide as a big diagram, so the desktop zoom floor of
   // 0.2 stopped the pinch while the board was still wider than the glass. A
   // narrow screen gets to go all the way out instead.
@@ -1043,7 +1054,7 @@ export function DetailView({
               if (node.type === 'marker') { if (onCurrentChange) { setCardId(null); setCurrentOpen(true) } return }
               if (node.type === 'awsNode') { setCurrentOpen(false); setCardId(node.id) }
             }}
-            onPaneClick={e => { setCardId(null); setCurrentOpen(false); onPaneTap?.(e) }}
+            onPaneClick={e => { setCardId(null); setStepId(null); setCurrentOpen(false); onPaneTap?.(e) }}
             /* Cmd/Ctrl is reserved for snap-align while dragging, so additive
                multi-select moves to Shift (box-select already uses Shift). */
             multiSelectionKeyCode="Shift"
@@ -1250,6 +1261,10 @@ export function DetailView({
 
         {card && !phone && (
           <CardPanel node={card} nodes={nodes} edges={edges} onPick={setCardId} onClose={() => setCardId(null)} />
+        )}
+
+        {step && !phone && (
+          <StepPanel edge={step} nodes={nodes} onPick={setCardId} onClose={() => setStepId(null)} />
         )}
 
         {/* Current panel (right side): the speed and the number of small dots,
@@ -1473,7 +1488,9 @@ export function DetailView({
         /* A reader moves nothing, so nothing offers the hand that says they can.
            The pointer stays the plain arrow over the canvas and over every card. */
         .sd-reading .react-flow__pane, .sd-reading .react-flow__node,
-        .sd-reading .react-flow__pane.draggable, .sd-reading .sd-edge-badge { cursor: default; }
+        .sd-reading .react-flow__pane.draggable { cursor: default; }
+        /* Every tag is tappable: it opens its step panel, for a reader too. */
+        .sd-edge-badge { pointer-events: auto; cursor: pointer; }
         .sd-edge-badge.is-movable { pointer-events: auto; cursor: grab; }
         .sd-edge-badge.is-movable:hover { filter: brightness(1.08); }
         .sd-edge-badge.is-dragging { cursor: grabbing; z-index: 20; filter: brightness(1.12); }

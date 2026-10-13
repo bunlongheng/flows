@@ -1,4 +1,4 @@
-import { useState, useEffect, useSyncExternalStore } from 'react'
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, useStore, useStoreApi } from '@xyflow/react'
 import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteEditContext'
 import { subscribe, currentPhase, motionAllowed, dotAt, ambientAt } from '../flowClock'
@@ -224,6 +224,7 @@ export function GradientEdge({
   // fraction along it does not.
   const savedT = typeof data?.labelT === 'number' ? data.labelT : null
   const [dragT, setDragT] = useState(null)
+  const slid = useRef(false) // a drag along the line, so its click is not a tap
   const t = dragT ?? savedT
   const movable = typeof data?.onLabelMove === 'function'
   // The badge text is edited where it is drawn: double-click turns it into an
@@ -344,7 +345,9 @@ export function GradientEdge({
     e.stopPropagation()
     e.preventDefault()
     let last = t
+    slid.current = false
     const move = ev => {
+      slid.current = true
       const f = screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
       last = nearestTOnPath(path, f.x, f.y)
       setDragT(last)
@@ -424,6 +427,13 @@ export function GradientEdge({
             <div
               className={`sd-edge-badge nodrag nopan${movable ? ' is-movable' : ''}${dragT != null ? ' is-dragging' : ''}${!tag && draft == null && !selected ? ' is-bare' : ''}`}
               onPointerDown={startDrag}
+              // A tap on the tag opens the step panel (DetailView listens),
+              // never the line under it.
+              onClick={e => {
+                e.stopPropagation()
+                if (draft != null || slid.current) return
+                e.currentTarget.dispatchEvent(new CustomEvent('sd-step-open', { bubbles: true, detail: id }))
+              }}
               onDoubleClickCapture={movable || editable ? startEdit : undefined}
               data-tip={draft == null ? desc || undefined : undefined}
               title={!desc && (movable || editable) ? 'Double-click to rewrite; drag along the line to move it; alt+double-click puts it back' : undefined}
