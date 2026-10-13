@@ -954,3 +954,21 @@ export function clearBadge(path, at, box, off, placed) {
   if (off) for (const k of [12, 24, 36, 48, 60]) if (!hit(at, k)) return { ...at, lead: k }
   return at
 }
+
+// Which ends of a line carry an arrowhead: the line's own style.head, else the
+// diagram's Arrows toggle (an arrow at the target). A trunk member that shares
+// its end with the leader leaves that head to the leader; a start head needs
+// the line drawn from its own source. Shared by the canvas and the export.
+export function headsOf(head, arrowsOn, r) {
+  const h = head || (arrowsOn ? 'end' : 'none')
+  return {
+    end: (h === 'end' || h === 'both') && !r.hideArrow,
+    start: (h === 'start' || h === 'both') && r.drawPath === r.path,
+  }
+}
+
+// An arrowhead as an SVG marker: a filled triangle sized to the stroke, its tip
+// on the line's end. `start` points back at the source.
+export const markerSize = bw => 7 + 2 * bw
+export const headPath = start => (start ? 'M10 0 L0 5 L10 10 Z' : 'M0 0 L10 5 L0 10 Z')
+

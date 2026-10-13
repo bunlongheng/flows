@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
+import { useContext, useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import { BaseEdge, EdgeLabelRenderer, useInternalNode, useReactFlow, useStore, useStoreApi } from '@xyflow/react'
-import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion } from './noteEditContext'
+import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion, ShowArrowsContext } from './noteEditContext'
 import { subscribe, currentPhase, motionAllowed, dotAt, ambientAt } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
-import { routeEdge, badgeShift, badgeBox, clearBadge, pointAlongPath, bendPoint, bendFor, isElbow, elbowFor, elbowHandle, nearestEnd, T_MIN, T_MAX } from '../edgeGeometry.js'
+import { routeEdge, badgeShift, badgeBox, clearBadge, pointAlongPath, bendPoint, bendFor, isElbow, elbowFor, elbowHandle, nearestEnd, headsOf, markerSize, headPath, T_MIN, T_MAX } from '../edgeGeometry.js'
 import { laneGaps, isLaneNode } from '../lanes.js'
 import { tagText } from '../tag.js'
 import { EDGE_LABEL_MAX } from '../note.js'
@@ -150,7 +150,7 @@ function takenBefore(id, nodes, edges) {
 }
 
 export function GradientEdge({
-  id, source, target, sourceX, sourceY, targetX, targetY, markerEnd, data, label, selected,
+  id, source, target, sourceX, sourceY, targetX, targetY, data, label, selected,
 }) {
   const sourceNode = useInternalNode(source)
   const targetNode = useInternalNode(target)
@@ -189,6 +189,7 @@ export function GradientEdge({
   // The strips between swimlanes, where a trunk's bus line runs, also come off
   // the frame.
   const { cards: nodeRects, gaps } = geo
+  const arrowsOn = useContext(ShowArrowsContext)
   const { path, drawPath, hideLabel, hideArrow, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelOff } = routeEdge({
     taken: takenBefore(id, allNodes, allEdges),
     id, source, target, sourceNode, targetNode, nodeOf, edges: allEdges, obstacles, nodeRects, gaps,
@@ -377,6 +378,16 @@ export function GradientEdge({
   const bx = ax + dx
   const by = ay + dy
   const lineStroke = data?.sunsetLine ? SUNSET.line : (st.stroke || `url(#${gid})`)
+  // The arrowheads, in the colour of the end they sit on (src/edgeGeometry.js headsOf).
+  const heads = headsOf(st.head, arrowsOn, { hideArrow, drawPath, path })
+  const lineW = data?.sunsetLine ? 1.5 : (st.bw || 1.5)
+  const headFill = start => (data?.sunsetLine ? SUNSET.line : st.stroke || (start ? c1 : c2))
+  const marker = start => {
+    const m = markerSize(lineW)
+    return <marker id={`ah-${start ? 's' : 'e'}-${id}`} viewBox="0 0 10 10" refX={start ? 1 : 9} refY={5} markerWidth={m} markerHeight={m} markerUnits="userSpaceOnUse" orient="auto">
+      <path d={headPath(start)} fill={headFill(start)} />
+    </marker>
+  }
 
   return (
     <>
@@ -385,6 +396,8 @@ export function GradientEdge({
           <stop offset="0%" stopColor={c1} />
           <stop offset="100%" stopColor={c2} />
         </linearGradient>
+        {heads.end && marker(false)}
+        {heads.start && marker(true)}
       </defs>
       <g>
       {selected && <path className="sd-edge-halo" d={drawPath} fill="none" stroke={c1} strokeWidth={10} strokeOpacity={0.18} strokeLinecap="round" pointerEvents="none" />}
@@ -395,11 +408,11 @@ export function GradientEdge({
           The gradient's whole job is to say which node a line came FROM and
           which it goes TO; once the owner has chosen a colour, that is the
           statement, and a fade between it and a brand colour says neither. */}
-      <BaseEdge id={id} path={drawPath} interactionWidth={square && bendMovable ? 0 : hit} markerEnd={hideArrow ? undefined : markerEnd} style={data?.sunsetLine ? {
+      <BaseEdge id={id} path={drawPath} interactionWidth={square && bendMovable ? 0 : hit} markerEnd={heads.end ? `url(#ah-e-${id})` : undefined} markerStart={heads.start ? `url(#ah-s-${id})` : undefined} style={data?.sunsetLine ? {
         // A line touching a sunset card, in or out, is the path on its way out:
-        // flat light silver at 3/4 strength, and nothing the panel picked -
-        // colour, width, dash or opacity - reaches it. Grey, always.
-        stroke: SUNSET.line, strokeWidth: 1.5, strokeDasharray: undefined, opacity: 0.75,
+        // a red dash, and nothing the panel picked - colour, width, dash or
+        // opacity - reaches it.
+        stroke: SUNSET.line, strokeWidth: 1.5, strokeDasharray: dashArray('dashed', 1.5), opacity: 0.85,
       } : {
         stroke: st.stroke || `url(#${gid})`,
         // No +1 while selected. The panel is only ever open on a selected line,

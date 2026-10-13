@@ -23,6 +23,10 @@ export const IconResizeContext = createContext(null)
 // silently stripped of the explanations that came with it.
 export const ShowNotesContext = createContext(true)
 
+// Whether a line with no arrowhead of its own (style.head) draws one at its
+// target. On by default; the toolbar's Arrows toggle turns it off.
+export const ShowArrowsContext = createContext(true)
+
 // ─── Measured note heights ────────────────────────────────────────────────────
 // A note hangs BELOW the card (position: absolute, top: 100%), so React Flow
 // never measures it: as far as the edge router is concerned the node stops at

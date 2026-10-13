@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { STROKE_PICKS, BG_PICKS, BORDER_WIDTHS, BORDER_STYLES, RADII, FONTS, FONT_SIZES, ALIGNS, ARROWS, STYLE_DEFAULTS } from '../style.js'
+import { STROKE_PICKS, BG_PICKS, BORDER_WIDTHS, BORDER_STYLES, RADII, FONTS, FONT_SIZES, ALIGNS, ARROWS, HEADS, STYLE_DEFAULTS } from '../style.js'
 import { PANEL, PANEL_CAPTION } from '../panel.js'
 
 // The properties panel, modelled on Excalidraw's. Its metrics are Excalidraw's
@@ -99,6 +99,15 @@ const Arrow = ({ kind }) => (
   </svg>
 )
 
+// Which end carries the arrowhead, drawn as the line it makes.
+const Head = ({ kind }) => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 9h12" />
+    {(kind === 'end' || kind === 'both') && <path d="M11 5l4 4-4 4" />}
+    {(kind === 'start' || kind === 'both') && <path d="M7 5L3 9l4 4" />}
+  </svg>
+)
+
 // Excalidraw shows the element's CURRENT colour beside its 2 colour rows,
 // because a card's brand colour is never one of the 5 swatches and a row with
 // nothing lit reads as a control that does not work. It sits on the label line
@@ -146,6 +155,12 @@ export function FormatPanel({ value, onChange, onReset, target = 'node', stroke,
       {!isNode && (
         <Section label="Arrow type">
           {ARROWS.map((a) => <Tile key={a} {...tile('arrow', a)} title={a}><Arrow kind={a} /></Tile>)}
+        </Section>
+      )}
+
+      {!isNode && (
+        <Section label="Arrowhead">
+          {HEADS.map((h) => <Tile key={h} on={v.head === h} onPick={() => set('head')(h)} title={h}><Head kind={h} /></Tile>)}
         </Section>
       )}
 

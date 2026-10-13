@@ -6,7 +6,9 @@ import '@xyflow/react/dist/style.css'
 import diagramData from '../data/diagram.json'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { nodeTypes } from '../components/AwsNode'
-import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext } from '../components/noteEditContext'
+import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, ShowArrowsContext } from '../components/noteEditContext'
+import { Legend } from '../components/Legend'
+import { legendRows } from '../legend.js'
 import { edgeTypes } from '../components/GradientEdge'
 import { Toast } from '../components/Toast'
 import { SnapGuides } from '../components/SnapGuides'
@@ -136,6 +138,8 @@ export function DetailView({
   showHistoryPanel, setShowHistoryPanel, onRestored,
   showSteps, setShowSteps,
   showNotes, setShowNotes,
+  showArrows = true, setShowArrows,
+  showLegend = true, setShowLegend,
   badgeMode, setBadgeMode,
   activeDiagram,
   detailCodeCopied, setDetailCodeCopied,
@@ -354,6 +358,11 @@ export function DetailView({
   // Read only stays read only: no band grips (move, size, pick) unless this
   // reader may edit right now - never on a phone outside edit, never locked.
   const canvasNodes = useMemo(() => (canEditNow ? nodes : nodes.filter(n => n.type !== 'laneGrips')), [nodes, canEditNow])
+  // What the bottom-left legend explains: only the looks this diagram uses.
+  const legend = useMemo(() => legendRows(
+    nodes.filter(n => n.type === 'awsNode').map(n => n.data || {}),
+    edges.filter(e => e.type === 'gradient').map(e => ({ style: e.data?.style, sunset: !!e.data?.sunsetLine })),
+  ), [nodes, edges])
   // Fit is an ACTION, but it reads as a state on touch (the inline hover
   // background never clears without a mouseleave). So make the state real:
   // lit only while the canvas actually IS the fitted view, cleared the moment
@@ -550,6 +559,12 @@ export function DetailView({
             <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>
             <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
           </BarButton>
+          {setShowArrows && <BarButton on={showArrows} label="Arrows" title={showArrows ? 'Hide the arrowheads' : 'Show which way each line goes'} onClick={() => setShowArrows(v => !v)}>
+            <line x1="4" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/>
+          </BarButton>}
+          {setShowLegend && legend.length > 0 && <BarButton on={showLegend} label="Legend" title={showLegend ? 'Hide the legend' : 'Show what the colours and dashes mean'} onClick={() => setShowLegend(v => !v)}>
+            <rect x="4" y="4" width="16" height="16" rx="2"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="15" x2="16" y2="15"/>
+          </BarButton>}
           <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
           <BarButton on={showSharePanel} label="Share" title="Download a picture of this diagram, or copy the link" onClick={() => setShowSharePanel(v => !v)}>
             <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
@@ -887,6 +902,22 @@ export function DetailView({
             <span className="sd-btn-label">Notes</span>
           </button>
 
+          {setShowArrows && <button className={showArrows ? "is-on" : ""} onClick={() => setShowArrows(v => !v)} title={showArrows ? 'Hide the arrowheads' : 'Show which way each line goes'}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
+              background: showArrows ? '#f1f5f9' : 'transparent', color: showArrows ? '#1e293b' : '#64748b',
+              cursor: 'pointer', fontSize: 13, fontWeight: showArrows ? 600 : 400, transition: 'all 0.1s', fontFamily: 'inherit' }}>
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+            <span className="sd-btn-label">Arrows</span>
+          </button>}
+
+          {setShowLegend && legend.length > 0 && <button className={showLegend ? "is-on" : ""} onClick={() => setShowLegend(v => !v)} title={showLegend ? 'Hide the legend' : 'Show what the colours and dashes mean'}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
+              background: showLegend ? '#f1f5f9' : 'transparent', color: showLegend ? '#1e293b' : '#64748b',
+              cursor: 'pointer', fontSize: 13, fontWeight: showLegend ? 600 : 400, transition: 'all 0.1s', fontFamily: 'inherit' }}>
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="15" x2="16" y2="15"/></svg>
+            <span className="sd-btn-label">Legend</span>
+          </button>}
+
           {/* Kept on a phone: Steps and the badge style are the 2 actions left in
               the bar there, and without a line between them they read as 1 control. */}
           <div className="sd-divider sd-divider-phone sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
@@ -1045,6 +1076,7 @@ export function DetailView({
         {/* Canvas */}
         <div style={{ flex: 1, position: 'relative', background: '#ffffff' }}>
           <ShowNotesContext.Provider value={showNotes}>
+          <ShowArrowsContext.Provider value={showArrows}>
           <NoteEditContext.Provider value={viewOnly ? null : onNoteChange || null}>
           <NodeResizeContext.Provider value={viewOnly || sizing !== 'custom' ? null : onNodeResize || null}>
           <IconResizeContext.Provider value={viewOnly ? null : onIconResize || null}>
@@ -1118,7 +1150,9 @@ export function DetailView({
           </IconResizeContext.Provider>
           </NodeResizeContext.Provider>
           </NoteEditContext.Provider>
+          </ShowArrowsContext.Provider>
           </ShowNotesContext.Provider>
+          {showLegend && <Legend rows={legend} />}
 
           {/* Info card overlay - what it tests + goal, pinned top-left of the canvas.
               Tap it to fold it into a badge so the diagram gets the whole screen.
@@ -1494,6 +1528,17 @@ export function DetailView({
           opacity: 0; visibility: hidden; transition: opacity 0.12s; pointer-events: none; z-index: 30;
         }
         .sd-edge-badge[data-tip]:hover::after { opacity: 1; visibility: visible; }
+        /* A card's optional tooltip (node.tooltip), the same dark tip above it. */
+        .sd-card-tip[data-tip]::after {
+          content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 10px);
+          transform: translateX(-50%); width: max-content; max-width: 260px;
+          padding: 8px 10px; border-radius: 8px; background: #1c1e21; color: #fff;
+          font-size: 12px; font-weight: 400; line-height: 1.4; text-align: left; white-space: normal;
+          box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+          opacity: 0; visibility: hidden; transition: opacity 0.12s; pointer-events: none; z-index: 30;
+        }
+        .sd-card-tip[data-tip]:hover::after { opacity: 1; visibility: visible; }
+        .react-flow__node:has(.sd-card-tip:hover) { z-index: 1001 !important; }
         /* The tag layer paints under the cards, so a hovered tag climbs over
            every card (a selected card sits at 1000) and its tip is never
            covered by the box next to it. */
