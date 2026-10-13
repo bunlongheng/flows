@@ -161,6 +161,8 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   const sunset = data.sunset === true
   // New: being added. Green border and wash, a NEW pill on the corner. Sunset wins if both are set.
   const isNew = data.new === true && !sunset
+  // cracked: false keeps the red sunset look on a whole card.
+  const split = sunset && data.cracked !== false
   const tooltip = typeof data.tooltip === 'string' && data.tooltip.trim() ? data.tooltip.trim() : undefined
   // The format panel's overrides. Sunset still wins on colour: silver is the
   // one state the whole app reads at a glance, so a styled card that is on its
@@ -320,14 +322,14 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
 
   return (
     <div className={tooltip ? 'sd-card-tip' : undefined} data-tip={tooltip}
-      style={sunset ? { position: 'relative', width: cardStyle.width, height: cardStyle.height } : cardStyle}>
+      style={split ? { position: 'relative', width: cardStyle.width, height: cardStyle.height } : cardStyle}>
       {canResize && <NodeResizer isVisible={selected} minWidth={130} minHeight={130} maxWidth={600} maxHeight={600} keepAspectRatio={!!picture}
         lineStyle={{ borderColor: color, borderWidth: 1 }}
         handleStyle={{ width: 9, height: 9, borderRadius: 0, background: color, border: '1px solid #fff' }}
         onResize={(_, p) => setLive({ w: p.width, h: p.height })}
         onResizeEnd={(_, p) => { onResize(data.id, { w: Math.round(p.width), h: Math.round(p.height) }); setLive(null) }} />}
       {/* A sunset card, split down the crack and tipped open (CrackEdge). */}
-      {sunset && ['left', 'right'].map(side => (
+      {split && ['left', 'right'].map(side => (
         <div key={side} style={{ position: 'absolute', inset: 0, transformOrigin: '50% 100%', transform: `rotate(${side === 'left' ? -CRACK.angle : CRACK.angle}deg)`, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.22))' }}>
           <div style={{ ...cardStyle, position: 'absolute', inset: 0, boxShadow: 'none', clipPath: halfClip(side) }}>
             {face(side === 'left')}
@@ -342,7 +344,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       <Handle id="t" type="target" position={Position.Top}    className="sd-port" />
       <Handle id="r" type="source" position={Position.Right}  className="sd-port" />
       <Handle id="b" type="source" position={Position.Bottom} className="sd-port" />
-      {!sunset && face(true)}
+      {!split && face(true)}
       {isNew && <span className="sd-new-pill" style={{ position: 'absolute', top: -9, right: 8, background: NEW.border, color: '#fff', fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', lineHeight: '16px', padding: '0 7px', borderRadius: 999, boxShadow: '0 1px 2px rgba(0,0,0,0.15)', pointerEvents: 'none' }}>NEW</span>}
       <NodeNote id={data.id} note={note} />
     </div>

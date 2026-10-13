@@ -74,7 +74,7 @@ diagram, same as `update_flow`.
 }
 ```
 
-A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, sunset?, new?, tooltip?, iconFrame?, size?, iconSize?, style? }`:
+A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, sunset?, cracked?, new?, tooltip?, iconFrame?, size?, iconSize?, style? }`:
 
 - `id` - a service key from `list_services` (e.g. `user`, `apigw`, `lambda`, `dynamo`, `kafka`, `redis`, `s3`), or any unique id when bringing your own icon or image. A key appears at most once per diagram.
 - `icon` - bring-your-own logo: a remote `https` image URL, a `data:image/(png|jpeg|svg+xml|webp|gif)` URI with a real `;base64,` or `,` boundary, or a same-origin image path such as `/brand/foo.svg` (never protocol-relative `//host`). A remote URL is fetched once (https only, no redirects, `image/*`, max 24KB, 5s, private hosts refused, raster logos at least 96px) and inlined so the diagram stays self-contained. If it cannot be fetched the call fails and names the node. An inline `data:` icon is capped at 24KB.
@@ -83,6 +83,7 @@ A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, suns
 - `note` - max 400 chars, 1-2 sentences on what that step does. Light markdown works: `**bold**`, `*italic*`, `__underline__`, `~~strike~~` and `` `code` ``, 1 level, no nesting. Any http(s) URL becomes a blue link that shows its ticket key when the URL has one (SHAR-7977), else the address without scheme and www. It renders under the card, bottom-left, in the app, on every shared link, in the SVG (as typed, marks included) and on the share card. Set it on create, or later with `update_flow` by sending the full `nodes` list with `note` on the ones that need it.
 - `info` - plain text, max 600 chars, 1-3 sentences on what this thing is and why it is in this diagram. Hidden until the reader hovers or clicks the i badge on the card, 1 popover open at a time; not in the SVG. Shown as `<card name> is <text>` with the name in bold, so write it to read after "is" ("the embedded iPaaS behind every rebuilt integration"). Different from `note`, which is always visible.
 - `sunset` - a boolean; `true` marks a node that is today's path and gets decommissioned: a light red card in a red border, cracked open, and every edge touching it a red dash with the red X on its badge, immune to any line style.
+- `cracked` - only with `sunset`. Default true (cracked open); `false` keeps the red card whole, for a more formal diagram.
 - `new` - a boolean; `true` marks a component being added: green border and wash, NEW pill top-right. Status is a flag, never a colour: never paint a card red, green or grey to mean retired or new.
 - `tooltip` - plain text, max 200 chars, shown when the reader hovers the card. Optional; not in the SVG. A node with no colour of its own falls back to black.
 - `size` - optional `{ w, h }`, clamped 130..600, the card on the canvas. Default 180 x 180, or 240 x 225 for a picture card. A note hangs BELOW the card and is not part of `h`.

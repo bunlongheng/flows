@@ -75,6 +75,14 @@ describe("renderDiagramSvg - saved view", () => {
     expect(renderDiagramSvg(nodes, EDGES, { view: { panels: ["legend-off"] } })).not.toContain("sd-legend");
   });
 
+  it("cracks a sunset card by default and keeps it whole with cracked: false, still red", () => {
+    const cracked = renderDiagramSvg([NODES[0], { ...NODES[1], sunset: true }, NODES[2]], EDGES);
+    expect(cracked).toContain('aria-label="Gets decommissioned"');
+    const whole = renderDiagramSvg([NODES[0], { ...NODES[1], sunset: true, cracked: false }, NODES[2]], EDGES);
+    expect(whole).not.toContain('aria-label="Gets decommissioned"');
+    expect(whole).toContain("#fef2f2");
+  });
+
   it("uses the app's own font stack and dot grid", () => {
     const svg = renderDiagramSvg(NODES, EDGES);
     expect(svg).toMatch(/<svg [^>]*font-family="Inter,/);
