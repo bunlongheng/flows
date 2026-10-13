@@ -3,7 +3,7 @@ import { Handle, Position, NodeResizer, useReactFlow, useStore } from '@xyflow/r
 import { findService } from '../services'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, setNoteHeight } from './noteEditContext'
 import { NOTE_MAX, cleanNote, noteRuns, linkLabel } from '../note'
-import { SUNSET, INK } from '../sunset.js'
+import { SUNSET, INK, CRACK, CRACK_HALVES } from '../sunset.js'
 import { FONT_STACK, borderStyleOf, hexToRgba } from '../style.js'
 import { subscribe, glowAt, motionAllowed } from '../flowClock'
 import { LaneNode } from './LaneNode'
@@ -129,6 +129,29 @@ function NodeNote({ id, note }) {
             border: '1px solid #000', background: '#fff', color: '#000', fontSize: 12, lineHeight: '16px', cursor: 'pointer' }}>×</button>
       )}
     </div>
+  )
+}
+
+// A sunset card's icon, cracked open like an eggshell: the icon is split along
+// the crack and each half pushed CRACK.open % outward (src/sunset.js).
+const halfClip = side => `polygon(${CRACK_HALVES[side].map(([x, y]) => `${x}% ${y}%`).join(', ')})`
+const halfStyle = side => ({ clipPath: halfClip(side), transform: `translateX(${side === 'left' ? -CRACK.open : CRACK.open}%)` })
+
+// The broken edges, hairline branches and chipped shards, riding on each half.
+// `box` sizes the overlay to the icon it sits on.
+function Crack({ box }) {
+  const half = side => (
+    <g transform={`translate(${side === 'left' ? -CRACK.open : CRACK.open} 0)`}>
+      {CRACK[side].shards.map(d => <path key={d} d={d} fill={SUNSET.tint} stroke="#4b5563" strokeWidth="1.2" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />)}
+      <path d={CRACK.main} fill="none" stroke="#374151" strokeWidth="1.4" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />
+      {CRACK[side].branches.map(d => <path key={d} d={d} fill="none" stroke="#4b5563" strokeWidth="1" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />)}
+    </g>
+  )
+  return (
+    <svg aria-label="Gets decommissioned" viewBox="0 0 100 100" preserveAspectRatio="none"
+      style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', ...box, pointerEvents: 'none', overflow: 'visible' }}>
+      {half('left')}{half('right')}
+    </svg>
   )
 }
 
@@ -273,7 +296,10 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
         ? <span style={iconWrapStyle}>
             <img ref={imgRef} src={picture} alt={label} style={{ ...(iconBox
               ? { width: iconBox.w, height: iconBox.h, maxWidth: '100%', flex: 'none', objectFit: 'cover', display: 'block', borderRadius: 2 }
-              : { width: '100%', flex: 1, minHeight: 0, objectFit: 'cover', display: 'block', borderRadius: 2 }), ...(sunset ? { filter: 'grayscale(1) opacity(0.55)' } : {}) }} />
+              : { width: '100%', flex: 1, minHeight: 0, objectFit: 'cover', display: 'block', borderRadius: 2 }), ...(sunset ? { filter: 'grayscale(1) opacity(0.55)', ...halfStyle('left') } : {}) }} />
+            {sunset && <img src={picture} alt="" aria-hidden="true" style={{ position: 'absolute', top: 0, objectFit: 'cover', display: 'block', borderRadius: 2,
+              ...(iconBox ? { width: iconBox.w, height: iconBox.h } : { width: '100%', height: '100%' }), filter: 'grayscale(1) opacity(0.55)', ...halfStyle('right') }} />}
+            {sunset && <Crack box={iconBox ? { width: iconBox.w, height: iconBox.h } : { width: '100%', height: '100%' }} />}
             {iconHandle}
           </span>
         : svc.icon
@@ -284,7 +310,13 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
                 : { width: 'auto', height: '100%', maxWidth: '100%', objectFit: 'contain', display: 'block' }),
                 // A white-edged tile on the white card: the 1 px grey frame at the iOS corner (lib/icon-frame.js decided it).
                 ...(data.iconFrame ? { borderRadius: '22%', boxShadow: '0 0 0 1px #cfd4da' } : {}),
-                ...(sunset ? { filter: 'grayscale(1) opacity(0.55)' } : {}) }} />
+                ...(sunset ? { filter: 'grayscale(1) opacity(0.55)', ...halfStyle('left') } : {}) }} />
+            {sunset && <img src={svc.icon} alt="" aria-hidden="true" {...(iconBox ? { width: iconBox.w, height: iconBox.h } : {})}
+              style={{ position: 'absolute', top: 0, objectFit: 'contain', display: 'block', maxWidth: '100%',
+                ...(iconBox ? { maxHeight: '100%' } : { width: 'auto', height: '100%' }),
+                ...(data.iconFrame ? { borderRadius: '22%', boxShadow: '0 0 0 1px #cfd4da' } : {}),
+                filter: 'grayscale(1) opacity(0.55)', ...halfStyle('right') }} />}
+            {sunset && <Crack box={iconBox ? { width: iconBox.w, height: iconBox.h } : { height: '100%', aspectRatio: '1' }} />}
             {iconHandle}
           </span>
         : <span style={{ fontSize: 26, fontWeight: 700, color, marginTop: 2, lineHeight: 1 }}>{label[0]?.toUpperCase()}</span>
