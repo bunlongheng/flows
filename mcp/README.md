@@ -85,6 +85,7 @@ A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, suns
 - `sunset` - a boolean; `true` marks a node that is today's path and gets decommissioned: a light red card in a red border, cracked open, and every edge touching it a red dash with the red X on its badge, immune to any line style.
 - `cracked` - only with `sunset`. Default true (cracked open); `false` keeps the red card whole, for a more formal diagram.
 - `new` - a boolean; `true` marks a component being added: green border and wash, NEW pill top-right. Status is a flag, never a colour: never paint a card red, green or grey to mean retired or new.
+- `pinTooltip` - `true` keeps the tooltip always visible above the card as a red callout (needs `tooltip`).
 - `tooltip` - plain text, max 200 chars, shown when the reader hovers the card. Optional; not in the SVG. A node with no colour of its own falls back to black.
 - `size` - optional `{ w, h }`, clamped 130..600, the card on the canvas. Default 180 x 180, or 240 x 225 for a picture card. A note hangs BELOW the card and is not part of `h`.
 - `iconSize` - optional `{ w, h }`, clamped 16..600, the logo tile inside the card (default 48 x 48). Only for a wide wordmark that is unreadable at the stock tile.
@@ -109,7 +110,7 @@ Edges are directed `{ source, target, label?, description?, id?, style? }` using
 `create_flow` takes the same thing as `view_state`.
 
 - `panels` - any of `steps`, `share`, `code`, `notes-off`, `arrows-off`,
-  `legend-off`. The `-off` flags hide notes, arrowheads or the bottom-left
+  `legend-off`, `badge-x-off`. The `-off` flags hide notes, arrowheads, the red X on retiring badges or the bottom-left
   legend, which all show by default. **Turn `steps` on for
   anything a reader has to follow in order** instead of leaving them to find the
   button. `notes-off` is inverted on purpose: notes show by default, so the

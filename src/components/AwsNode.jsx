@@ -308,7 +308,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       }
       <div style={{ textAlign: st.align || 'center', width: '100%', flex: 'none', fontFamily: FONT_STACK[st.font] || 'inherit' }}>
         <div title={label} style={{
-          fontSize: st.fs || fonts.title, fontWeight: 700, color: sunset ? SUNSET.ink : '#111827', letterSpacing: '-0.1px', lineHeight: 1.3,
+          fontSize: st.fs || fonts.title, fontWeight: 700, color: '#111827', letterSpacing: '-0.1px', lineHeight: 1.3,
           ...CLAMP_2,
         }}>{label}</div>
         {sub && <div title={sub} style={{
@@ -322,7 +322,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   )
 
   return (
-    <div className={tooltip ? 'sd-card-tip' : undefined} data-tip={tooltip}
+    <div className={tooltip ? (data.pinTooltip ? 'sd-card-tip sd-card-tip-pin' : 'sd-card-tip') : undefined} data-tip={tooltip}
       style={split ? { position: 'relative', width: cardStyle.width, height: cardStyle.height } : cardStyle}>
       {canResize && <NodeResizer isVisible={selected} minWidth={130} minHeight={130} maxWidth={600} maxHeight={600} keepAspectRatio={!!picture}
         lineStyle={{ borderColor: color, borderWidth: 1 }}
