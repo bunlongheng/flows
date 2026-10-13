@@ -25,6 +25,7 @@ import { SERVICES } from '../src/services.js'
 import { resolveNodeIcons } from '../lib/resolve-icon.js'
 import { resolveNodeImages } from '../lib/resolve-image.js'
 import { cleanNote, cleanInfo, cleanTooltip } from '../src/note.js'
+import { cleanTipColor } from '../src/sunset.js'
 import { cleanStyle } from '../src/style.js'
 import { PANELS, BADGES, SPEEDS, AMOUNTS, CURRENT_DEFAULT, cleanFonts } from '../src/view-state.js'
 import { SIZINGS } from '../src/card-size.js'
@@ -105,9 +106,10 @@ const zBox = (lo, hi) => z.object({ w: z.number().min(lo).max(hi), h: z.number()
 
 // Shared by create_flow and update_flow, which carried 2 copies of this and drifted.
 const zNodeFields = {
-  new: z.boolean().optional().describe('true marks a node that is being added: green border and wash, a NEW pill on its corner, and a "New component" row in the legend. Green means new, red means sunset; never set both.'),
+  new: z.boolean().optional().describe('true marks a node that is being added: green border and wash, a NEW pill on its top-left corner, and a "New component" row in the legend. Green means new, red means sunset; never set both.'),
   cracked: z.boolean().optional().describe('Only for a sunset node. Default true: the card is drawn cracked open. false keeps the red sunset look with the card whole, for a more formal diagram.'),
   tooltip: z.string().max(200).optional().describe('Plain text shown when the reader hovers the card, max 200 chars. Optional; for a one-line hint, while info stays the longer "what it is".'),
+  tooltipColor: z.string().optional().describe('#rrggbb fill for the tooltip and its pinned callout. Default red #dc2626; the text turns white or ink to stay readable.'),
   pinTooltip: z.boolean().optional().describe('true keeps the tooltip always visible above the card as a red callout, for an important date or warning (e.g. a contract notice). Needs tooltip.'),
   size: zBox(130, 600).describe('Card size in canvas units, { w, h }, clamped 130-600. Omit for the default 180 x 180 (240 x 225 for a picture node). A note hangs BELOW the card and is not part of this height.'),
   iconSize: zBox(16, 600).describe('Logo tile size inside the card, { w, h }, clamped 16-600. Omit unless a wide wordmark is unreadable at the stock tile.'),
@@ -135,6 +137,7 @@ function toStoredNodes(nodes) {
     ...(n.cracked === false ? { cracked: false } : {}),
     ...(cleanTooltip(n.tooltip) ? { tooltip: cleanTooltip(n.tooltip) } : {}),
     ...(n.pinTooltip === true && cleanTooltip(n.tooltip) ? { pinTooltip: true } : {}),
+    ...(cleanTipColor(n.tooltipColor) ? { tooltipColor: cleanTipColor(n.tooltipColor) } : {}),
     ...(n.iconFrame === true ? { iconFrame: true } : {}),
     ...(n.image ? { image: n.image } : {}),
     // The 3 the canvas writes and this used to drop on the floor: a resized

@@ -12,9 +12,16 @@ export const SUNSET = {
 }
 
 // The new look: a node marked `new: true` is being added. Green means new: a
-// green border and wash, and a NEW pill on the top-right corner.
+// green border and wash, and a NEW pill on the top-left corner.
 // A pinned tooltip: a red callout above its card for an important date (legend: Important date).
 export const CALLOUT = { fill: '#dc2626', ink: '#ffffff', fs: 13, wrap: 22 }
+// node.tooltipColor: the callout and tooltip fill, a 6-digit hex; '' when junk.
+export const cleanTipColor = v => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v.trim()) ? v.trim().toLowerCase() : '')
+// White text on a dark fill, ink on a light one, so any picked colour stays readable.
+export const tipInk = hex => {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.6 ? '#1c1e21' : '#ffffff'
+}
 
 export const NEW = {
   border: '#16a34a',

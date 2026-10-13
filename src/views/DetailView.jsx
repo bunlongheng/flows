@@ -1523,12 +1523,12 @@ export function DetailView({
         }
         .sd-edge-badge[data-tip]:hover::after { opacity: 1; visibility: visible; }
         /* A pinned tooltip (node.pinTooltip): always shown, a red callout for an important date. */
-        .sd-card-tip-pin[data-tip]::after { opacity: 1; visibility: visible; background: #dc2626; font-size: 13px; font-weight: 700; line-height: 17px; text-align: center; max-width: 180px; padding: 6px 12px; border-radius: 6px; bottom: calc(100% + 8px); box-shadow: none; }
+        .sd-card-tip-pin[data-tip]::after { opacity: 1; visibility: visible; background: var(--tip-bg, #dc2626); color: var(--tip-ink, #fff); font-size: 13px; font-weight: 700; line-height: 17px; text-align: center; max-width: 180px; padding: 6px 12px; border-radius: 6px; bottom: calc(100% + 8px); box-shadow: none; }
         /* A card's optional tooltip (node.tooltip), the same dark tip above it. */
         .sd-card-tip[data-tip]::after {
           content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 10px);
           transform: translateX(-50%); width: max-content; max-width: 260px;
-          padding: 8px 10px; border-radius: 8px; background: #1c1e21; color: #fff;
+          padding: 8px 10px; border-radius: 8px; background: var(--tip-bg, #1c1e21); color: var(--tip-ink, #fff);
           font-size: 12px; font-weight: 400; line-height: 1.4; text-align: left; white-space: normal;
           box-shadow: 0 6px 20px rgba(0,0,0,0.18);
           opacity: 0; visibility: hidden; transition: opacity 0.12s; pointer-events: none; z-index: 30;

@@ -42,4 +42,12 @@ describe("renderDiagramSvg - sunset node", () => {
     const minY = Number(svg.match(/viewBox="[-\d.]+ ([-\d.]+) /)[1]);
     expect(minY).toBeLessThanOrEqual(-24 - 10);
   });
+  it("fills the callout with tooltipColor and picks readable text", () => {
+    const dark = renderDiagramSvg([{ id: "user", position: { x: 0, y: 0 }, tooltip: "Due soon", pinTooltip: true, tooltipColor: "#1d4ed8" }], []);
+    expect(dark).toMatch(/fill="#1d4ed8"\/><text [^>]*fill="#ffffff">Due soon</);
+    const light = renderDiagramSvg([{ id: "user", position: { x: 0, y: 0 }, tooltip: "Due soon", pinTooltip: true, tooltipColor: "#fde047" }], []);
+    expect(light).toMatch(/fill="#fde047"\/><text [^>]*fill="#1c1e21">Due soon</);
+    const junk = renderDiagramSvg([{ id: "user", position: { x: 0, y: 0 }, tooltip: "Due soon", pinTooltip: true, tooltipColor: "red" }], []);
+    expect(junk).toMatch(/fill="#dc2626"\/><text [^>]*fill="#ffffff">Due soon</);
+  });
 });
