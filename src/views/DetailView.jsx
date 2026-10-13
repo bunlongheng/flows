@@ -190,7 +190,7 @@ export function DetailView({
   // Match / Auto / Custom card sizes, picked in the same panel. Only Custom
   // shows the resize handles: the other 2 decide the size themselves.
   sizing, onSizingChange,
-  onFontsChange,
+  onFontsChange, layout, onLayoutChange,
 }) {
   const [codeWidth, setCodeWidth] = useState(340)
   const brand = brandFor(activeDiagram?.title)
@@ -1313,7 +1313,7 @@ export function DetailView({
             alongside Share or History - the same 1 extra panel slot. */}
         {currentOpen && !card && !narrow && onCurrentChange && (
           <CurrentPanel value={current} onChange={onCurrentChange} onClose={() => setCurrentOpen(false)}
-            sizing={sizing} onSizing={onSizingChange} fonts={fonts} onFonts={onFontsChange}
+            sizing={sizing} onSizing={onSizingChange} fonts={fonts} onFonts={onFontsChange} layout={layout} onLayout={onLayoutChange}
             pattern={activeDiagram?.pattern} description={activeDiagram?.description} />
         )}
 
@@ -1695,6 +1695,10 @@ export function DetailView({
         .sd-note-box:hover .sd-note-del, .sd-note-del:focus-visible { opacity: 1; }
         @media (hover: none) { .sd-note-del { opacity: 1; } }
         /* Step number, first thing in the badge - hidden until Steps is on. */
+        /* The thin sliders of the Layout panel (owner 2026-10-13, like the Sequences app). */
+        .sd-slim-range { -webkit-appearance: none; appearance: none; width: 100%; height: 2px; background: #e2e8f0; border-radius: 2px; outline: none; cursor: pointer; margin: 0; }
+        .sd-slim-range::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; border: none; }
+        .sd-slim-range::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; border: none; }
         .sd-step-chip { display: none; }
         /* A line with no text has a tag only to hold its step number: with
            the Steps chips off there is nothing to show, so no empty pill. */

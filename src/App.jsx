@@ -18,13 +18,15 @@ import { cleanDesc } from './tag'
 import { cleanEdgeLabel } from './note.js'
 import { fireflies } from './fireflies'
 import { makeThumbnail } from './thumbnail'
-import { currentOf, cleanCurrent, cleanFonts } from './view-state.js'
+import { currentOf, cleanCurrent, cleanFonts, layoutOf, cleanLayout, laidOut, LAYOUT_DEFAULT } from './view-state.js'
 import { sizingOf, lineCounts, cardSize } from './card-size.js'
 
 // A card's drawn size for the diagram's sizing mode; a picture card scales
 // from its own 240 x 225.
-const sizedCard = (nd, mode, lines) => cardSize(nd, mode, lines.get(nd.id),
-  typeof nd.image === 'string' && nd.image.startsWith('data:image/') ? { w: 240, h: 225 } : { w: 180, h: 180 })
+const baseCard = nd => (typeof nd.image === 'string' && nd.image.startsWith('data:image/') ? { w: 240, h: 225 } : { w: 180, h: 180 })
+const sizedCard = (nd, mode, lines) => cardSize(nd, mode, lines.get(nd.id), baseCard(nd))
+// A card at the diagram's layout box scale: its drawn size, or null for the plain default.
+const boxed = (nd, mode, lines, L) => laidOut(null, sizedCard(nd, mode, lines) || (L.box !== 1 ? baseCard(nd) : null), L).size
 
 // Vite exposed import.meta.env.DEV; Next replaces process.env.NODE_ENV at build
 // time, so this compiles to a constant in the client bundle exactly the same way.
@@ -736,10 +738,10 @@ export default function App() {
     // bring-your-own-icon node renders its own logo, not a catalog lookup.
     // The card's drawn size follows the diagram's Match / Auto / Custom pick
     // (src/card-size.js); `handSize` keeps the owner's own, the only one saved.
-    const mode = sizingOf(d.view_state, raw), lines = lineCounts(d.data.edges)
+    const mode = sizingOf(d.view_state, raw), lines = lineCounts(d.data.edges), L = layoutOf(d.view_state)
     const n = raw.map(nd => {
-      const size = sizedCard(nd, mode, lines)
-      return { ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, new: nd.new === true, cracked: nd.cracked !== false, tooltip: nd.tooltip, pinTooltip: nd.pinTooltip === true, tooltipColor: nd.tooltipColor, iconFrame: nd.iconFrame === true, size, handSize: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: nd.position } : {}), ...(size ? { width: size.w, height: size.h } : {}) }
+      const size = boxed(nd, mode, lines, L)
+      return { ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, new: nd.new === true, cracked: nd.cracked !== false, tooltip: nd.tooltip, pinTooltip: nd.pinTooltip === true, tooltipColor: nd.tooltipColor, iconFrame: nd.iconFrame === true, size, handSize: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: laidOut(nd.position, null, L).position } : {}), ...(size ? { width: size.w, height: size.h } : {}) }
     })
     const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined, d.view_state?.lanes || [], canAI ? onLabelEdit : undefined)
     return { nodes: hasSaved ? n : layoutFanOut(n, e), edges: e }
@@ -816,11 +818,16 @@ export default function App() {
   const saveChain = useRef(Promise.resolve())
   const savedResetTimer = useRef(null)
   const [saveState, setSaveState] = useState('idle')
+  // The diagram's layout (box, gap, vgap). A ref, so the drag save can unspread
+  // positions without re-creating every callback on each slider step.
+  const layoutRef = useRef(LAYOUT_DEFAULT)
+  useEffect(() => { layoutRef.current = layoutOf(activeDiagram?.view_state) }, [activeDiagram])
   const doSave = useCallback((diagramId, nds, notify = false) => {
     const payload = nds.filter(n => n.type === 'awsNode' && n.position)
       .map(n => ({
         id: n.id,
-        position: { x: Math.round(n.position.x), y: Math.round(n.position.y) },
+        // Stored unspread: the layout's gap / vgap is drawn, never saved into positions.
+        position: { x: Math.round(n.position.x / layoutRef.current.gap), y: Math.round(n.position.y / layoutRef.current.vgap) },
         // Only the owner's hand size is saved: a Match or Auto size is drawn, never stored.
         ...(n.data?.handSize ? { size: n.data.handSize } : {}),
         iconSize: n.data?.iconSize ?? null,
@@ -935,7 +942,7 @@ export default function App() {
     const lines = lineCounts(activeDiagram?.data?.edges)
     setNodes(nds => nds.map(n => {
       if (n.type !== 'awsNode') return n
-      const size = sizedCard({ size: n.data.handSize, image: n.data.image, id: n.id }, mode, lines)
+      const size = boxed({ size: n.data.handSize, image: n.data.image, id: n.id }, mode, lines, layoutRef.current)
       const { width: _w, height: _h, ...rest } = n
       return { ...rest, ...(size ? { width: size.w, height: size.h } : {}), data: { ...n.data, size } }
     }))
@@ -946,6 +953,25 @@ export default function App() {
   // exports draw the same.
   // The slider fires on every step, so the save waits 400 ms: 1 drag = 1 save.
   const fontsTimer = useRef(null)
+  const layoutTimer = useRef(null)
+  useEffect(() => () => clearTimeout(layoutTimer.current), [])
+  const setLayout = useCallback(next => {
+    const was = layoutRef.current, now = layoutOf({ layout: next })
+    layoutRef.current = now
+    const kx = now.gap / was.gap, ky = now.vgap / was.vgap, kb = now.box / was.box
+    setNodes(nds => nds.map(n => {
+      if (n.type !== 'awsNode') return n
+      const moved = { ...n, position: { x: n.position.x * kx, y: n.position.y * ky } }
+      if (kb === 1) return moved
+      const cur = n.data?.size || { w: n.width || baseCard(n.data || {}).w, h: n.height || baseCard(n.data || {}).h }
+      const size = { w: Math.round(cur.w * kb), h: Math.round(cur.h * kb) }
+      return { ...moved, width: size.w, height: size.h, data: { ...n.data, size } }
+    }))
+    const view_state = { ...otherView(['layout']), ...cleanLayout(now) }
+    setActiveDiagram(a => (a ? { ...a, view_state } : a))
+    clearTimeout(layoutTimer.current)
+    layoutTimer.current = setTimeout(() => patchViewState(view_state), 400)
+  }, [otherView, patchViewState])
   useEffect(() => () => clearTimeout(fontsTimer.current), [])
   const setFonts = useCallback(f => {
     const view_state = { ...otherView(['fonts']), ...cleanFonts(f) }
@@ -959,7 +985,8 @@ export default function App() {
   // card) and persist it the same way a drag persists position.
   const onNodeResize = useCallback((id, size) => {
     setNodes(nds => {
-      const next = nds.map(n => n.id === id ? { ...n, width: size.w, height: size.h, data: { ...n.data, size, handSize: size } } : n)
+      const k = layoutRef.current.box, hand = k === 1 ? size : { w: Math.round(size.w / k), h: Math.round(size.h / k) }
+      const next = nds.map(n => n.id === id ? { ...n, width: size.w, height: size.h, data: { ...n.data, size, handSize: hand } } : n)
       if (canAI && activeDiagram?.id) savePositions(activeDiagram.id, next)
       return next
     })
@@ -2130,6 +2157,7 @@ export default function App() {
       current={current} onCurrentChange={canAI && activeDiagram?.id ? setCurrent : undefined}
       sizing={sizing} onSizingChange={canAI && activeDiagram?.id ? setSizing : undefined}
       onFontsChange={canAI && activeDiagram?.id ? setFonts : undefined}
+      layout={layoutOf(activeDiagram?.view_state)} onLayoutChange={canAI && activeDiagram?.id ? setLayout : undefined}
     />
   )
 }

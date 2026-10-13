@@ -88,6 +88,26 @@ export const cleanFonts = (v) => {
   return kept.length ? { fonts: Object.fromEntries(kept) } : {};
 };
 
+// Layout, per diagram (owner 2026-10-13, "like my sequences app"): box scales
+// every card, gap and vgap spread the cards apart across and down so the tags
+// have room. Drawn by the canvas and the exports; stored positions stay unscaled.
+export const LAYOUT_DEFAULT = { box: 1, gap: 1, vgap: 1 };
+export const LAYOUT_RANGE = { box: [0.6, 2], gap: [0.6, 3], vgap: [0.6, 3] };
+export const layoutOf = (v) => Object.fromEntries(Object.entries(LAYOUT_DEFAULT).map(([k, d]) => {
+  const n = Number(v?.layout?.[k]), [lo, hi] = LAYOUT_RANGE[k];
+  return [k, v?.layout?.[k] != null && Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n * 20) / 20)) : d];
+}));
+/** `layout` for storage: only the values that differ from the default. */
+export const cleanLayout = (v) => {
+  const kept = Object.entries(layoutOf({ layout: v })).filter(([k, n]) => n !== LAYOUT_DEFAULT[k]);
+  return kept.length ? { layout: Object.fromEntries(kept) } : {};
+};
+/** A stored card at the diagram's layout: position spread, size scaled. */
+export const laidOut = (pos, size, L) => ({
+  position: pos ? { x: pos.x * L.gap, y: pos.y * L.vgap } : pos,
+  size: size && L.box !== 1 ? { w: Math.round(size.w * L.box), h: Math.round(size.h * L.box) } : size,
+});
+
 /** The full canvas-state half of view_state, lanes excluded. */
 export const cleanView = (v) => ({
   panels: cleanPanels(v?.panels),
@@ -96,4 +116,5 @@ export const cleanView = (v) => ({
   ...cleanCurrent(v?.current),
   ...cleanSizing(v?.sizing),
   ...cleanFonts(v?.fonts),
+  ...cleanLayout(v?.layout),
 });
