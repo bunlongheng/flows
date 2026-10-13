@@ -451,7 +451,7 @@ export function GradientEdge({
               ) : tag && <span>{tag}</span>}
               {sunset && draft == null && (
                 <svg aria-label="Gets decommissioned" preserveAspectRatio="none" viewBox="0 0 100 100"
-                  style={{ position: 'absolute', inset: -3, width: 'calc(100% + 6px)', height: 'calc(100% + 6px)', pointerEvents: 'none', overflow: 'visible' }}>
+                  style={{ position: 'absolute', top: -3, left: '25%', width: '50%', height: 'calc(100% + 6px)', pointerEvents: 'none', overflow: 'visible' }}>
                   <path d="M0 0 L100 100 M0 100 L100 0" stroke={SUNSET.x} strokeWidth="2.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" fill="none" />
                 </svg>
               )}
