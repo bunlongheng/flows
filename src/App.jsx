@@ -76,6 +76,9 @@ const edgePins = edges => edges.map((e, i) => ({
 // onLabelMove and onEndMove are threaded into every edge's data so a badge or a
 // pinned end can be dragged. Both are omitted for the bundled sample and for a
 // read-only viewer, and the edge renders inert in that case.
+// An interim path (a dashed or dotted line) is not on its way out, whatever card it touches.
+const isInterim = e => e?.style?.bs === 'dashed' || e?.style?.bs === 'dotted'
+
 function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove, lanes = [], onLabelEdit) {
   // The edge takes its colour from the SOURCE node, and a node that brings its
   // own logo states its colour only in that logo - so the node itself has to be
@@ -113,8 +116,9 @@ function buildEdges(rawEdges, onLabelMove, rawNodes, onEndMove, onBendMove, lane
     type: 'gradient',
     data: {
       sourceColor: edgeColor(e.source), targetColor: edgeColor(e.target), step: i + 1,
-      ...(sunsetOf(e.source) || sunsetOf(e.target) ? { sunset: true } : {}),
-      ...(sunsetOf(e.source) || sunsetOf(e.target) ? { sunsetLine: true } : {}),
+      // A dashed line is an interim path: it keeps its own grey dash even into a retiring card.
+      ...((sunsetOf(e.source) || sunsetOf(e.target)) && !isInterim(e) ? { sunset: true } : {}),
+      ...((sunsetOf(e.source) || sunsetOf(e.target)) && !isInterim(e) ? { sunsetLine: true } : {}),
       ...(typeof e.labelT === 'number' ? { labelT: e.labelT } : {}),
       ...(e.async === true ? { async: true } : {}),
       ...(e.ends ? { ends: e.ends } : {}),

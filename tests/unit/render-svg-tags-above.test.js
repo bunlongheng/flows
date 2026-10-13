@@ -11,4 +11,9 @@ describe("tags-above", () => {
     expect(tagY(above)).toBeLessThan(tagY(on) - 10);
     expect(above).not.toContain('class="sd-edge-lead"');
   });
+  it("keeps a dashed interim line grey even into a retiring card", () => {
+    const svg = renderDiagramSvg([NODES[0], { ...NODES[1], sunset: true }], [{ ...EDGES[0], style: { bs: "dashed", stroke: "#9aa0a6" } }]);
+    expect(svg).toMatch(/stroke="#9aa0a6"[^>]*stroke-dasharray/);
+    expect(svg).toContain(">Interim or optional</text>");
+  });
 });
