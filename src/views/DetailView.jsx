@@ -802,30 +802,6 @@ export function DetailView({
 
           <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
 
-          {/* History panel toggle - owner only: onRestored is only ever passed
-              for the owner's own session (see App), same single gate the
-              Lock and Delete buttons below already use. */}
-          {onRestored && (
-            <button className={`sd-hide-mobile sd-hide-tablet${showHistoryPanel ? ' is-on' : ''}`} onClick={() => setShowHistoryPanel(v => !v)} style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
-              background: showHistoryPanel ? '#f1f5f9' : 'transparent',
-              color: showHistoryPanel ? '#1e293b' : '#64748b',
-              cursor: 'pointer', fontSize: 13, fontWeight: showHistoryPanel ? 600 : 400,
-              transition: 'all 0.1s', fontFamily: 'inherit',
-            }}
-              onMouseEnter={e => { if (!showHistoryPanel) e.currentTarget.style.background = '#f1f5f9' }}
-              onMouseLeave={e => { if (!showHistoryPanel) e.currentTarget.style.background = 'transparent' }}
-            >
-              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/>
-              </svg>
-              <span className="sd-btn-label">History</span>
-            </button>
-          )}
-
-          <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
-
           {/* Steps toggle */}
           <button className={showSteps ? "is-on" : ""} onClick={() => setShowSteps(v => !v)} style={{
             display: 'flex', alignItems: 'center', gap: 6,
@@ -865,22 +841,6 @@ export function DetailView({
             </svg>
             <span className="sd-btn-label">Notes</span>
           </button>
-
-          {setShowArrows && <button className={`sd-hide-mobile${showArrows ? " is-on" : ""}`} onClick={() => setShowArrows(v => !v)} title={showArrows ? 'Hide the arrowheads' : 'Show which way each line goes'}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
-              background: showArrows ? '#f1f5f9' : 'transparent', color: showArrows ? '#1e293b' : '#64748b',
-              cursor: 'pointer', fontSize: 13, fontWeight: showArrows ? 600 : 400, transition: 'all 0.1s', fontFamily: 'inherit' }}>
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
-            <span className="sd-btn-label">Arrows</span>
-          </button>}
-
-          {setShowLegend && legend.length > 0 && <button className={showLegend ? "is-on" : ""} onClick={() => setShowLegend(v => !v)} title={showLegend ? 'Hide the legend' : 'Show what the colours and dashes mean'}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
-              background: showLegend ? '#f1f5f9' : 'transparent', color: showLegend ? '#1e293b' : '#64748b',
-              cursor: 'pointer', fontSize: 13, fontWeight: showLegend ? 600 : 400, transition: 'all 0.1s', fontFamily: 'inherit' }}>
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="15" x2="16" y2="15"/></svg>
-            <span className="sd-btn-label">Legend</span>
-          </button>}
 
           {/* Kept on a phone: Steps and the badge style are the 2 actions left in
               the bar there, and without a line between them they read as 1 control. */}
@@ -1272,11 +1232,14 @@ export function DetailView({
 
         {/* Current panel (right side): the speed and the number of small dots,
             opened by clicking the Start here pill. Owner only, and never
-            alongside Share or History - the same 1 extra panel slot. */}
+            alongside Share or History - the same 1 extra panel slot. It also
+            holds the Arrows and Legend switches and the History row. */}
         {currentOpen && !card && !narrow && onCurrentChange && (
           <CurrentPanel value={current} onChange={onCurrentChange} onClose={() => setCurrentOpen(false)}
             sizing={sizing} onSizing={onSizingChange} fonts={fonts} onFonts={onFontsChange} layout={layout} onLayout={onLayoutChange}
-            pattern={activeDiagram?.pattern} description={activeDiagram?.description} />
+            pattern={activeDiagram?.pattern} description={activeDiagram?.description}
+            showArrows={showArrows} onArrows={setShowArrows} showLegend={showLegend} onLegend={setShowLegend} hasLegend={legend.length > 0}
+            onHistory={onRestored ? () => { setCurrentOpen(false); setShowHistoryPanel(true) } : undefined} />
         )}
 
         {/* Share panel (right side) */}
