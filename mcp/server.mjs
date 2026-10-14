@@ -32,6 +32,7 @@ import { SIZINGS } from '../src/card-size.js'
 import { NODE_KEEP, EDGE_KEEP, okBox, roundBox, edgeKey, keepOwnerWork } from '../lib/owner-work.js'
 import { validateDesign, okColor } from '../lib/validate-design.js'
 
+import { cleanNode } from '../lib/clean-node.js'
 // Picture-node loaders available only here: a file path or an AirClips ref can
 // only be resolved on THIS machine, so the HTTP API refuses them and points
 // callers at the MCP server instead.
@@ -125,26 +126,11 @@ function toStoredNodes(nodes) {
   const placed = nodes.map((n) => ({
     id: n.id,
     ...(Number.isFinite(n.x) && Number.isFinite(n.y) ? { position: { x: n.x, y: n.y } } : {}),
-    // Optional bring-your-own-icon: caller supplies the logo, we just render it.
-    ...(n.icon ? { icon: n.icon } : {}),
-    ...(n.label ? { label: n.label } : {}),
-    ...(okColor(n.color) ? { color: n.color } : {}),
-    ...(n.sub ? { sub: n.sub } : {}),
-    ...(cleanNote(n.note) ? { note: cleanNote(n.note) } : {}),
-    ...(cleanInfo(n.info) ? { info: cleanInfo(n.info) } : {}),
-    ...(n.sunset === true ? { sunset: true } : {}),
-    ...(n.new === true ? { new: true } : {}),
-    ...(n.cracked === false ? { cracked: false } : {}),
-    ...(cleanTooltip(n.tooltip) ? { tooltip: cleanTooltip(n.tooltip) } : {}),
-    ...(n.pinTooltip === true && cleanTooltip(n.tooltip) ? { pinTooltip: true } : {}),
-    ...(cleanTipColor(n.tooltipColor) ? { tooltipColor: cleanTipColor(n.tooltipColor) } : {}),
-    ...(n.iconFrame === true ? { iconFrame: true } : {}),
-    ...(n.image ? { image: n.image } : {}),
-    // The 3 the canvas writes and this used to drop on the floor: a resized
-    // card, a stretched logo tile, and its look.
+    ...cleanNode(n),
+    // The 2 the canvas writes and this used to drop on the floor: a resized
+    // card and a stretched logo tile. The rest is cleanNode.
     ...(okBox(n.size, 130, 600) ? { size: roundBox(n.size) } : {}),
     ...(okBox(n.iconSize, 16, 600) ? { iconSize: roundBox(n.iconSize) } : {}),
-    ...(cleanStyle(n.style) ? { style: cleanStyle(n.style) } : {}),
   }))
   return placed
 }
