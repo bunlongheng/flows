@@ -28,8 +28,6 @@ function setup(overrides = {}) {
   const props = {
     toast: { message: "", visible: false },
     onBack: vi.fn(),
-    showDetailCode: false,
-    setShowDetailCode: vi.fn(),
     rfInstance: { current: null },
     flashZoomHud: vi.fn(),
     zoomHudRef: { current: null },
@@ -86,9 +84,9 @@ describe("DetailView", () => {
     expect(screen.getByRole("button", { name: /back to gallery/i })).toBeInTheDocument();
   });
 
-  it("shows the Code and Share toolbar toggles", () => {
+  it("shows Share and no Code button (owner 2026-10-14: the Code panel is gone)", () => {
     setup();
-    expect(screen.getByText("Code")).toBeInTheDocument();
+    expect(screen.queryByText("Code")).not.toBeInTheDocument();
     expect(screen.getByText("Share")).toBeInTheDocument();
   });
 
@@ -101,19 +99,11 @@ describe("DetailView", () => {
   // onBack, not setView("index"): going back has to clear ?name= from the URL
   // as well as change the view, or the address bar still names a flow and a
   // reload drops you straight back into it.
-  it("goes back to the index view and hides the code panel when back is clicked", async () => {
-    const { onBack, setShowDetailCode } = setup();
+  it("goes back to the index view when back is clicked", async () => {
+    const { onBack } = setup();
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /back to gallery/i }));
     expect(onBack).toHaveBeenCalled();
-    expect(setShowDetailCode).toHaveBeenCalledWith(false);
-  });
-
-  it("toggles the code panel when the Code button is clicked", async () => {
-    const { setShowDetailCode } = setup();
-    const user = userEvent.setup();
-    await user.click(screen.getByText("Code"));
-    expect(setShowDetailCode).toHaveBeenCalled();
   });
 });
 

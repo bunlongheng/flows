@@ -274,12 +274,12 @@ describe("/api/flows/:id", () => {
     const res = mockRes();
     const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
     const r = req("PATCH", ID, undefined, cookie);
-    r.body = { view_state: { panels: ["code", "steps"], badge: "silver" } };
+    r.body = { view_state: { panels: ["share", "steps", "code"], badge: "silver" } };
     await flowById(r, res);
     expect(res.statusCode).toBe(200);
     // Order is normalised to the canonical list, and both survive. "details" is
-    // no longer a panel, so a row saved before it was removed drops the key.
-    expect(res.body.view_state).toEqual({ panels: ["steps", "code"], badge: "silver" });
+    // and "code" are no longer panels, so a row saved before they were removed drops the key.
+    expect(res.body.view_state).toEqual({ panels: ["steps", "share"], badge: "silver" });
   });
 
   it("PATCH view_state stores a C4 level 1-4 and drops anything else", async () => {

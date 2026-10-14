@@ -283,8 +283,6 @@ export default function App() {
   const [showAIPrompt, setShowAIPrompt] = useState(false)
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiThinking, setAiThinking] = useState(false)
-  const [showDetailCode, setShowDetailCode] = useState(false)
-  const [detailCodeCopied, setDetailCodeCopied] = useState(false)
   const [showSharePanel, setShowSharePanel] = useState(false)
   const [showHistoryPanel, setShowHistoryPanel] = useState(false)
   const [showSteps, setShowSteps] = useState(false)
@@ -764,7 +762,6 @@ export default function App() {
     // Every demo diagram opens with its steps numbered (owner rule 2026-10-08):
     // a reader on /demo is walking the flow, so the order is on from the start.
     setShowSteps(isDemo || open.includes('steps'))
-    setShowDetailCode(open.includes('code'))
     // Inverted: stored when notes are OFF, so a row that predates the toggle
     // (and every row a visitor loads) still shows the notes its author wrote.
     setShowNotes(!open.includes('notes-off'))
@@ -1326,7 +1323,7 @@ export default function App() {
   // canvas is up to 600 ms ahead of the row, and the export renders the row.
   const viewSavePending = useRef(null)
   const openPanels = [
-    showSteps && 'steps', showDetailCode && 'code',
+    showSteps && 'steps',
     !showNotes && 'notes-off', !showArrows && 'arrows-off', !showLegend && 'legend-off', !showBadgeX && 'badge-x-off', tagsAbove && 'tags-above',
   ].filter(Boolean)
   const panelKey = openPanels.join(',')
@@ -2087,9 +2084,8 @@ export default function App() {
   const displayEdges = [...edges, ...markers.edges]
   return (
     <DetailView
-      toast={toast} showToastMsg={showToastMsg}
+      toast={toast}
       onBack={backToGallery}
-      showDetailCode={showDetailCode} setShowDetailCode={setShowDetailCode}
       rfInstance={rfInstance} flashZoomHud={flashZoomHud} zoomHudRef={zoomHudRef}
       showSharePanel={showSharePanel} setShowSharePanel={setShowSharePanel}
       showHistoryPanel={showHistoryPanel} setShowHistoryPanel={setShowHistoryPanel}
@@ -2102,7 +2098,6 @@ export default function App() {
       isLocked={!!activeDiagram?.locked} isEditLocked={!!activeDiagram?.editLocked} onSetLocks={canAI ? setLocks : undefined}
       badgeMode={badgeMode} setBadgeMode={setBadgeMode}
       activeDiagram={activeDiagram}
-      detailCodeCopied={detailCodeCopied} setDetailCodeCopied={setDetailCodeCopied}
       nodes={displayNodes} edges={displayEdges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
       onNodeDragStop={onNodeDragStop} snapGuides={snapGuides} onPaneTap={onPaneTap}
       canUndo={history.past.length > 0} canRedo={history.future.length > 0} onUndo={undo} onRedo={redo}
