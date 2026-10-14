@@ -71,11 +71,11 @@ function LevelPicker({ levels, active, onPick }) {
       {levels.map(l => {
         const on = l === active
         return (
-          <button key={l} role="radio" aria-checked={on} title={`C${l} ${LEVEL_NAMES[l]}`} onClick={() => onPick(l)} style={{
+          <button key={l} className="sd-keep-bg" role="radio" aria-checked={on} title={`C${l} ${LEVEL_NAMES[l]}`} onClick={() => onPick(l)} style={{
             height: 24, padding: '0 10px', borderRadius: 7, border: 'none', fontSize: 12.5, fontWeight: on ? 700 : 500,
             cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.1s',
-            background: on ? '#fff' : 'transparent', color: on ? '#1e293b' : '#64748b',
-            boxShadow: on ? '0 1px 3px rgba(15,23,42,0.18)' : 'none',
+            background: on ? '#0f172a' : 'transparent', color: on ? '#fff' : '#64748b',
+            boxShadow: on ? '0 1px 3px rgba(15,23,42,0.35)' : 'none',
           }}>C{l}</button>
         )
       })}
@@ -683,7 +683,7 @@ export function DetailView({
         {/* 1 status icon, never 2: a passcode-locked link is not public, so
             with a passcode set the key below stands alone. */}
         {onToggleVisibility && !hasPasscode && (
-          <button type="button" className="sd-visibility" data-public={isDiagramPublic ? '1' : '0'}
+          <button type="button" className="sd-visibility sd-keep-bg" data-public={isDiagramPublic ? '1' : '0'}
             role="switch" aria-checked={isDiagramPublic} aria-label={isDiagramPublic ? 'Public: anyone with the link can open it' : 'Private: only you can open it'}
             onClick={onToggleVisibility}
             title={isDiagramPublic
@@ -705,7 +705,7 @@ export function DetailView({
         {/* Passcode on, owner only: the link opens to a lock screen until the
             visitor types it. Adding one lives in the Lock menu. */}
         {onSetPasscode && hasPasscode && (
-          <button type="button" className="sd-passcode sd-hide-mobile"
+          <button type="button" className="sd-passcode sd-hide-mobile sd-keep-bg"
             onClick={() => lockRef.current?.querySelector('button')?.click()}
             aria-label="Passcode on: change or remove it"
             title="Passcode on: the link opens to a lock screen. Click to change or remove it."
@@ -1440,7 +1440,8 @@ export function DetailView({
         /* The Start pill's connector is an edge too: solid and still with the rest. */
         .react-flow.sd-still .sd-marker-line { stroke-dasharray: none !important; animation: none !important; }
         @media (hover: none) {
-          .sd-detail-header button { background: transparent !important; }
+          /* .sd-keep-bg: a fill that is state, not hover (passcode key, visibility, the picked level). */
+          .sd-detail-header button:not(.sd-keep-bg) { background: transparent !important; }
           .sd-detail-header button.is-on { background: #f1f5f9 !important; }
         }
         /* Layout save indicator next to the title. */
