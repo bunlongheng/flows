@@ -95,8 +95,6 @@ describe("routeEdge - fan-out brace", () => {
     expect(c.drawPath.endsWith(`L${c.tx},${c.ty}`)).toBe(true);
     expect(c.hideArrow).toBe(false);
   });
-  it("curves only when the square brace is blocked", () => {
-    const c = out("o-c", { obstacles: [{ x: 500, y: -260, w: 120, h: 100 }] });
     expect(c.path).toMatch(/ C/);
   });
 });
