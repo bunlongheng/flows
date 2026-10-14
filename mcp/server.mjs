@@ -29,6 +29,7 @@ import { cleanTipColor } from '../src/sunset.js'
 import { cleanStyle } from '../src/style.js'
 import { PANELS, BADGES, SPEEDS, AMOUNTS, CURRENT_DEFAULT, cleanFonts } from '../src/view-state.js'
 import { SIZINGS } from '../src/card-size.js'
+import { storeView, viewPatch } from '../lib/view-state.js'
 import { NODE_KEEP, EDGE_KEEP, okBox, roundBox, edgeKey, keepOwnerWork } from '../lib/owner-work.js'
 import { validateDesign, okColor } from '../lib/validate-design.js'
 
@@ -121,6 +122,36 @@ const zEdgeFields = {
   style: zStyle.describe(`Per-line look: ${STYLE_KEYS}`),
   async: z.boolean().optional().describe('true fires this line on the same beat as the line numbered before it: the current leaves the card on both lines at once and both targets light together. For a fan-out whose lines do not depend on each other (stream the answer, persist it, emit the usage event). Chain it on consecutive lines to fire 3 or more together. The Steps chips keep their own numbers.'),
 }
+
+const zView = z.object({
+  panels: z.array(z.enum(PANELS)).optional()
+    .describe('Which reading aids the diagram OPENS with. "steps" prints a numbered chip on every line, 1..N in edges order - turn it on for anything a reader has to follow in order. "share" and "code" open those panels, "notes-off" HIDES the notes, "arrows-off" drops every arrowhead a line does not set itself (style.head), "legend-off" hides the bottom-left legend, "badge-x-off" hides the red X on retiring badges, "tags-above" lifts every badge just off its line; the 4 -off flags show by default, so those keys are inverted on purpose. Replaces the whole list; [] is the plain canvas.'),
+  badge: z.enum(BADGES).optional().describe('How a step chip is painted. Omit for dark.'),
+  current: z.object({
+    speed: z.union(SPEEDS.map((n) => z.literal(n))).optional().describe(`How fast the current runs: ${SPEEDS.join(', ')}. 1x crosses 1 line in 1.4 s, 2x is the cap (faster is a blur) and 0.5x is for watching a dense map. Omit for ${CURRENT_DEFAULT.speed}x.`),
+    amount: z.union(AMOUNTS.map((n) => z.literal(n))).optional().describe(`How many small dots the WHOLE diagram carries: ${AMOUNTS.join(', ')}. A total, not a count per line, so it reads the same on a 6 line flow and a 50 line map. Omit for ${CURRENT_DEFAULT.amount}.`),
+  }).optional().describe('The flowing current: its speed and how many small dots it carries. PER DIAGRAM - the owner sets it by clicking the Start here pill, and it travels with this diagram into its SVG and GIF exports. Both keys are presets; anything else is refused.'),
+  sizing: z.enum(SIZINGS).optional().describe('How big the cards draw, for the WHOLE diagram (canvas and exports): "match" every card the default square, "auto" 10% bigger per line in or out past the first (up to 1.5x), "custom" the hand sizes in each node `size`. Omit to leave it; a row without it reads as custom when any node has a size, else match.'),
+  fonts: z.object({ title: z.number().optional(), sub: z.number().optional(), tag: z.number().optional() }).optional().describe('Text size in px for the WHOLE diagram, canvas and exports: `title` every card title (default 12), `sub` every card subtitle (default 10), `tag` every line tag (default 8.5), each 8-22. Raise them when a big diagram reads too small. Send only the sizes to change; `{}` resets all 3. A card style.fs still wins for that card.'),
+  start: z.object({ x: z.number(), y: z.number() }).optional().describe('Where the Start pill sits, canvas units { x, y }. Omit to leave it where it is.'),
+  layout: z.object({ box: z.number().optional(), gap: z.number().optional(), vgap: z.number().optional() }).optional().describe('Spacing for the WHOLE diagram: `box` scales every card (0.6-2), `gap` spreads the cards apart across (0.6-3), `vgap` down (0.6-3). 1 is the default; only a value off 1 is stored, and stored positions stay unscaled.'),
+}).optional().describe('How the diagram opens, saved with it. Only the keys you send change; the owner\'s lanes and hand-placed Start pill are kept. Use it to ship a diagram already readable instead of leaving the reader to find the Steps button.')
+
+const zLane = z.object({
+  id: z.string().regex(/^[\w-]{1,40}$/), title: z.string().max(40),
+  y: z.number().optional(), h: z.number().min(80).optional(), x: z.number().optional(), w: z.number().min(80).optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().describe('Hex ink for the band and its title, e.g. #B464DC. Omit for the default slate.'),
+  size: z.number().int().min(10).max(40).optional().describe('Title size in px, 10 to 40. Omit for 13.'),
+  len: z.number().min(80).optional().describe('A plain lane\'s length along its band, dragged by the owner. Send back what get_flow returned.'),
+  lead: z.number().optional().describe('Room the owner dragged in before a lane\'s first card (its left edge in a row lane; negative pulls it in). Send back what get_flow returned.'),
+  depth: z.number().min(80).optional().describe('A plain lane\'s thickness, dragged by the owner (its bottom edge in a row lane). Send back what get_flow returned.'),
+  sections: z.array(z.object({
+    id: z.string().regex(/^[\w-]{1,40}$/), title: z.string().max(40),
+    at: z.number().describe('Where this section STARTS on the lane\'s OTHER axis: x in a row lane, y in a column one. The section before it ends 40 px short of this, the same gap that separates 2 lanes, so leave room: put this 140 px past the last card of the section before (100 px of padding plus the 40 px gap). The first section always starts at the band edge whatever this says.'),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().describe('Hex ink for this section only. Omit to take the lane colour.'),
+    w: z.number().min(80).optional(), h: z.number().min(80).optional(), lead: z.number().min(-24).optional(),
+  }).describe('w / h / lead: a size or leading-edge room the owner dragged on the canvas; it wins over the auto fit. Send back what get_flow returned, never invent one.')).min(2).max(8).optional().describe('Split this 1 band into 2 to 8 sections side by side, each drawn as a band of its own with its own title and tint and a 40 px gap between them, instead of stacking 2 lanes. A split lane draws no band of its own: the sections are the bands and they carry the titles.'),
+})
 
 function toStoredNodes(nodes) {
   const placed = nodes.map((n) => ({
@@ -294,12 +325,16 @@ server.registerTool(
       public: z.boolean().optional().describe('Default true: anyone with the link can open it and the link unfurls with the diagram. false keeps it private (owner only; recipients get a 404 and a generic preview card).'),
       source: z.string().max(40).optional().describe('Who is asking. "repo-audit" means a repo audit or recon: the diagram is RENDERED, NEVER STORED - the response carries the svg to embed in the report and no row is created. Always pass it from /repo-audit.'),
       store: z.boolean().optional().describe('false renders the svg and stores nothing, for any caller that only needs the picture.'),
-      lanes: z.array(z.object({ id: z.string().regex(/^[a-z0-9-]{1,32}$/), title: z.string().max(40), x: z.number().optional(), w: z.number().min(80).optional(), y: z.number().optional(), h: z.number().min(80).optional(), color: z.string().optional(), size: z.number().int().min(10).max(40).optional() })).max(12).optional().describe('Swimlanes for a render-only call (columns x/w or rows y/h), since there is no row to update_flow afterwards.'),
+      lanes: z.array(zLane).max(12).optional().describe('Swimlanes for a render-only call (columns x/w or rows y/h), since there is no row to update_flow afterwards.'),
+      view: zView.describe('How the diagram opens: panels, badge, start, current, sizing, fonts, layout. Same shape and validation as update_flow view; stored with the diagram, and used when the call is render-only.'),
+      view_state: zView.describe('Alias of view.'),
+      is_public: z.boolean().optional().describe('Alias of public.'),
       linked: z.boolean().optional().describe('true lists the diagram under the gallery\'s Linked tab (README, PR, repo audit) instead of My Diagrams, so the owner\'s daily list stays their own work. A title that starts with owner/repo is Linked on its own; false keeps it out.'),
     },
   },
-  async ({ title, nodes, edges, pattern, description, public: isPublic = true, linked, source, store, lanes }) => {
+  async ({ title, nodes, edges, pattern, description, public: pub, is_public, linked, source, store, lanes, view, view_state }) => {
     try {
+      const isPublic = pub ?? is_public ?? true
       const gate = logoGate(nodes, edges, lanes)
       if (gate) return gate
       const { nodes: iconNodes, failed } = await resolveNodeIcons(nodes)
@@ -313,15 +348,17 @@ server.registerTool(
       // Born arranged: a new diagram gets the same layout the Arrange button
       // produces, so it never lands on the canvas crammed.
       const storedNodes = arrangeNew(enforced.nodes, storedEdges)
+      // Lanes and the opening view both ride in view_state, the shape the app
+      // and every export read; same validators as update_flow.
+      const vs = storeView(view || view_state, lanes)
       // A repo audit gets a picture, never a row (owner rule 2026-10-04).
       if (source === 'repo-audit' || store === false) {
-        const clean = cleanLanes(lanes || [])
-        const svg = renderDiagramSvg(storedNodes, storedEdges, { view: clean.length ? { lanes: clean } : {} })
+        const svg = renderDiagramSvg(storedNodes, storedEdges, { start: vs.start, view: vs })
         return ok({ stored: false, source: source || 'render-only', svg, note: 'Nothing was stored. Embed the svg where the report lives; there is no id, url or gif.' })
       }
       const { rows } = await db.query(
-        'INSERT INTO flows (user_id, title, slug, nodes, edges, type, tags, is_public, pattern, description) VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6,$7::text[],$8,$9,$10) RETURNING id',
-        [o, title.trim(), slug, JSON.stringify(storedNodes), JSON.stringify(storedEdges), 'flow', creationTags('MCP', title, linked), isPublic, pattern?.trim() || null, description?.trim() || null],
+        'INSERT INTO flows (user_id, title, slug, nodes, edges, type, tags, is_public, pattern, description, view_state) VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6,$7::text[],$8,$9,$10,$11::jsonb) RETURNING id',
+        [o, title.trim(), slug, JSON.stringify(storedNodes), JSON.stringify(storedEdges), 'flow', creationTags('MCP', title, linked), isPublic, pattern?.trim() || null, description?.trim() || null, Object.keys(vs).length ? JSON.stringify(vs) : null],
       )
       const id = rows[0].id
 
@@ -384,36 +421,15 @@ server.registerTool(
         ...zEdgeFields,
       })).optional().describe('Replaces the whole list, in flow order - that order numbers the Steps badges and is the path the single current walks. Give every line a stable id: the owner\'s styling, dragged badge position and hand bends are matched back to it by id, and without one they are matched by array index instead.'),
       public: z.boolean().optional().describe('true publishes (anyone with the link can open it, real preview card); false makes it private again. Omit to leave visibility alone.'),
-      view: z.object({
-        panels: z.array(z.enum(PANELS)).optional()
-          .describe('Which reading aids the diagram OPENS with. "steps" prints a numbered chip on every line, 1..N in edges order - turn it on for anything a reader has to follow in order. "notes-off" HIDES the notes, "arrows-off" drops every arrowhead a line does not set itself (style.head), "legend-off" hides the bottom-left legend; all 3 show by default, so those keys are inverted on purpose. Replaces the whole list; [] is the plain canvas.'),
-        badge: z.enum(BADGES).optional().describe('How a step chip is painted. Omit for dark.'),
-        current: z.object({
-          speed: z.union(SPEEDS.map((n) => z.literal(n))).optional().describe(`How fast the current runs: ${SPEEDS.join(', ')}. 1x crosses 1 line in 1.4 s, 2x is the cap (faster is a blur) and 0.5x is for watching a dense map. Omit for ${CURRENT_DEFAULT.speed}x.`),
-          amount: z.union(AMOUNTS.map((n) => z.literal(n))).optional().describe(`How many small dots the WHOLE diagram carries: ${AMOUNTS.join(', ')}. A total, not a count per line, so it reads the same on a 6 line flow and a 50 line map. Omit for ${CURRENT_DEFAULT.amount}.`),
-        }).optional().describe('The flowing current: its speed and how many small dots it carries. PER DIAGRAM - the owner sets it by clicking the Start here pill, and it travels with this diagram into its SVG and GIF exports. Both keys are presets; anything else is refused.'),
-        sizing: z.enum(SIZINGS).optional().describe('How big the cards draw, for the WHOLE diagram (canvas and exports): "match" every card the default square, "auto" 10% bigger per line in or out past the first (up to 1.5x), "custom" the hand sizes in each node `size`. Omit to leave it; a row without it reads as custom when any node has a size, else match.'),
-        fonts: z.object({ title: z.number().optional(), sub: z.number().optional(), tag: z.number().optional() }).optional().describe('Text size in px for the WHOLE diagram, canvas and exports: `title` every card title (default 12), `sub` every card subtitle (default 10), `tag` every line tag (default 8.5), each 8-22. Raise them when a big diagram reads too small. Send only the sizes to change; `{}` resets all 3. A card style.fs still wins for that card.'),
-      }).optional().describe('How the diagram opens, saved with it. Only the keys you send change; the owner\'s lanes and hand-placed Start pill are kept. Use it to ship a diagram already readable instead of leaving the reader to find the Steps button.'),
-      lanes: z.array(z.object({
-        id: z.string().regex(/^[\w-]{1,40}$/), title: z.string().max(40),
-        y: z.number().optional(), h: z.number().min(80).optional(), x: z.number().optional(), w: z.number().min(80).optional(),
-        color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().describe('Hex ink for the band and its title, e.g. #B464DC. Omit for the default slate.'),
-        size: z.number().int().min(10).max(40).optional().describe('Title size in px, 10 to 40. Omit for 13.'),
-        len: z.number().min(80).optional().describe('A plain lane\'s length along its band, dragged by the owner. Send back what get_flow returned.'),
-        lead: z.number().optional().describe('Room the owner dragged in before a lane\'s first card (its left edge in a row lane; negative pulls it in). Send back what get_flow returned.'),
-        depth: z.number().min(80).optional().describe('A plain lane\'s thickness, dragged by the owner (its bottom edge in a row lane). Send back what get_flow returned.'),
-        sections: z.array(z.object({
-          id: z.string().regex(/^[\w-]{1,40}$/), title: z.string().max(40),
-          at: z.number().describe('Where this section STARTS on the lane\'s OTHER axis: x in a row lane, y in a column one. The section before it ends 40 px short of this, the same gap that separates 2 lanes, so leave room: put this 140 px past the last card of the section before (100 px of padding plus the 40 px gap). The first section always starts at the band edge whatever this says.'),
-          color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().describe('Hex ink for this section only. Omit to take the lane colour.'),
-          w: z.number().min(80).optional(), h: z.number().min(80).optional(), lead: z.number().min(-24).optional(),
-        }).describe('w / h / lead: a size or leading-edge room the owner dragged on the canvas; it wins over the auto fit. Send back what get_flow returned, never invent one.')).min(2).max(8).optional().describe('Split this 1 band into 2 to 8 sections side by side, each drawn as a band of its own with its own title and tint and a 40 px gap between them, instead of stacking 2 lanes. A split lane draws no band of its own: the sections are the bands and they carry the titles.'),
-      })).max(12).optional().describe('Swimlanes: bands under the cards, 1 per layer. Rows { id, title, y, h, color? } for a top-down layout, columns { id, title, x, w, color? } for a left-to-right one; 1 kind per diagram, in canvas units (a card is 180 x 180, a picture card 240 x 225, plus its note below). A lane may carry sections to split its band into 2 to 8 titled bands across its other axis, 40 px apart. Replaces the whole list; [] removes every lane; omit to leave lanes alone. Lanes pack from the first one with equal 40 px gaps. With lanes on, the Start pill is not drawn.'),
+      view: zView,
+      view_state: zView.describe('Alias of view.'),
+      is_public: z.boolean().optional().describe('Alias of public.'),
+      lanes: z.array(zLane).max(12).optional().describe('Swimlanes: bands under the cards, 1 per layer. Rows { id, title, y, h, color? } for a top-down layout, columns { id, title, x, w, color? } for a left-to-right one; 1 kind per diagram, in canvas units (a card is 180 x 180, a picture card 240 x 225, plus its note below). A lane may carry sections to split its band into 2 to 8 titled bands across its other axis, 40 px apart. Replaces the whole list; [] removes every lane; omit to leave lanes alone. Lanes pack from the first one with equal 40 px gaps. With lanes on, the Start pill is not drawn.'),
     },
   },
-  async ({ id, reason, title, nodes, edges, public: isPublic, lanes, view }) => {
+  async ({ id, reason, title, nodes, edges, public: pub, is_public, lanes, view, view_state }) => {
     try {
+      const isPublic = pub ?? is_public
       // A flow is open to agents unless the owner has edit-locked it, in the app.
       const { rows: gate } = await db.query('SELECT edit_locked FROM flows WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL', [id, owner()])
       if (!gate.length) return fail(`No owned diagram with id ${id} (it may be in trash - call list_trash)`)
@@ -468,19 +484,13 @@ server.registerTool(
       // the caller states is written, everything else on the row stands. The
       // API's own PATCH (lib/handlers/flow-by-id.js) replaces the object, which
       // is right for the canvas (it sends the whole thing) and wrong here.
-      const patch = {}
-      if (lanes) Object.assign(patch, cleanLanes(lanes).length ? { lanes: cleanLanes(lanes) } : {})
-      if (view?.panels) patch.panels = view.panels
-      if (view?.badge) patch.badge = view.badge
-      if (view?.current) patch.current = { ...CURRENT_DEFAULT, ...view.current }
-      if (view?.sizing) patch.sizing = view.sizing
-      if (view?.fonts) Object.assign(patch, cleanFonts(view.fonts))
-      if (lanes || view) {
+      const { patch, keys } = viewPatch(view || view_state, lanes)
+      if (keys.length) {
         await db.query(
           `UPDATE flows SET view_state =
              (COALESCE(view_state, '{}'::jsonb) - ($4::text[])) || $2::jsonb
            WHERE id = $1 AND user_id = $3 AND deleted_at IS NULL`,
-          [id, JSON.stringify(patch), owner(), [...(lanes ? ['lanes'] : []), ...(view?.panels ? ['panels'] : []), ...(view?.badge ? ['badge'] : []), ...(view?.current ? ['current'] : []), ...(view?.sizing ? ['sizing'] : []), ...(view?.fonts ? ['fonts'] : [])]],
+          [id, JSON.stringify(patch), owner(), keys],
         )
       }
       return ok({
@@ -490,7 +500,7 @@ server.registerTool(
         gif_url: gifUrlFor(rows[0].slug),
         readme: readmeFor(rows[0].title, rows[0].slug),
         visibility: rows[0].is_public ? 'public' : 'private',
-        updated: { title: title != null, nodes: nodes != null, edges: edges != null, public: isPublic != null, lanes: lanes != null, view: view != null },
+        updated: { title: title != null, nodes: nodes != null, edges: edges != null, public: isPublic != null, lanes: lanes != null, view: (view ?? view_state) != null },
         ...(layoutWarning ? { layout: layoutWarning } : {}),
         ...(reason?.trim() ? { reason: reason.trim() } : {}),
       })
