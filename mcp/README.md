@@ -107,12 +107,12 @@ Edges are directed `{ source, target, label?, description?, id?, style? }` using
 
 ### How a diagram opens
 
-`update_flow { id, view: { panels, badge } }` saves how the diagram opens, and
-`create_flow` takes the same thing as `view_state`.
+`update_flow { id, view: { panels, badge, start, current, sizing, fonts, layout } }` saves how the diagram opens, and
+`create_flow` takes the same thing as `view` (alias `view_state`).
 
-- `panels` - any of `steps`, `share`, `code`, `notes-off`, `arrows-off`,
-  `legend-off`, `badge-x-off`, `tags-above` (badges sit just off their line, no leader). The `-off` flags hide notes, arrowheads, the red X on retiring badges or the bottom-left
-  legend, which all show by default. **Turn `steps` on for
+- `panels` - any of `steps` (a numbered chip on every line), `share` and `code` (open those panels), `notes-off`, `arrows-off`,
+  `legend-off`, `badge-x-off` and `tags-above` (badges sit just off their line, no leader). The 4 `-off` flags hide notes, arrowheads, the bottom-left
+  legend or the red X on retiring badges, which all show by default. **Turn `steps` on for
   anything a reader has to follow in order** instead of leaving them to find the
   button. `notes-off` is inverted on purpose: notes show by default, so the
   flag's job is to hide them.
