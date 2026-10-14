@@ -165,3 +165,27 @@ describe("routeEdge - a card wholly to 1 side joins that brace", () => {
     expect(c.path).toMatch(/ C/);
   });
 });
+
+describe("routeEdge - brace arrival", () => {
+  const n = { s: node("s", 0, 0), a: node("a", 325, -111), b: node("b", 325, 111), c: node("c", 325, 390), w: node("w", 700, 390) };
+  const base = [
+    { id: "a1", source: "s", target: "a", label: "sync" },
+    { id: "a2", source: "s", target: "b", label: "sync" },
+    { id: "a3", source: "s", target: "c", label: "sync" },
+  ];
+  const go = (ed, id) => {
+    const e = ed.find((x) => x.id === id);
+    return routeEdge({ id, source: e.source, target: e.target, sourceNode: n[e.source], targetNode: n[e.target], nodeOf: (k) => n[k], edges: ed, obstacles: [], nodeRects: [], label: e.label });
+  };
+  it("ends every curve on a short level run, so the arrowhead lines up with it", () => {
+    const a = go(base, "a1");
+    expect(a.path).toMatch(new RegExp(`${a.tx - 18},${a.ty} L${a.tx},${a.ty}$`));
+  });
+  it("keeps a joined line off another line already on the target's face", () => {
+    const ed = [...base.slice(0, 2), { id: "a3", source: "s", target: "c", label: "sync, dup" }, { id: "z", source: "c", target: "w", label: "out" }];
+    const plain = go([...base.slice(0, 2), { id: "a3", source: "s", target: "c", label: "sync, dup" }], "a3");
+    const busy = go(ed, "a3");
+    expect(busy.tx).toBe(plain.tx);
+    expect(busy.ty).toBeLessThan(plain.ty); // stepped toward the source
+  });
+});
