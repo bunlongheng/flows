@@ -395,6 +395,16 @@ describe("/api/flows/:id", () => {
     expect(written.find((n) => n.id === "a").size).toEqual({ w: 600, h: 130 });
   });
 
+  it("replaces the lanes alone and clears with []", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: ID, view_state: {} }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { lanes: [{ id: "a", title: "A", y: 0, h: 200 }] };
+    await flowById(r, res);
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(query.mock.calls[0][1][0]).lanes[0].id).toBe("a");
+  });
+
   it("PATCH nodes stores iconSize clamped and null clears it", async () => {
     const stored = [{ id: "a", position: { x: 0, y: 0 }, iconSize: { w: 96, h: 96 } }];
     query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
