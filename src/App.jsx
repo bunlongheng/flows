@@ -883,6 +883,7 @@ export default function App() {
       ...(keep('current') ? { current: prev.current } : {}),
       ...(keep('sizing') ? { sizing: prev.sizing } : {}),
       ...(keep('fonts') ? { fonts: prev.fonts } : {}),
+      ...(keep('layout') ? { layout: prev.layout } : {}),
     }
   }, [activeDiagram])
 
@@ -1340,7 +1341,7 @@ export default function App() {
       // Carry the owner's Start placement through a plain panel/badge save -
       // this effect only ever meant to touch those two, and rebuilding the
       // object from scratch would otherwise silently clear the placement.
-      const view_state = { panels: panelKey ? panelKey.split(',') : [], badge: badgeMode, ...(prev.start ? { start: prev.start } : {}), ...(prev.lanes ? { lanes: prev.lanes } : {}), ...(prev.current ? { current: prev.current } : {}), ...(prev.sizing ? { sizing: prev.sizing } : {}), ...(prev.fonts ? { fonts: prev.fonts } : {}) }
+      const view_state = { panels: panelKey ? panelKey.split(',') : [], badge: badgeMode, ...(prev.start ? { start: prev.start } : {}), ...(prev.lanes ? { lanes: prev.lanes } : {}), ...(prev.current ? { current: prev.current } : {}), ...(prev.sizing ? { sizing: prev.sizing } : {}), ...(prev.fonts ? { fonts: prev.fonts } : {}), ...(prev.layout ? { layout: prev.layout } : {}) }
       return fetch(`/api/flows/${savingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
