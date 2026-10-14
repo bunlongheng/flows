@@ -9,8 +9,8 @@ export const FONTS = ["sans", "serif", "mono"];
 export const FONT_SIZES = [12, 14, 18, 24];
 export const ALIGNS = ["left", "center", "right"];
 // Line only. "step" is what the canvas already routes - a squared-off elbow that
-// dodges whatever boxes sit in between - so it is the default. "brace" is the
-// mindmap split: a smooth S-curve that leaves its face level and arrives level.
+// dodges whatever boxes sit in between - so it is the default. "brace" asks lines
+// into 1 card to split as a square brace (a bar halfway, a leg per line).
 export const ARROWS = ["step", "curved", "straight", "brace"];
 // Line only: which end(s) carry an arrowhead. "end" points at the target, the
 // way the line reads; unset follows the diagram's Arrows toggle (view_state).

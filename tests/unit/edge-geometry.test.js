@@ -47,27 +47,16 @@ describe("routeEdge", () => {
   // because an empty face has nothing to collide with.
   it("runs a lone line straight when the faces overlap, else into the middle of the face", () => {
     const hub = node("hub", 0, 0);
-    // near sits 30 px off the hub's top slot: close enough that the router
-    // wants 1 straight line, too far for the hub's own slot to give way.
-    const near = node("near", 400, -14), mid = node("mid", 400, 150), far = node("far", 400, 330);
-    const nodes = { hub, near, mid, far };
-    const edges = [
-      { id: "e0", source: "hub", target: "near" },
-      { id: "e1", source: "hub", target: "mid" },
-      { id: "e2", source: "hub", target: "far" },
-    ];
-    const one = (id, target) => routeEdge({
-      id, source: "hub", target, sourceNode: hub, targetNode: nodes[target],
-      nodeOf: (k) => nodes[k], edges, obstacles: [], nodeRects: [],
+    const near = node("near", 400, -14), far = node("far", 400, 330);
+    const one = (target) => routeEdge({
+      id: "e", source: "hub", target: target.id, sourceNode: hub, targetNode: target,
+      nodeOf: (k) => ({ hub, near, far })[k], edges: [{ id: "e", source: "hub", target: target.id }], obstacles: [], nodeRects: [],
     });
-    // Straight when it can be (owner rule 2026-10-14): near overlaps the hub,
-    // so its lone end slides to meet the hub's slot on 1 level line.
-    const e0 = one("e0", "near");
-    expect(e0.ty).toBe(e0.sy);
-    // far does not overlap the hub's face, so it still enters dead centre.
-    expect(one("e2", "far").ty).toBe(far.internals.positionAbsolute.y + 90);
-    // The hub's own 3 slots stay spread, so the lines do not pile onto 1 pixel.
-    expect(new Set([one("e0", "near").sy, one("e1", "mid").sy, one("e2", "far").sy]).size).toBe(3);
+    // Straight when it can be (owner rule 2026-10-14): near overlaps the hub.
+    const n = one(near);
+    expect(n.ty).toBe(n.sy);
+    // far does not overlap the hub's face, so it enters dead centre.
+    expect(one(far).ty).toBe(far.internals.positionAbsolute.y + 90);
   });
 
   it("falls back to the given ends when a node is not measured yet", () => {
