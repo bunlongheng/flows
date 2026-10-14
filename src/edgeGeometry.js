@@ -507,7 +507,7 @@ function fanAt(end, nodeId, node, id, tag, side, edges, nodeOf) {
   if (members.length < 2 || !members.some(m => m.id === id)) return null
   // Different labels brace only as a pair that straddles the card: 1 target
   // on each side of the shared point, the symmetric split (owner 2026-10-14).
-  if (!(tag && members.every(m => m.same)) && !(members.length === 2 && members[0].along * members[1].along < 0)) return null
+  if (!(tag && members.every(m => m.same)) && !(members.length === 2 && members[0].along * members[1].along < 0 && members.every(m => Math.abs(m.along) > 40))) return null
   members.sort((a, b) => (a.id < b.id ? -1 : 1))
   return { end, members, leader: members[0].id, ids: new Set(members.map(m => m.id)) }
 }
@@ -559,6 +559,8 @@ function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacl
     if (clearPolyline([S, cs, ct, T], obstacles) && !onTaken([S, cs, ct, T], taken, g)) { bus = b; break }
   }
   const [Cs, Ct] = at(bus) // where the source's and the target's stems meet the bus
+  // The bar has to sit before every far end, or a branch runs past its card and back.
+  if (brace && fars.some(p => (bus - shared) * ((vertical ? p.y : p.x) - bus) <= 0)) return null
   if (!clearPolyline([S, Cs, Ct, T], obstacles)) return brace ? curve() : null
   const straight = vertical ? sx === tx : sy === ty
   if (brace) {
