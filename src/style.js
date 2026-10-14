@@ -36,7 +36,10 @@ const pick = (v, allowed) => (allowed.includes(v) ? v : null);
 // Returns a style object carrying ONLY the keys that were set and are legal, or
 // null when nothing survives - so an untouched node stores no style key at all
 // and a flow written before this existed reads back identically.
-export function cleanStyle(s) {
+// `kind` narrows to what that thing can draw: "edge" keeps only stroke, bw, bs,
+// arrow, head and opacity; "node" drops arrow and head. No kind keeps them all.
+const EDGE_KEYS = ["stroke", "bw", "bs", "arrow", "head", "opacity"];
+export function cleanStyle(s, kind) {
   if (!s || typeof s !== "object" || Array.isArray(s)) return null;
   const out = {};
   const stroke = hex(s.stroke);
@@ -63,6 +66,8 @@ export function cleanStyle(s) {
   // A slider, so it is a range rather than a pick - and 0 is legal (invisible
   // on purpose is a thing people do).
   if (Number.isFinite(s.opacity)) out.opacity = Math.max(0, Math.min(100, Math.round(s.opacity)));
+  if (kind === "edge") for (const k of Object.keys(out)) if (!EDGE_KEYS.includes(k)) delete out[k];
+  if (kind === "node") { delete out.arrow; delete out.head; }
   return Object.keys(out).length ? out : null;
 }
 
