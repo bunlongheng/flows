@@ -119,6 +119,9 @@ function takenBefore(id, nodes, edges, tagFs) {
   if (takenCache.geo !== geo || takenCache.edges !== edges || takenCache.fs !== tagFs) {
     const { nodeOf, cards, gaps } = geo, nodeRects = cards
     const before = new Map(), taken = [], badgeAt = new Map(), badges = [], jobs = []
+    // A tag never sits on a card or its note (owner 2026-10-14): every card is a
+    // box an auto badge slides along its line to clear, like an earlier badge.
+    const walls = cards.map(c => ({ x: c.x + c.w / 2, y: c.y + c.h / 2, w: c.w, h: c.h }))
     for (const e of edges) {
       before.set(e.id, [...taken])
       const sourceNode = nodeOf(e.source), targetNode = nodeOf(e.target)
@@ -139,7 +142,7 @@ function takenBefore(id, nodes, edges, tagFs) {
       const box = badgeBox(tagText(e.label, e.data?.description), true, tagFs)
       const at = hand
         ? pointAlongPath(r.path, Math.min(T_MAX, Math.max(T_MIN, e.data.labelT))) || { x: r.labelX, y: r.labelY }
-        : clearBadge(r.path, { x: r.labelX, y: r.labelY }, box, r.labelOff, badges)
+        : clearBadge(r.path, { x: r.labelX, y: r.labelY }, box, r.labelOff, [...badges, ...walls])
       badgeAt.set(e.id, at)
       const s = badgeShift(r.labelOff, box.w, box.h, at.lead)
       badges.push({ ...box, x: at.x + s.dx, y: at.y + s.dy })

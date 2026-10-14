@@ -69,4 +69,16 @@ describe("layoutFit", () => {
     expect(pick).toHaveLength(7);
     expect(fit(pick, cv)).toBeGreaterThanOrEqual(best - 1e-9);
   });
+  it("moves the columns apart just enough for the widest tag, never past 2x", async () => {
+    const { layoutFit } = await import("../../src/layout.js");
+    const nodes = ["a", "b", "c"].map(card);
+    const short = layoutFit(nodes, [edge("a", "b"), edge("b", "c")], { width: 1400, height: 860 });
+    const long = layoutFit(nodes, [{ ...edge("a", "b"), label: "download CTA: Coming soon until beam #60" }, edge("b", "c")], { width: 1400, height: 860 });
+    const huge = layoutFit(nodes, [{ ...edge("a", "b"), label: "x".repeat(200) }, edge("b", "c")], { width: 1400, height: 860 });
+    const span = (laid, k) => Math.max(...laid.map((n) => n.position[k])) - Math.min(...laid.map((n) => n.position[k]));
+    expect(span(long, "x")).toBeGreaterThan(span(short, "x"));
+    expect(span(long, "x")).toBeLessThan(span(short, "x") * 1.5);
+    expect(span(long, "y")).toBe(span(short, "y"));
+    expect(span(huge, "x")).toBeCloseTo(span(short, "x") * 2, 6);
+  });
 });

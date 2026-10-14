@@ -60,6 +60,9 @@ const NOTE_BOX = {
 // on .sd-note-edit (DetailView.jsx) where it only costs touch devices. The box
 // itself drags taller, since a 400-character note does not fit 3 rows.
 function NodeNote({ id, note }) {
+  // A level view scales the note with the card (fonts.note, DetailView drawFonts).
+  const noteFs = useContext(FontsContext).note || NOTE_BOX.fontSize
+  const box = noteFs === NOTE_BOX.fontSize ? NOTE_BOX : { ...NOTE_BOX, fontSize: noteFs }
   const onNoteChange = useContext(NoteEditContext)
   const showNotes = useContext(ShowNotesContext)
   const canEdit = typeof onNoteChange === 'function'
@@ -110,10 +113,10 @@ function NodeNote({ id, note }) {
             if (e.key === 'Escape') { cancelled.current = true; e.currentTarget.blur() }
           }}
           className="sd-note-edit"
-          style={{ ...NOTE_BOX, width: '100%', minHeight: 60, resize: 'vertical', outline: 'none', display: 'block' }} />
+          style={{ ...box, width: '100%', minHeight: 60, resize: 'vertical', outline: 'none', display: 'block' }} />
       ) : (
         <div title={canEdit ? `${note}\n\nDouble-click to edit` : note} onDoubleClick={canEdit ? startEdit : undefined}
-          style={{ ...NOTE_BOX, display: 'inline-block', maxWidth: '100%', cursor: canEdit ? 'text' : 'default', ...CLAMP_10 }}>
+          style={{ ...box, display: 'inline-block', maxWidth: '100%', cursor: canEdit ? 'text' : 'default', ...CLAMP_10 }}>
           {noteRuns(note).map((part, i) => part.url
             ? <a key={i} href={part.url} title={part.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
                 style={{ color: '#1d4ed8', textDecoration: 'underline', whiteSpace: 'nowrap' }}>{linkLabel(part.url, part.label)}</a>

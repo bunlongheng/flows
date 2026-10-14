@@ -366,8 +366,8 @@ export function DetailView({
     if (!levelView) return atShown.nodes
     const kept = atShown.nodes.filter(n => n.type !== 'marker')
     const cards = kept.filter(n => n.type === 'awsNode')
-    const canvas = typeof window === 'undefined' ? undefined : { width: window.innerWidth, height: window.innerHeight }
-    const laid = new Map(layoutFit(cards.map(n => ({ ...n, measured: undefined })), atShown.edges, canvas).map(n => [n.id, n.position]))
+    // No window size: the export and check:overlaps lay out the same level view, so all 3 must agree.
+    const laid = new Map(layoutFit(cards.map(n => ({ ...n, measured: undefined })), atShown.edges).map(n => [n.id, n.position]))
     const k = (v) => v ? { w: v.w * scale, h: v.h * scale } : v
     const cache = scaledData.current
     return [...cards.map(n => {
@@ -383,15 +383,22 @@ export function DetailView({
       return { ...n, position: { x: p.x * scale, y: p.y * scale }, ...(n.width ? { width: n.width * scale, height: n.height * scale } : {}), data }
     }), ...kept.filter(n => n.type !== 'awsNode')]
   }, [atShown, levelView, scale])
-  const canvasEdges = useMemo(() => (viewOnly
-    ? atShown.edges.map(e => (e.data?.onLabelMove || e.data?.onEndMove || e.data?.onBendMove || e.data?.onLabelEdit
-      ? { ...e, data: { ...e.data, onLabelMove: undefined, onEndMove: undefined, onBendMove: undefined, onLabelEdit: undefined } }
-      : e))
-    : atShown.edges), [atShown, viewOnly])
+  const canvasEdges = useMemo(() => {
+    // A level view is laid out fresh, so a tag, bend or end dragged on the stored layout does not apply.
+    const edges = levelView
+      ? atShown.edges.map(e => (e.data && (e.data.labelT != null || e.data.bend || e.data.ends) ? { ...e, data: { ...e.data, labelT: undefined, bend: undefined, ends: undefined } } : e))
+      : atShown.edges
+    return viewOnly
+      ? edges.map(e => (e.data?.onLabelMove || e.data?.onEndMove || e.data?.onBendMove || e.data?.onLabelEdit
+        ? { ...e, data: { ...e.data, onLabelMove: undefined, onEndMove: undefined, onBendMove: undefined, onLabelEdit: undefined } }
+        : e))
+      : edges
+  }, [atShown, viewOnly, levelView])
   // Read only stays read only: no band grips (move, size, pick) unless this
   // reader may edit right now - never on a phone outside edit, never locked.
   const canvasNodes = useMemo(() => (canEditNow ? viewNodes : viewNodes.filter(n => n.type !== 'laneGrips')), [viewNodes, canEditNow])
   // A level change shows fewer or more cards: re-fit so they fill the canvas.
+  // The zoom floor drops by the level scale: a scaled view fits where the plain one did.
   const firstLevel = useRef(true)
   useEffect(() => {
     if (firstLevel.current) { firstLevel.current = false; return }
@@ -401,7 +408,7 @@ export function DetailView({
   // What the bottom-left legend explains: only the looks this diagram uses.
   // The diagram's text sizes (view_state.fonts) for every card and tag.
   const fonts = useMemo(() => fontsOf(activeDiagram?.view_state), [activeDiagram])
-  const drawFonts = useMemo(() => scale === 1 ? fonts : { title: fonts.title * scale, sub: fonts.sub * scale, tag: fonts.tag * scale }, [fonts, scale])
+  const drawFonts = useMemo(() => scale === 1 ? fonts : { title: fonts.title * scale, sub: fonts.sub * scale, tag: fonts.tag * scale, note: 10 * scale }, [fonts, scale])
   const legend = useMemo(() => legendRows(
     viewNodes.filter(n => n.type === 'awsNode').map(n => n.data || {}),
     atShown.edges.filter(e => e.type === 'gradient').map(e => ({ style: e.data?.style, sunset: !!e.data?.sunsetLine })),
@@ -589,6 +596,10 @@ export function DetailView({
           background: '#ffffff', border: '1px solid #e4e6e8', borderRadius: 14,
           boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '4px 6px',
         }}>
+          {levels.length > 1 && <>
+            <LevelPicker levels={levels} active={active} onPick={l => setLevel && setLevel(l)} />
+            <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
+          </>}
           <BarButton on={playing} label={playing ? 'Pause' : 'Play'} title={playing ? 'Stop the flowing dots' : 'Play the flowing dots'} onClick={() => setPlaying(!playing)}>
             {playing ? <><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></>
                      : <path d="M7 4.5v15l12-7.5z"/>}
@@ -602,7 +613,6 @@ export function DetailView({
             <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>
             <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
           </BarButton>
-          <LevelPicker levels={levels} active={active} onPick={l => setLevel && setLevel(l)} />
           {setShowArrows && <BarButton on={showArrows} label="Arrows" title={showArrows ? 'Hide the arrowheads' : 'Show which way each line goes'} onClick={() => setShowArrows(v => !v)}>
             <line x1="4" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/>
           </BarButton>}
@@ -730,6 +740,12 @@ export function DetailView({
           background: '#ffffff', border: '1px solid #e4e6e8', borderRadius: 14,
           boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '4px 6px',
         }}>
+          {/* C1..C4 first, on its own, ahead of Code (owner 2026-10-14): a view
+              picker, not 1 more toggle in the row. */}
+          {levels.length > 1 && <>
+            <LevelPicker levels={levels} active={active} onPick={l => setLevel && setLevel(l)} />
+            <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
+          </>}
           {/* The pencil: the only way into edit mode on a touch screen. It is not
               rendered on a mouse (nothing to unlock there) and not while the
               edit lock is on, because that lock outranks it. */}
@@ -908,7 +924,6 @@ export function DetailView({
             </svg>
             <span className="sd-btn-label">Notes</span>
           </button>
-          <LevelPicker levels={levels} active={active} onPick={l => setLevel && setLevel(l)} />
 
           {/* Kept on a phone: Steps and the badge style are the 2 actions left in
               the bar there, and without a line between them they read as 1 control. */}
@@ -1136,7 +1151,7 @@ export function DetailView({
             connectionLineStyle={{ stroke: '#2d7ff9', strokeWidth: 2.4 }}
             /* 2 fingers on the trackpad pan the canvas in any direction, the way
                Sequences and Mindmaps do; pinch or Cmd + wheel zooms. */
-            panOnDrag panOnScroll panOnScrollMode="free" panOnScrollSpeed={1} zoomOnScroll={false} zoomOnDoubleClick={false} minZoom={narrow ? 0.04 : 0.2} maxZoom={2.5}
+            panOnDrag panOnScroll panOnScrollMode="free" panOnScrollSpeed={1} zoomOnScroll={false} zoomOnDoubleClick={false} minZoom={narrow ? 0.04 : 0.2 / scale} maxZoom={2.5}
             proOptions={{ hideAttribution: true }}
           >
             <Background variant="dots" gap={24} size={1} color="#e6e8eb" />

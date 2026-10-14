@@ -1,6 +1,8 @@
 import * as dagre from '@dagrejs/dagre'
 import { findService } from './services.js'
 import { layoutFanOut } from './layoutFan.js'
+import { badgeBox, LEAD } from './edgeGeometry.js'
+import { tagText } from './tag.js'
 
 // Real node cards are ~150w x ~100h; pad them so dagre leaves room for the
 // edge labels that sit BETWEEN nodes.
@@ -114,7 +116,21 @@ export function layoutFit(nodes, edges, canvas) {
     })
     return Math.min(cv.width / (Math.max(...xs) - Math.min(...xs)), cv.height / (Math.max(...ys) - Math.min(...ys)))
   }
-  return fan.length && fit(fan) > fit(dag) ? fan : dag
+  return roomForTags(fan.length && fit(fan) > fit(dag) ? fan : dag, edges)
+}
+
+// Just enough room (owner 2026-10-14): a tag on a line between 2 facing cards
+// needs the column gap to hold it, with a leader's room each side, or no point
+// on that line clears both cards. Columns move apart only as far as the widest
+// tag of the level needs, never past 2x; rows and card sizes do not change.
+function roomForTags(laid, edges) {
+  if (laid.length < 2) return laid
+  const widest = Math.max(0, ...edges.map(e => badgeBox(tagText(e.label ?? e.data?.label, e.data?.description ?? e.description), true).w))
+  const need = widest + 2 * LEAD
+  if (need <= RANK_SEP) return laid
+  const g = Math.min(2, 1 + (need - RANK_SEP) / (RANK_SEP + NODE_W))
+  const x0 = Math.min(...laid.map(n => n.position.x))
+  return laid.map(n => ({ ...n, position: { x: x0 + (n.position.x - x0) * g, y: n.position.y } }))
 }
 
 // ─── Build ────────────────────────────────────────────────────────────────────
