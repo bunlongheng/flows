@@ -310,6 +310,13 @@ describe("POST /api/ai/flows - pattern and description", () => {
     expect(args[9]).toBeNull();
   });
 });
+  it("stores layout in view_state", async () => {
+    const res = mockRes();
+    await createFlow(good(`Bearer ${SECRET}`, { ...VALID_BODY, view_state: { layout: { box: 1.5, gap: 1 } } }), res);
+    expect(res.statusCode).toBe(201);
+    expect(JSON.parse(query.mock.calls[1][1][10])).toEqual({ layout: { box: 1.5 } });
+  });
+
 
 describe("POST /api/ai/flows - edge whitelist and view", () => {
   beforeEach(() => {
