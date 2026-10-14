@@ -571,7 +571,10 @@ function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacl
     const [lx, ly] = into
       ? (vertical ? [sx, (sy + bus) / 2] : [(sx + bus) / 2, sy])
       : (vertical ? [tx, (bus + ty) / 2] : [(bus + tx) / 2, ty])
-    return { path, drawPath: path, labelX: lx, labelYRaw: ly, hideArrow: false, own: true }
+    // The shared stem is stroked once, by the leader, so 2 colours never stack on it.
+    const drawPath = straight || fan.leader === id ? path
+      : into ? `M${S.x},${S.y} L${Cs.x},${Cs.y} L${Ct.x},${Ct.y}` : `M${Cs.x},${Cs.y} L${Ct.x},${Ct.y} L${T.x},${T.y}`
+    return { path, drawPath, labelX: lx, labelYRaw: ly, hideArrow: into && fan.leader !== id && !straight, own: true }
   }
   const leader = fan.leader === id
   let path, drawPath, labelX, labelYRaw

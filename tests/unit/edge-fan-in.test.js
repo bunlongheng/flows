@@ -89,7 +89,8 @@ describe("routeEdge - fan-out brace", () => {
   });
   it("draws square legs, no curve, the bar halfway between source and targets", () => {
     const c = out("o-c");
-    expect(c.drawPath).toBe(c.path);
+    expect(out("o-a").drawPath).toBe(out("o-a").path); // the leader strokes the stem
+    expect(c.drawPath.startsWith(`M${c.sx},${c.sy}`)).toBe(false); // a follower starts at the bar
     expect(c.path).not.toMatch(/[CQ]/); // sharp corners, no curve anywhere
     expect(c.path).toMatch(/,-210/); // halfway from -420 to 0
     expect(c.drawPath.endsWith(`L${c.tx},${c.ty}`)).toBe(true);
@@ -133,7 +134,7 @@ describe("routeEdge - brace line type", () => {
     const a = r("e-a"), b = r("e-b");
     expect(b.tx).toBe(a.tx); // 1 shared point on the target
     expect([a.hideLabel, b.hideLabel]).toEqual([false, false]);
-    expect(b.drawPath).toBe(b.path);
-    expect(a.path).not.toMatch(/ C/);
+    expect(a.drawPath).toBe(a.path);
+    expect(a.path).not.toMatch(/[CQ]/);
   });
 });
