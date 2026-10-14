@@ -574,7 +574,8 @@ function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacl
   if (brace && (vertical ? sx !== tx : sy !== ty)) {
     const path = braceCurve(sx, sy, tx, ty, vertical)
     if (clearPolyline(flattenPath(path), obstacles)) {
-      const mid = pointAlongPath(path, 0.5)
+      // The badge sits on the branch nearer the fork, clear of the target cards.
+      const mid = pointAlongPath(path, into ? 0.65 : 0.35)
       return { path, drawPath: path, labelX: mid.x, labelYRaw: mid.y, hideArrow: false, own: true }
     }
   }
