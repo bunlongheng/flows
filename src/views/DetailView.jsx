@@ -84,6 +84,16 @@ function LevelPicker({ levels, active, onPick }) {
   )
 }
 
+// The C1..C4 picker floats on its own, apart from every menu (owner 2026-10-14).
+function LevelPill(props) {
+  if (props.levels.length < 2) return null
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, background: '#ffffff', border: '1px solid #e4e6e8', borderRadius: 14, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '4px 6px', marginRight: 8 }}>
+      <LevelPicker {...props} />
+    </div>
+  )
+}
+
 const ICON = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
 const EyeIcon = () => <svg {...ICON}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
 const EyeOffIcon = () => <svg {...ICON}><path d="M9.9 4.2A9.6 9.6 0 0 1 12 4c6.4 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.6 8 10 8a9.4 9.4 0 0 0 5.4-1.6M2 2l20 20M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
@@ -591,15 +601,12 @@ export function DetailView({
           </span>
         </div>
 
+        <LevelPill levels={levels} active={active} onPick={l => setLevel && setLevel(l)} />
         <div className="sd-detail-actions" style={{
           display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0,
           background: '#ffffff', border: '1px solid #e4e6e8', borderRadius: 14,
           boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '4px 6px',
         }}>
-          {levels.length > 1 && <>
-            <LevelPicker levels={levels} active={active} onPick={l => setLevel && setLevel(l)} />
-            <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
-          </>}
           <BarButton on={playing} label={playing ? 'Pause' : 'Play'} title={playing ? 'Stop the flowing dots' : 'Play the flowing dots'} onClick={() => setPlaying(!playing)}>
             {playing ? <><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></>
                      : <path d="M7 4.5v15l12-7.5z"/>}
@@ -734,18 +741,13 @@ export function DetailView({
             same panels, the same badge style, playing on its own - and nothing
             to change it with, the same plain share view Sequences and Mindmaps
             give. */}
+        <LevelPill levels={levels} active={active} onPick={l => setLevel && setLevel(l)} />
         {canEdit && (
         <div className="sd-detail-actions" style={{
           display: 'flex', alignItems: 'center', gap: 2,
           background: '#ffffff', border: '1px solid #e4e6e8', borderRadius: 14,
           boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '4px 6px',
         }}>
-          {/* C1..C4 first, on its own, ahead of Code (owner 2026-10-14): a view
-              picker, not 1 more toggle in the row. */}
-          {levels.length > 1 && <>
-            <LevelPicker levels={levels} active={active} onPick={l => setLevel && setLevel(l)} />
-            <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
-          </>}
           {/* The pencil: the only way into edit mode on a touch screen. It is not
               rendered on a mouse (nothing to unlock there) and not while the
               edit lock is on, because that lock outranks it. */}
@@ -824,8 +826,9 @@ export function DetailView({
             <span className="sd-btn-label">{playing ? 'Pause' : 'Play'}</span>
           </button>
 
-          {/* Arrange and undo are the owner's; a visitor has no group here to fence. */}
-          {canEdit && <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />}
+          {/* Arrange and undo are the owner's; a visitor has no group here to fence,
+              and an empty group gets no fence either, or 2 dividers meet (owner 2026-10-14). */}
+          {canEditNow && (BETA || canUndo || canRedo) && <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />}
 
 
           {/* Auto-arrange is a Beta feature (owner 2026-10-11): only with ?beta=1. */}
