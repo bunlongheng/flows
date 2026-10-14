@@ -19,6 +19,7 @@ beforeAll(async () => {
       `import { cleanNote, cleanInfo, cleanTooltip } from "${pathToFileURL("src/note.js").href}";\n` +
       `import { cleanTipColor } from "${pathToFileURL("src/sunset.js").href}";\n` +
       `import { okColor } from "${pathToFileURL("lib/validate-design.js").href}";\n` +
+      `import { cleanNode } from "${pathToFileURL("lib/clean-node.js").href}";\n` +
       `import { cleanStyle } from "${pathToFileURL("src/style.js").href}";\n` +
       `import { okBox, roundBox } from "${pathToFileURL("lib/owner-work.js").href}";\n` +
       body + "\nexport { toStoredNodes, enforceStartLeft }",
