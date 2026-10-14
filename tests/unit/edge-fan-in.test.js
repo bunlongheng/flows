@@ -95,8 +95,6 @@ describe("routeEdge - fan-out brace", () => {
     expect(c.drawPath.endsWith(`L${c.tx},${c.ty}`)).toBe(true);
     expect(c.hideArrow).toBe(false);
   });
-    expect(c.path).toMatch(/ C/);
-  });
 });
 
 describe("routeEdge - brace line type", () => {
