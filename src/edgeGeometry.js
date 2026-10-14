@@ -331,17 +331,18 @@ function detour(sRect, tRect, rects, vertical, slotS, slotT, taken = []) {
   // busier of its two faces, and lands in a lane of its own. Rank 0 still gets
   // the nearest one, so a lone detour is unchanged.
   let fallback = null
-  for (const before of [true, false]) {
-    const side = vertical
-      ? (before ? Position.Left : Position.Right)
-      : (before ? Position.Top : Position.Bottom)
-    const ps = slotS(side), pt = slotT(side)
+  // The same face on both cards first (round the outside), then the facing
+  // pair (out of one, into the other), which is the only clear way when the
+  // target sits past the source's corner with a card stacked in between.
+  for (const [before, tBefore] of [[true, true], [false, false], [false, true], [true, false]]) {
+    const faceOf = b => vertical ? (b ? Position.Left : Position.Right) : (b ? Position.Top : Position.Bottom)
+    const ps = slotS(faceOf(before)), pt = slotT(faceOf(tBefore))
     const s = vertical
       ? { x: before ? sRect.x : sRect.x + sRect.w, y: ps.at }
       : { x: ps.at, y: before ? sRect.y : sRect.y + sRect.h }
     const t = vertical
-      ? { x: before ? tRect.x : tRect.x + tRect.w, y: pt.at }
-      : { x: pt.at, y: before ? tRect.y : tRect.y + tRect.h }
+      ? { x: tBefore ? tRect.x : tRect.x + tRect.w, y: pt.at }
+      : { x: pt.at, y: tBefore ? tRect.y : tRect.y + tRect.h }
     const mid = vertical ? (s.x + t.x) / 2 : (s.y + t.y) / 2
     let skip = Math.max(ps.rank, pt.rank)
     for (const c of lanes(mid, rects, vertical ? 'x' : 'y', [sRect, tRect], taken.length > 0)) {
@@ -1005,6 +1006,14 @@ export function badgeShift(off, w, h, lead = 0) {
 const NUM_RE = /-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?/gi
 const CURVE_STEPS = 24
 
+// How long a line is, from its flattened points. A tag on a short line has
+// nowhere to slide, so both doors place the auto badges shortest line first.
+export function pathLength(d) {
+  const pts = flattenPath(d)
+  let n = 0
+  for (let i = 1; i < pts.length; i++) n += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y)
+  return n
+}
 export function flattenPath(d) {
   const pts = []
   let cur = { x: 0, y: 0 }
@@ -1065,7 +1074,7 @@ export function pointAlongPath(d, t) {
 // first clear spot, so it still reads as that line's. A badge the owner slid
 // by hand stays put but counts as placed. The box is an estimate shared by the
 // canvas and the renderer, so both pick the same spot.
-const BADGE_GAP = 4
+const BADGE_GAP = 12 // 2 pills on neighbouring tracks must not read as a stack (owner 2026-10-14)
 // A tag's text size (view_state.fonts.tag, default 8.5) and the pill height it
 // needs: 17.5 at the default. Shared so the canvas, the export and the overlap
 // check agree on 1 box.

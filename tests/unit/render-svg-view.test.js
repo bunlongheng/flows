@@ -98,4 +98,23 @@ describe("renderDiagramSvg - saved view", () => {
     expect(svg).toMatch(/<svg [^>]*font-family="Inter,/);
     expect(svg).toContain('<pattern id="dots"');
   });
+
+  it("draws a card only from its C4 level up, and nothing changes without levels", () => {
+    const lv = [{ ...NODES[0], level: 1 }, { ...NODES[1], level: 1 }, { ...NODES[2], level: 3 }];
+    expect(renderDiagramSvg(lv, EDGES)).not.toContain(">Lambda</text>");
+    expect(renderDiagramSvg(lv, EDGES, { view: { level: 3 } })).toContain(">Lambda</text>");
+    expect(renderDiagramSvg(NODES, EDGES)).toBe(renderDiagramSvg(NODES.map((n) => ({ ...n })), EDGES));
+  });
+
+  it("draws a level view below the top bigger", () => {
+    const lv = [{ ...NODES[0], level: 1 }, { ...NODES[1], level: 1 }, { ...NODES[2], level: 3 }];
+    expect(renderDiagramSvg(lv, EDGES, { view: { level: 3 } })).toContain('<rect width="180" height="180"');
+    expect(renderDiagramSvg(lv, EDGES, { view: { level: 1 } })).toContain('<rect width="234" height="234"');
+  });
+
+  it("scales the note with the card in a level view", () => {
+    const lv = [{ ...NODES[0], level: 1, note: "Landed here" }, { ...NODES[1], level: 1 }, { ...NODES[2], level: 3 }];
+    expect(renderDiagramSvg(lv, EDGES, { view: { level: 3 } })).toContain('font-size="10" fill="#111111" xml:space="preserve"><tspan x="5.0">Landed here');
+    expect(renderDiagramSvg(lv, EDGES, { view: { level: 1 } })).toContain('font-size="13" fill="#111111" xml:space="preserve"><tspan x="5.0">Landed here');
+  });
 });

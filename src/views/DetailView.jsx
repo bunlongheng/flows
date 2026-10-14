@@ -7,7 +7,8 @@ import diagramData from '../data/diagram.json'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { nodeTypes } from '../components/AwsNode'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, ShowArrowsContext, ShowBadgeXContext, TagsAboveContext, FontsContext } from '../components/noteEditContext'
-import { fontsOf } from '../view-state.js'
+import { fontsOf, levelsOf, atLevel, levelScale, LEVEL_NAMES } from '../view-state.js'
+import { layoutFit } from '../layout'
 import { Legend } from '../components/Legend'
 import { legendRows } from '../legend.js'
 import { edgeTypes } from '../components/GradientEdge'
@@ -60,6 +61,26 @@ function BarButton({ on, label, title, onClick, children }) {
       <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">{children}</svg>
       <span className="sd-btn-label">{label}</span>
     </button>
+  )
+}
+
+// C4 level picker: C1..C4, only the levels the diagram defines (owner 2026-10-14).
+function LevelPicker({ levels, active, onPick }) {
+  if (levels.length < 2) return null
+  return (
+    <div role="radiogroup" aria-label="Architecture level" style={{ display: 'inline-flex', padding: 3, gap: 2, borderRadius: 9, background: '#eef0f3', flexShrink: 0, height: 30, boxSizing: 'border-box' }}>
+      {levels.map(l => {
+        const on = l === active
+        return (
+          <button key={l} role="radio" aria-checked={on} title={`C${l} ${LEVEL_NAMES[l]}`} onClick={() => onPick(l)} style={{
+            height: 24, padding: '0 10px', borderRadius: 7, border: 'none', fontSize: 12.5, fontWeight: on ? 700 : 500,
+            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.1s',
+            background: on ? '#fff' : 'transparent', color: on ? '#1e293b' : '#64748b',
+            boxShadow: on ? '0 1px 3px rgba(15,23,42,0.18)' : 'none',
+          }}>C{l}</button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -139,6 +160,7 @@ export function DetailView({
   showNotes, setShowNotes,
   showArrows = true, setShowArrows, showBadgeX = true, tagsAbove = false,
   showLegend = true, setShowLegend,
+  level = null, setLevel,
   badgeMode, setBadgeMode,
   activeDiagram,
   detailCodeCopied, setDetailCodeCopied,
@@ -325,21 +347,72 @@ export function DetailView({
   // The tools that change the layout follow the same rule as the canvas: no
   // Arrange, no Undo, no Code while the diagram is frozen.
   const canEditNow = canEdit && !frozen
-  const canvasEdges = useMemo(() => (viewOnly
-    ? edges.map(e => (e.data?.onLabelMove || e.data?.onEndMove || e.data?.onBendMove || e.data?.onLabelEdit
-      ? { ...e, data: { ...e.data, onLabelMove: undefined, onEndMove: undefined, onBendMove: undefined, onLabelEdit: undefined } }
-      : e))
-    : edges), [edges, viewOnly])
+  const levels = useMemo(() => levelsOf(nodes), [nodes])
+  const active = levels.includes(level) ? level : (levels[0] ?? null)
+  const shown = levels.length >= 2 ? active : null
+  const atShown = useMemo(() => atLevel(nodes, edges, shown), [nodes, edges, shown])
+  // A level below the top is auto-laid out and scaled up; swimlanes only filter.
+  const hasLanes = (activeDiagram?.view_state?.lanes || []).length > 0 || nodes.some(n => n.type === 'lane' || n.type === 'laneGrips' || n.type === 'laneEnd')
+  const scale = hasLanes ? 1 : levelScale(levels, shown)
+  const levelView = shown != null && scale !== 1
+  // A card's scaled `data` is cached by its source data and the scale, so a
+  // card whose data did not change keeps the SAME object: AwsNode is memoised
+  // on it, and its note effect re-publishes on every render, which re-renders
+  // App - a new object every time would loop. The layout reads the stored
+  // size, never the measured (already scaled) one, so positions scale once.
+  // layoutFit picks dagre or the fan, whichever fits the window bigger.
+  const scaledData = useRef(new Map())
+  const viewNodes = useMemo(() => {
+    if (!levelView) return atShown.nodes
+    const kept = atShown.nodes.filter(n => n.type !== 'marker')
+    const cards = kept.filter(n => n.type === 'awsNode')
+    // No window size: the export and check:overlaps lay out the same level view, so all 3 must agree.
+    const laid = new Map(layoutFit(cards.map(n => ({ ...n, measured: undefined })), atShown.edges).map(n => [n.id, n.position]))
+    const k = (v) => v ? { w: v.w * scale, h: v.h * scale } : v
+    const cache = scaledData.current
+    return [...cards.map(n => {
+      const d = n.data || {}
+      const hit = cache.get(n.id)
+      let data = hit && hit.src === n.data && hit.scale === scale ? hit.data : null
+      if (!data) {
+        const size = d.size || (typeof d.image === 'string' && d.image.startsWith('data:image/') ? { w: 240, h: 225 } : { w: 180, h: 180 })
+        data = { ...d, size: k(size), ...(d.iconSize ? { iconSize: k(d.iconSize) } : {}) }
+        cache.set(n.id, { src: n.data, scale, data })
+      }
+      const p = laid.get(n.id)
+      return { ...n, position: { x: p.x * scale, y: p.y * scale }, ...(n.width ? { width: n.width * scale, height: n.height * scale } : {}), data }
+    }), ...kept.filter(n => n.type !== 'awsNode')]
+  }, [atShown, levelView, scale])
+  const canvasEdges = useMemo(() => {
+    // A level view is laid out fresh, so a tag, bend or end dragged on the stored layout does not apply.
+    const edges = levelView
+      ? atShown.edges.map(e => (e.data && (e.data.labelT != null || e.data.bend || e.data.ends) ? { ...e, data: { ...e.data, labelT: undefined, bend: undefined, ends: undefined } } : e))
+      : atShown.edges
+    return viewOnly
+      ? edges.map(e => (e.data?.onLabelMove || e.data?.onEndMove || e.data?.onBendMove || e.data?.onLabelEdit
+        ? { ...e, data: { ...e.data, onLabelMove: undefined, onEndMove: undefined, onBendMove: undefined, onLabelEdit: undefined } }
+        : e))
+      : edges
+  }, [atShown, viewOnly, levelView])
   // Read only stays read only: no band grips (move, size, pick) unless this
   // reader may edit right now - never on a phone outside edit, never locked.
-  const canvasNodes = useMemo(() => (canEditNow ? nodes : nodes.filter(n => n.type !== 'laneGrips')), [nodes, canEditNow])
+  const canvasNodes = useMemo(() => (canEditNow ? viewNodes : viewNodes.filter(n => n.type !== 'laneGrips')), [viewNodes, canEditNow])
+  // A level change shows fewer or more cards: re-fit so they fill the canvas.
+  // The zoom floor drops by the level scale: a scaled view fits where the plain one did.
+  const firstLevel = useRef(true)
+  useEffect(() => {
+    if (firstLevel.current) { firstLevel.current = false; return }
+    const t = setTimeout(() => { rfInstanceRef.current?.fitView({ padding: 0.15, duration: 300 }); setFitted(true) }, 60)
+    return () => clearTimeout(t)
+  }, [shown])
   // What the bottom-left legend explains: only the looks this diagram uses.
   // The diagram's text sizes (view_state.fonts) for every card and tag.
   const fonts = useMemo(() => fontsOf(activeDiagram?.view_state), [activeDiagram])
+  const drawFonts = useMemo(() => scale === 1 ? fonts : { title: fonts.title * scale, sub: fonts.sub * scale, tag: fonts.tag * scale, note: 10 * scale }, [fonts, scale])
   const legend = useMemo(() => legendRows(
-    nodes.filter(n => n.type === 'awsNode').map(n => n.data || {}),
-    edges.filter(e => e.type === 'gradient').map(e => ({ style: e.data?.style, sunset: !!e.data?.sunsetLine })),
-  ), [nodes, edges])
+    viewNodes.filter(n => n.type === 'awsNode').map(n => n.data || {}),
+    atShown.edges.filter(e => e.type === 'gradient').map(e => ({ style: e.data?.style, sunset: !!e.data?.sunsetLine })),
+  ), [atShown, viewNodes])
   // Fit is an ACTION, but it reads as a state on touch (the inline hover
   // background never clears without a mouseleave). So make the state real:
   // lit only while the canvas actually IS the fitted view, cleared the moment
@@ -523,6 +596,10 @@ export function DetailView({
           background: '#ffffff', border: '1px solid #e4e6e8', borderRadius: 14,
           boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '4px 6px',
         }}>
+          {levels.length > 1 && <>
+            <LevelPicker levels={levels} active={active} onPick={l => setLevel && setLevel(l)} />
+            <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
+          </>}
           <BarButton on={playing} label={playing ? 'Pause' : 'Play'} title={playing ? 'Stop the flowing dots' : 'Play the flowing dots'} onClick={() => setPlaying(!playing)}>
             {playing ? <><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></>
                      : <path d="M7 4.5v15l12-7.5z"/>}
@@ -663,6 +740,12 @@ export function DetailView({
           background: '#ffffff', border: '1px solid #e4e6e8', borderRadius: 14,
           boxShadow: '0 4px 24px rgba(0,0,0,0.08)', padding: '4px 6px',
         }}>
+          {/* C1..C4 first, on its own, ahead of Code (owner 2026-10-14): a view
+              picker, not 1 more toggle in the row. */}
+          {levels.length > 1 && <>
+            <LevelPicker levels={levels} active={active} onPick={l => setLevel && setLevel(l)} />
+            <div className="sd-divider" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />
+          </>}
           {/* The pencil: the only way into edit mode on a touch screen. It is not
               rendered on a mouse (nothing to unlock there) and not while the
               edit lock is on, because that lock outranks it. */}
@@ -1003,10 +1086,10 @@ export function DetailView({
           <ShowArrowsContext.Provider value={showArrows}>
           <ShowBadgeXContext.Provider value={showBadgeX}>
           <TagsAboveContext.Provider value={tagsAbove}>
-          <FontsContext.Provider value={fonts}>
+          <FontsContext.Provider value={drawFonts}>
           <NoteEditContext.Provider value={viewOnly ? null : onNoteChange || null}>
-          <NodeResizeContext.Provider value={viewOnly || sizing !== 'custom' ? null : onNodeResize || null}>
-          <IconResizeContext.Provider value={viewOnly ? null : onIconResize || null}>
+          <NodeResizeContext.Provider value={viewOnly || levelView || sizing !== 'custom' ? null : onNodeResize || null}>
+          <IconResizeContext.Provider value={viewOnly || levelView ? null : onIconResize || null}>
           <ReactFlow
             className={`${showSteps ? 'sd-steps-on ' : ''}${flowing ? '' : 'sd-still '}${canEdit && !viewOnly ? '' : 'sd-reading '}sd-badge-${badgeMode}`}
             nodes={canvasNodes} edges={canvasEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
@@ -1048,7 +1131,7 @@ export function DetailView({
                Nothing moves - the drag handles on a line only exist when the
                owner's onEndMove/onBendMove are threaded into its data. On a
                phone even selecting is off: a finger is wider than a card. */
-            nodesDraggable={canEdit && !viewOnly} elementsSelectable={!fingerOnly}
+            nodesDraggable={canEdit && !viewOnly && !levelView} elementsSelectable={!fingerOnly}
             /* The owner draws a line Forensic style: hover a card, drag from a
                side dot, and it snaps onto any card within 34 px. */
             nodesConnectable={!!onConnect && canEdit && !viewOnly} onConnect={onConnect}
@@ -1068,7 +1151,7 @@ export function DetailView({
             connectionLineStyle={{ stroke: '#2d7ff9', strokeWidth: 2.4 }}
             /* 2 fingers on the trackpad pan the canvas in any direction, the way
                Sequences and Mindmaps do; pinch or Cmd + wheel zooms. */
-            panOnDrag panOnScroll panOnScrollMode="free" panOnScrollSpeed={1} zoomOnScroll={false} zoomOnDoubleClick={false} minZoom={narrow ? 0.04 : 0.2} maxZoom={2.5}
+            panOnDrag panOnScroll panOnScrollMode="free" panOnScrollSpeed={1} zoomOnScroll={false} zoomOnDoubleClick={false} minZoom={narrow ? 0.04 : 0.2 / scale} maxZoom={2.5}
             proOptions={{ hideAttribution: true }}
           >
             <Background variant="dots" gap={24} size={1} color="#e6e8eb" />

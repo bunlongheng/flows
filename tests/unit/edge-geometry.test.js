@@ -160,6 +160,13 @@ describe('no tag on a tag', () => {
     expect(Math.abs(at.x - 200) * 2).toBeGreaterThanOrEqual(box.w + placed[0].w)
     expect(clearBadge(line, { x: 200, y: 0 }, box, null, [])).toEqual({ x: 200, y: 0 })
   })
+  it('slides an auto badge off a card it would sit on (a card is a box like a badge)', () => {
+    const box = badgeBox('12 target: sync', true)
+    const wall = { x: 200, y: 100, w: 60, h: 200 } // a narrow card from y 0 to 200 under the line's middle, centre given
+    const at = clearBadge(line, { x: 200, y: 0 }, box, null, [wall])
+    expect(at.y).toBe(0)
+    expect(Math.abs(at.x - 200) * 2).toBeGreaterThanOrEqual(box.w + wall.w)
+  })
   it('grows the leader of a short paired line with no clear spot', () => {
     const box = badgeBox('alerts', true), off = { x: 0, y: -1 }
     const at = clearBadge('M0 0 L60 0', { x: 30, y: 0 }, box, off, [{ w: 200, h: 18, x: 30, y: -23 }])

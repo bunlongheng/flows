@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ringIsWhite, detectIconFrame } from "../../lib/icon-frame.js";
+import { ringIsWhite, cornersClear, detectIconFrame } from "../../lib/icon-frame.js";
 import { renderDiagramSvg } from "../../lib/render-svg.js";
 
 // A 20x20 RGBA buffer painted by a function of (x, y).
@@ -19,6 +19,14 @@ describe("ringIsWhite", () => {
     const corner = (x, y) => (x < 3 || x >= 17) && (y < 3 || y >= 17);
     expect(ringIsWhite(raster(20, 20, (x, y) => (corner(x, y) ? [0, 0, 0, 0] : edge(x, y, 20, 20, 3) ? [250, 250, 250, 255] : [200, 30, 30, 255])), 20, 20)).toBe(true);
     expect(ringIsWhite(raster(20, 20, (x) => (x < 8 ? [255, 255, 255, 255] : [200, 30, 30, 255])), 20, 20)).toBe(false);
+  });
+});
+
+describe("cornersClear", () => {
+  it("is true for an iOS tile with transparent corners, false for a square logo on white", () => {
+    const corner = (x, y) => (x < 3 || x >= 17) && (y < 3 || y >= 17);
+    expect(cornersClear(raster(20, 20, (x, y) => (corner(x, y) ? [0, 0, 0, 0] : [255, 255, 255, 255])), 20, 20)).toBe(true);
+    expect(cornersClear(raster(20, 20, () => [255, 255, 255, 255]), 20, 20)).toBe(false);
   });
 });
 

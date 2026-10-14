@@ -88,6 +88,26 @@ export const cleanFonts = (v) => {
   return kept.length ? { fonts: Object.fromEntries(kept) } : {};
 };
 
+// C4 levels (owner 2026-10-14): a card's `level` 1-4 is the first view it shows
+// in. Cumulative: a C2 view draws every level 1 and 2 card. A node without a
+// level is always drawn. The picker needs 2+ levels in the nodes.
+export const LEVELS = [1, 2, 3, 4];
+export const LEVEL_NAMES = { 1: 'Context', 2: 'Container', 3: 'Component', 4: 'Code' };
+export const cleanLevel = (v) => LEVELS.includes(v) ? { level: v } : {};
+export const levelsOf = (nodes) => LEVELS.filter((l) => (nodes || []).some((n) => n?.level === l));
+export const levelOf = (v, nodes) => { const ls = levelsOf(nodes); if (ls.length < 2) return null; return ls.includes(v?.level) ? v.level : ls[0]; };
+// A level view shows fewer cards, so everything draws bigger: 1 step below the
+// top is 1.3x, then 1.6x, 1.9x (owner 2026-10-14).
+export const LEVEL_SCALES = [1, 1.3, 1.6, 1.9];
+export const levelScale = (levels, shown) => { if (shown == null || levels.length < 2) return 1; const d = levels.length - 1 - levels.indexOf(shown); return LEVEL_SCALES[Math.max(0, Math.min(3, d))]; };
+export const atLevel = (nodes, edges, level) => {
+  if (level == null) return { nodes, edges };
+  const kept = (nodes || []).filter((n) => !LEVELS.includes(n.level) || n.level <= level);
+  const ids = new Set(kept.map((n) => n.id));
+  const ok = (id) => String(id).startsWith('lane:') || ids.has(id);
+  return { nodes: kept, edges: (edges || []).filter((e) => ok(e.source) && ok(e.target)) };
+};
+
 // Layout, per diagram (owner 2026-10-13, "like my sequences app"): box scales
 // every card, gap and vgap spread the cards apart across and down so the tags
 // have room. Drawn by the canvas and the exports; stored positions stay unscaled.
@@ -117,4 +137,5 @@ export const cleanView = (v) => ({
   ...cleanSizing(v?.sizing),
   ...cleanFonts(v?.fonts),
   ...cleanLayout(v?.layout),
+  ...cleanLevel(v?.level),
 });

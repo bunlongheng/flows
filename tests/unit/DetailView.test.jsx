@@ -451,4 +451,44 @@ describe("current panel", () => {
     expect(screen.getByText("Fan-out on write")).toBeInTheDocument();
     expect(screen.queryByTestId("current-panel")).toBeNull();
   });
+
+  describe("C4 level picker", () => {
+    const lv = (id, level) => ({ id, type: "awsNode", position: { x: 0, y: 0 }, ...(level ? { level } : {}), data: { id, label: id, icon: "/t.svg" } });
+    const nodes = [lv("ctx", 1), lv("svc", 2)];
+    const canvasHas = (id) => !!document.querySelector(`.react-flow__node[data-id="${id}"]`);
+
+    it("is absent when no card has a level", () => {
+      setup({ nodes: [lv("a"), lv("b")] });
+      expect(screen.queryByRole("radiogroup", { name: /architecture level/i })).toBeNull();
+    });
+
+    it("shows only the levels defined, C1 checked by default, and a click picks 2", () => {
+      const { setLevel } = setup({ nodes, setLevel: vi.fn() });
+      const group = screen.getByRole("radiogroup", { name: /architecture level/i });
+      const radios = within(group).getAllByRole("radio");
+      expect(radios.map((r) => r.textContent)).toEqual(["C1", "C2"]);
+      expect(radios[0]).toHaveAttribute("aria-checked", "true");
+      fireEvent.click(radios[1]);
+      expect(setLevel).toHaveBeenCalledWith(2);
+    });
+
+    it("draws a level 2 card at level 2 and not at level 1", () => {
+      setup({ nodes, level: 2 });
+      expect(canvasHas("svc")).toBe(true);
+      cleanup();
+      setup({ nodes, level: 1 });
+      expect(canvasHas("ctx")).toBe(true);
+      expect(canvasHas("svc")).toBe(false);
+    });
+
+    it("draws a level view 1.3x bigger and not draggable, the top view as is", () => {
+      setup({ nodes, level: 1 });
+      const low = document.querySelector('.react-flow__node[data-id="ctx"]');
+      expect(low.innerHTML).toContain("width: 234px");
+      expect(low.classList.contains("draggable")).toBe(false);
+      cleanup();
+      setup({ nodes, level: 2 });
+      expect(document.querySelector('.react-flow__node[data-id="ctx"]').innerHTML).toContain("width: 180px");
+    });
+  });
 });

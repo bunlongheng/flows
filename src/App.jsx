@@ -18,7 +18,7 @@ import { cleanDesc } from './tag'
 import { cleanEdgeLabel } from './note.js'
 import { fireflies } from './fireflies'
 import { makeThumbnail } from './thumbnail'
-import { currentOf, cleanCurrent, cleanFonts, layoutOf, cleanLayout, laidOut, LAYOUT_DEFAULT } from './view-state.js'
+import { currentOf, cleanCurrent, cleanFonts, layoutOf, cleanLayout, laidOut, LAYOUT_DEFAULT, levelOf } from './view-state.js'
 import { sizingOf, lineCounts, cardSize } from './card-size.js'
 
 // A card's drawn size for the diagram's sizing mode; a picture card scales
@@ -295,6 +295,8 @@ export default function App() {
   const [showLegend, setShowLegend] = useState(true)
   const [showBadgeX, setShowBadgeX] = useState(true)
   const [tagsAbove, setTagsAbove] = useState(false)
+  // C4 level the canvas shows (null = the diagram has no levels to pick).
+  const [level, setLevel] = useState(null)
   // A note growing or shrinking changes how far its lane reaches, so the lanes redraw with the notes.
   useSyncExternalStore(subscribeNoteHeights, noteHeightsVersion)
   const [badgeMode, setBadgeMode] = useState('dark') // dark | silver | color | plain
@@ -737,6 +739,7 @@ export default function App() {
     if (['dark', 'silver', 'color', 'plain'].includes(v.badge)) setBadgeMode(v.badge)
     setCurrentState(currentOf(v))
     setSizingState(sizingOf(v, d.data.nodes))
+    setLevel(levelOf(v, d.data.nodes))
     const { nodes: n, edges: e } = buildDiagramNodesEdges(d)
     setNodes(n)
     setEdges(e)
@@ -884,6 +887,7 @@ export default function App() {
       ...(keep('sizing') ? { sizing: prev.sizing } : {}),
       ...(keep('fonts') ? { fonts: prev.fonts } : {}),
       ...(keep('layout') ? { layout: prev.layout } : {}),
+      ...(keep('level') ? { level: prev.level } : {}),
     }
   }, [activeDiagram])
 
@@ -1334,14 +1338,16 @@ export default function App() {
     // restore landing a render later) must not let an older timer save a reset.
     clearTimeout(viewSaveTimer.current)
     viewSavePending.current = null
-    if (prevKey === panelKey && prev.badge === badgeMode) return
+    // A level equal to what the row already opens at is no change (opening a flow sets it).
+    const levelSame = level == null || level === levelOf(prev, activeDiagram.data?.nodes)
+    if (prevKey === panelKey && prev.badge === badgeMode && levelSame) return
     const savingId = activeDiagram.id
     const save = () => {
       viewSavePending.current = null
       // Carry the owner's Start placement through a plain panel/badge save -
       // this effect only ever meant to touch those two, and rebuilding the
       // object from scratch would otherwise silently clear the placement.
-      const view_state = { panels: panelKey ? panelKey.split(',') : [], badge: badgeMode, ...(prev.start ? { start: prev.start } : {}), ...(prev.lanes ? { lanes: prev.lanes } : {}), ...(prev.current ? { current: prev.current } : {}), ...(prev.sizing ? { sizing: prev.sizing } : {}), ...(prev.fonts ? { fonts: prev.fonts } : {}), ...(prev.layout ? { layout: prev.layout } : {}) }
+      const view_state = { panels: panelKey ? panelKey.split(',') : [], badge: badgeMode, ...(prev.start ? { start: prev.start } : {}), ...(prev.lanes ? { lanes: prev.lanes } : {}), ...(prev.current ? { current: prev.current } : {}), ...(prev.sizing ? { sizing: prev.sizing } : {}), ...(prev.fonts ? { fonts: prev.fonts } : {}), ...(prev.layout ? { layout: prev.layout } : {}), ...((level ?? prev.level) ? { level: level ?? prev.level } : {}) }
       return fetch(`/api/flows/${savingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -1362,7 +1368,7 @@ export default function App() {
     viewSavePending.current = save
     viewSaveTimer.current = setTimeout(save, 600)
     return () => clearTimeout(viewSaveTimer.current)
-  }, [view, canAI, activeDiagram, panelKey, badgeMode])
+  }, [view, canAI, activeDiagram, panelKey, badgeMode, level])
 
   // The flow fetches reject with Error('HTTP <status>'); anything else is the
   // network, and the closed-flow page tells the 2 apart.
@@ -2091,6 +2097,7 @@ export default function App() {
       showSteps={showSteps} setShowSteps={setShowSteps}
       showNotes={showNotes} setShowNotes={setShowNotes}
       showArrows={showArrows} setShowArrows={setShowArrows} showBadgeX={showBadgeX} tagsAbove={tagsAbove}
+      level={level} setLevel={setLevel}
       showLegend={showLegend} setShowLegend={setShowLegend}
       isLocked={!!activeDiagram?.locked} isEditLocked={!!activeDiagram?.editLocked} onSetLocks={canAI ? setLocks : undefined}
       badgeMode={badgeMode} setBadgeMode={setBadgeMode}
