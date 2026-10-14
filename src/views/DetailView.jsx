@@ -3,7 +3,6 @@ import { PANEL, PANEL_CAPTION, PANEL_CLOSE } from '../panel.js'
 import { isPlaying, setPlaying, subscribePlaying, isFlowing, subscribeFlowing } from '../flowClock'
 import { ReactFlow, Background } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import diagramData from '../data/diagram.json'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { nodeTypes } from '../components/AwsNode'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, ShowArrowsContext, ShowBadgeXContext, TagsAboveContext, FontsContext } from '../components/noteEditContext'
@@ -160,7 +159,6 @@ function PasscodeField({ on, current = '', onSave }) {
 export function DetailView({
   toast,
   onBack,
-  showDetailCode, setShowDetailCode,
   rfInstance: rfInstanceRef, flashZoomHud, zoomHudRef,
   showSharePanel, setShowSharePanel,
   // Owner only: undefined for anyone else, same as onSetLocks below - one
@@ -173,14 +171,12 @@ export function DetailView({
   level = null, setLevel,
   badgeMode, setBadgeMode,
   activeDiagram,
-  detailCodeCopied, setDetailCodeCopied,
   nodes, edges, onNodesChange, onEdgesChange, onNodeDragStop, snapGuides = [], onPaneTap,
   exportPng, exportWebp, exportGif, exportCode, exportJson, copyLink, copiedLink, shareAction, copiedShare, copyCode, copiedCode,
   shareSlug, shareUrl,
   showDocs, setShowDocs, copiedLabel, onCopyFormat,
   bandPick, onBandColor,
   onRename,
-  showToastMsg,
   isPublic,
   saveState = 'idle',
   onArrange,
@@ -221,7 +217,6 @@ export function DetailView({
   sizing, onSizingChange,
   onFontsChange, layout, onLayoutChange,
 }) {
-  const [codeWidth, setCodeWidth] = useState(340)
   const brand = brandFor(activeDiagram?.title)
   const [confirmDelete, setConfirmDelete] = useState(false)
   // The Arrange button opens a small style menu instead of arranging directly.
@@ -276,7 +271,7 @@ export function DetailView({
   useEffect(() => { setCurrentOpen(false) }, [activeDiagram?.id])
   // Never 2 panels at once (owner rule 2026-10-09): opening one closes whichever
   // was open, so the latest opened is the only one on screen.
-  const openPanels = { share: showSharePanel, history: showHistoryPanel, code: showDetailCode, card: !!cardId, step: !!stepId, current: currentOpen, band: bandPick?.key || null }
+  const openPanels = { share: showSharePanel, history: showHistoryPanel, card: !!cardId, step: !!stepId, current: currentOpen, band: bandPick?.key || null }
   const prevPanels = useRef(openPanels)
   useEffect(() => {
     const prev = prevPanels.current
@@ -286,14 +281,13 @@ export function DetailView({
     const keep = fresh[fresh.length - 1]
     if (keep !== 'share' && showSharePanel) setShowSharePanel(false)
     if (keep !== 'history' && showHistoryPanel) setShowHistoryPanel(false)
-    if (keep !== 'code' && showDetailCode) setShowDetailCode(false)
     if (keep !== 'card' && cardId) setCardId(null)
     if (keep !== 'step' && stepId) setStepId(null)
     if (keep !== 'current' && currentOpen) setCurrentOpen(false)
     if (keep !== 'band' && bandPick) onPaneTap?.()
     // Reacts to a panel opening, nothing else; the setters are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSharePanel, showHistoryPanel, showDetailCode, cardId, stepId, currentOpen, bandPick?.key])
+  }, [showSharePanel, showHistoryPanel, cardId, stepId, currentOpen, bandPick?.key])
   useEffect(() => {
     if (!cardId && !stepId && !currentOpen) return
     const onKeyDown = e => { if (e.key === 'Escape') { setCardId(null); setStepId(null); setCurrentOpen(false) } }
@@ -517,7 +511,7 @@ export function DetailView({
     const t = setTimeout(fitNow, 60)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSteps, showSharePanel, showDetailCode, showHistoryPanel, cardOpen, currentOpen])
+  }, [showSteps, showSharePanel, showHistoryPanel, cardOpen, currentOpen])
 
   // History panel: fetch the list on open, and again after every restore - a
   // restore is itself versioned, so the fresh top row is always what just ran.
@@ -570,7 +564,7 @@ export function DetailView({
           toolbar with it: the dots played or paused, the steps and notes on or
           off, and the pictures of the diagram under Share. Nothing here changes
           the diagram; everything that does (Arrange, Fit, Undo, History, Lock,
-          Delete) is still the owner's alone, and so is the code panel. Without
+          Delete) is still the owner's alone. Without
           these a shared link is a picture the reader cannot turn the animation
           off on. */}
       {!canEdit ? (
@@ -644,7 +638,7 @@ export function DetailView({
         overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch',
       }}>
         {/* Back button */}
-        <button onClick={() => { onBack(); setShowDetailCode(false); }}
+        <button onClick={() => { onBack() }}
           aria-label="Back to gallery"
           style={{
             width: 36, height: 36, borderRadius: 10, flexShrink: 0,
@@ -769,26 +763,9 @@ export function DetailView({
             </button>
           )}
 
-          {/* Code toggle */}
-          {canEditNow && <button className="sd-hide-mobile sd-hide-tablet" onClick={() => setShowDetailCode(v => !v)} style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '0 10px', height: 30, borderRadius: 8, border: 'none',
-            background: showDetailCode ? '#f1f5f9' : 'transparent',
-            color: showDetailCode ? '#1e293b' : '#64748b',
-            cursor: 'pointer', fontSize: 13, fontWeight: showDetailCode ? 600 : 400,
-            transition: 'all 0.1s', fontFamily: 'inherit',
-          }}
-            onMouseEnter={e => { if (!showDetailCode) e.currentTarget.style.background = '#f1f5f9' }}
-            onMouseLeave={e => { if (!showDetailCode) e.currentTarget.style.background = 'transparent' }}
-          >
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-            </svg>
-            <span className="sd-btn-label">Code</span>
-          </button>}
-
-          {/* Only the owner has Code to the left of this. */}
-          {canEdit && <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />}
+          {/* The Code button is gone from the bar (owner 2026-10-14: never used, the
+              Share panel's downloads are enough); this divider only fences the pencil. */}
+          {canEdit && (touch || narrow) && !isEditLocked && !phone && <div className="sd-divider sd-hide-tablet" style={{ width: 1, height: 18, background: '#e4e6e8', flexShrink: 0, margin: '0 2px' }} />}
 
           {/* Fit button */}
           <button className={`sd-hide-mobile${fitted ? ' is-on' : ''}`} onClick={fitNow}
@@ -1050,37 +1027,8 @@ export function DetailView({
       </header>
       )}
 
-      {/* Body - code panel + canvas */}
+      {/* Body - canvas */}
       <div style={{ flex: 1, display: 'flex', position: 'relative', overflow: 'hidden' }}>
-
-        {/* Code panel (left, slide-in) */}
-        {canEdit && showDetailCode && (
-          <div className="sd-code-panel" style={{
-            width: codeWidth, flexShrink: 0, background: '#ffffff', borderRight: '1px solid #e4e6e8', position: 'relative',
-            display: 'flex', flexDirection: 'column', animation: 'sd-slide-left 0.2s ease-out',
-          }}>
-            <PanelResizer width={codeWidth} onWidth={setCodeWidth} />
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid #e4e6e8', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#1c1e21" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-              </svg>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#1c1e21', flex: 1 }}>{activeDiagram?.title || 'diagram.json'}</span>
-              <button
-                onClick={() => {
-                  const code = JSON.stringify(activeDiagram?.data || diagramData, null, 2)
-                  navigator.clipboard.writeText(code).then(() => {
-                    setDetailCodeCopied(true)
-                    setTimeout(() => setDetailCodeCopied(false), 2000)
-                  }).catch(() => showToastMsg('Copy failed'))
-                }}
-                style={{ background: detailCodeCopied ? '#22c55e' : '#f4f5f7', border: '1px solid #e4e6e8', borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: detailCodeCopied ? '#fff' : '#65676b', cursor: 'pointer', transition: 'all 0.15s', flexShrink: 0 }}
-              >{detailCodeCopied ? 'Copied!' : 'Copy'}</button>
-            </div>
-            <div style={{ flex: 1, overflow: 'auto' }}>
-              <CodeBlock data={activeDiagram?.data || diagramData} fontSize={9} padding="14px 16px" />
-            </div>
-          </div>
-        )}
 
         <UnlockReveal ready={nodes.length > 0} />
         {/* Canvas */}
@@ -1731,7 +1679,7 @@ export function DetailView({
         /* On phones the fixed-width side panels would crush the canvas, so drop
            them to full-width bottom sheets over the canvas instead. */
         @media (max-width: 640px) {
-          .sd-code-panel, .sd-share-panel, .sd-history-panel {
+          .sd-share-panel, .sd-history-panel {
             position: absolute !important; left: 0 !important; right: 0 !important;
             bottom: 0 !important; top: auto !important; width: 100% !important;
             max-height: 60vh; z-index: 20; border: none !important;
