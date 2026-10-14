@@ -110,6 +110,14 @@ Node fields go through `create_flow` / `update_flow` (whole `nodes` list) or
 the diagram uses. A running MCP server is a snapshot: restart it after a deploy
 or these fields are silently stripped. Field detail: `docs/API.md`, `mcp/README.md`.
 
+A clicked card is loud (owner rule 2026-10-14, reverses #417): it holds its
+full ring in its own colour and every line in and out of it lights at 7 px,
+55%, with a drop shadow in both end colours (`src/components/AwsNode.jsx`,
+`src/components/GradientEdge.jsx` `lit`). Never quiet it down again. The
+passcode gate is the liquid glass card in `lib/passcode-pages.js`: a
+see-through bubble over the blurred diagram, title on 1 line, the golden
+reference for the other apps' lock pages.
+
 ## Which door to use
 
 - **MCP** (`mcp/server.mjs`) for anything about content: creating a diagram,
