@@ -19,6 +19,9 @@ import { SIZINGS } from '../card-size.js'
 // more current, some I wanna show less"). The SVG and GIF exports read the
 // same row, so a picture plays the current that diagram was left running at
 // (src/view-state.js, lib/render-gif.js).
+//
+// The Show section holds the Arrows and Legend switches and the History row
+// that used to be header buttons (owner 2026-10-14).
 
 const caption = { ...PANEL_CAPTION, marginBottom: 8 }
 const block = { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }
@@ -66,12 +69,40 @@ const StepRow = ({ label, values, value, format, onPick }) => {
   return <SlimRow label={label} min={0} max={values.length - 1} step={1} value={at} show={format(values[at])} onPick={k => onPick(values[k])} />
 }
 
+// A Show row: label and 1 line of help on the left, then a switch (SwitchRow)
+// or a chevron (LinkRow) on the right.
+const showRow = { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '6px 0', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }
+const showText = (label, sub) => (
+  <span style={{ flex: 1, minWidth: 0 }}>
+    <div style={{ fontSize: 12.5, fontWeight: 600, color: '#1a2129' }}>{label}</div>
+    <div style={{ fontSize: 11, color: '#6b7280' }}>{sub}</div>
+  </span>
+)
+function SwitchRow({ on, label, sub, onClick }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onClick} style={showRow}>
+      {showText(label, sub)}
+      <span aria-hidden="true" style={{ width: 38, height: 22, borderRadius: 11, flexShrink: 0, background: on ? '#2563eb' : '#cbd5e1', position: 'relative', transition: 'background 0.15s' }}>
+        <span style={{ position: 'absolute', top: 2, left: on ? 18 : 2, width: 18, height: 18, borderRadius: 9, background: '#fff', boxShadow: '0 1px 2px rgba(15,23,42,0.25)', transition: 'left 0.15s' }} />
+      </span>
+    </button>
+  )
+}
+function LinkRow({ label, sub, onClick }) {
+  return (
+    <button type="button" onClick={onClick} style={showRow}>
+      {showText(label, sub)}
+      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#8a94a6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+    </button>
+  )
+}
+
 // 2 sliders: 1 sizes the card title and subtitle together at the default
 // ratio, the other sizes the line badges on their own (view_state.fonts).
 const half = n => Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round(n * 2) / 2))
 const scaled = v => ({ title: half(v), sub: half(v * FONT_DEFAULT.sub / FONT_DEFAULT.title) })
 
-export function CurrentPanel({ value, onChange, onClose, pattern, description, sizing, onSizing, fonts, onFonts, layout, onLayout }) {
+export function CurrentPanel({ value, onChange, onClose, pattern, description, sizing, onSizing, fonts, onFonts, layout, onLayout, showArrows, onArrows, showLegend, onLegend, hasLegend, onHistory }) {
   const speed = value?.speed ?? CURRENT_DEFAULT.speed
   const amount = value?.amount ?? CURRENT_DEFAULT.amount
 
@@ -110,6 +141,15 @@ export function CurrentPanel({ value, onChange, onClose, pattern, description, s
           <SlimRow label="V.Gap" min={LAYOUT_RANGE.vgap[0]} max={LAYOUT_RANGE.vgap[1]} step={0.05} value={layout.vgap} show={`${Math.round(layout.vgap * 100)}%`} onPick={v => onLayout({ ...layout, vgap: v })} />
         </>}
       </section>
+
+      {(onArrows || (onLegend && hasLegend) || onHistory) && (
+        <section style={block}>
+          <div style={caption}>Show</div>
+          {onArrows && <SwitchRow on={showArrows} label="Arrows" sub="Which way each line goes" onClick={() => onArrows(v => !v)} />}
+          {onLegend && hasLegend && <SwitchRow on={showLegend} label="Legend" sub="What the colours and dashes mean" onClick={() => onLegend(v => !v)} />}
+          {onHistory && <LinkRow label="History" sub="Earlier versions, restore any" onClick={onHistory} />}
+        </section>
+      )}
 
       {onSizing && (
         <Row

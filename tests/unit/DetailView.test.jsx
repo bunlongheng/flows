@@ -411,6 +411,38 @@ describe("current panel", () => {
     expect(panel.getByText("A URL shortener.")).toBeInTheDocument();
   });
 
+  // Arrows, Legend and History left the owner header for this panel (owner 2026-10-14).
+  const withShow = () => {
+    const setShowArrows = vi.fn(), setShowHistoryPanel = vi.fn();
+    setup({
+      nodes: [{ ...nodes[0], data: { ...nodes[0].data, sunset: true } }], current: { speed: 1, amount: 10 }, onCurrentChange: vi.fn(),
+      showArrows: true, setShowArrows, showLegend: true, setShowLegend: vi.fn(), onRestored: vi.fn(), setShowHistoryPanel,
+    });
+    return { setShowArrows, setShowHistoryPanel };
+  };
+
+  it("the settings panel holds the Arrows and Legend switches and the History row", () => {
+    const { setShowArrows, setShowHistoryPanel } = withShow();
+    fireEvent.click(screen.getByRole("button", { name: /control the current/i }));
+    const panel = within(screen.getByTestId("current-panel"));
+    const arrows = panel.getByRole("switch", { name: "Arrows" });
+    expect(arrows).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(arrows);
+    expect(setShowArrows).toHaveBeenCalledTimes(1);
+    expect(panel.getByRole("switch", { name: "Legend" })).toBeInTheDocument();
+    fireEvent.click(panel.getByRole("button", { name: /History/ }));
+    expect(setShowHistoryPanel).toHaveBeenCalledWith(true);
+    expect(screen.queryByTestId("current-panel")).toBeNull();
+  });
+
+  it("the owner header no longer carries Arrows, Legend or History", () => {
+    withShow();
+    expect(screen.queryByTitle(/arrowheads/i)).toBeNull();
+    expect(screen.queryByTitle(/legend/i)).toBeNull();
+    const header = document.querySelector(".sd-detail-header");
+    expect([...header.querySelectorAll("button")].some(b => b.textContent.trim() === "History")).toBe(false);
+  });
+
   // A visitor's badge is unchanged: it still unfolds the card on the canvas.
   it("leaves the visitor's i badge showing the summary", () => {
     const activeDiagram = { ...sampleDiagram, pattern: "Fan-out on write" };
