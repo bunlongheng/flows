@@ -284,8 +284,10 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
     display: 'flex', flexDirection: 'column',
     alignItems: 'center', justifyContent: 'center', gap: 6, position: 'relative',
     // The resting shadow, plus the arrival ring and halo while the glow lasts.
-    boxShadow: glow
-      ? `0 1px 3px rgba(0,0,0,0.10), 0 0 0 ${(3 * glow).toFixed(1)}px ${hexToRgba(color, 0.45 * glow)}, 0 0 ${Math.round(22 * glow)}px ${hexToRgba(color, 0.7 * glow)}`
+    // A clicked card holds the full ring (owner 2026-10-14): it and its lines
+    // light together, so the card's traffic reads at a glance.
+    boxShadow: (selected && !sunset ? 1 : glow)
+      ? `0 1px 3px rgba(0,0,0,0.10), 0 0 0 ${(3 * (selected && !sunset ? 1 : glow)).toFixed(1)}px ${hexToRgba(color, 0.45 * (selected && !sunset ? 1 : glow))}, 0 0 ${Math.round(22 * (selected && !sunset ? 1 : glow))}px ${hexToRgba(color, 0.7 * (selected && !sunset ? 1 : glow))}`
       : '0 1px 3px rgba(0,0,0,0.10)',
   }
   // Icon and text, drawn once, or once per half on a cracked sunset card.
