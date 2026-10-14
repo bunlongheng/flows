@@ -55,4 +55,16 @@ describe("cleanStyle", () => {
     for (const a of ARROWS) expect(cleanStyle({ arrow: a })).toEqual({ arrow: a });
     expect(cleanStyle({ arrow: "squiggle" })).toBe(null);
   });
+
+  it("kind edge keeps only what a line can draw", () => {
+    const all = { stroke: "#e03131", bg: "#ffffff", bw: 2, bs: "dashed", radius: 12, font: "mono", fs: 14, align: "left", arrow: "brace", head: "both", opacity: 50 };
+    expect(cleanStyle(all, "edge")).toEqual({ stroke: "#e03131", bw: 2, bs: "dashed", arrow: "brace", head: "both", opacity: 50 });
+    expect(cleanStyle({ bg: "#ffffff", radius: 0 }, "edge")).toBe(null);
+  });
+
+  it("kind node drops arrow and head, and no kind keeps them", () => {
+    expect(cleanStyle({ stroke: "#e03131", arrow: "curved", head: "none" }, "node")).toEqual({ stroke: "#e03131" });
+    expect(cleanStyle({ arrow: "curved" }, "node")).toBe(null);
+    expect(cleanStyle({ arrow: "curved", head: "none" })).toEqual({ arrow: "curved", head: "none" });
+  });
 });
