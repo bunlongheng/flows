@@ -483,8 +483,9 @@ export function nearestEnd(node, px, py) {
 // draw as one trunk. Into a card (end 't', fan-in): every member shares the
 // target's slot and a bus line halfway there, the leader (lowest id) strokes
 // the trunk and carries the badge, the rest stop where they meet the bus. Out
-// of a card (end 's', fan-out) it is a brace whatever the labels: every
-// member leaves the 1 shared point, with its own badge.
+// of a card (end 's', fan-out) it is a brace: every member leaves the 1
+// shared point, with its own badge. Same labels brace at any count; 2 lines
+// with different labels brace when 1 target sits each side of the card.
 // 5 apps posting to 1 relay read as 1 arrow with 1 "POST" on it, not 5 stacked
 // badges. A hand bent, pinned or arrow-styled line never joins: the owner
 // placed it. A "brace" line still joins, and its branch is a curve with its own badge.
@@ -496,13 +497,17 @@ function fanAt(end, nodeId, node, id, tag, side, edges, nodeOf) {
     if ((end === 't' ? e.target : e.source) !== nodeId) continue
     const d = e.data || {}
     if (d.bend || d.ends?.s || d.ends?.t || (d.style?.arrow && d.style.arrow !== 'brace')) continue
-    if (end === 't' && tagText(e.label, d.description) !== tag) continue
+    const same = tagText(e.label, d.description) === tag
+    if (end === 't' && !same) continue
     const farId = end === 't' ? e.source : e.target
     const far = nodeOf(farId)
     if (!far?.measured?.width || sideFor(c, centerOf(far)) !== side) continue
-    members.push({ id: e.id, far: farId })
+    members.push({ id: e.id, far: farId, same, along: side === Position.Left || side === Position.Right ? centerOf(far).y - c.y : centerOf(far).x - c.x })
   }
   if (members.length < 2 || !members.some(m => m.id === id)) return null
+  // Different labels brace only as a pair that straddles the card: 1 target
+  // on each side of the shared point, the symmetric split (owner 2026-10-14).
+  if (!(tag && members.every(m => m.same)) && !(members.length === 2 && members[0].along * members[1].along < 0)) return null
   members.sort((a, b) => (a.id < b.id ? -1 : 1))
   return { end, members, leader: members[0].id, ids: new Set(members.map(m => m.id)) }
 }
