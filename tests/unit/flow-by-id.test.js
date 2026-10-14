@@ -466,7 +466,7 @@ describe("/api/flows/:id", () => {
     expect(written.find((n) => n.id === "x")).not.toHaveProperty("pinTooltip");
   });
 
-  // The format panel's payload. It is sent WHOLE every time, never merged: the
+  // The style payload. It is sent WHOLE every time, never merged: the
   // panel always knows a node's full look, and a merge would make "back to
   // default" impossible to express.
   it("PATCH notes { id, style } stores only the keys a renderer can draw", async () => {

@@ -54,7 +54,7 @@ test("Delete removes the selected line, on the canvas and on the server", async 
     expect(await page.locator(".react-flow__edge-path").count()).toBe(2);
 
     await clickEdge(page, 0);
-    await page.waitForSelector(".sd-format-panel");
+    await page.waitForSelector(".react-flow__edge.selected");
     await page.keyboard.press("Delete");
     await page.waitForTimeout(1200);
 

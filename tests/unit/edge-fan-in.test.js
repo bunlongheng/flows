@@ -95,3 +95,30 @@ describe("routeEdge - fan-out brace", () => {
     expect(c.hideArrow).toBe(false);
   });
 });
+
+describe("routeEdge - brace line type", () => {
+  it("draws a lone brace line as 1 S-curve with its badge on it", () => {
+    const r = routeEdge({
+      id: "x", source: "a", target: "n", sourceNode: nodes.a, targetNode: nodes.n,
+      nodeOf: (k) => nodes[k], edges: [{ id: "x", source: "a", target: "n", label: "go", data: { style: { arrow: "brace" } } }],
+      obstacles: [], nodeRects: [], label: "go", arrow: "brace",
+    });
+    expect(r.path).toMatch(/^M[^ ]+ C/);
+    expect(r.hideLabel).toBe(false);
+  });
+  it("splits brace lines into 1 card as curves, each keeping its badge", () => {
+    const be = edges.map((e) => (e.label === "POST" ? { ...e, data: { style: { arrow: "brace" } } } : e));
+    const r = (id) => {
+      const e = be.find((x) => x.id === id);
+      return routeEdge({
+        id, source: e.source, target: "n", sourceNode: nodes[e.source], targetNode: nodes.n,
+        nodeOf: (k) => nodes[k], edges: be, obstacles: [], nodeRects: [], label: e.label, arrow: "brace",
+      });
+    };
+    const a = r("e-a"), b = r("e-b");
+    expect(b.tx).toBe(a.tx); // 1 shared point on the target
+    expect([a.hideLabel, b.hideLabel]).toEqual([false, false]);
+    expect(b.drawPath).toBe(b.path);
+    expect(b.path).toMatch(/ C/);
+  });
+});

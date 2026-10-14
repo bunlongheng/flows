@@ -165,7 +165,7 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
   const split = sunset && data.cracked !== false
   const tooltip = typeof data.tooltip === 'string' && data.tooltip.trim() ? data.tooltip.trim() : undefined
   const tipBg = cleanTipColor(data.tooltipColor)
-  // The format panel's overrides. Sunset still wins on colour: silver is the
+  // The payload's style overrides. Sunset still wins on colour: silver is the
   // one state the whole app reads at a glance, so a styled card that is on its
   // way out still looks like it (src/sunset.js).
   const st = data.style || {}

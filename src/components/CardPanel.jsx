@@ -47,7 +47,7 @@ const Section = ({ title, children }) => (
   </section>
 )
 
-// Read-only card detail panel, the reading twin of FormatPanel's line editor:
+// Read-only card detail panel:
 // a clicked card, in 4 blocks - what it is, its note, then
 // every line into it and out of it, the 2 lists together at the foot of the
 // panel. Same look as the Share panel

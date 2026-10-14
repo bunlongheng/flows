@@ -602,7 +602,7 @@ export default function App() {
   // removes the field.
   const activeId = activeDiagram?.id
   // State only. Split out so a field that writes many times a second (the
-  // format panel) can paint instantly and send once.
+  // style edits) can paint instantly and send once.
   const applyNodeField = useCallback((field, nodeId, value) => {
     const withField = nd => { const { [field]: _old, ...rest } = nd; return value ? { ...rest, [field]: value } : rest }
     const patch = nds => (nds || []).map(nd => (nd.id === nodeId ? withField(nd) : nd))
@@ -625,44 +625,6 @@ export default function App() {
       .catch(() => showToastMsg('Could not save'))
   }, [activeId, applyNodeField, showToastMsg])
   const onNoteChange = useCallback((nodeId, note) => saveNodeText('note', nodeId, note), [saveNodeText])
-
-  // The format panel fires a write per click, and 5 PATCHes racing to the same
-  // row do NOT arrive in the order they were sent - the e2e caught the last two
-  // settings of a fast run missing from the stored node. So the card repaints on
-  // the click and exactly one request goes out once the clicking stops, carrying
-  // whatever the style ended up being. null is what clears it.
-  const styleSend = useRef({})
-  const sendStyle = useCallback((key, body) => {
-    if (!activeId) return
-    clearTimeout(styleSend.current[key])
-    styleSend.current[key] = setTimeout(() => {
-      delete styleSend.current[key]
-      fetch(`/api/flows/${activeId}`, {
-        method: 'PATCH', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-        .then(r => { if (!r.ok) showToastMsg('Could not save (owner only)') })
-        .catch(() => showToastMsg('Could not save'))
-    }, 350)
-  }, [activeId, showToastMsg])
-
-  // A line's style has its own PATCH key, not the pins one: that branch wipes
-  // every pin it was not sent, so folding style in would make a badge drag and
-  // a colour pick able to erase each other.
-  const onEdgeStyleChange = useCallback((edgeId, style) => {
-    // A hand bend and a picked arrow type answer the same question - how does
-    // this line get there - and the bend wins in the renderer. So picking an
-    // arrow type drops the bend, or the pick lands on a line that never moves
-    // and the row reads as a control that does not work. Cmd+Z brings it back.
-    if (style?.arrow && edgesRef.current.find(e => e.id === edgeId)?.data?.bend) onBendMove(edgeId, null)
-    const withStyle = ed => { const { style: _old, ...rest } = ed; return style ? { ...rest, style } : rest }
-    setEdges(prev => prev.map(e => (e.id === edgeId ? { ...e, data: { ...e.data, style } } : e)))
-    const patch = eds => (eds || []).map((ed, i) => ((ed.id || `e${i}`) === edgeId ? withStyle(ed) : ed))
-    setActiveDiagram(a => (a ? { ...a, data: { ...a.data, edges: patch(a.data.edges) } } : a))
-    setDiagrams(ds => ds.map(d => (d.id !== activeId ? d : { ...d, data: { ...d.data, edges: patch(d.data.edges) } })))
-    sendStyle(`e:${edgeId}`, { edgeStyles: [{ id: edgeId, style }] })
-  }, [activeId, sendStyle, onBendMove])
 
   // The badge text, rewritten where it is drawn: double-click the badge on the
   // line, type, Enter. It rides the edgeStyles key for the same reason style
@@ -2148,7 +2110,6 @@ export default function App() {
       saveState={saveState}
       onArrange={autoArrange}
       onNoteChange={canAI ? onNoteChange : undefined}
-      onEdgeStyleChange={canAI ? onEdgeStyleChange : undefined}
       bandPick={bandPick} onBandColor={canAI ? onBandColor : undefined} onRename={canAI ? onRename : undefined}
       onNodeResize={canAI ? onNodeResize : undefined}
       onConnect={canAI && activeDiagram?.id && !activeDiagram.editLocked ? onConnect : undefined}

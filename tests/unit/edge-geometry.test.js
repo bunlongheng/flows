@@ -45,7 +45,7 @@ describe("routeEdge", () => {
   // other end carries 1, and that one enters dead centre however far the hub's
   // slot sits from it. Straightening used to drag the lone end instead,
   // because an empty face has nothing to collide with.
-  it("takes a lone line into the middle of the face, whatever the other end does", () => {
+  it("runs a lone line straight when the faces overlap, else into the middle of the face", () => {
     const hub = node("hub", 0, 0);
     // near sits 30 px off the hub's top slot: close enough that the router
     // wants 1 straight line, too far for the hub's own slot to give way.
@@ -60,10 +60,12 @@ describe("routeEdge", () => {
       id, source: "hub", target, sourceNode: hub, targetNode: nodes[target],
       nodeOf: (k) => nodes[k], edges, obstacles: [], nodeRects: [],
     });
-    for (const [id, target] of [["e0", "near"], ["e1", "mid"], ["e2", "far"]]) {
-      const r = one(id, target);
-      expect(r.ty, `${id} enters ${target}`).toBe(nodes[target].internals.positionAbsolute.y + 90);
-    }
+    // Straight when it can be (owner rule 2026-10-14): near overlaps the hub,
+    // so its lone end slides to meet the hub's slot on 1 level line.
+    const e0 = one("e0", "near");
+    expect(e0.ty).toBe(e0.sy);
+    // far does not overlap the hub's face, so it still enters dead centre.
+    expect(one("e2", "far").ty).toBe(far.internals.positionAbsolute.y + 90);
     // The hub's own 3 slots stay spread, so the lines do not pile onto 1 pixel.
     expect(new Set([one("e0", "near").sy, one("e1", "mid").sy, one("e2", "far").sy]).size).toBe(3);
   });
