@@ -529,11 +529,13 @@ function outSide(e, node, nodeId, edges, nodeOf) {
     const s = natOf(x)
     if (s) counts[s] = (counts[s] || 0) + 1
   }
-  let best = natOf(e)
-  const far = nodeOf(e.target)
-  if (!best || !far) return best
+  const nat = natOf(e), far = nodeOf(e.target)
+  if (!nat || !far) return nat
+  let best = nat
   for (const alt of SIDES) {
-    if (alt !== best && beyond(node, far, alt) && (counts[alt] || 0) >= 2 && counts[alt] >= (counts[best] || 0)) best = alt
+    const n = counts[alt] || 0
+    if (alt === nat || !beyond(node, far, alt) || n < 2 || n < (counts[nat] || 0)) continue
+    if (best === nat || n > counts[best]) best = alt
   }
   return best
 }
