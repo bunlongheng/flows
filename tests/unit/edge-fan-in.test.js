@@ -90,7 +90,7 @@ describe("routeEdge - fan-out brace", () => {
   it("draws square legs, no curve, the bar halfway between source and targets", () => {
     const c = out("o-c");
     expect(c.drawPath).toBe(c.path);
-    expect(c.path).not.toMatch(/ C/);
+    expect(c.path).not.toMatch(/[CQ]/); // sharp corners, no curve anywhere
     expect(c.path).toMatch(/,-210/); // halfway from -420 to 0
     expect(c.drawPath.endsWith(`L${c.tx},${c.ty}`)).toBe(true);
     expect(c.hideArrow).toBe(false);

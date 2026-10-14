@@ -564,7 +564,8 @@ function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacl
   if (!clearPolyline([S, Cs, Ct, T], obstacles)) return brace ? curve() : null
   const straight = vertical ? sx === tx : sy === ty
   if (brace) {
-    const path = straight ? `M${S.x},${S.y} L${T.x},${T.y}` : roundedPath([S, Cs, Ct, T], 8)
+    // Sharp square corners, a real brace: never rounded (owner 2026-10-14).
+    const path = straight ? `M${S.x},${S.y} L${T.x},${T.y}` : `M${S.x},${S.y} L${Cs.x},${Cs.y} L${Ct.x},${Ct.y} L${T.x},${T.y}`
     // The badge sits on the leg this line does not share: into the target out
     // of a card, out of the source into one.
     const [lx, ly] = into
