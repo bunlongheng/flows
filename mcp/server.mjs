@@ -32,8 +32,8 @@ import { SIZINGS } from '../src/card-size.js'
 import { storeView, viewPatch } from '../lib/view-state.js'
 import { NODE_KEEP, EDGE_KEEP, okBox, roundBox, edgeKey, keepOwnerWork } from '../lib/owner-work.js'
 import { validateDesign, okColor } from '../lib/validate-design.js'
-
 import { cleanNode } from '../lib/clean-node.js'
+
 // Picture-node loaders available only here: a file path or an AirClips ref can
 // only be resolved on THIS machine, so the HTTP API refuses them and points
 // callers at the MCP server instead.
