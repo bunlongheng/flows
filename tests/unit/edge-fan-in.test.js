@@ -167,7 +167,7 @@ describe("routeEdge - a card wholly to 1 side joins that brace", () => {
 });
 
 describe("routeEdge - brace arrival", () => {
-  const n = { s: node("s", 0, 0), a: node("a", 325, -111), b: node("b", 325, 111), c: node("c", 325, 390), w: node("w", 700, 390) };
+  const n = { s: node("s", 0, 0), a: node("a", 325, -111), b: node("b", 325, 111), c: node("c", 325, 390), w: node("w", -100, 420) };
   const base = [
     { id: "a1", source: "s", target: "a", label: "sync" },
     { id: "a2", source: "s", target: "b", label: "sync" },
