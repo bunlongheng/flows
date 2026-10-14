@@ -9,7 +9,6 @@
 // FLOWS_APP_URL (default prod) for the shareable links it returns.
 import { creationTags } from '../lib/linked.js'
 import { renderDiagramSvg } from '../lib/render-svg.js'
-import { cleanLanes } from '../src/lanes.js'
 import './load-env.mjs' // MUST be first - loads .env before lib/db.js opens the pool
 import { readFile } from 'node:fs/promises'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -24,14 +23,12 @@ import { ownerId } from '../lib/auth-owner.js'
 import { SERVICES } from '../src/services.js'
 import { resolveNodeIcons } from '../lib/resolve-icon.js'
 import { resolveNodeImages } from '../lib/resolve-image.js'
-import { cleanNote, cleanInfo, cleanTooltip } from '../src/note.js'
-import { cleanTipColor } from '../src/sunset.js'
 import { cleanStyle } from '../src/style.js'
-import { PANELS, BADGES, SPEEDS, AMOUNTS, CURRENT_DEFAULT, cleanFonts } from '../src/view-state.js'
+import { PANELS, BADGES, SPEEDS, AMOUNTS, CURRENT_DEFAULT } from '../src/view-state.js'
 import { SIZINGS } from '../src/card-size.js'
 import { storeView, viewPatch } from '../lib/view-state.js'
 import { NODE_KEEP, EDGE_KEEP, okBox, roundBox, edgeKey, keepOwnerWork } from '../lib/owner-work.js'
-import { validateDesign, okColor } from '../lib/validate-design.js'
+import { validateDesign } from '../lib/validate-design.js'
 import { cleanNode } from '../lib/clean-node.js'
 
 // Picture-node loaders available only here: a file path or an AirClips ref can
