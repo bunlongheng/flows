@@ -551,11 +551,15 @@ function beyond(node, far, side) {
 
 // A brace branch: an S-curve that leaves the source face level and arrives
 // at the target level, so branches fanning from 1 point read as a brace.
+// It ends on a short straight run into the card, so the arrowhead lines up
+// with the line it sits on instead of pointing level off a steep curve.
 function braceCurve(sx, sy, tx, ty, vertical) {
-  const h = vertical ? (ty - sy) / 2 : (tx - sx) / 2
+  const span = vertical ? ty - sy : tx - sx
+  const lead = Math.sign(span) * Math.min(18, Math.abs(span) / 4)
+  const h = (span - lead) / 2
   return vertical
-    ? `M${sx},${sy} C${sx},${sy + h} ${tx},${ty - h} ${tx},${ty}`
-    : `M${sx},${sy} C${sx + h},${sy} ${tx - h},${ty} ${tx},${ty}`
+    ? `M${sx},${sy} C${sx},${sy + h} ${tx},${ty - lead - h} ${tx},${ty - lead} L${tx},${ty}`
+    : `M${sx},${sy} C${sx + h},${sy} ${tx - lead - h},${ty} ${tx - lead},${ty} L${tx},${ty}`
 }
 
 // The trunk route for one member. `path` is the whole trip, for the dot;
@@ -674,6 +678,19 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
           tSide = into
           tx = into === Position.Left ? p.x : into === Position.Right ? p.x + w : p.x + w / 2
           ty = into === Position.Top ? p.y : into === Position.Bottom ? p.y + h : p.y + h / 2
+          // Another line already on that face sits at its middle: keep clear of
+          // it, stepping toward the source.
+          const tc = centerOf(targetNode)
+          const busy = edges.some(e => e.id !== id && (e.source === target || e.target === target) && (() => {
+            const far = nodeOf(e.source === target ? e.target : e.source)
+            return far?.measured?.width && sideFor(tc, centerOf(far)) === into
+          })())
+          if (busy) {
+            const horiz = into === Position.Left || into === Position.Right
+            const step = Math.min(28, (horiz ? h : w) / 4)
+            if (horiz) ty += sy < ty ? -step : step
+            else tx += sx < tx ? -step : step
+          }
         }
       }
       if (fan) {
