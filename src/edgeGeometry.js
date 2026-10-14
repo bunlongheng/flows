@@ -483,8 +483,8 @@ export function nearestEnd(node, px, py) {
 // draw as one trunk. Into a card (end 't', fan-in): every member shares the
 // target's slot and a bus line halfway there, the leader (lowest id) strokes
 // the trunk and carries the badge, the rest stop where they meet the bus. Out
-// of a card (end 's', fan-out) it is the mirror: 1 trunk leaves the source,
-// splits on the bus, and each member strokes its own run from the junction on.
+// of a card (end 's', fan-out) it is a brace: every member leaves the 1
+// shared point on its own curve, with its own badge.
 // 5 apps posting to 1 relay read as 1 arrow with 1 "POST" on it, not 5 stacked
 // badges. A hand bent, pinned or arrow-styled line never joins: the owner
 // placed it.
@@ -514,6 +514,17 @@ function fanAt(end, nodeId, node, id, tag, side, edges, nodeOf) {
 function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacles, gaps, taken = [], g }) {
   const vertical = side === Position.Top || side === Position.Bottom
   const into = fan.end === 't'
+  // Out of a card it is a brace: every branch is its own smooth curve from the
+  // 1 shared point to its card, with its own badge halfway along.
+  if (!into) {
+    const h = vertical ? (ty - sy) / 2 : (tx - sx) / 2
+    const path = vertical
+      ? `M${sx},${sy} C${sx},${sy + h} ${tx},${ty - h} ${tx},${ty}`
+      : `M${sx},${sy} C${sx + h},${sy} ${tx - h},${ty} ${tx},${ty}`
+    if (!clearPolyline(flattenPath(path), obstacles)) return null
+    const mid = pointAlongPath(path, 0.5)
+    return { path, drawPath: path, labelX: mid.x, labelYRaw: mid.y, hideArrow: false, own: true }
+  }
   // The far ends' slots, so the bus sits halfway between the shared face and them.
   const fars = fan.members.map(m => attachPoint(nodeOf(m.far), m.far, node, m.id, edges, nodeOf))
   const meanFar = fars.reduce((a, p) => a + (vertical ? p.y : p.x), 0) / fars.length
@@ -650,7 +661,7 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
   }) : null
   if (trunk) {
     ;({ path, labelX, labelYRaw, drawPath, hideArrow } = trunk)
-    hideLabel = fan.leader !== id
+    hideLabel = !trunk.own && fan.leader !== id
   } else if (parallel) {
     const n = siblings.length
     const idx = siblings.slice().sort((a, b) => (a.id < b.id ? -1 : 1)).findIndex(e => e.id === id)
