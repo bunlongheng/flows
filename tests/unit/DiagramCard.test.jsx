@@ -36,6 +36,14 @@ describe("DiagramCard", () => {
     expect(screen.getByText("0 edges")).toBeInTheDocument();
   });
 
+  it("shows a C1-C4 pill only when the diagram defines 2 or more C4 levels", () => {
+    setup({ diagram: { nodes: [{ id: "a", level: 1 }, { id: "b", level: 3 }, { id: "c" }], edges: [] } });
+    expect(screen.getByText("C1-C3")).toBeInTheDocument();
+    cleanup();
+    setup({ diagram: { nodes: [{ id: "a", level: 2 }, { id: "c" }], edges: [] } });
+    expect(screen.queryByText(/^C\d-C\d$/)).not.toBeInTheDocument();
+  });
+
   it("calls onOpen when the card is clicked", async () => {
     const { onOpen } = setup();
     const user = userEvent.setup();

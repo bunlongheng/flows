@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { relativeTime } from '../timeAgo'
 import { brandFor } from '../brands'
 import { tierFor } from '../difficulty.js'
+import { levelsOf } from '../view-state.js'
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
 
@@ -16,6 +17,7 @@ export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficul
   // SVG render until the owner first opens it. Bundled samples have no row.
   const thumbSrc = UUID_RE.test(id || '') ? `/api/flows/${id}?format=thumb&v=${Date.parse(thumbnailAt) || 0}-${Date.parse(changedAt) || 0}` : null
   const tier = tierFor(difficulty)
+  const levels = levelsOf(diagram.nodes) // 2+ C4 levels = the canvas opens with a C1..C4 picker
   const [active, setActive] = useState(false) // hover OR keyboard focus (for the card's own lift)
   const [confirming, setConfirming] = useState(false) // delete: awaiting the confirm click
   const confirmTimer = useRef(null)
@@ -115,6 +117,11 @@ export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficul
         {tier && (
           <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 20, background: tier.bg, color: tier.fg, border: `1px solid ${tier.bd}`, letterSpacing: '0.01em', lineHeight: 1.5 }}>
             {tier.label}
+          </span>
+        )}
+        {levels.length > 1 && (
+          <span className="dc-levels" title={`C4 model: opens with a C${levels[0]} to C${levels[levels.length - 1]} level picker`} style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 20, background: '#eef2ff', color: '#3730a3', border: '1px solid #c7d2fe', letterSpacing: '0.02em', lineHeight: 1.5 }}>
+            C{levels[0]}-C{levels[levels.length - 1]}
           </span>
         )}
       </div>
