@@ -87,13 +87,13 @@ const fail = msg => ({ isError: true, content: [{ type: 'text', text: msg }] })
 // Now: no coordinates means no coordinates, and the canvas applies its canonical
 // left-to-right layout. Coordinates that would break the rule are dropped whole,
 // for the same outcome.
-// The look of a card or a line, exactly as the format panel writes it. The legal
+// The look of a card or a line, exactly as it is stored. The legal
 // values live in ONE place (src/style.js) and `cleanStyle` is what the API
 // validates with, so this takes the object loosely and runs it through the same
 // function rather than restating those lists here and drifting from them.
 const STYLE_KEYS =
   'stroke #hex, bg #hex or "transparent", bw 1|2|4, bs solid|dashed|dotted, radius 0|12, ' +
-  'font sans|serif|mono, fs 12|14|18|24, align left|center|right, arrow step|curved|straight, ' +
+  'font sans|serif|mono, fs 12|14|18|24, align left|center|right, arrow step|curved|straight|brace, ' +
   'head end|start|both|none (which end of a line carries the arrowhead, i.e. its direction; omit to follow the diagram\'s Arrows toggle, on by default, pointing at the target), ' +
   'opacity 0-100 (a line uses only stroke, bw, bs, arrow, head, opacity; bs dashed is how to draw an interim or optional path). ' +
   'An illegal key or value is dropped, exactly as it is on a save from the canvas.'
@@ -141,7 +141,7 @@ function toStoredNodes(nodes) {
     ...(n.iconFrame === true ? { iconFrame: true } : {}),
     ...(n.image ? { image: n.image } : {}),
     // The 3 the canvas writes and this used to drop on the floor: a resized
-    // card, a stretched logo tile, and the format panel's look.
+    // card, a stretched logo tile, and its look.
     ...(okBox(n.size, 130, 600) ? { size: roundBox(n.size) } : {}),
     ...(okBox(n.iconSize, 16, 600) ? { iconSize: roundBox(n.iconSize) } : {}),
     ...(cleanStyle(n.style) ? { style: cleanStyle(n.style) } : {}),
@@ -741,7 +741,7 @@ server.registerTool(
       'GIVE EVERY EDGE A STABLE id ("e1", "e2", ...). The owner\'s per-line styling, dragged chip position and hand bends are matched back by id; with no id they are matched by ARRAY INDEX, so inserting a line in the middle silently moves all of that onto the wrong lines. The id also picks the leader that carries the badge when several lines share a card face (lowest id wins).',
       'Node positions (x,y) are optional - the app auto-layouts on open. If you do place cards by hand, match the auto-layout pitch so nothing crowds: a card is 180 x 180 (a picture card 240 x 225), the layout allows 190 per card, leaves 150 between columns (so a column pitch of 340) and 95 between stacked cards (a row pitch of 275). A step chip needs about 100 px of clear line, which is what those gaps buy.',
       'A node may carry `size` { w, h } (clamped 130-600) to resize its card, and `iconSize` { w, h } (clamped 16-600) to stretch the logo tile inside it. Omit both unless a wide wordmark is unreadable at the stock tile; a note hangs BELOW the card and is not part of `size`.',
-      'A node or an edge may carry `style`, the same object the format panel writes: stroke #hex, bg #hex or "transparent", bw 1|2|4, bs solid|dashed|dotted, radius 0|12, font sans|serif|mono, fs 12|14|18|24, align left|center|right, arrow step|curved|straight, opacity 0-100. A line uses only stroke, bw, bs, arrow and opacity. An illegal key or value is dropped. Leave `style` off a card unless you need to say something its brand colour cannot: a card with no style draws in its own logo colour, which is almost always right.',
+      'A node or an edge may carry `style`, the look object: stroke #hex, bg #hex or "transparent", bw 1|2|4, bs solid|dashed|dotted, radius 0|12, font sans|serif|mono, fs 12|14|18|24, align left|center|right, arrow step|curved|straight|brace, opacity 0-100. A line uses only stroke, bw, bs, arrow and opacity. An illegal key or value is dropped. Leave `style` off a card unless you need to say something its brand colour cannot: a card with no style draws in its own logo colour, which is almost always right.',
       'update_flow REPLACES the whole nodes and edges arrays, so send every one, not only the changed one. Anything the owner set by hand that you omit (node size, iconSize, style; edge style, labelT, bend) is carried over from the stored row rather than wiped - but a node or edge you leave out of the array entirely is GONE.',
       'update_flow { id, view: { panels, badge } } sets how the diagram OPENS. panels is any of ["steps","share","code","notes-off","arrows-off","legend-off","badge-x-off","tags-above"]: "steps" prints the numbered chip on every line, "notes-off" HIDES the notes, "arrows-off" drops the default arrowheads, "legend-off" hides the bottom-left legend (all 3 show by default, so those keys are inverted). badge is dark|silver|color|plain, default dark. Turn "steps" on for anything a reader has to follow in order - do not leave them to find the button.',
       'A node may carry a `note` (max 400 chars, light markdown: **bold**, *italic*, __underline__, ~~strike~~, `code`; a URL becomes a link showing its ticket key): 1-2 sentences on what that step does. It renders under the card, bottom-left, in the app, on every shared link and in the SVG - so put the per-step explanation THERE, not only in the title or edge labels.',

@@ -199,7 +199,7 @@ export function GradientEdge({
     bend, endS, endT, arrow: data?.style?.arrow, label, description: data?.description,
     fallback: { sx: sourceX, sy: sourceY, tx: targetX, ty: targetY },
   })
-  // The line's look, from the format panel.
+  // The line's look, from the payload.
   const st = data?.style || {}
   const c1 = data?.sourceColor || INK
   const c2 = data?.targetColor || INK
@@ -247,7 +247,7 @@ export function GradientEdge({
   const hit = useStore(s => 24 * 2 ** Math.max(0, Math.round(-Math.log2(s.transform[2] * 1.5) * 2) / 2))
 
   const sideways = side => side === 'left' || side === 'right'
-  const square = data?.style?.arrow !== 'straight' && data?.style?.arrow !== 'curved'
+  const square = !['straight', 'curved', 'brace'].includes(data?.style?.arrow)
   const startBendDrag = (e, grabbed) => {
     if (!bendMovable || e.button !== 0) return
     e.stopPropagation()

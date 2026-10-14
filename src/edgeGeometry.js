@@ -487,7 +487,7 @@ export function nearestEnd(node, px, py) {
 // shared point on its own curve, with its own badge.
 // 5 apps posting to 1 relay read as 1 arrow with 1 "POST" on it, not 5 stacked
 // badges. A hand bent, pinned or arrow-styled line never joins: the owner
-// placed it.
+// placed it. A "brace" line still joins, and its branch is a curve with its own badge.
 function fanAt(end, nodeId, node, id, tag, side, edges, nodeOf) {
   if (!tag) return null
   const c = centerOf(node)
@@ -495,7 +495,7 @@ function fanAt(end, nodeId, node, id, tag, side, edges, nodeOf) {
   for (const e of edges) {
     if ((end === 't' ? e.target : e.source) !== nodeId) continue
     const d = e.data || {}
-    if (d.bend || d.ends?.s || d.ends?.t || d.style?.arrow) continue
+    if (d.bend || d.ends?.s || d.ends?.t || (d.style?.arrow && d.style.arrow !== 'brace')) continue
     if (tagText(e.label, d.description) !== tag) continue
     const farId = end === 't' ? e.source : e.target
     const far = nodeOf(farId)
@@ -507,20 +507,27 @@ function fanAt(end, nodeId, node, id, tag, side, edges, nodeOf) {
   return { end, members, leader: members[0].id, ids: new Set(members.map(m => m.id)) }
 }
 
+// The mindmap split: an S-curve that leaves the source face level and arrives
+// at the target level, so branches fanning from 1 point read as a brace.
+function braceCurve(sx, sy, tx, ty, vertical) {
+  const h = vertical ? (ty - sy) / 2 : (tx - sx) / 2
+  return vertical
+    ? `M${sx},${sy} C${sx},${sy + h} ${tx},${ty - h} ${tx},${ty}`
+    : `M${sx},${sy} C${sx + h},${sy} ${tx - h},${ty} ${tx},${ty}`
+}
+
 // The trunk route for one member. `path` is the whole trip, for the dot;
 // `drawPath` is what this member strokes: the leader strokes everything, a
 // fan-in follower stops at the junction, a fan-out follower starts there. Null
 // when a card sits on the way, and the member then routes on its own.
-function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacles, gaps, taken = [], g }) {
+function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacles, gaps, taken = [], g, arrow }) {
   const vertical = side === Position.Top || side === Position.Bottom
   const into = fan.end === 't'
-  // Out of a card it is a brace: every branch is its own smooth curve from the
-  // 1 shared point to its card, with its own badge halfway along.
-  if (!into) {
-    const h = vertical ? (ty - sy) / 2 : (tx - sx) / 2
-    const path = vertical
-      ? `M${sx},${sy} C${sx},${sy + h} ${tx},${ty - h} ${tx},${ty}`
-      : `M${sx},${sy} C${sx + h},${sy} ${tx - h},${ty} ${tx},${ty}`
+  // Out of a card (or into one, when the line asks for "brace") it is a brace:
+  // every branch is its own smooth curve to or from the 1 shared point, with
+  // its own badge halfway along.
+  if (!into || arrow === 'brace') {
+    const path = braceCurve(sx, sy, tx, ty, vertical)
     if (!clearPolyline(flattenPath(path), obstacles)) return null
     const mid = pointAlongPath(path, 0.5)
     return { path, drawPath: path, labelX: mid.x, labelYRaw: mid.y, hideArrow: false, own: true }
@@ -590,7 +597,7 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
     if (endT) { const p = pinnedPoint(targetNode, endT); tx = p.x; ty = p.y; tSide = p.side }
     // A trunk member takes the slot its leader gets when the other members are
     // not counted, so all of them meet the target at the one point.
-    if (!bend && !endS && !endT && !arrow) {
+    if (!bend && !endS && !endT && (!arrow || arrow === 'brace')) {
       const tag = tagText(label, description)
       fan = fanAt('t', target, targetNode, id, tag, tSide, edges, nodeOf) || fanAt('s', source, sourceNode, id, tag, sSide, edges, nodeOf)
       if (fan) {
@@ -656,7 +663,7 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
   let routedStraight = false, laneShift = 0, laneAlongY = false
   let drawPath = null, hideLabel = false, hideArrow = false
   const trunk = fan && !parallel ? trunkPath({
-    fan, id, sx, sy, tx, ty, edges, nodeOf, obstacles, gaps, taken, g: `fan:${fan.end}:${fan.leader}`,
+    fan, id, sx, sy, tx, ty, edges, nodeOf, obstacles, gaps, taken, g: `fan:${fan.end}:${fan.leader}`, arrow,
     side: fan.end === 't' ? tSide : sSide, node: fan.end === 't' ? targetNode : sourceNode,
   }) : null
   if (trunk) {
@@ -809,7 +816,7 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
       borderRadius: 18,
     })
   }
-  // An arrow type picked in the format panel replaces the routing outright,
+  // An arrow type set in the payload replaces the routing outright,
   // the way Excalidraw's arrow type does: the pick is what the line looks
   // like. Straight and curved are the owner saying they would rather have the
   // short line than the one that dodges the boxes in between. Step is the
@@ -828,6 +835,10 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
     path = `M${sx},${sy} L${tx},${ty}`
     labelX = (sx + tx) / 2
     labelYRaw = (sy + ty) / 2
+  } else if (!bend && arrow === 'brace' && !trunk) {
+    path = braceCurve(sx, sy, tx, ty, sSide === Position.Top || sSide === Position.Bottom)
+    const mid = pointAlongPath(path, 0.5)
+    labelX = mid.x; labelYRaw = mid.y
   } else if (!bend && arrow === 'curved') {
     ;[path, labelX, labelYRaw] = getBezierPath({
       sourceX: sx, sourceY: sy, sourcePosition: sSide,
@@ -861,7 +872,7 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
   // hand-made line (bend, straight, curved) is the owner's call: it reserves nothing.
   // A square line the owner moved still holds its track, so the next line steps off it.
   const g = fan ? `fan:${fan.end}:${fan.leader}` : id
-  const legs = (bend && !isElbow(bend)) || arrow === 'straight' || arrow === 'curved' ? [] : pathLegs(drawPath || path).map(l => ({ ...l, g }))
+  const legs = (bend && !isElbow(bend)) || arrow === 'straight' || arrow === 'curved' || arrow === 'brace' ? [] : pathLegs(drawPath || path).map(l => ({ ...l, g }))
   return { legs, path, drawPath: drawPath || path, hideLabel, hideArrow, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelYRaw, labelOff }
 }
 

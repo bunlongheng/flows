@@ -15,11 +15,9 @@ import { Toast } from '../components/Toast'
 import { SnapGuides } from '../components/SnapGuides'
 import { Footer } from '../components/Footer'
 import { brandFor } from '../brands'
-import { FormatPanel, BandPanel } from '../components/FormatPanel.jsx'
+import { BandPanel } from '../components/BandPanel.jsx'
 import { CardPanel, StepPanel } from '../components/CardPanel.jsx'
 import { CurrentPanel } from '../components/CurrentPanel.jsx'
-import { findService } from '../services.js'
-import { SUNSET, INK } from '../sunset.js'
 import { CodeBlock } from '../components/CodeBlock.jsx'
 import { UnlockReveal } from '../components/UnlockReveal'
 import { PanelResizer } from '../components/PanelResizer.jsx'
@@ -148,7 +146,6 @@ export function DetailView({
   exportPng, exportWebp, exportGif, exportCode, exportJson, copyLink, copiedLink, shareAction, copiedShare, copyCode, copiedCode,
   shareSlug, shareUrl,
   showDocs, setShowDocs, copiedLabel, onCopyFormat,
-  onEdgeStyleChange,
   bandPick, onBandColor,
   onRename,
   showToastMsg,
@@ -194,29 +191,6 @@ export function DetailView({
 }) {
   const [codeWidth, setCodeWidth] = useState(340)
   const brand = brandFor(activeDiagram?.title)
-  // React Flow already carries selection on the node object, so the format
-  // panel needs no state of its own - and cannot drift out of step with the
-  // canvas. One card at a time: styling a multi-select would have to answer
-  // what the panel shows when two cards disagree, and the answer is a feature
-  // of its own.
-  const selectedNode = nodes.length ? nodes.filter(n => n.selected).length === 1 && nodes.find(n => n.selected) : null
-  // A card wins over a line: clicking a card can leave the line it sits on
-  // selected too, and the thing under the pointer is the thing being styled.
-  const selectedEdge = selectedNode ? null
-    : edges.length ? edges.filter(e => e.selected).length === 1 && edges.find(e => e.selected) : null
-  // A hand bend beats a picked arrow type in the renderer, so while a line is
-  // bent NO arrow type is in effect. Lighting one would be the panel reporting
-  // something the canvas is not doing - and it would also swallow the click
-  // that is supposed to replace the bend.
-  const edgeStyleShown = !selectedEdge ? null : !selectedEdge.data?.bend ? selectedEdge.data?.style
-    : Object.fromEntries(Object.entries(selectedEdge.data.style || {}).filter(([k]) => k !== 'arrow'))
-  // The colour the thing ALREADY is, so the panel's 2 colour rows can show it.
-  // A card's brand colour is never one of the 5 swatches, and a line's default
-  // is not a colour at all but the from/to gradient.
-  const colorOf = (id) => {
-    const n = nodes.find(x => x.id === id)
-    return n?.data?.sunset ? SUNSET.border : (findService(n?.data || {})?.color || INK)
-  }
   const [confirmDelete, setConfirmDelete] = useState(false)
   // The Arrange button opens a small style menu instead of arranging directly.
   // Open menu holds the screen spot under the button. It is fixed, not absolute:
@@ -1278,20 +1252,6 @@ export function DetailView({
               )
             })}
           </div>
-        )}
-
-        {/* Format panel (right side), for a selected LINE only. A clicked card
-            lights its lines AND now opens the read-only card panel below
-            (owner rule 2026-10-08); a stored card style still renders, it is
-            just not edited here. */}
-        {canEdit && onEdgeStyleChange && selectedEdge && (
-          <FormatPanel
-            target="edge"
-            value={edgeStyleShown}
-            stroke={`linear-gradient(90deg, ${colorOf(selectedEdge.source)}, ${colorOf(selectedEdge.target)})`}
-            onChange={(style) => onEdgeStyleChange(selectedEdge.id, style)}
-            onReset={() => onEdgeStyleChange(selectedEdge.id, null)}
-          />
         )}
 
         {/* Card panel (right side): a clicked card's name, info, note and

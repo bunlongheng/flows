@@ -90,6 +90,7 @@ to drift:
 | `pinTooltip` | node | `true` | the tooltip stays visible above the card as a red callout (app and SVG); needs `tooltip` |
 | `style.head` | edge | `end` (default), `start`, `both`, `none` | arrowhead direction |
 | `style.bs` | edge | `solid` (default), `dashed`, `dotted` | dashed = interim or optional path |
+| `style.arrow` | edge | `step` (default), `curved`, `straight`, `brace` | line shape; `brace` is the mindmap split, a smooth S-curve. Lines with the same label leaving 1 side of a card already split as a brace by themselves, each branch with its own badge; set `brace` on lines into 1 card to get the same split instead of 1 merged trunk |
 | `panels` | `view_state` / MCP `view` | `arrows-off`, `legend-off`, `badge-x-off`, `tags-above` | hide arrowheads / the bottom-left legend / the red X on retiring badges (all on by default); `tags-above` lifts every badge just off its line so the arrowhead shows |
 | `fonts` | `view_state` / MCP `view` | `{ title, sub, tag }, each 8-22` px | text size for the whole diagram (default 12 / 10 / 8.5); send only what changes; the panel's 1 Text size slider scales all 3 together at those ratios |
 | `passcode` | HTTP `PATCH` only, owner | text, `""` clears | locks the share behind a passcode |
