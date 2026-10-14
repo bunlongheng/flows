@@ -4,7 +4,7 @@ import { getNoteHeight, subscribeNoteHeights, noteHeightsVersion, ShowArrowsCont
 import { subscribe, currentPhase, motionAllowed, dotAt, ambientAt } from '../flowClock'
 import { SUNSET, INK } from '../sunset.js'
 import { dashArray } from '../style.js'
-import { routeEdge, badgeShift, badgeBox, clearBadge, pointAlongPath, bendPoint, bendFor, isElbow, elbowFor, elbowHandle, nearestEnd, headsOf, markerSize, headPath, T_MIN, T_MAX, aboveShift } from '../edgeGeometry.js'
+import { routeEdge, badgeShift, badgeBox, clearBadge, pointAlongPath, pathLength, bendPoint, bendFor, isElbow, elbowFor, elbowHandle, nearestEnd, headsOf, markerSize, headPath, T_MIN, T_MAX, aboveShift } from '../edgeGeometry.js'
 import { laneGaps, isLaneNode } from '../lanes.js'
 import { tagText } from '../tag.js'
 import { EDGE_LABEL_MAX } from '../note.js'
@@ -134,11 +134,12 @@ function takenBefore(id, nodes, edges, tagFs) {
       })
       taken.push(...(r.legs || []))
       if (r.hideLabel || !(tagText(e.label, e.data?.description) || e.data?.step != null)) continue
-      jobs.push({ e, r, hand: typeof e.data?.labelT === 'number' })
+      jobs.push({ e, r, hand: typeof e.data?.labelT === 'number', len: pathLength(r.path) })
     }
-    // The owner's hand-slid badges first, so an auto badge clears all of them
-    // (render-svg.js places in the same order).
-    for (const { e, r, hand } of [...jobs.filter(j => j.hand), ...jobs.filter(j => !j.hand)]) {
+    // The owner's hand-slid badges first, then the auto badges shortest line
+    // first: a tag on a short line has nowhere to slide, so it takes its spot
+    // and the long line's tag moves (render-svg.js places in the same order).
+    for (const { e, r, hand } of [...jobs.filter(j => j.hand), ...jobs.filter(j => !j.hand).sort((a, b) => a.len - b.len)]) {
       const box = badgeBox(tagText(e.label, e.data?.description), true, tagFs)
       const at = hand
         ? pointAlongPath(r.path, Math.min(T_MAX, Math.max(T_MIN, e.data.labelT))) || { x: r.labelX, y: r.labelY }

@@ -1006,6 +1006,14 @@ export function badgeShift(off, w, h, lead = 0) {
 const NUM_RE = /-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?/gi
 const CURVE_STEPS = 24
 
+// How long a line is, from its flattened points. A tag on a short line has
+// nowhere to slide, so both doors place the auto badges shortest line first.
+export function pathLength(d) {
+  const pts = flattenPath(d)
+  let n = 0
+  for (let i = 1; i < pts.length; i++) n += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y)
+  return n
+}
 export function flattenPath(d) {
   const pts = []
   let cur = { x: 0, y: 0 }
@@ -1066,7 +1074,7 @@ export function pointAlongPath(d, t) {
 // first clear spot, so it still reads as that line's. A badge the owner slid
 // by hand stays put but counts as placed. The box is an estimate shared by the
 // canvas and the renderer, so both pick the same spot.
-const BADGE_GAP = 4
+const BADGE_GAP = 12 // 2 pills on neighbouring tracks must not read as a stack (owner 2026-10-14)
 // A tag's text size (view_state.fonts.tag, default 8.5) and the pill height it
 // needs: 17.5 at the default. Shared so the canvas, the export and the overlap
 // check agree on 1 box.
