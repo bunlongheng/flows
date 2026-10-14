@@ -644,14 +644,21 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
         const x = snapLine(sp2, sx, tp2, tx)
         if (x != null) { sx = x; tx = x; aligned = true }
       }
-      // Straight whenever it can be (owner rule 2026-10-14): 2 lone ends whose
-      // faces overlap meet on 1 shared line inside that overlap, nearest both
-      // middles, instead of taking a small elbow because the cards are not level.
-      if (!aligned && sp2.alone && tp2.alone && sH === tH && !isLane(sourceNode) && !isLane(targetNode)) {
-        const lo = Math.max(sp2.mid - sp2.half, tp2.mid - tp2.half) + EDGE_MARGIN
-        const hi = Math.min(sp2.mid + sp2.half, tp2.mid + tp2.half) - EDGE_MARGIN
+      // Straight whenever it can be (owner rule 2026-10-14): when the 2 faces
+      // overlap, both ends meet on 1 shared line. A lone end may go anywhere on
+      // its face; a shared slot only up to half a gap, so it never crosses its
+      // neighbour. Nearest both homes (a lone end's home is its middle).
+      if (!aligned && sH === tH && !isLane(sourceNode) && !isLane(targetNode)) {
+        const span = (p, cur) => {
+          const lo = p.mid - p.half + EDGE_MARGIN, hi = p.mid + p.half - EDGE_MARGIN
+          return p.alone ? [lo, hi] : [Math.max(lo, cur - p.gap / 2 + 2), Math.min(hi, cur + p.gap / 2 - 2)]
+        }
+        const sCur = sH ? sy : sx, tCur = sH ? ty : tx
+        const [sLo, sHi] = span(sp2, sCur), [tLo, tHi] = span(tp2, tCur)
+        const lo = Math.max(sLo, tLo), hi = Math.min(sHi, tHi)
         if (lo <= hi) {
-          const v = Math.min(hi, Math.max(lo, (sp2.mid + tp2.mid) / 2))
+          const home = ((sp2.alone ? sp2.mid : sCur) + (tp2.alone ? tp2.mid : tCur)) / 2
+          const v = Math.min(hi, Math.max(lo, home))
           if (sH) { sy = v; ty = v } else { sx = v; tx = v }
           aligned = true
         }
