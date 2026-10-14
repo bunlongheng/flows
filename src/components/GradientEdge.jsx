@@ -247,7 +247,7 @@ export function GradientEdge({
   const hit = useStore(s => 24 * 2 ** Math.max(0, Math.round(-Math.log2(s.transform[2] * 1.5) * 2) / 2))
 
   const sideways = side => side === 'left' || side === 'right'
-  const square = !['straight', 'curved', 'brace'].includes(data?.style?.arrow)
+  const square = !['straight', 'curved'].includes(data?.style?.arrow)
   const startBendDrag = (e, grabbed) => {
     if (!bendMovable || e.button !== 0) return
     e.stopPropagation()

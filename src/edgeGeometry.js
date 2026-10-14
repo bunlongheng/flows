@@ -483,20 +483,20 @@ export function nearestEnd(node, px, py) {
 // draw as one trunk. Into a card (end 't', fan-in): every member shares the
 // target's slot and a bus line halfway there, the leader (lowest id) strokes
 // the trunk and carries the badge, the rest stop where they meet the bus. Out
-// of a card (end 's', fan-out) it is a brace: every member leaves the 1
-// shared point on its own curve, with its own badge.
+// of a card (end 's', fan-out) it is a brace whatever the labels: every
+// member leaves the 1 shared point, with its own badge.
 // 5 apps posting to 1 relay read as 1 arrow with 1 "POST" on it, not 5 stacked
 // badges. A hand bent, pinned or arrow-styled line never joins: the owner
 // placed it. A "brace" line still joins, and its branch is a curve with its own badge.
 function fanAt(end, nodeId, node, id, tag, side, edges, nodeOf) {
-  if (!tag) return null
+  if (!tag && end === 't') return null
   const c = centerOf(node)
   const members = []
   for (const e of edges) {
     if ((end === 't' ? e.target : e.source) !== nodeId) continue
     const d = e.data || {}
     if (d.bend || d.ends?.s || d.ends?.t || (d.style?.arrow && d.style.arrow !== 'brace')) continue
-    if (tagText(e.label, d.description) !== tag) continue
+    if (end === 't' && tagText(e.label, d.description) !== tag) continue
     const farId = end === 't' ? e.source : e.target
     const far = nodeOf(farId)
     if (!far?.measured?.width || sideFor(c, centerOf(far)) !== side) continue
@@ -507,7 +507,7 @@ function fanAt(end, nodeId, node, id, tag, side, edges, nodeOf) {
   return { end, members, leader: members[0].id, ids: new Set(members.map(m => m.id)) }
 }
 
-// The mindmap split: an S-curve that leaves the source face level and arrives
+// The fallback brace when the square one is blocked: an S-curve that leaves the source face level and arrives
 // at the target level, so branches fanning from 1 point read as a brace.
 function braceCurve(sx, sy, tx, ty, vertical) {
   const h = vertical ? (ty - sy) / 2 : (tx - sx) / 2
@@ -523,10 +523,12 @@ function braceCurve(sx, sy, tx, ty, vertical) {
 function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacles, gaps, taken = [], g, arrow }) {
   const vertical = side === Position.Top || side === Position.Bottom
   const into = fan.end === 't'
-  // Out of a card (or into one, when the line asks for "brace") it is a brace:
-  // every branch is its own smooth curve to or from the 1 shared point, with
-  // its own badge halfway along.
-  if (!into || arrow === 'brace') {
+  // Out of a card (or into one, when the line asks for "brace") it is a brace
+  // (owner rule 2026-10-14): a straight stem to a bar halfway, then a straight
+  // leg per branch, each leg with its own badge. Halfway keeps it symmetric.
+  // A smooth curve only when the square brace has no clear way.
+  const brace = !into || arrow === 'brace'
+  const curve = () => {
     const path = braceCurve(sx, sy, tx, ty, vertical)
     if (!clearPolyline(flattenPath(path), obstacles)) return null
     const mid = pointAlongPath(path, 0.5)
@@ -552,8 +554,17 @@ function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacl
     if (clearPolyline([S, cs, ct, T], obstacles) && !onTaken([S, cs, ct, T], taken, g)) { bus = b; break }
   }
   const [Cs, Ct] = at(bus) // where the source's and the target's stems meet the bus
-  if (!clearPolyline([S, Cs, Ct, T], obstacles)) return null
+  if (!clearPolyline([S, Cs, Ct, T], obstacles)) return brace ? curve() : null
   const straight = vertical ? sx === tx : sy === ty
+  if (brace) {
+    const path = straight ? `M${S.x},${S.y} L${T.x},${T.y}` : roundedPath([S, Cs, Ct, T], 8)
+    // The badge sits on the leg this line does not share: into the target out
+    // of a card, out of the source into one.
+    const [lx, ly] = into
+      ? (vertical ? [sx, (sy + bus) / 2] : [(sx + bus) / 2, sy])
+      : (vertical ? [tx, (bus + ty) / 2] : [(bus + tx) / 2, ty])
+    return { path, drawPath: path, labelX: lx, labelYRaw: ly, hideArrow: false, own: true }
+  }
   const leader = fan.leader === id
   let path, drawPath, labelX, labelYRaw
   if (into) {
@@ -854,10 +865,6 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
     path = `M${sx},${sy} L${tx},${ty}`
     labelX = (sx + tx) / 2
     labelYRaw = (sy + ty) / 2
-  } else if (!bend && arrow === 'brace' && !trunk) {
-    path = braceCurve(sx, sy, tx, ty, sSide === Position.Top || sSide === Position.Bottom)
-    const mid = pointAlongPath(path, 0.5)
-    labelX = mid.x; labelYRaw = mid.y
   } else if (!bend && arrow === 'curved') {
     ;[path, labelX, labelYRaw] = getBezierPath({
       sourceX: sx, sourceY: sy, sourcePosition: sSide,
@@ -891,7 +898,7 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
   // hand-made line (bend, straight, curved) is the owner's call: it reserves nothing.
   // A square line the owner moved still holds its track, so the next line steps off it.
   const g = fan ? `fan:${fan.end}:${fan.leader}` : id
-  const legs = (bend && !isElbow(bend)) || arrow === 'straight' || arrow === 'curved' || arrow === 'brace' ? [] : pathLegs(drawPath || path).map(l => ({ ...l, g }))
+  const legs = (bend && !isElbow(bend)) || arrow === 'straight' || arrow === 'curved' ? [] : pathLegs(drawPath || path).map(l => ({ ...l, g }))
   return { legs, path, drawPath: drawPath || path, hideLabel, hideArrow, sx, sy, tx, ty, sSide, tSide, labelX, labelY, labelYRaw, labelOff }
 }
 

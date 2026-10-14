@@ -65,12 +65,12 @@ describe("routeEdge - trunk bus between swimlanes", () => {
 });
 
 describe("routeEdge - fan-out brace", () => {
-  // 1 source above 3 targets in a row, all saying the same thing: 1 point out, a curve and a badge per branch.
+  // 1 source above 3 targets in a row: 1 point out, a square brace, a badge per branch, labels or not alike.
   const fnodes = { v: node("v", 400, -600), a: node("a", 0, 0), b: node("b", 400, 0), c: node("c", 800, 0) };
   const fedges = [
     { id: "o-a", source: "v", target: "a", label: "opens" },
     { id: "o-b", source: "v", target: "b", label: "opens" },
-    { id: "o-c", source: "v", target: "c", label: "opens" },
+    { id: "o-c", source: "v", target: "c", label: "bills" },
   ];
   const out = (id, extra = {}) => {
     const e = fedges.find((x) => x.id === id);
@@ -79,34 +79,30 @@ describe("routeEdge - fan-out brace", () => {
       nodeOf: (k) => fnodes[k], edges: fedges, obstacles: [], nodeRects: [], label: e.label, ...extra,
     });
   };
-  it("leaves the source at 1 point, every branch carrying its own badge", () => {
+  it("leaves the source at 1 point, every branch carrying its own badge on its own leg", () => {
     const a = out("o-a"), b = out("o-b"), c = out("o-c");
     expect([b.sx, c.sx]).toEqual([a.sx, a.sx]);
     expect([a.sy, b.sy, c.sy]).toEqual([-420, -420, -420]); // the bottom face of v
     expect([a.hideLabel, b.hideLabel, c.hideLabel]).toEqual([false, false, false]);
-    expect(a.labelX).toBeLessThan(a.sx); // each badge sits on its own branch
-    expect(c.labelX).toBeGreaterThan(c.sx);
+    expect(a.labelX).toBe(a.tx); // on the leg into a
+    expect(c.labelX).toBe(c.tx);
   });
-  it("strokes every branch as 1 curve from the shared point to its card, arrowhead kept", () => {
+  it("draws square legs, no curve, the bar halfway between source and targets", () => {
     const c = out("o-c");
     expect(c.drawPath).toBe(c.path);
-    expect(c.drawPath.startsWith(`M${c.sx},${c.sy} C`)).toBe(true);
-    expect(c.drawPath.endsWith(`${c.tx},${c.ty}`)).toBe(true);
+    expect(c.path).not.toMatch(/ C/);
+    expect(c.path).toMatch(/,-210/); // halfway from -420 to 0
+    expect(c.drawPath.endsWith(`L${c.tx},${c.ty}`)).toBe(true);
     expect(c.hideArrow).toBe(false);
+  });
+  it("curves only when the square brace is blocked", () => {
+    const c = out("o-c", { obstacles: [{ x: 500, y: -260, w: 120, h: 100 }] });
+    expect(c.path).toMatch(/ C/);
   });
 });
 
 describe("routeEdge - brace line type", () => {
-  it("draws a lone brace line as 1 S-curve with its badge on it", () => {
-    const r = routeEdge({
-      id: "x", source: "a", target: "n", sourceNode: nodes.a, targetNode: nodes.n,
-      nodeOf: (k) => nodes[k], edges: [{ id: "x", source: "a", target: "n", label: "go", data: { style: { arrow: "brace" } } }],
-      obstacles: [], nodeRects: [], label: "go", arrow: "brace",
-    });
-    expect(r.path).toMatch(/^M[^ ]+ C/);
-    expect(r.hideLabel).toBe(false);
-  });
-  it("splits brace lines into 1 card as curves, each keeping its badge", () => {
+  it("splits brace lines into 1 card as a square brace, each keeping its badge", () => {
     const be = edges.map((e) => (e.label === "POST" ? { ...e, data: { style: { arrow: "brace" } } } : e));
     const r = (id) => {
       const e = be.find((x) => x.id === id);
@@ -119,6 +115,6 @@ describe("routeEdge - brace line type", () => {
     expect(b.tx).toBe(a.tx); // 1 shared point on the target
     expect([a.hideLabel, b.hideLabel]).toEqual([false, false]);
     expect(b.drawPath).toBe(b.path);
-    expect(b.path).toMatch(/ C/);
+    expect(a.path).not.toMatch(/ C/);
   });
 });
