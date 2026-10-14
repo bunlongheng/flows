@@ -601,8 +601,8 @@ function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacl
   if (!clearPolyline([S, Cs, Ct, T], obstacles)) return brace ? curve() : null
   const straight = vertical ? sx === tx : sy === ty
   if (brace) {
-    // Sharp square corners, a real brace: never rounded (owner 2026-10-14).
-    const path = straight ? `M${S.x},${S.y} L${T.x},${T.y}` : `M${S.x},${S.y} L${Cs.x},${Cs.y} L${Ct.x},${Ct.y} L${T.x},${T.y}`
+    // A curly brace: straight runs joined by small rounded turns, like { (owner 2026-10-14).
+    const path = straight ? `M${S.x},${S.y} L${T.x},${T.y}` : roundedPath([S, Cs, Ct, T], 8)
     // The badge sits on the leg this line does not share: into the target out
     // of a card, out of the source into one.
     const [lx, ly] = into
@@ -610,7 +610,7 @@ function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacl
       : (vertical ? [tx, (bus + ty) / 2] : [(bus + tx) / 2, ty])
     // The shared stem is stroked once, by the leader, so 2 colours never stack on it.
     const drawPath = straight || fan.leader === id ? path
-      : into ? `M${S.x},${S.y} L${Cs.x},${Cs.y} L${Ct.x},${Ct.y}` : `M${Cs.x},${Cs.y} L${Ct.x},${Ct.y} L${T.x},${T.y}`
+      : into ? roundedPath([S, Cs, Ct], 8) : roundedPath([Cs, Ct, T], 8)
     return { path, drawPath, labelX: lx, labelYRaw: ly, hideArrow: into && fan.leader !== id && !straight, own: true }
   }
   const leader = fan.leader === id

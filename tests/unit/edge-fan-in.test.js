@@ -91,7 +91,8 @@ describe("routeEdge - fan-out brace", () => {
     const c = out("o-c");
     expect(out("o-a").drawPath).toBe(out("o-a").path); // the leader strokes the stem
     expect(c.drawPath.startsWith(`M${c.sx},${c.sy}`)).toBe(false); // a follower starts at the bar
-    expect(c.path).not.toMatch(/[CQ]/); // sharp corners, no curve anywhere
+    expect(c.path).not.toMatch(/ C/); // rounded turns only, never an S-curve
+    expect(c.path).toMatch(/Q/);
     expect(c.path).toMatch(/,-210/); // halfway from -420 to 0
     expect(c.drawPath.endsWith(`L${c.tx},${c.ty}`)).toBe(true);
     expect(c.hideArrow).toBe(false);
@@ -135,7 +136,7 @@ describe("routeEdge - brace line type", () => {
     expect(b.tx).toBe(a.tx); // 1 shared point on the target
     expect([a.hideLabel, b.hideLabel]).toEqual([false, false]);
     expect(a.drawPath).toBe(a.path);
-    expect(a.path).not.toMatch(/[CQ]/);
+    expect(a.path).not.toMatch(/ C/);
   });
 });
 
@@ -158,6 +159,6 @@ describe("routeEdge - a card wholly to 1 side joins that brace", () => {
     expect(c.sy).toBe(a.sy);
     expect(c.tx).toBe(325); // c's left face
     expect(c.hideLabel).toBe(false);
-    expect(c.path).not.toMatch(/[CQ]/);
+    expect(c.path).not.toMatch(/ C/);
   });
 });
