@@ -549,7 +549,7 @@ function beyond(node, far, side) {
   return b.y + far.measured.height <= a.y
 }
 
-// The fallback brace when the square one is blocked: an S-curve that leaves the source face level and arrives
+// A brace branch: an S-curve that leaves the source face level and arrives
 // at the target level, so branches fanning from 1 point read as a brace.
 function braceCurve(sx, sy, tx, ty, vertical) {
   const h = vertical ? (ty - sy) / 2 : (tx - sx) / 2
@@ -566,15 +566,17 @@ function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacl
   const vertical = side === Position.Top || side === Position.Bottom
   const into = fan.end === 't'
   // Out of a card (or into one, when the line asks for "brace") it is a brace
-  // (owner rule 2026-10-14): a straight stem to a bar halfway, then a straight
-  // leg per branch, each leg with its own badge. Halfway keeps it symmetric.
-  // A smooth curve only when the square brace has no clear way.
+  // (owner rule 2026-10-14, the mindmap look): every branch is its own smooth
+  // curve from the 1 shared point, each with its own badge. When a curve would
+  // cut through a card, a curly square brace instead: a stem to a bar halfway,
+  // a leg per branch, small rounded turns.
   const brace = !into || arrow === 'brace'
-  const curve = () => {
+  if (brace && (vertical ? sx !== tx : sy !== ty)) {
     const path = braceCurve(sx, sy, tx, ty, vertical)
-    if (!clearPolyline(flattenPath(path), obstacles)) return null
-    const mid = pointAlongPath(path, 0.5)
-    return { path, drawPath: path, labelX: mid.x, labelYRaw: mid.y, hideArrow: false, own: true }
+    if (clearPolyline(flattenPath(path), obstacles)) {
+      const mid = pointAlongPath(path, 0.5)
+      return { path, drawPath: path, labelX: mid.x, labelYRaw: mid.y, hideArrow: false, own: true }
+    }
   }
   // The far ends' slots, so the bus sits halfway between the shared face and them.
   const fars = fan.members.map(m => attachPoint(nodeOf(m.far), m.far, node, m.id, edges, nodeOf))
@@ -598,7 +600,7 @@ function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacl
   const [Cs, Ct] = at(bus) // where the source's and the target's stems meet the bus
   // The bar has to sit before every far end, or a branch runs past its card and back.
   if (brace && fars.some(p => (bus - shared) * ((vertical ? p.y : p.x) - bus) <= 0)) return null
-  if (!clearPolyline([S, Cs, Ct, T], obstacles)) return brace ? curve() : null
+  if (!clearPolyline([S, Cs, Ct, T], obstacles)) return null
   const straight = vertical ? sx === tx : sy === ty
   if (brace) {
     // A curly brace: straight runs joined by small rounded turns, like { (owner 2026-10-14).

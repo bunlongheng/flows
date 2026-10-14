@@ -84,19 +84,22 @@ describe("routeEdge - fan-out brace", () => {
     expect([b.sx, c.sx]).toEqual([a.sx, a.sx]);
     expect([a.sy, b.sy, c.sy]).toEqual([-420, -420, -420]); // the bottom face of v
     expect([a.hideLabel, b.hideLabel, c.hideLabel]).toEqual([false, false, false]);
-    expect(a.labelX).toBe(a.tx); // on the leg into a
-    expect(c.labelX).toBe(c.tx);
+    expect(a.labelX).toBeLessThan(a.sx); // each badge on its own branch
+    expect(c.labelX).toBeGreaterThan(c.sx);
   });
-  it("draws square legs, no curve, the bar halfway between source and targets", () => {
+  it("draws every branch as its own smooth curve from the shared point, arrowhead kept", () => {
     const c = out("o-c");
-    expect(out("o-a").drawPath).toBe(out("o-a").path); // the leader strokes the stem
-    expect(c.drawPath.startsWith(`M${c.sx},${c.sy}`)).toBe(false); // a follower starts at the bar
-    expect(c.path).not.toMatch(/ C/); // rounded turns only, never an S-curve
-    expect(c.path).toMatch(/Q/);
-    expect(c.path).toMatch(/,-210/); // halfway from -420 to 0
-    expect(c.drawPath.endsWith(`L${c.tx},${c.ty}`)).toBe(true);
+    expect(c.drawPath).toBe(c.path);
+    expect(c.path.startsWith(`M${c.sx},${c.sy} C`)).toBe(true);
+    expect(c.path.endsWith(`${c.tx},${c.ty}`)).toBe(true);
     expect(c.hideArrow).toBe(false);
   });
+  it("falls back to a curly square brace when a curve would cut a card", () => {
+    // A card right under the source blocks the curve's first stretch toward c, not the square stem.
+    const c = out("o-c", { obstacles: [{ x: 560, y: -380, w: 140, h: 120 }] });
+    expect(c.path).not.toMatch(/ C/);
+  });
+
 });
 
 describe("routeEdge - mixed-label pair", () => {
@@ -114,7 +117,7 @@ describe("routeEdge - mixed-label pair", () => {
     const a = go(pe, "p1"), c = go(pe, "p2");
     expect(c.sx).toBe(a.sx);
     expect([a.hideLabel, c.hideLabel]).toEqual([false, false]);
-    expect(c.path).not.toMatch(/ C/);
+    expect(c.path).toMatch(/ C/);
   });
   it("leaves a pair alone when 1 target sits level with the card", () => {
     const pe = [{ id: "p1", source: "v", target: "b", label: "plan" }, { id: "p2", source: "v", target: "c", label: "bill" }];
@@ -136,7 +139,7 @@ describe("routeEdge - brace line type", () => {
     expect(b.tx).toBe(a.tx); // 1 shared point on the target
     expect([a.hideLabel, b.hideLabel]).toEqual([false, false]);
     expect(a.drawPath).toBe(a.path);
-    expect(a.path).not.toMatch(/ C/);
+    expect(a.path).toMatch(/ C/);
   });
 });
 
@@ -159,6 +162,6 @@ describe("routeEdge - a card wholly to 1 side joins that brace", () => {
     expect(c.sy).toBe(a.sy);
     expect(c.tx).toBe(325); // c's left face
     expect(c.hideLabel).toBe(false);
-    expect(c.path).not.toMatch(/ C/);
+    expect(c.path).toMatch(/ C/);
   });
 });
