@@ -89,8 +89,9 @@ describe("routeEdge - fan-out brace", () => {
   });
   it("draws square legs, no curve, the bar halfway between source and targets", () => {
     const c = out("o-c");
-    expect(c.drawPath).toBe(c.path);
-    expect(c.path).not.toMatch(/ C/);
+    expect(out("o-a").drawPath).toBe(out("o-a").path); // the leader strokes the stem
+    expect(c.drawPath.startsWith(`M${c.sx},${c.sy}`)).toBe(false); // a follower starts at the bar
+    expect(c.path).not.toMatch(/[CQ]/); // sharp corners, no curve anywhere
     expect(c.path).toMatch(/,-210/); // halfway from -420 to 0
     expect(c.drawPath.endsWith(`L${c.tx},${c.ty}`)).toBe(true);
     expect(c.hideArrow).toBe(false);
@@ -133,7 +134,30 @@ describe("routeEdge - brace line type", () => {
     const a = r("e-a"), b = r("e-b");
     expect(b.tx).toBe(a.tx); // 1 shared point on the target
     expect([a.hideLabel, b.hideLabel]).toEqual([false, false]);
-    expect(b.drawPath).toBe(b.path);
-    expect(a.path).not.toMatch(/ C/);
+    expect(a.drawPath).toBe(a.path);
+    expect(a.path).not.toMatch(/[CQ]/);
+  });
+});
+
+describe("routeEdge - a card wholly to 1 side joins that brace", () => {
+  // Like Integry: 2 cards to the right, a 3rd below-right, and 1 more straight below.
+  const n = { s: node("s", 0, 0), a: node("a", 325, -111), b: node("b", 325, 111), c: node("c", 325, 390), d: node("d", -350, 650) };
+  const ed = [
+    { id: "a1", source: "s", target: "a", label: "sync" },
+    { id: "a2", source: "s", target: "b", label: "sync" },
+    { id: "a3", source: "s", target: "c", label: "sync, duplicates" },
+    { id: "a4", source: "s", target: "d", label: "record" },
+  ];
+  const go = (id) => {
+    const e = ed.find((x) => x.id === id);
+    return routeEdge({ id, source: "s", target: e.target, sourceNode: n.s, targetNode: n[e.target], nodeOf: (k) => n[k], edges: ed, obstacles: [], nodeRects: [], label: e.label });
+  };
+  it("takes c into the right-side brace, entering its left face, sharp corners", () => {
+    const a = go("a1"), c = go("a3");
+    expect(c.sx).toBe(a.sx); // the shared point on the right face
+    expect(c.sy).toBe(a.sy);
+    expect(c.tx).toBe(325); // c's left face
+    expect(c.hideLabel).toBe(false);
+    expect(c.path).not.toMatch(/[CQ]/);
   });
 });

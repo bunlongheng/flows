@@ -501,15 +501,52 @@ function fanAt(end, nodeId, node, id, tag, side, edges, nodeOf) {
     if (end === 't' && !same) continue
     const farId = end === 't' ? e.source : e.target
     const far = nodeOf(farId)
-    if (!far?.measured?.width || sideFor(c, centerOf(far)) !== side) continue
-    members.push({ id: e.id, far: farId, same, along: side === Position.Left || side === Position.Right ? centerOf(far).y - c.y : centerOf(far).x - c.x })
+    if (!far?.measured?.width) continue
+    const natural = sideFor(c, centerOf(far)) === side
+    if (end === 't' ? !natural : outSide(e, node, nodeId, edges, nodeOf) !== side) continue
+    members.push({ id: e.id, far: farId, same, natural, along: side === Position.Left || side === Position.Right ? centerOf(far).y - c.y : centerOf(far).x - c.x })
   }
-  if (members.length < 2 || !members.some(m => m.id === id)) return null
-  // Different labels brace only as a pair that straddles the card: 1 target
-  // on each side of the shared point, the symmetric split (owner 2026-10-14).
-  if (!(tag && members.every(m => m.same)) && !(members.length === 2 && members[0].along * members[1].along < 0 && members.every(m => Math.abs(m.along) > 40))) return null
-  members.sort((a, b) => (a.id < b.id ? -1 : 1))
+  if (members.length < 2 || !members.some(m => m.id === id) || !members.some(m => m.natural)) return null
+  // Different labels brace only when the targets clearly straddle the card,
+  // some on each side of the shared point: the symmetric split (owner 2026-10-14).
+  const alongs = members.map(m => m.along)
+  if (!(tag && members.every(m => m.same)) && !(Math.min(...alongs) < -40 && Math.max(...alongs) > 40)) return null
+  // The leader anchors the shared point, so it is one that faces this side.
+  members.sort((a, b) => (a.natural !== b.natural ? (a.natural ? -1 : 1) : a.id < b.id ? -1 : 1))
   return { end, members, leader: members[0].id, ids: new Set(members.map(m => m.id)) }
+}
+
+// The face a line leaves its card by when it may join a brace: its natural
+// side, unless its target lies wholly past another face that already has at
+// least as many lines leaving it (its own count includes this line). Then it joins that bigger brace (owner 2026-10-14).
+const SIDES = [Position.Right, Position.Left, Position.Bottom, Position.Top]
+function outSide(e, node, nodeId, edges, nodeOf) {
+  const c = centerOf(node), counts = {}
+  const natOf = x => { const f = nodeOf(x.target); return f?.measured?.width ? sideFor(c, centerOf(f)) : null }
+  for (const x of edges) {
+    const d = x.data || {}
+    if (x.source !== nodeId || d.bend || d.ends?.s || d.ends?.t || (d.style?.arrow && d.style.arrow !== 'brace')) continue
+    const s = natOf(x)
+    if (s) counts[s] = (counts[s] || 0) + 1
+  }
+  const nat = natOf(e), far = nodeOf(e.target)
+  if (!nat || !far) return nat
+  let best = nat
+  for (const alt of SIDES) {
+    const n = counts[alt] || 0
+    if (alt === nat || !beyond(node, far, alt) || n < 2 || n < (counts[nat] || 0)) continue
+    if (best === nat || n > counts[best]) best = alt
+  }
+  return best
+}
+
+// Does `far` lie wholly past `node`'s `side` face?
+function beyond(node, far, side) {
+  const a = node.internals.positionAbsolute, b = far.internals.positionAbsolute
+  if (side === Position.Right) return b.x >= a.x + node.measured.width
+  if (side === Position.Left) return b.x + far.measured.width <= a.x
+  if (side === Position.Bottom) return b.y >= a.y + node.measured.height
+  return b.y + far.measured.height <= a.y
 }
 
 // The fallback brace when the square one is blocked: an S-curve that leaves the source face level and arrives
@@ -564,13 +601,17 @@ function trunkPath({ fan, id, sx, sy, tx, ty, side, node, edges, nodeOf, obstacl
   if (!clearPolyline([S, Cs, Ct, T], obstacles)) return brace ? curve() : null
   const straight = vertical ? sx === tx : sy === ty
   if (brace) {
-    const path = straight ? `M${S.x},${S.y} L${T.x},${T.y}` : roundedPath([S, Cs, Ct, T], 8)
+    // Sharp square corners, a real brace: never rounded (owner 2026-10-14).
+    const path = straight ? `M${S.x},${S.y} L${T.x},${T.y}` : `M${S.x},${S.y} L${Cs.x},${Cs.y} L${Ct.x},${Ct.y} L${T.x},${T.y}`
     // The badge sits on the leg this line does not share: into the target out
     // of a card, out of the source into one.
     const [lx, ly] = into
       ? (vertical ? [sx, (sy + bus) / 2] : [(sx + bus) / 2, sy])
       : (vertical ? [tx, (bus + ty) / 2] : [(bus + tx) / 2, ty])
-    return { path, drawPath: path, labelX: lx, labelYRaw: ly, hideArrow: false, own: true }
+    // The shared stem is stroked once, by the leader, so 2 colours never stack on it.
+    const drawPath = straight || fan.leader === id ? path
+      : into ? `M${S.x},${S.y} L${Cs.x},${Cs.y} L${Ct.x},${Ct.y}` : `M${Cs.x},${Cs.y} L${Ct.x},${Ct.y} L${T.x},${T.y}`
+    return { path, drawPath, labelX: lx, labelYRaw: ly, hideArrow: into && fan.leader !== id && !straight, own: true }
   }
   const leader = fan.leader === id
   let path, drawPath, labelX, labelYRaw
@@ -617,7 +658,21 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
     // not counted, so all of them meet the target at the one point.
     if (!bend && !endS && !endT && (!arrow || arrow === 'brace')) {
       const tag = tagText(label, description)
-      fan = fanAt('t', target, targetNode, id, tag, tSide, edges, nodeOf) || fanAt('s', source, sourceNode, id, tag, sSide, edges, nodeOf)
+      const self = edges.find(e => e.id === id)
+      const home = self ? outSide(self, sourceNode, source, edges, nodeOf) : sSide
+      fan = fanAt('t', target, targetNode, id, tag, tSide, edges, nodeOf) || fanAt('s', source, sourceNode, id, tag, home || sSide, edges, nodeOf)
+      // A line that joined another face's brace: its leg enters the target's
+      // facing side, straight on.
+      {
+        const alt = home
+        if (fan && fan.end === 's' && alt && alt !== sSide) {
+          const into = { [Position.Right]: Position.Left, [Position.Left]: Position.Right, [Position.Bottom]: Position.Top, [Position.Top]: Position.Bottom }[alt]
+          const p = targetNode.internals.positionAbsolute, w = targetNode.measured.width, h = targetNode.measured.height
+          tSide = into
+          tx = into === Position.Left ? p.x : into === Position.Right ? p.x + w : p.x + w / 2
+          ty = into === Position.Top ? p.y : into === Position.Bottom ? p.y + h : p.y + h / 2
+        }
+      }
       if (fan) {
         const kept = edges.filter(e => e.id === fan.leader || !fan.ids.has(e.id))
         const lead = fan.members[0]
