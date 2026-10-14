@@ -647,7 +647,7 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
       // Straight whenever it can be (owner rule 2026-10-14): 2 lone ends whose
       // faces overlap meet on 1 shared line inside that overlap, nearest both
       // middles, instead of taking a small elbow because the cards are not level.
-      if (!aligned && sp2.alone && tp2.alone && sH === tH) {
+      if (!aligned && sp2.alone && tp2.alone && sH === tH && !isLane(sourceNode) && !isLane(targetNode)) {
         const lo = Math.max(sp2.mid - sp2.half, tp2.mid - tp2.half) + EDGE_MARGIN
         const hi = Math.min(sp2.mid + sp2.half, tp2.mid + tp2.half) - EDGE_MARGIN
         if (lo <= hi) {
