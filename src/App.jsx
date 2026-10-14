@@ -1517,6 +1517,15 @@ export default function App() {
     return `${t}-${now.toISOString().slice(0, 10)}-${now.toTimeString().slice(0, 5).replace(':', '-')}.${ext}`
   }
 
+  // HD downloads (owner 2026-10-14): a fitted canvas is only as wide as the
+  // window, so a fixed 2x left a large diagram's text unreadable. Scale until the
+  // picture is at least 4000 px wide, between 2x and 6x, and keep both sides under
+  // the 16384 px a browser canvas can hold.
+  function hdRatio(el) {
+    const w = el.clientWidth || 1, h = el.clientHeight || 1
+    return Math.max(1, Math.min(6, Math.max(2, 4000 / w), 16000 / w, 16000 / h))
+  }
+
   function exportPng() {
     const el = document.querySelector('.react-flow')
     if (!el) return
@@ -1526,7 +1535,7 @@ export default function App() {
       .then(() => import('html-to-image'))
       .then(({ toPng }) => toPng(el, {
         backgroundColor: '#ffffff',
-        pixelRatio: 2,
+        pixelRatio: hdRatio(el),
         filter: node => !(node.classList && node.classList.contains('react-flow__background')),
       }))
       .then(url => {
@@ -1555,7 +1564,7 @@ export default function App() {
     if (!el) return
     return new Promise(r => setTimeout(r, 300))
       .then(() => import('html-to-image'))
-      .then(({ toCanvas }) => toCanvas(el, { ...captureOpts, pixelRatio: 2 }))
+      .then(({ toCanvas }) => toCanvas(el, { ...captureOpts, pixelRatio: hdRatio(el) }))
       .then(canvas => new Promise(res => canvas.toBlob(res, 'image/webp', 0.92)))
       .then(blob => {
         if (!blob) throw new Error('webp unsupported')
