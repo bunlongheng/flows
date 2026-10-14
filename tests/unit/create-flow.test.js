@@ -292,6 +292,15 @@ describe("POST /api/ai/flows - pattern and description", () => {
     process.env.OWNER_USER_ID = orig.o;
   });
 
+  it("accepts view and public as aliases of view_state and is_public", async () => {
+    const res = mockRes();
+    await createFlow(good(`Bearer ${SECRET}`, { ...VALID_BODY, view: { panels: ["steps"] }, public: true }), res);
+    expect(res.statusCode).toBe(201);
+    const args = query.mock.calls[1][1];
+    expect(args[7]).toBe(true);
+    expect(JSON.parse(args[10])).toEqual({ panels: ["steps"] });
+  });
+
   it("stores both, trimmed and bounded", async () => {
     const res = mockRes();
     await createFlow(good(`Bearer ${SECRET}`, { ...VALID_BODY, pattern: "  Fan-out on write  ", description: "x".repeat(700) }), res);
@@ -301,6 +310,13 @@ describe("POST /api/ai/flows - pattern and description", () => {
     expect(args[9]).toHaveLength(600);
   });
 
+  it("stores layout in view_state", async () => {
+    const res = mockRes();
+    await createFlow(good(`Bearer ${SECRET}`, { ...VALID_BODY, view_state: { layout: { box: 1.5, gap: 1 } } }), res);
+    expect(res.statusCode).toBe(201);
+    expect(JSON.parse(query.mock.calls[1][1][10])).toEqual({ layout: { box: 1.5 } });
+  });
+
   it("stores null when they are absent or blank", async () => {
     const res = mockRes();
     await createFlow(good(`Bearer ${SECRET}`, { ...VALID_BODY, pattern: "   " }), res);
@@ -308,13 +324,6 @@ describe("POST /api/ai/flows - pattern and description", () => {
     const args = query.mock.calls[1][1];
     expect(args[8]).toBeNull();
     expect(args[9]).toBeNull();
-  });
-
-  it("stores layout in view_state", async () => {
-    const res = mockRes();
-    await createFlow(good(`Bearer ${SECRET}`, { ...VALID_BODY, view_state: { layout: { box: 1.5, gap: 1 } } }), res);
-    expect(res.statusCode).toBe(201);
-    expect(JSON.parse(query.mock.calls[1][1][10])).toEqual({ layout: { box: 1.5 } });
   });
 });
 
