@@ -94,6 +94,15 @@ to drift:
 | placement | node `x`/`y` | - | the router draws lines; the agent places cards. For a fan-out, stack the targets in 1 column past the source and centre them on it: 2 targets the same distance above and below, 3 with the middle one level (straight leg). A target wholly past a side joins that side's brace when that side already has at least as many lines. A brace is smooth curves from 1 shared point, like a mindmap; a curly square brace only when a curve would cut a card |
 | `panels` | `view_state` / MCP `view` | `steps`, `share`, `code`, `notes-off`, `arrows-off`, `legend-off`, `badge-x-off`, `tags-above` | numbered chip on every line / open the Share panel / open the Code panel / hide notes / hide arrowheads / hide the bottom-left legend / hide the red X on retiring badges (the 4 `-off` flags are on by default) / lift every badge just off its line |
 | `fonts` | `view_state` / MCP `view` | `{ title, sub, tag }, each 8-22` px | text size for the whole diagram (default 12 / 10 / 8.5); send only what changes; the panel's 1 Text size slider scales all 3 together at those ratios |
+| `layout` | `view_state` / MCP `view` | `{ box 0.6-2, gap 0.6-3, vgap 0.6-3 }` | scales every card / spreads cards across / down; default 1, stored positions stay unscaled |
+| `sizing` | `view_state` / MCP `view` | `match`, `auto`, `custom` | how big cards draw for the whole diagram: default square / bigger per line / each node `size` |
+| `badge` | `view_state` / MCP `view` | `dark` (default), `silver`, `color`, `plain` | how a step chip is painted |
+| `current` | `view_state` / MCP `view` | `{ speed 0.5-2, amount 20-5000 }` | the flowing current: speed and total dots across the diagram; default 1x / 20 |
+| `lanes` | `view_state` / MCP `lanes` | rows `y/h`, columns `x/w`, or free panels, `sections?` | swimlane bands under the cards; 1 kind per diagram, max 24 |
+| `async` | edge | `true` | fires on the same beat as the line before it (a fan-out) |
+| `description` | edge | text, max 300 | the tag reads it when there is no label; hover shows all; not in the SVG |
+| `style.opacity` | node, edge | `0-100` | transparency of the card or line |
+| `iconFrame` | node | `true` | 1 px grey frame around the icon tile, for a PNG with a white edge |
 | `passcode` | HTTP `PATCH` only, owner | text, `""` clears | locks the share behind a passcode |
 
 Node fields go through `create_flow` / `update_flow` (whole `nodes` list) or
