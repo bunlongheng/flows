@@ -517,8 +517,8 @@ function fanAt(end, nodeId, node, id, tag, side, edges, nodeOf) {
 }
 
 // The face a line leaves its card by when it may join a brace: its natural
-// side, unless its target lies wholly past another face that already has more
-// lines leaving it. Then it joins that bigger brace (owner 2026-10-14).
+// side, unless its target lies wholly past another face that already has at
+// least as many lines leaving it (its own count includes this line). Then it joins that bigger brace (owner 2026-10-14).
 const SIDES = [Position.Right, Position.Left, Position.Bottom, Position.Top]
 function outSide(e, node, nodeId, edges, nodeOf) {
   const c = centerOf(node), counts = {}
@@ -533,7 +533,7 @@ function outSide(e, node, nodeId, edges, nodeOf) {
   const far = nodeOf(e.target)
   if (!best || !far) return best
   for (const alt of SIDES) {
-    if (alt !== best && beyond(node, far, alt) && (counts[alt] || 0) >= 2 && counts[alt] > (counts[best] || 0)) best = alt
+    if (alt !== best && beyond(node, far, alt) && (counts[alt] || 0) >= 2 && counts[alt] >= (counts[best] || 0)) best = alt
   }
   return best
 }
