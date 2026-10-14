@@ -105,4 +105,10 @@ describe("renderDiagramSvg - saved view", () => {
     expect(renderDiagramSvg(lv, EDGES, { view: { level: 3 } })).toContain(">Lambda</text>");
     expect(renderDiagramSvg(NODES, EDGES)).toBe(renderDiagramSvg(NODES.map((n) => ({ ...n })), EDGES));
   });
+
+  it("draws a level view below the top bigger", () => {
+    const lv = [{ ...NODES[0], level: 1 }, { ...NODES[1], level: 1 }, { ...NODES[2], level: 3 }];
+    expect(renderDiagramSvg(lv, EDGES, { view: { level: 3 } })).toContain('<rect width="180" height="180"');
+    expect(renderDiagramSvg(lv, EDGES, { view: { level: 1 } })).toContain('<rect width="234" height="234"');
+  });
 });

@@ -1,5 +1,6 @@
 import * as dagre from '@dagrejs/dagre'
 import { findService } from './services.js'
+import { layoutFanOut } from './layoutFan.js'
 
 // Real node cards are ~150w x ~100h; pad them so dagre leaves room for the
 // edge labels that sit BETWEEN nodes.
@@ -94,6 +95,26 @@ export function layoutElements(nodes, edges, { rankdir = 'LR', canvas } = {}) {
   if (!tucked.size) return plain.nodes
   const styled = buildLayout(nodes, edges, rankdir, cv, tucked)
   return styled.scale >= plain.scale * STYLE_TOLERANCE ? styled.nodes : plain.nodes
+}
+
+// A C4 level view has no stored positions, so it is laid out on open and the
+// only thing that matters is how big the cards end up: the fan stacks a level's
+// disconnected trees top to bottom, dagre stacks a wide fan-out, and either can
+// be the tall one. Both are built and the one that fits the canvas bigger wins.
+export function layoutFit(nodes, edges, canvas) {
+  const cv = canvas ?? DEFAULT_CANVAS
+  const dag = layoutElements(nodes, edges, { canvas: cv })
+  const fan = layoutFanOut(nodes, edges)
+  // Plain bounding box: a level view draws no Start pill, so no marker pad.
+  const fit = laid => {
+    const xs = [], ys = []
+    laid.forEach(n => {
+      const w = n.data?.size?.w ?? (n.data?.image ? IMG_W : NODE_W), h = n.data?.size?.h ?? (n.data?.image ? IMG_H : NODE_H)
+      xs.push(n.position.x, n.position.x + w); ys.push(n.position.y, n.position.y + h)
+    })
+    return Math.min(cv.width / (Math.max(...xs) - Math.min(...xs)), cv.height / (Math.max(...ys) - Math.min(...ys)))
+  }
+  return fan.length && fit(fan) > fit(dag) ? fan : dag
 }
 
 // ─── Build ────────────────────────────────────────────────────────────────────

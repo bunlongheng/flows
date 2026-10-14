@@ -96,6 +96,10 @@ export const LEVEL_NAMES = { 1: 'Context', 2: 'Container', 3: 'Component', 4: 'C
 export const cleanLevel = (v) => LEVELS.includes(v) ? { level: v } : {};
 export const levelsOf = (nodes) => LEVELS.filter((l) => (nodes || []).some((n) => n?.level === l));
 export const levelOf = (v, nodes) => { const ls = levelsOf(nodes); if (ls.length < 2) return null; return ls.includes(v?.level) ? v.level : ls[0]; };
+// A level view shows fewer cards, so everything draws bigger: 1 step below the
+// top is 1.3x, then 1.6x, 1.9x (owner 2026-10-14).
+export const LEVEL_SCALES = [1, 1.3, 1.6, 1.9];
+export const levelScale = (levels, shown) => { if (shown == null || levels.length < 2) return 1; const d = levels.length - 1 - levels.indexOf(shown); return LEVEL_SCALES[Math.max(0, Math.min(3, d))]; };
 export const atLevel = (nodes, edges, level) => {
   if (level == null) return { nodes, edges };
   const kept = (nodes || []).filter((n) => !LEVELS.includes(n.level) || n.level <= level);

@@ -480,5 +480,15 @@ describe("current panel", () => {
       expect(canvasHas("ctx")).toBe(true);
       expect(canvasHas("svc")).toBe(false);
     });
+
+    it("draws a level view 1.3x bigger and not draggable, the top view as is", () => {
+      setup({ nodes, level: 1 });
+      const low = document.querySelector('.react-flow__node[data-id="ctx"]');
+      expect(low.innerHTML).toContain("width: 234px");
+      expect(low.classList.contains("draggable")).toBe(false);
+      cleanup();
+      setup({ nodes, level: 2 });
+      expect(document.querySelector('.react-flow__node[data-id="ctx"]').innerHTML).toContain("width: 180px");
+    });
   });
 });

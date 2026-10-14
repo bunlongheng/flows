@@ -7,7 +7,8 @@ import diagramData from '../data/diagram.json'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { nodeTypes } from '../components/AwsNode'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, ShowArrowsContext, ShowBadgeXContext, TagsAboveContext, FontsContext } from '../components/noteEditContext'
-import { fontsOf, levelsOf, atLevel, LEVEL_NAMES } from '../view-state.js'
+import { fontsOf, levelsOf, atLevel, levelScale, LEVEL_NAMES } from '../view-state.js'
+import { layoutFit } from '../layout'
 import { Legend } from '../components/Legend'
 import { legendRows } from '../legend.js'
 import { edgeTypes } from '../components/GradientEdge'
@@ -350,6 +351,38 @@ export function DetailView({
   const active = levels.includes(level) ? level : (levels[0] ?? null)
   const shown = levels.length >= 2 ? active : null
   const atShown = useMemo(() => atLevel(nodes, edges, shown), [nodes, edges, shown])
+  // A level below the top is auto-laid out and scaled up; swimlanes only filter.
+  const hasLanes = (activeDiagram?.view_state?.lanes || []).length > 0 || nodes.some(n => n.type === 'lane' || n.type === 'laneGrips' || n.type === 'laneEnd')
+  const scale = hasLanes ? 1 : levelScale(levels, shown)
+  const levelView = shown != null && scale !== 1
+  // A card's scaled `data` is cached by its source data and the scale, so a
+  // card whose data did not change keeps the SAME object: AwsNode is memoised
+  // on it, and its note effect re-publishes on every render, which re-renders
+  // App - a new object every time would loop. The layout reads the stored
+  // size, never the measured (already scaled) one, so positions scale once.
+  // layoutFit picks dagre or the fan, whichever fits the window bigger.
+  const scaledData = useRef(new Map())
+  const viewNodes = useMemo(() => {
+    if (!levelView) return atShown.nodes
+    const kept = atShown.nodes.filter(n => n.type !== 'marker')
+    const cards = kept.filter(n => n.type === 'awsNode')
+    const canvas = typeof window === 'undefined' ? undefined : { width: window.innerWidth, height: window.innerHeight }
+    const laid = new Map(layoutFit(cards.map(n => ({ ...n, measured: undefined })), atShown.edges, canvas).map(n => [n.id, n.position]))
+    const k = (v) => v ? { w: v.w * scale, h: v.h * scale } : v
+    const cache = scaledData.current
+    return [...cards.map(n => {
+      const d = n.data || {}
+      const hit = cache.get(n.id)
+      let data = hit && hit.src === n.data && hit.scale === scale ? hit.data : null
+      if (!data) {
+        const size = d.size || (typeof d.image === 'string' && d.image.startsWith('data:image/') ? { w: 240, h: 225 } : { w: 180, h: 180 })
+        data = { ...d, size: k(size), ...(d.iconSize ? { iconSize: k(d.iconSize) } : {}) }
+        cache.set(n.id, { src: n.data, scale, data })
+      }
+      const p = laid.get(n.id)
+      return { ...n, position: { x: p.x * scale, y: p.y * scale }, ...(n.width ? { width: n.width * scale, height: n.height * scale } : {}), data }
+    }), ...kept.filter(n => n.type !== 'awsNode')]
+  }, [atShown, levelView, scale])
   const canvasEdges = useMemo(() => (viewOnly
     ? atShown.edges.map(e => (e.data?.onLabelMove || e.data?.onEndMove || e.data?.onBendMove || e.data?.onLabelEdit
       ? { ...e, data: { ...e.data, onLabelMove: undefined, onEndMove: undefined, onBendMove: undefined, onLabelEdit: undefined } }
@@ -357,7 +390,7 @@ export function DetailView({
     : atShown.edges), [atShown, viewOnly])
   // Read only stays read only: no band grips (move, size, pick) unless this
   // reader may edit right now - never on a phone outside edit, never locked.
-  const canvasNodes = useMemo(() => (canEditNow ? atShown.nodes : atShown.nodes.filter(n => n.type !== 'laneGrips')), [atShown, canEditNow])
+  const canvasNodes = useMemo(() => (canEditNow ? viewNodes : viewNodes.filter(n => n.type !== 'laneGrips')), [viewNodes, canEditNow])
   // A level change shows fewer or more cards: re-fit so they fill the canvas.
   const firstLevel = useRef(true)
   useEffect(() => {
@@ -368,10 +401,11 @@ export function DetailView({
   // What the bottom-left legend explains: only the looks this diagram uses.
   // The diagram's text sizes (view_state.fonts) for every card and tag.
   const fonts = useMemo(() => fontsOf(activeDiagram?.view_state), [activeDiagram])
+  const drawFonts = useMemo(() => scale === 1 ? fonts : { title: fonts.title * scale, sub: fonts.sub * scale, tag: fonts.tag * scale }, [fonts, scale])
   const legend = useMemo(() => legendRows(
-    atShown.nodes.filter(n => n.type === 'awsNode').map(n => n.data || {}),
+    viewNodes.filter(n => n.type === 'awsNode').map(n => n.data || {}),
     atShown.edges.filter(e => e.type === 'gradient').map(e => ({ style: e.data?.style, sunset: !!e.data?.sunsetLine })),
-  ), [atShown])
+  ), [atShown, viewNodes])
   // Fit is an ACTION, but it reads as a state on touch (the inline hover
   // background never clears without a mouseleave). So make the state real:
   // lit only while the canvas actually IS the fitted view, cleared the moment
@@ -1037,10 +1071,10 @@ export function DetailView({
           <ShowArrowsContext.Provider value={showArrows}>
           <ShowBadgeXContext.Provider value={showBadgeX}>
           <TagsAboveContext.Provider value={tagsAbove}>
-          <FontsContext.Provider value={fonts}>
+          <FontsContext.Provider value={drawFonts}>
           <NoteEditContext.Provider value={viewOnly ? null : onNoteChange || null}>
-          <NodeResizeContext.Provider value={viewOnly || sizing !== 'custom' ? null : onNodeResize || null}>
-          <IconResizeContext.Provider value={viewOnly ? null : onIconResize || null}>
+          <NodeResizeContext.Provider value={viewOnly || levelView || sizing !== 'custom' ? null : onNodeResize || null}>
+          <IconResizeContext.Provider value={viewOnly || levelView ? null : onIconResize || null}>
           <ReactFlow
             className={`${showSteps ? 'sd-steps-on ' : ''}${flowing ? '' : 'sd-still '}${canEdit && !viewOnly ? '' : 'sd-reading '}sd-badge-${badgeMode}`}
             nodes={canvasNodes} edges={canvasEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
@@ -1082,7 +1116,7 @@ export function DetailView({
                Nothing moves - the drag handles on a line only exist when the
                owner's onEndMove/onBendMove are threaded into its data. On a
                phone even selecting is off: a finger is wider than a card. */
-            nodesDraggable={canEdit && !viewOnly} elementsSelectable={!fingerOnly}
+            nodesDraggable={canEdit && !viewOnly && !levelView} elementsSelectable={!fingerOnly}
             /* The owner draws a line Forensic style: hover a card, drag from a
                side dot, and it snaps onto any card within 34 px. */
             nodesConnectable={!!onConnect && canEdit && !viewOnly} onConnect={onConnect}
