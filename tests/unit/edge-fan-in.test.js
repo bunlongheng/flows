@@ -65,12 +65,12 @@ describe("routeEdge - trunk bus between swimlanes", () => {
 });
 
 describe("routeEdge - fan-out brace", () => {
-  // 1 source above 3 targets in a row: 1 point out, a square brace, a badge per branch, labels or not alike.
+  // 1 source above 3 targets in a row: 1 point out, a square brace, a badge per branch.
   const fnodes = { v: node("v", 400, -600), a: node("a", 0, 0), b: node("b", 400, 0), c: node("c", 800, 0) };
   const fedges = [
     { id: "o-a", source: "v", target: "a", label: "opens" },
     { id: "o-b", source: "v", target: "b", label: "opens" },
-    { id: "o-c", source: "v", target: "c", label: "bills" },
+    { id: "o-c", source: "v", target: "c", label: "opens" },
   ];
   const out = (id, extra = {}) => {
     const e = fedges.find((x) => x.id === id);
@@ -94,6 +94,29 @@ describe("routeEdge - fan-out brace", () => {
     expect(c.path).toMatch(/,-210/); // halfway from -420 to 0
     expect(c.drawPath.endsWith(`L${c.tx},${c.ty}`)).toBe(true);
     expect(c.hideArrow).toBe(false);
+  });
+});
+
+describe("routeEdge - mixed-label pair", () => {
+  // 2 lines with different labels brace only when 1 target sits each side of the card.
+  const pn = { v: node("v", 400, -600), a: node("a", 0, 0), c: node("c", 800, 0), b: node("b", 400, 0) };
+  const go = (pe, id) => {
+    const e = pe.find((x) => x.id === id);
+    return routeEdge({
+      id, source: "v", target: e.target, sourceNode: pn.v, targetNode: pn[e.target],
+      nodeOf: (k) => pn[k], edges: pe, obstacles: [], nodeRects: [], label: e.label,
+    });
+  };
+  it("braces a straddling pair, each with its own badge", () => {
+    const pe = [{ id: "p1", source: "v", target: "a", label: "plan" }, { id: "p2", source: "v", target: "c", label: "bill" }];
+    const a = go(pe, "p1"), c = go(pe, "p2");
+    expect(c.sx).toBe(a.sx);
+    expect([a.hideLabel, c.hideLabel]).toEqual([false, false]);
+    expect(c.path).not.toMatch(/ C/);
+  });
+  it("leaves a pair alone when 1 target sits level with the card", () => {
+    const pe = [{ id: "p1", source: "v", target: "b", label: "plan" }, { id: "p2", source: "v", target: "c", label: "bill" }];
+    expect(go(pe, "p1").sx).not.toBe(go(pe, "p2").sx);
   });
 });
 
