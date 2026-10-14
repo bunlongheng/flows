@@ -367,6 +367,21 @@ describe("/api/flows/:id", () => {
     expect(written.find((n) => n.id === "a")).toBeTruthy(); // untouched node survives
   });
 
+  it("PATCH nodes keeps style and a jpeg image on a new node, and drops other images", async () => {
+    query.mockResolvedValueOnce({ rows: [{ nodes: [] }] });
+    query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { nodes: [
+      { id: "n1", style: { stroke: "#e03131", arrow: "curved", junk: 1 }, image: "data:image/jpeg;base64,AAAA" },
+      { id: "n2", image: "https://x.test/a.png" },
+    ] };
+    await flowById(r, res);
+    const written = JSON.parse(query.mock.calls[1][1][0]);
+    expect(written.find((n) => n.id === "n1")).toMatchObject({ style: { stroke: "#e03131" }, image: "data:image/jpeg;base64,AAAA" });
+    expect(written.find((n) => n.id === "n2").image).toBeUndefined();
+  });
+
   it("PATCH nodes merges size by id and clamps it", async () => {
     const stored = [{ id: "a", position: { x: 0, y: 0 } }];
     query.mockResolvedValueOnce({ rows: [{ nodes: stored }] });
