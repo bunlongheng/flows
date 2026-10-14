@@ -35,8 +35,13 @@ describe("cleanLanes", () => {
 describe("laneRects", () => {
   it("stands a column the full height of the cards plus padding, rows the full width", () => {
     const rects = [{ x: 100, y: 0, w: 120, h: 120 }, { x: 700, y: 400, w: 120, h: 120 }];
-    expect(laneRects([{ id: "v", title: "Visitor", x: 50, w: 300 }], rects)).toEqual([{ id: "v", title: "Visitor", color: undefined, size: undefined, x: 50, w: 220 - 50 + LANE_FIT, y: -LANE_PAD, h: 520 + 2 * LANE_PAD }]); // the card at x 100 is inside, so the band ends LANE_FIT past it
-    expect(laneRects([{ id: "v", title: "Visitor", y: 50, h: 300 }], rects)).toEqual([{ id: "v", title: "Visitor", color: undefined, size: undefined, y: 50, h: 300, x: 100 - LANE_PAD, w: 720 + 2 * LANE_PAD }]);
+    expect(laneRects([{ id: "v", title: "Visitor", x: 50, w: 300 }], rects)).toEqual([{ id: "v", title: "Visitor", color: undefined, size: undefined, empty: false, x: 50, w: 220 - 50 + LANE_FIT, y: -LANE_PAD, h: 520 + 2 * LANE_PAD }]); // the card at x 100 is inside, so the band ends LANE_FIT past it
+    expect(laneRects([{ id: "v", title: "Visitor", y: 50, h: 300 }], rects)).toEqual([{ id: "v", title: "Visitor", color: undefined, size: undefined, empty: true, y: 50, h: 300, x: 100 - LANE_PAD, w: 720 + 2 * LANE_PAD }]);
+  });
+  it("flags a band with no card inside as empty, so a lower level can hide it", () => {
+    const rects = [{ x: 100, y: 0, w: 120, h: 120 }];
+    expect(laneRects([{ id: "e", y: 500, h: 300 }], rects)[0].empty).toBe(true);
+    expect(laneRects([{ id: "e", y: 0, h: 300 }], rects)[0].empty).toBe(false);
   });
 });
 
