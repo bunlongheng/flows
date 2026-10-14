@@ -310,3 +310,21 @@ describe("POST /api/ai/flows - pattern and description", () => {
     expect(args[9]).toBeNull();
   });
 });
+
+describe("POST /api/ai/flows - edge whitelist and view", () => {
+  beforeEach(() => {
+    process.env.FLOWS_API_SECRET = SECRET;
+    process.env.OWNER_USER_ID = "731ace87-64e5-44db-bf2a-82265f06f4d9";
+    query.mockReset();
+    query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [{ id: ID }] });
+  });
+
+  it("drops unknown edge keys, trims the label and keeps async", async () => {
+    const res = mockRes();
+    const edges = [{ id: "e1", source: "user", target: "cloudfront", label: "  hi   there ", junk: 1, animated: true, async: true, style: { stroke: "#e03131", bg: "#ffffff" } }];
+    await createFlow(good(`Bearer ${SECRET}`, { ...VALID_BODY, edges }), res);
+    expect(res.statusCode).toBe(201);
+    expect(JSON.parse(query.mock.calls[1][1][4])).toEqual([{ id: "e1", source: "user", target: "cloudfront", label: "hi there", async: true, style: { stroke: "#e03131" } }]);
+  });
+
+});

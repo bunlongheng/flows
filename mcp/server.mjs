@@ -194,7 +194,7 @@ function toStoredEdges(edges) {
     target: e.target,
     ...(e.label ? { label: e.label } : {}),
     ...(e.description ? { description: String(e.description).trim().slice(0, 300) } : {}),
-    ...(cleanStyle(e.style) ? { style: cleanStyle(e.style) } : {}),
+    ...(cleanStyle(e.style, 'edge') ? { style: cleanStyle(e.style, 'edge') } : {}),
     ...(e.async === true ? { async: true } : {}),
   }))
 }

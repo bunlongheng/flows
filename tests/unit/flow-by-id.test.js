@@ -509,7 +509,7 @@ describe("/api/flows/:id", () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.styled).toBe(1);
     const written = JSON.parse(query.mock.calls[1][1][0]);
-    expect(written[0].style).toEqual({ stroke: "#1971c2", bw: 4, bs: "dotted", fs: 18 });
+    expect(written[0].style).toEqual({ stroke: "#1971c2", bw: 4, bs: "dotted" });
     expect(written[0].labelT).toBe(0.3);
     expect(written[1]).not.toHaveProperty("style");
   });
