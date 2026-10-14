@@ -70,9 +70,11 @@ function freeRects(lanes, cards) {
     return r
   }
   lanes.forEach(fit)
+  // A panel holds a card itself or through a panel nested in it; otherwise it is empty.
+  const has = l => cards.some(c => home[c.id] === l.id) || lanes.some(o => o !== l && within(o, l) && has(o))
   return lanes.map(l => {
     const mine = cards.filter(c => home[c.id] === l.id)
-    return { id: l.id, title: l.title, color: l.color || cardsColor(mine) || undefined, size: l.size, free: true, ...box.get(l.id) }
+    return { id: l.id, title: l.title, empty: !has(l), color: l.color || cardsColor(mine) || undefined, size: l.size, free: true, ...box.get(l.id) }
   })
 }
 
@@ -267,7 +269,7 @@ export function laneRects(lanes, rects) {
     const lead = cards.length ? Math.max(l.lead || 0, span[along] + HAND_MIN_PAD - Math.min(...cards.map(c => c[along]))) : Math.max(0, l.lead || 0)
     return lead ? { [along]: box[along] - lead, [long]: box[long] + lead } : box
   }
-  return fitLanes(lanes, rects).map(l => ({ l, cards: rects.filter(r => r[at] >= l[at] && r[at] < l[at] + l[size]) })).map(({ l, cards }) => ({ id: l.id, title: l.title, color: l.color || cardsColor(cards) || undefined, size: l.size, ...(l.sections ? { sections: l.sections } : {}), ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...leadOf(l, { ...span, ...lenOf(l, cards) }, cards) }))
+  return fitLanes(lanes, rects).map(l => ({ l, cards: rects.filter(r => r[at] >= l[at] && r[at] < l[at] + l[size]) })).map(({ l, cards }) => ({ id: l.id, title: l.title, empty: !cards.length, color: l.color || cardsColor(cards) || undefined, size: l.size, ...(l.sections ? { sections: l.sections } : {}), ...('x' in l ? { x: l.x, w: l.w } : { y: l.y, h: l.h }), ...leadOf(l, { ...span, ...lenOf(l, cards) }, cards) }))
 }
 
 const holds = (b, c) => c.x + c.w / 2 >= b.x && c.x + c.w / 2 < b.x + b.w && c.y + c.h / 2 >= b.y && c.y + c.h / 2 < b.y + b.h

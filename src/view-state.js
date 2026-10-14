@@ -102,7 +102,18 @@ export const LEVEL_SCALES = [1, 1.3, 1.6, 1.9];
 export const levelScale = (levels, shown) => { if (shown == null || levels.length < 2) return 1; const d = levels.length - 1 - levels.indexOf(shown); return LEVEL_SCALES[Math.max(0, Math.min(3, d))]; };
 export const atLevel = (nodes, edges, level) => {
   if (level == null) return { nodes, edges };
-  const kept = (nodes || []).filter((n) => !LEVELS.includes(n.level) || n.level <= level);
+  let kept = (nodes || []).filter((n) => !LEVELS.includes(n.level) || n.level <= level);
+  // Below the top level a band with no card left in it is not drawn (its cards live at a higher level);
+  // its grips and section ends go with it.
+  if (level < levelsOf(nodes).at(-1)) {
+    const cards = kept.filter((n) => LEVELS.includes(n.level));
+    const inside = (b, c) => {
+      const x = (c.position?.x ?? 0) + (c.data?.size?.w ?? 180) / 2, y = (c.position?.y ?? 0) + (c.data?.size?.h ?? 180) / 2;
+      return x >= b.position.x && x < b.position.x + b.width && y >= b.position.y && y < b.position.y + b.height;
+    };
+    const gone = new Set(kept.filter((n) => n.type === 'lane' && !cards.some((c) => inside(n, c))).map((n) => n.data?.laneId));
+    kept = kept.filter((n) => !(gone.has(n.data?.laneId) || [...gone].some((id) => n.id === `__lane_${id}` || String(n.id).startsWith(`__lane_${id}/`))));
+  }
   const ids = new Set(kept.map((n) => n.id));
   const ok = (id) => String(id).startsWith('lane:') || ids.has(id);
   return { nodes: kept, edges: (edges || []).filter((e) => ok(e.source) && ok(e.target)) };

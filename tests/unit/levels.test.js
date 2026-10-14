@@ -40,6 +40,19 @@ describe("C4 levels", () => {
     expect(atLevel(nodes, edges, null)).toEqual({ nodes, edges });
   });
 
+  it("atLevel drops a band left empty below the top level, grips and section ends too, and keeps it at the top", () => {
+    const band = (id, y) => ({ id: `__lane_${id}`, type: "lane", position: { x: 0, y }, width: 400, height: 300, data: { laneId: id } });
+    const all = [
+      { id: "a", level: 1, position: { x: 50, y: 50 }, data: { size: { w: 100, h: 100 } } },
+      { id: "b", level: 2, position: { x: 50, y: 350 } },
+      band("l1", 0), band("l2", 300),
+      { id: "__lane_l2/s", type: "laneEnd", position: { x: 0, y: 300 }, width: 200, height: 300, data: {} },
+      { id: "__grip_l2", type: "laneGrips", position: { x: 0, y: 300 }, width: 400, height: 300, data: { laneId: "l2" } },
+    ];
+    expect(atLevel(all, [], 1).nodes.map((n) => n.id)).toEqual(["a", "__lane_l1"]);
+    expect(atLevel(all, [], 2).nodes.map((n) => n.id)).toEqual(all.map((n) => n.id));
+  });
+
   it("levelScale grows 1.3x per step below the top and is 1 without levels", () => {
     expect(levelScale([1, 2, 3], 3)).toBe(1);
     expect(levelScale([1, 2, 3], 2)).toBe(1.3);
