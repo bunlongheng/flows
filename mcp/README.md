@@ -116,8 +116,9 @@ Edges are directed `{ source, target, label?, description?, id?, style? }` using
   anything a reader has to follow in order** instead of leaving them to find the
   button. `notes-off` is inverted on purpose: notes show by default, so the
   flag's job is to hide them.
-- Edge `style.head` - `end` (default), `start`, `both` or `none`, the arrowhead
-  direction; `style.bs: "dashed"` is an interim or optional path. Lines are solid.
+- Edge `style` - a line uses only `stroke`, `bw`, `bs`, `arrow` (`step`, `curved`, `straight`, `brace`), `head` and `opacity`. `head` is `end` (default), `start`, `both` or `none`, the arrowhead
+  direction; `bs: "dashed"` is an interim or optional path. Lines are solid.
+- `start` - `{ x, y }`, where the Start pill sits. `layout` - `{ box, gap, vgap }`: `box` scales every card (0.6-2), `gap` and `vgap` spread the cards across and down (0.6-3); default 1.
 - `fonts` - `{ title, sub, tag }` text sizes in px for the whole diagram
   (each 8-22; title default 12, sub 10, tag 8.5). Send
   only what changes; `{}` resets. A big diagram that reads too small wants
