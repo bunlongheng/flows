@@ -502,10 +502,8 @@ function fanAt(end, nodeId, node, id, tag, side, edges, nodeOf) {
     const farId = end === 't' ? e.source : e.target
     const far = nodeOf(farId)
     if (!far?.measured?.width) continue
-    // Out of a card, a target that lies wholly past this face joins its brace
-    // even when its centre reads as another side (owner 2026-10-14).
     const natural = sideFor(c, centerOf(far)) === side
-    if (!natural && !(end === 's' && beyond(node, far, side))) continue
+    if (end === 't' ? !natural : outSide(e, node, nodeId, edges, nodeOf) !== side) continue
     members.push({ id: e.id, far: farId, same, natural, along: side === Position.Left || side === Position.Right ? centerOf(far).y - c.y : centerOf(far).x - c.x })
   }
   if (members.length < 2 || !members.some(m => m.id === id) || !members.some(m => m.natural)) return null
@@ -516,6 +514,28 @@ function fanAt(end, nodeId, node, id, tag, side, edges, nodeOf) {
   // The leader anchors the shared point, so it is one that faces this side.
   members.sort((a, b) => (a.natural !== b.natural ? (a.natural ? -1 : 1) : a.id < b.id ? -1 : 1))
   return { end, members, leader: members[0].id, ids: new Set(members.map(m => m.id)) }
+}
+
+// The face a line leaves its card by when it may join a brace: its natural
+// side, unless its target lies wholly past another face that already has more
+// lines leaving it. Then it joins that bigger brace (owner 2026-10-14).
+const SIDES = [Position.Right, Position.Left, Position.Bottom, Position.Top]
+function outSide(e, node, nodeId, edges, nodeOf) {
+  const c = centerOf(node), counts = {}
+  const natOf = x => { const f = nodeOf(x.target); return f?.measured?.width ? sideFor(c, centerOf(f)) : null }
+  for (const x of edges) {
+    const d = x.data || {}
+    if (x.source !== nodeId || d.bend || d.ends?.s || d.ends?.t || (d.style?.arrow && d.style.arrow !== 'brace')) continue
+    const s = natOf(x)
+    if (s) counts[s] = (counts[s] || 0) + 1
+  }
+  let best = natOf(e)
+  const far = nodeOf(e.target)
+  if (!best || !far) return best
+  for (const alt of SIDES) {
+    if (alt !== best && beyond(node, far, alt) && (counts[alt] || 0) >= 2 && counts[alt] > (counts[best] || 0)) best = alt
+  }
+  return best
 }
 
 // Does `far` lie wholly past `node`'s `side` face?
@@ -636,13 +656,14 @@ export function routeEdge({ taken = [], id, source, target, sourceNode, targetNo
     // not counted, so all of them meet the target at the one point.
     if (!bend && !endS && !endT && (!arrow || arrow === 'brace')) {
       const tag = tagText(label, description)
-      fan = fanAt('t', target, targetNode, id, tag, tSide, edges, nodeOf) || fanAt('s', source, sourceNode, id, tag, sSide, edges, nodeOf)
-      // A target wholly to 1 side of the source may join that side's brace.
-      for (const alt of [Position.Right, Position.Left, Position.Bottom, Position.Top]) {
-        if (fan || alt === sSide || !beyond(sourceNode, targetNode, alt)) continue
-        fan = fanAt('s', source, sourceNode, id, tag, alt, edges, nodeOf)
-        // Its leg then enters the target's facing side, straight on.
-        if (fan) {
+      const self = edges.find(e => e.id === id)
+      const home = self ? outSide(self, sourceNode, source, edges, nodeOf) : sSide
+      fan = fanAt('t', target, targetNode, id, tag, tSide, edges, nodeOf) || fanAt('s', source, sourceNode, id, tag, home || sSide, edges, nodeOf)
+      // A line that joined another face's brace: its leg enters the target's
+      // facing side, straight on.
+      {
+        const alt = home
+        if (fan && fan.end === 's' && alt && alt !== sSide) {
           const into = { [Position.Right]: Position.Left, [Position.Left]: Position.Right, [Position.Bottom]: Position.Top, [Position.Top]: Position.Bottom }[alt]
           const p = targetNode.internals.positionAbsolute, w = targetNode.measured.width, h = targetNode.measured.height
           tSide = into
