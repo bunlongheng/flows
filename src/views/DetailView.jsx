@@ -7,7 +7,7 @@ import diagramData from '../data/diagram.json'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { nodeTypes } from '../components/AwsNode'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, ShowArrowsContext, ShowBadgeXContext, TagsAboveContext, FontsContext } from '../components/noteEditContext'
-import { fontsOf } from '../view-state.js'
+import { fontsOf, levelsOf, atLevel, LEVEL_NAMES } from '../view-state.js'
 import { Legend } from '../components/Legend'
 import { legendRows } from '../legend.js'
 import { edgeTypes } from '../components/GradientEdge'
@@ -60,6 +60,26 @@ function BarButton({ on, label, title, onClick, children }) {
       <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">{children}</svg>
       <span className="sd-btn-label">{label}</span>
     </button>
+  )
+}
+
+// C4 level picker: C1..C4, only the levels the diagram defines (owner 2026-10-14).
+function LevelPicker({ levels, active, onPick }) {
+  if (levels.length < 2) return null
+  return (
+    <div role="radiogroup" aria-label="Architecture level" style={{ display: 'inline-flex', padding: 3, gap: 2, borderRadius: 9, background: '#eef0f3', flexShrink: 0, height: 30, boxSizing: 'border-box' }}>
+      {levels.map(l => {
+        const on = l === active
+        return (
+          <button key={l} role="radio" aria-checked={on} title={`C${l} ${LEVEL_NAMES[l]}`} onClick={() => onPick(l)} style={{
+            height: 24, padding: '0 10px', borderRadius: 7, border: 'none', fontSize: 12.5, fontWeight: on ? 700 : 500,
+            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.1s',
+            background: on ? '#fff' : 'transparent', color: on ? '#1e293b' : '#64748b',
+            boxShadow: on ? '0 1px 3px rgba(15,23,42,0.18)' : 'none',
+          }}>C{l}</button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -139,6 +159,7 @@ export function DetailView({
   showNotes, setShowNotes,
   showArrows = true, setShowArrows, showBadgeX = true, tagsAbove = false,
   showLegend = true, setShowLegend,
+  level = null, setLevel,
   badgeMode, setBadgeMode,
   activeDiagram,
   detailCodeCopied, setDetailCodeCopied,
@@ -325,21 +346,32 @@ export function DetailView({
   // The tools that change the layout follow the same rule as the canvas: no
   // Arrange, no Undo, no Code while the diagram is frozen.
   const canEditNow = canEdit && !frozen
+  const levels = useMemo(() => levelsOf(nodes), [nodes])
+  const active = levels.includes(level) ? level : (levels[0] ?? null)
+  const shown = levels.length >= 2 ? active : null
+  const atShown = useMemo(() => atLevel(nodes, edges, shown), [nodes, edges, shown])
   const canvasEdges = useMemo(() => (viewOnly
-    ? edges.map(e => (e.data?.onLabelMove || e.data?.onEndMove || e.data?.onBendMove || e.data?.onLabelEdit
+    ? atShown.edges.map(e => (e.data?.onLabelMove || e.data?.onEndMove || e.data?.onBendMove || e.data?.onLabelEdit
       ? { ...e, data: { ...e.data, onLabelMove: undefined, onEndMove: undefined, onBendMove: undefined, onLabelEdit: undefined } }
       : e))
-    : edges), [edges, viewOnly])
+    : atShown.edges), [atShown, viewOnly])
   // Read only stays read only: no band grips (move, size, pick) unless this
   // reader may edit right now - never on a phone outside edit, never locked.
-  const canvasNodes = useMemo(() => (canEditNow ? nodes : nodes.filter(n => n.type !== 'laneGrips')), [nodes, canEditNow])
+  const canvasNodes = useMemo(() => (canEditNow ? atShown.nodes : atShown.nodes.filter(n => n.type !== 'laneGrips')), [atShown, canEditNow])
+  // A level change shows fewer or more cards: re-fit so they fill the canvas.
+  const firstLevel = useRef(true)
+  useEffect(() => {
+    if (firstLevel.current) { firstLevel.current = false; return }
+    const t = setTimeout(() => { rfInstanceRef.current?.fitView({ padding: 0.15, duration: 300 }); setFitted(true) }, 60)
+    return () => clearTimeout(t)
+  }, [shown])
   // What the bottom-left legend explains: only the looks this diagram uses.
   // The diagram's text sizes (view_state.fonts) for every card and tag.
   const fonts = useMemo(() => fontsOf(activeDiagram?.view_state), [activeDiagram])
   const legend = useMemo(() => legendRows(
-    nodes.filter(n => n.type === 'awsNode').map(n => n.data || {}),
-    edges.filter(e => e.type === 'gradient').map(e => ({ style: e.data?.style, sunset: !!e.data?.sunsetLine })),
-  ), [nodes, edges])
+    atShown.nodes.filter(n => n.type === 'awsNode').map(n => n.data || {}),
+    atShown.edges.filter(e => e.type === 'gradient').map(e => ({ style: e.data?.style, sunset: !!e.data?.sunsetLine })),
+  ), [atShown])
   // Fit is an ACTION, but it reads as a state on touch (the inline hover
   // background never clears without a mouseleave). So make the state real:
   // lit only while the canvas actually IS the fitted view, cleared the moment
@@ -536,6 +568,7 @@ export function DetailView({
             <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>
             <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
           </BarButton>
+          <LevelPicker levels={levels} active={active} onPick={l => setLevel && setLevel(l)} />
           {setShowArrows && <BarButton on={showArrows} label="Arrows" title={showArrows ? 'Hide the arrowheads' : 'Show which way each line goes'} onClick={() => setShowArrows(v => !v)}>
             <line x1="4" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/>
           </BarButton>}
@@ -841,6 +874,7 @@ export function DetailView({
             </svg>
             <span className="sd-btn-label">Notes</span>
           </button>
+          <LevelPicker levels={levels} active={active} onPick={l => setLevel && setLevel(l)} />
 
           {/* Kept on a phone: Steps and the badge style are the 2 actions left in
               the bar there, and without a line between them they read as 1 control. */}

@@ -98,4 +98,11 @@ describe("renderDiagramSvg - saved view", () => {
     expect(svg).toMatch(/<svg [^>]*font-family="Inter,/);
     expect(svg).toContain('<pattern id="dots"');
   });
+
+  it("draws a card only from its C4 level up, and nothing changes without levels", () => {
+    const lv = [{ ...NODES[0], level: 1 }, { ...NODES[1], level: 1 }, { ...NODES[2], level: 3 }];
+    expect(renderDiagramSvg(lv, EDGES)).not.toContain(">Lambda</text>");
+    expect(renderDiagramSvg(lv, EDGES, { view: { level: 3 } })).toContain(">Lambda</text>");
+    expect(renderDiagramSvg(NODES, EDGES)).toBe(renderDiagramSvg(NODES.map((n) => ({ ...n })), EDGES));
+  });
 });

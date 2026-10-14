@@ -282,6 +282,18 @@ describe("/api/flows/:id", () => {
     expect(res.body.view_state).toEqual({ panels: ["steps", "code"], badge: "silver" });
   });
 
+  it("PATCH view_state stores a C4 level 1-4 and drops anything else", async () => {
+    const cookie = `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`;
+    for (const [level, stored] of [[3, { level: 3 }], [9, {}]]) {
+      query.mockResolvedValueOnce({ rows: [{ id: ID }] });
+      const r = req("PATCH", ID, undefined, cookie);
+      r.body = { view_state: { panels: [], badge: "dark", level } };
+      await flowById(r, mockRes());
+      expect(JSON.parse(query.mock.calls.at(-1)[1][0])).toMatchObject(stored);
+      expect("level" in JSON.parse(query.mock.calls.at(-1)[1][0])).toBe(stored.level !== undefined);
+    }
+  });
+
   it("PATCH view_state drops anything not a real panel or badge", async () => {
     query.mockResolvedValueOnce({ rows: [{ id: ID }] });
     const res = mockRes();

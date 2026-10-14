@@ -74,7 +74,7 @@ diagram, same as `update_flow`.
 }
 ```
 
-A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, sunset?, cracked?, new?, tooltip?, iconFrame?, size?, iconSize?, style? }`:
+A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, sunset?, cracked?, new?, tooltip?, iconFrame?, level?, size?, iconSize?, style? }`:
 
 - `id` - a service key from `list_services` (e.g. `user`, `apigw`, `lambda`, `dynamo`, `kafka`, `redis`, `s3`), or any unique id when bringing your own icon or image. A key appears at most once per diagram.
 - `icon` - bring-your-own logo: a remote `https` image URL, a `data:image/(png|jpeg|svg+xml|webp|gif)` URI with a real `;base64,` or `,` boundary, or a same-origin image path such as `/brand/foo.svg` (never protocol-relative `//host`). A remote URL is fetched once (https only, no redirects, `image/*`, max 24KB, 5s, private hosts refused, raster logos at least 96px) and inlined so the diagram stays self-contained. If it cannot be fetched the call fails and names the node. An inline `data:` icon is capped at 24KB.
@@ -90,6 +90,7 @@ A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, suns
 - `tooltip` - plain text, max 200 chars, shown when the reader hovers the card. Optional; not in the SVG. A node with no colour of its own falls back to black.
 - `size` - optional `{ w, h }`, clamped 130..600, the card on the canvas. Default 180 x 180, or 240 x 225 for a picture card. A note hangs BELOW the card and is not part of `h`.
 - `iconSize` - optional `{ w, h }`, clamped 16..600, the logo tile inside the card (default 48 x 48). Only for a wide wordmark that is unreadable at the stock tile.
+- `level` - integer 1-4, the C4 level the card first appears at (1 Context, 2 Container, 3 Component, 4 Code). Cumulative; no level = in every view. 2+ levels in a diagram = a C1..C4 picker above the canvas.
 - `iconFrame` - a boolean; `true` draws a 1 px grey frame at the iOS corner around the icon tile, for a PNG whose outer ring is white (a white tile on a white card has no edge). The create sets it by itself when it detects that.
 - `style` - optional, the look object, validated by `src/style.js` `cleanStyle`: `stroke` #hex, `bg` #hex or `"transparent"`, `bw` 1/2/4, `bs` solid/dashed/dotted, `radius` 0/12, `font` sans/serif/mono, `fs` 12/14/18/24, `align` left/center/right, `opacity` 0..100. An illegal key or value is dropped, exactly as on a save from the canvas. **Leave it off by default**: a card with no style draws in its own logo colour, which is almost always what you want, so set it only to say something that colour cannot.
 - `color` - leave it off too. The border colour is taken from the icon itself (`src/iconColor.js`), so a Chrome card draws Chrome blue without being told. An explicit colour only wins when it is saturated: a grey or near-black is a guess and is replaced by the logo colour.
@@ -107,7 +108,7 @@ Edges are directed `{ source, target, label?, description?, id?, style? }` using
 
 ### How a diagram opens
 
-`update_flow { id, view: { panels, badge, start, current, sizing, fonts, layout } }` saves how the diagram opens, and
+`update_flow { id, view: { panels, badge, start, current, sizing, fonts, layout, level } }` saves how the diagram opens, and
 `create_flow` takes the same thing as `view` (alias `view_state`).
 
 - `panels` - any of `steps` (a numbered chip on every line), `share` and `code` (open those panels), `notes-off`, `arrows-off`,
@@ -119,6 +120,7 @@ Edges are directed `{ source, target, label?, description?, id?, style? }` using
 - Edge `style` - a line uses only `stroke`, `bw`, `bs`, `arrow` (`step`, `curved`, `straight`, `brace`), `head` and `opacity`. `head` is `end` (default), `start`, `both` or `none`, the arrowhead
   direction; `bs: "dashed"` is an interim or optional path. Lines are solid.
 - `start` - `{ x, y }`, where the Start pill sits. `layout` - `{ box, gap, vgap }`: `box` scales every card (0.6-2), `gap` and `vgap` spread the cards across and down (0.6-3); default 1.
+- `level` - integer 1-4, the C4 level the diagram opens at (only when the nodes define it)
 - `fonts` - `{ title, sub, tag }` text sizes in px for the whole diagram
   (each 8-22; title default 12, sub 10, tag 8.5). Send
   only what changes; `{}` resets. A big diagram that reads too small wants

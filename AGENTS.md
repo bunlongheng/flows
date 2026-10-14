@@ -103,6 +103,8 @@ to drift:
 | `description` | edge | text, max 300 | the tag reads it when there is no label; hover shows all; not in the SVG |
 | `style.opacity` | node, edge | `0-100` | transparency of the card or line |
 | `iconFrame` | node | `true` | 1 px grey frame around the icon tile, for a PNG with a white edge |
+| `level` | node | `1`-`4` | C4 level the card first appears at (1 Context, 2 Container, 3 Component, 4 Code); cumulative; no level = in every view. 2+ levels in a diagram = a C1..C4 picker above the canvas, fewer = drawn as today |
+| `level` | `view_state` / MCP `view` | `1`-`4` | the level the diagram opens at; falls back to the lowest level present |
 | `passcode` | HTTP `PATCH` only, owner | text, `""` clears | locks the share behind a passcode |
 
 Node fields go through `create_flow` / `update_flow` (whole `nodes` list) or
