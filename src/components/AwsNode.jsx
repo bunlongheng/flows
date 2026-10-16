@@ -262,7 +262,9 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       </svg>
     : null
   const iconWrapStyle = { position: 'relative', display: 'inline-flex', justifyContent: 'center', maxWidth: '100%', minHeight: 0, ...(iconBox ? { flex: '0 1 auto' } : { flex: 1, width: '100%' }),
-    ...(iconHandle ? { outline: `1px dashed ${color}`, outlineOffset: 2 } : {}) }
+    ...(iconHandle ? { outline: `1px dashed ${color}`, outlineOffset: 2 } : {}),
+    // A level view below the top draws the icon smaller inside the same slot (LEVEL_ICON).
+    ...(data.iconK ? { transform: `scale(${data.iconK})` } : {}) }
 
   const cardStyle = {
     // Tint blended over solid white: an opaque card hides any edge routed
