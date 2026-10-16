@@ -99,6 +99,9 @@ export const levelOf = (v, nodes) => { const ls = levelsOf(nodes); if (ls.length
 // A level view shows fewer cards, so everything draws bigger: 1 step below the
 // top is 1.3x, then 1.6x, 1.9x (owner 2026-10-14).
 export const LEVEL_SCALES = [1, 1.3, 1.6, 1.9];
+// Every level after the first (C2, C3, C4) draws the icon at 80% of its slot, so a lower level reads as a step down (owner 2026-10-16).
+export const LEVEL_ICON = 0.8;
+export const levelIconK = (levels, shown) => (shown != null && levels.length >= 2 && shown !== levels[0] ? LEVEL_ICON : 1);
 export const levelScale = (levels, shown) => { if (shown == null || levels.length < 2) return 1; const d = levels.length - 1 - levels.indexOf(shown); return LEVEL_SCALES[Math.max(0, Math.min(3, d))]; };
 export const atLevel = (nodes, edges, level) => {
   if (level == null) return { nodes, edges };

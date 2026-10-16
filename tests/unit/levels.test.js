@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanLevel, levelsOf, levelOf, atLevel, levelScale } from "../../src/view-state.js";
+import { cleanLevel, levelsOf, levelOf, atLevel, levelScale, levelIconK } from "../../src/view-state.js";
 
 const nodes = [{ id: "a", level: 1 }, { id: "b", level: 2 }, { id: "c", level: 3 }, { id: "free" }];
 
@@ -60,6 +60,16 @@ describe("C4 levels", () => {
     expect(levelScale([1, 4], 1)).toBe(1.3);
     expect(levelScale([1, 2, 3], null)).toBe(1);
     expect(levelScale([2], 2)).toBe(1);
+  });
+});
+
+describe("levelIconK", () => {
+  it("draws the icon at 80% on every level after the first, full size on the first or with no picker", () => {
+    expect(levelIconK([1, 2, 3, 4], 1)).toBe(1);
+    expect([2, 3, 4].map((l) => levelIconK([1, 2, 3, 4], l))).toEqual([0.8, 0.8, 0.8]);
+    expect(levelIconK([2, 3], 2)).toBe(1);
+    expect(levelIconK([2], 2)).toBe(1);
+    expect(levelIconK([1, 2], null)).toBe(1);
   });
 });
 
