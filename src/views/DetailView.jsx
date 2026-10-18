@@ -6,7 +6,7 @@ import '@xyflow/react/dist/style.css'
 import ImportFormatsModal from '../components/ImportFormatsModal'
 import { nodeTypes } from '../components/AwsNode'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, ShowArrowsContext, ShowBadgeXContext, TagsAboveContext, FontsContext } from '../components/noteEditContext'
-import { fontsOf, levelsOf, atLevel, levelScale, LEVEL_NAMES } from '../view-state.js'
+import { fontsOf, levelsOf, atLevel, levelScale, LEVEL_NAMES, levelIconK } from '../view-state.js'
 import { layoutFit } from '../layout'
 import { Legend } from '../components/Legend'
 import { legendRows } from '../legend.js'
@@ -359,6 +359,7 @@ export function DetailView({
   const hasLanes = (activeDiagram?.view_state?.lanes || []).length > 0 || nodes.some(n => n.type === 'lane' || n.type === 'laneGrips' || n.type === 'laneEnd')
   const scale = hasLanes ? 1 : levelScale(levels, shown)
   const levelView = shown != null && scale !== 1
+  const iconK = levelIconK(levels, shown)
   // A card's scaled `data` is cached by its source data and the scale, so a
   // card whose data did not change keeps the SAME object: AwsNode is memoised
   // on it, and its note effect re-publishes on every render, which re-renders
@@ -367,26 +368,36 @@ export function DetailView({
   // layoutFit picks dagre or the fan, whichever fits the window bigger.
   const scaledData = useRef(new Map())
   const viewNodes = useMemo(() => {
-    if (!levelView) return atShown.nodes
+    const cache = scaledData.current
+    if (!levelView) {
+      if (iconK === 1) return atShown.nodes
+      // The stored layout at a lower level: same cards, smaller icon, the data object cached like below.
+      return atShown.nodes.map(n => {
+        if (n.type !== 'awsNode') return n
+        const hit = cache.get(n.id)
+        let data = hit && hit.src === n.data && hit.scale === 1 ? hit.data : null
+        if (!data) { data = { ...n.data, iconK }; cache.set(n.id, { src: n.data, scale: 1, data }) }
+        return { ...n, data }
+      })
+    }
     const kept = atShown.nodes.filter(n => n.type !== 'marker')
     const cards = kept.filter(n => n.type === 'awsNode')
     // No window size: the export and check:overlaps lay out the same level view, so all 3 must agree.
     const laid = new Map(layoutFit(cards.map(n => ({ ...n, measured: undefined })), atShown.edges).map(n => [n.id, n.position]))
     const k = (v) => v ? { w: v.w * scale, h: v.h * scale } : v
-    const cache = scaledData.current
     return [...cards.map(n => {
       const d = n.data || {}
       const hit = cache.get(n.id)
       let data = hit && hit.src === n.data && hit.scale === scale ? hit.data : null
       if (!data) {
         const size = d.size || (typeof d.image === 'string' && d.image.startsWith('data:image/') ? { w: 240, h: 225 } : { w: 180, h: 180 })
-        data = { ...d, size: k(size), ...(d.iconSize ? { iconSize: k(d.iconSize) } : {}) }
+        data = { ...d, size: k(size), ...(iconK !== 1 ? { iconK } : {}), ...(d.iconSize ? { iconSize: k(d.iconSize) } : {}) }
         cache.set(n.id, { src: n.data, scale, data })
       }
       const p = laid.get(n.id)
       return { ...n, position: { x: p.x * scale, y: p.y * scale }, ...(n.width ? { width: n.width * scale, height: n.height * scale } : {}), data }
     }), ...kept.filter(n => n.type !== 'awsNode')]
-  }, [atShown, levelView, scale])
+  }, [atShown, levelView, scale, iconK])
   const canvasEdges = useMemo(() => {
     // A level view is laid out fresh, so a tag, bend or end dragged on the stored layout does not apply.
     const edges = levelView
