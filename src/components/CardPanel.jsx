@@ -52,7 +52,7 @@ const Section = ({ title, children }) => (
 // every line into it and out of it, the 2 lists together at the foot of the
 // panel. Same look as the Share panel
 // (DetailView.jsx) - width, background, border, slide-in - a different body.
-export function CardPanel({ node, nodes, edges, onPick, onClose }) {
+export function CardPanel({ node, nodes, edges, onPick, onClose, onFormat }) {
   const data = node.data || {}
   const svc = findService(data)
   const label = svc.label || data.label || data.id
@@ -101,6 +101,10 @@ export function CardPanel({ node, nodes, edges, onPick, onClose }) {
           <div style={{ fontSize: 14, fontWeight: 700, color: '#1a2129' }}>{label}</div>
           {sub && <div style={{ fontSize: 11.5, color: '#6b7280' }}>{sub}</div>}
         </div>
+        {/* Owner only: the way into the Format panel (speed, sizing, text, arrows, legend, history) from any card. */}
+        {onFormat && (
+          <button type="button" className="sd-card-format" onClick={onFormat} style={{ flexShrink: 0, height: 26, padding: '0 10px', borderRadius: 7, border: '1px solid #e4e6e8', background: '#0f172a', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Format</button>
+        )}
         <button type="button" onClick={onClose} aria-label="Close card panel" style={PANEL_CLOSE}>✕</button>
       </div>
 
