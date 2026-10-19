@@ -169,6 +169,9 @@ export function DetailView({
   showArrows = true, setShowArrows, showBadgeX = true, tagsAbove = false,
   showLegend = true, setShowLegend,
   level = null, setLevel,
+  // A card's drill-in view: { nodeId, title } while it is up, a click to open
+  // one from the card panel, and the way back to the main diagram.
+  drill, onDrill, onDrillBack,
   badgeMode, setBadgeMode,
   activeDiagram,
   nodes, edges, onNodesChange, onEdgesChange, onNodeDragStop, snapGuides = [], onPaneTap,
@@ -255,7 +258,7 @@ export function DetailView({
   // The goal paragraph opens at the top left on a tablet or desktop (owner
   // 2026-10-19: "show goal on top left like before"); a phone starts folded to
   // the badge so it keeps the whole canvas. A click folds it either way.
-  const [infoOpen, setInfoOpen] = useState(() => typeof window === 'undefined' || !window.matchMedia('(max-width: 640px)').matches)
+  const [infoOpen, setInfoOpen] = useState(() => typeof window === 'undefined' || !window.matchMedia?.('(max-width: 640px)')?.matches)
   // The card panel: a clicked card's id, read back into the live node so a
   // deleted card closes the panel on its own rather than holding a stale copy.
   const [cardId, setCardId] = useState(null)
@@ -294,6 +297,13 @@ export function DetailView({
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [cardId, stepId, currentOpen])
+  // Esc leaves a drill-in view once no panel is left to close.
+  useEffect(() => {
+    if (!drill || !onDrillBack || cardId || stepId || currentOpen) return
+    const onKeyDown = e => { if (e.key === 'Escape') onDrillBack() }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [drill, onDrillBack, cardId, stepId, currentOpen])
   // A tapped tag (GradientEdge) opens its step, never the line under it.
   useEffect(() => {
     const onStep = e => { setCurrentOpen(false); setStepId(e.detail) }
@@ -1186,6 +1196,21 @@ export function DetailView({
             </button>
           ))}
 
+          {drill && (
+            <div data-testid="drill-bar" style={{
+              position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 45,
+              display: 'flex', alignItems: 'center', gap: 8, maxWidth: 'calc(100% - 120px)',
+              background: '#ffffff', border: '1px solid #e4e6e8', borderRadius: 999, padding: '6px 14px 6px 6px',
+              fontSize: 13, color: '#0f172a', boxShadow: '0 2px 10px rgba(0,0,0,0.10)', whiteSpace: 'nowrap',
+            }}>
+              <button type="button" className="sd-keep-bg" onClick={onDrillBack} title="Back to main diagram" style={{
+                background: '#f1f5f9', border: 'none', borderRadius: 999, padding: '5px 12px', fontSize: 13, color: '#0f172a', cursor: 'pointer',
+              }}>← Main diagram</button>
+              <span style={{ color: '#9aa0a6' }}>/</span>
+              <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis' }}>{drill.title}</span>
+            </div>
+          )}
+
           {/* Zoom HUD */}
           <div ref={zoomHudRef} style={{
             position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)',
@@ -1269,7 +1294,8 @@ export function DetailView({
 
         {card && !phone && (
           <CardPanel node={card} nodes={nodes} edges={edges} onPick={setCardId} onClose={() => setCardId(null)}
-            onFormat={onCurrentChange && !narrow ? () => { setCardId(null); setCurrentOpen(true) } : undefined} />
+            onFormat={onCurrentChange && !narrow ? () => { setCardId(null); setCurrentOpen(true) } : undefined}
+            onDrill={card?.data?.hasDrill && onDrill ? () => { setCardId(null); onDrill(card.id) } : undefined} />
         )}
 
         {step && !phone && (

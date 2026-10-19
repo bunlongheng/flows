@@ -114,6 +114,12 @@ const zNodeFields = {
   size: zBox(130, 600).describe('Card size in canvas units, { w, h }, clamped 130-600. Omit for the default 180 x 180 (240 x 225 for a picture node). A note hangs BELOW the card and is not part of this height.'),
   iconSize: zBox(16, 600).describe('Logo tile size inside the card, { w, h }, clamped 16-600. Omit unless a wide wordmark is unreadable at the stock tile.'),
   style: zStyle.describe(`Per-card look: ${STYLE_KEYS} A card with no style draws in its own brand colour, which is almost always what you want - set this only to say something the colour cannot.`),
+  drill: z.object({
+    title: z.string().max(120).optional(),
+    nodes: z.array(z.record(z.string(), z.unknown())).max(100),
+    edges: z.array(z.record(z.string(), z.unknown())).max(300).optional(),
+    view: z.object({ panels: z.array(z.string()).optional() }).optional(),
+  }).optional().describe('A sub-diagram opened from this card\'s panel (Drill in), e.g. the tables behind a database card: 1 card per table, note = its columns, lines = foreign keys labelled with the column. Drill cards take the same fields as a card (id, icon or catalog id, label, sub, note, info, x, y); no nested drill and no level. Lines are { id, source, target, label?, description?, style? } between drill cards. Max 100 cards and 300 lines. Read only in the app. An update that omits it keeps the stored one.'),
 }
 const zEdgeFields = {
   id: z.string().max(60).optional().describe('STABLE id for this line, e.g. "e1". GIVE EVERY EDGE ONE. With no id the identity falls back to the ARRAY INDEX, so inserting a line in the middle silently moves the styling, badge position and step number of every line after it onto the wrong line. It also decides which line of a trunk is the leader that carries the badge (lowest id wins).'),

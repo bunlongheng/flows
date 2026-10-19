@@ -74,7 +74,7 @@ diagram, same as `update_flow`.
 }
 ```
 
-A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, sunset?, cracked?, new?, tooltip?, iconFrame?, level?, size?, iconSize?, style? }`:
+A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, sunset?, cracked?, new?, tooltip?, iconFrame?, level?, drill?, size?, iconSize?, style? }`:
 
 - `id` - a service key from `list_services` (e.g. `user`, `apigw`, `lambda`, `dynamo`, `kafka`, `redis`, `s3`), or any unique id when bringing your own icon or image. A key appears at most once per diagram.
 - `icon` - bring-your-own logo: a remote `https` image URL, a `data:image/(png|jpeg|svg+xml|webp|gif)` URI with a real `;base64,` or `,` boundary, or a same-origin image path such as `/brand/foo.svg` (never protocol-relative `//host`). A remote URL is fetched once (https only, no redirects, `image/*`, max 24KB, 5s, private hosts refused, raster logos at least 96px) and inlined so the diagram stays self-contained. If it cannot be fetched the call fails and names the node. An inline `data:` icon is capped at 24KB.
@@ -87,6 +87,7 @@ A node is `{ id, x?, y?, icon?, image?, label?, sub?, color?, note?, info?, suns
 - `new` - a boolean; `true` marks a component being added: green border and wash, NEW pill inside the top-left corner. Status is a flag, never a colour: never paint a card red, green or grey to mean retired or new.
 - `tooltipColor` - `#rrggbb` fill for the tooltip and its pinned callout (default red); the text turns white or ink to stay readable.
 - `pinTooltip` - `true` keeps the tooltip always visible above the card as a red callout (needs `tooltip`).
+- `drill` - `{ title?, nodes, edges?, view?: { panels? } }`, a read-only sub-diagram opened by Drill in on the card panel, e.g. the tables behind a database card (1 card per table, note = columns, lines = foreign keys labelled with the column). Drill cards take the card fields (id, icon or catalog id, label, sub, note, info, x, y); no nested drill and no level. Max 100 cards and 300 lines. An update that omits it keeps the stored one.
 - `tooltip` - plain text, max 200 chars, shown when the reader hovers the card. Optional; not in the SVG. A node with no colour of its own falls back to black.
 - `size` - optional `{ w, h }`, clamped 130..600, the card on the canvas. Default 180 x 180, or 240 x 225 for a picture card. A note hangs BELOW the card and is not part of `h`.
 - `iconSize` - optional `{ w, h }`, clamped 16..600, the logo tile inside the card (default 48 x 48). Only for a wide wordmark that is unreadable at the stock tile.
