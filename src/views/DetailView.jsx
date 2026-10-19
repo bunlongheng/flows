@@ -252,10 +252,10 @@ export function DetailView({
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [lockMenu])
-  // The summary card sits over the canvas and covers part of the diagram, so
-  // it starts folded to a small badge in the corner on every screen; a click
-  // opens it when the reader wants the framing.
-  const [infoOpen, setInfoOpen] = useState(false)
+  // The goal paragraph opens at the top left on a tablet or desktop (owner
+  // 2026-10-19: "show goal on top left like before"); a phone starts folded to
+  // the badge so it keeps the whole canvas. A click folds it either way.
+  const [infoOpen, setInfoOpen] = useState(() => typeof window === 'undefined' || !window.matchMedia('(max-width: 640px)').matches)
   // The card panel: a clicked card's id, read back into the live node so a
   // deleted card closes the panel on its own rather than holding a stale copy.
   const [cardId, setCardId] = useState(null)
