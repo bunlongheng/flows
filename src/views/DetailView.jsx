@@ -1268,7 +1268,8 @@ export function DetailView({
         )}
 
         {card && !phone && (
-          <CardPanel node={card} nodes={nodes} edges={edges} onPick={setCardId} onClose={() => setCardId(null)} />
+          <CardPanel node={card} nodes={nodes} edges={edges} onPick={setCardId} onClose={() => setCardId(null)}
+            onFormat={onCurrentChange && !narrow ? () => { setCardId(null); setCurrentOpen(true) } : undefined} />
         )}
 
         {step && !phone && (
