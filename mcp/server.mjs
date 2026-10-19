@@ -283,12 +283,12 @@ server.registerTool(
   'get_flow',
   {
     title: 'Get flow',
-    description: 'Fetch one diagram by id, returning its full title, nodes, and edges (the exact structure the app renders).',
+    description: 'Fetch one diagram by id, returning its full title, description, nodes, and edges (the exact structure the app renders).',
     inputSchema: { id: z.string().describe('The diagram id (uuid) from list_flows') },
   },
   async ({ id }) => {
     try {
-      const { rows } = await db.query('SELECT id, title, slug, nodes, edges, locked, edit_locked, created_at FROM flows WHERE id = $1 AND deleted_at IS NULL', [id])
+      const { rows } = await db.query('SELECT id, title, description, slug, nodes, edges, locked, edit_locked, created_at FROM flows WHERE id = $1 AND deleted_at IS NULL', [id])
       if (!rows.length) return fail(`No diagram with id ${id}`)
       return ok({ ...rows[0], url: urlFor(id), share_url: shareUrlFor(rows[0].slug), gif_url: gifUrlFor(rows[0].slug), readme: readmeFor(rows[0].title, rows[0].slug) })
     } catch (e) { return fail(`get failed: ${e.message}`) }
@@ -409,6 +409,7 @@ server.registerTool(
       id: z.string().describe('The diagram id to update'),
       reason: z.string().optional().describe('Optional note on why, e.g. "backfill: correct the Integry decommission date". Recorded on the row as a trail; never required.'),
       title: z.string().optional(),
+      description: z.string().max(600).optional().describe('The goal paragraph shown at the top left of the diagram, max 600 chars. Omit to leave it; "" clears it.'),
       nodes: z.array(z.object({
         id: z.string(), x: z.number().optional(), y: z.number().optional(),
         icon: z.string().optional().describe('Bring-your-own logo: https URL, data:image URI, or /path, at least 96px on each side. IGNORED when id is a catalog service.'),
@@ -432,7 +433,7 @@ server.registerTool(
       lanes: z.array(zLane).max(12).optional().describe('Swimlanes: bands under the cards, 1 per layer. Rows { id, title, y, h, color? } for a top-down layout, columns { id, title, x, w, color? } for a left-to-right one; 1 kind per diagram, in canvas units (a card is 180 x 180, a picture card 240 x 225, plus its note below). A lane may carry sections to split its band into 2 to 8 titled bands across its other axis, 40 px apart. Replaces the whole list; [] removes every lane; omit to leave lanes alone. Lanes pack from the first one with equal 40 px gaps. With lanes on, the Start pill is not drawn.'),
     },
   },
-  async ({ id, reason, title, nodes, edges, public: pub, is_public, lanes, view, view_state }) => {
+  async ({ id, reason, title, description, nodes, edges, public: pub, is_public, lanes, view, view_state }) => {
     try {
       const isPublic = pub ?? is_public
       // A flow is open to agents unless the owner has edit-locked it, in the app.
@@ -479,10 +480,11 @@ server.registerTool(
            edges = COALESCE($4::jsonb, edges),
            update_reason = COALESCE($5, update_reason),
            is_public = COALESCE($7, is_public),
+           description = CASE WHEN $8::text IS NULL THEN description ELSE NULLIF($8, '') END,
            thumbnail = CASE WHEN $3::jsonb IS NULL AND $4::jsonb IS NULL THEN thumbnail END,
            updated_at = now()
          WHERE id = $1 AND user_id = $6 AND deleted_at IS NULL RETURNING id, slug, title, is_public`,
-        [id, title?.trim() ?? null, nextNodes, nextEdges, reason?.trim() ?? null, owner(), isPublic ?? null],
+        [id, title?.trim() ?? null, nextNodes, nextEdges, reason?.trim() ?? null, owner(), isPublic ?? null, description?.trim() ?? null],
       )
       if (!rows.length) return fail(`No owned diagram with id ${id} (it may be in trash - call list_trash)`)
       // lanes and view both live in view_state, so they merge key by key: what
@@ -505,7 +507,7 @@ server.registerTool(
         gif_url: gifUrlFor(rows[0].slug),
         readme: readmeFor(rows[0].title, rows[0].slug),
         visibility: rows[0].is_public ? 'public' : 'private',
-        updated: { title: title != null, nodes: nodes != null, edges: edges != null, public: isPublic != null, lanes: lanes != null, view: (view ?? view_state) != null },
+        updated: { title: title != null, description: description != null, nodes: nodes != null, edges: edges != null, public: isPublic != null, lanes: lanes != null, view: (view ?? view_state) != null },
         ...(layoutWarning ? { layout: layoutWarning } : {}),
         ...(reason?.trim() ? { reason: reason.trim() } : {}),
       })
