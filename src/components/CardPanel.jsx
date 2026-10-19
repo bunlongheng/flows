@@ -52,7 +52,7 @@ const Section = ({ title, children }) => (
 // every line into it and out of it, the 2 lists together at the foot of the
 // panel. Same look as the Share panel
 // (DetailView.jsx) - width, background, border, slide-in - a different body.
-export function CardPanel({ node, nodes, edges, onPick, onClose, onFormat }) {
+export function CardPanel({ node, nodes, edges, onPick, onClose, onFormat, onDrill }) {
   const data = node.data || {}
   const svc = findService(data)
   const label = svc.label || data.label || data.id
@@ -107,6 +107,14 @@ export function CardPanel({ node, nodes, edges, onPick, onClose, onFormat }) {
         )}
         <button type="button" onClick={onClose} aria-label="Close card panel" style={PANEL_CLOSE}>✕</button>
       </div>
+
+      {/* A card with a drill-in view (node.drill) opens it on the canvas. */}
+      {onDrill && (
+        <button type="button" data-testid="card-drill" onClick={onDrill} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: 10, borderRadius: 8, border: 'none', background: '#0f172a', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>
+          <span>Drill in<span style={{ display: 'block', fontSize: 11.5, fontWeight: 400, color: '#cbd5e1' }}>Open the detail view of this card</span></span>
+        </button>
+      )}
 
       <Section title="What it is">
         {info ? <Rich text={info} /> : <div style={empty}>No description</div>}

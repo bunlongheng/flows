@@ -363,6 +363,11 @@ export const AwsNode = memo(function AwsNode({ data, selected }) {
       <Handle id="b" type="source" position={Position.Bottom} className="sd-port" />
       {!split && face(true)}
       {isNew && <span className="sd-new-pill" style={{ position: 'absolute', top: 8, left: 8, background: NEW.border, color: '#fff', fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', lineHeight: '16px', padding: '0 7px', borderRadius: 999, boxShadow: '0 1px 2px rgba(0,0,0,0.15)', pointerEvents: 'none' }}>NEW</span>}
+      {data.hasDrill && (
+        <span data-testid="drill-mark" title="Has a drill-in view" style={{ position: 'absolute', bottom: 6, right: 6, width: 18, height: 18, borderRadius: '50%', background: '#ffffff', border: `1px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>
+        </span>
+      )}
       <NodeNote id={data.id} note={note} />
     </div>
   )

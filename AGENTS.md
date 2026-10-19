@@ -104,6 +104,7 @@ to drift:
 | `style.opacity` | node, edge | `0-100` | transparency of the card or line |
 | `iconFrame` | node | `true` | 1 px grey frame at the iOS corner of the icon tile. Set by itself only for an iOS tile (transparent corners: the owner's own apps and local-apps) with a white edge; a square third-party logo stays square (owner rule 2026-10-14) |
 | `level` | node | `1`-`4` | C4 level the card first appears at (1 Context, 2 Container, 3 Component, 4 Code); cumulative; no level = in every view; a view below the top is auto-laid out and scaled (1.3x, 1.6x, 1.9x per step down: cards, icons, titles, notes, badges, and from the 2nd level down an icon draws at 80% of its slot; a tag, bend or end slid by hand on the stored layout is ignored, a tag clears every card and the columns move apart just enough for the widest tag (never past 2x)), read only for drag and resize; swimlane diagrams only filter. 2+ levels in a diagram = a C1..C4 picker above the canvas, fewer = drawn as today |
+| `drill` | node | `{ title?, nodes, edges, view? }` | a read-only sub-diagram (e.g. the tables behind a database card) opened by Drill in on the card panel; a corner mark on the card; max 100 cards / 300 lines, no nested drill or level; an update that omits it keeps the stored one |
 | `level` | `view_state` / MCP `view` | `1`-`4` | the level the diagram opens at; falls back to the lowest level present |
 | `passcode` | HTTP `PATCH` only, owner | text, `""` clears | locks the share behind a passcode |
 

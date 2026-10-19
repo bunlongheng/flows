@@ -238,6 +238,11 @@ export default function App() {
   const isDemo = typeof window !== 'undefined' && window.location.pathname === '/demo'
   const [view, setView] = useState('index') // 'index' | 'detail'
   const [activeDiagram, setActiveDiagram] = useState(null)
+  // A card's drill-in view (node.drill) on the canvas: { nodeId, title } or null.
+  // Read only; the ref lets the debounced save refuse while it is up.
+  const [drill, setDrill] = useState(null)
+  const drillRef = useRef(null)
+  drillRef.current = drill
   // The Start pill's live position while it is being dragged - not yet saved,
   // so it has to win over the saved view_state.start until the drag ends.
   const [startDrag, setStartDrag] = useState(null)
@@ -326,7 +331,7 @@ export default function App() {
   // only offer the dev link. Production starts gated as before. Read here,
   // not from IS_DEV, so a test can stand in a production build.
   const [devBypass, setDevBypass] = useState(process.env.NODE_ENV !== 'production')
-  const canAI = (Boolean(user) || IS_DEV) && !isDemo
+  const canAI = (Boolean(user) || IS_DEV) && !isDemo && !drill
   const rfInstance = useRef(null)
   // Snap suggestions: the guides to draw, plus a live "is Cmd/Ctrl down" flag.
   // The modifier SUSPENDS snapping now rather than arming it - suggestions are
@@ -708,13 +713,38 @@ export default function App() {
     const mode = sizingOf(d.view_state, raw), lines = lineCounts(d.data.edges), L = layoutOf(d.view_state)
     const n = raw.map(nd => {
       const size = boxed(nd, mode, lines, L)
-      return { ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, new: nd.new === true, cracked: nd.cracked !== false, tooltip: nd.tooltip, pinTooltip: nd.pinTooltip === true, tooltipColor: nd.tooltipColor, iconFrame: nd.iconFrame === true, size, handSize: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: laidOut(nd.position, null, L).position } : {}), ...(size ? { width: size.w, height: size.h } : {}) }
+      return { ...nd, type: 'awsNode', data: { id: nd.id, label: nd.label, icon: nd.icon, image: nd.image, color: nd.color, sub: nd.sub, note: nd.note, info: nd.info, sunset: nd.sunset === true, new: nd.new === true, cracked: nd.cracked !== false, tooltip: nd.tooltip, pinTooltip: nd.pinTooltip === true, tooltipColor: nd.tooltipColor, iconFrame: nd.iconFrame === true, hasDrill: !!nd.drill, size, handSize: nd.size, iconSize: nd.iconSize, style: nd.style }, ...(hasSaved ? { position: laidOut(nd.position, null, L).position } : {}), ...(size ? { width: size.w, height: size.h } : {}) }
     })
     const e = buildEdges(d.data.edges, canAI ? onLabelMove : undefined, raw, canAI ? onEndMove : undefined, canAI ? onBendMove : undefined, d.view_state?.lanes || [], canAI ? onLabelEdit : undefined)
     return { nodes: hasSaved ? n : layoutFanOut(n, e), edges: e }
   }
 
+  // Swap the canvas to a card's drill-in view, and back. The drill cards carry
+  // no level, so the level filter has nothing to hide.
+  function openDrill(nodeId) {
+    const node = (activeDiagram?.data?.nodes || []).find(nd => nd.id === nodeId)
+    const dr = node?.drill
+    if (!dr) return
+    const sub = { ...activeDiagram, data: { nodes: dr.nodes, edges: dr.edges || [] }, view_state: { badge: activeDiagram.view_state?.badge, panels: dr.view?.panels || [] } }
+    const { nodes: n, edges: e } = buildDiagramNodesEdges(sub)
+    setNodes(n)
+    setEdges(e)
+    setDrill({ nodeId, title: dr.title || node.label || nodeId })
+    fitSoon()
+  }
+  // The swapped-in cards measure a frame after they mount, so fit once they have.
+  function fitSoon() { setTimeout(() => rfInstance.current?.fitView({ padding: 0.15, duration: 400 }), 250) }
+  function closeDrill() {
+    if (!activeDiagram) return
+    const { nodes: n, edges: e } = buildDiagramNodesEdges(activeDiagram)
+    setNodes(n)
+    setEdges(e)
+    setDrill(null)
+    fitSoon()
+  }
+
   function openDiagram(d) {
+    setDrill(null)
     setActiveDiagram(d)
     setHistory({ past: [], future: [] })
     setStartDrag(null)
@@ -833,6 +863,8 @@ export default function App() {
       })
   }, [showToastMsg])
   const savePositions = useCallback((diagramId, nds) => {
+    // A nodes PATCH with the drill cards' ids would ADD them to the main row.
+    if (drillRef.current) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => doSave(diagramId, nds), 600)
   }, [doSave])
@@ -1395,6 +1427,7 @@ export default function App() {
 
   function backToGallery() {
     setLoadError(false)
+    setDrill(null)
     const url = new URL(window.location.href)
     url.searchParams.delete('id')
     url.searchParams.delete('name')
@@ -1805,7 +1838,7 @@ export default function App() {
   // never edited on the canvas: drawn under the cards, nothing more.
   // A card draws 180 square (NODE_W 190 is layout pitch), so a section's pad is
   // measured off the drawn card, the same on every side.
-  const laneCfg = laneDraft || activeDiagram?.view_state?.lanes || []
+  const laneCfg = drill ? [] : laneDraft || activeDiagram?.view_state?.lanes || []
   lanesRef.current = activeDiagram?.view_state?.lanes || null
   const laneCards = nodes.map(n => { const s = sizeOf(n); return { id: n.id, x: n.position?.x ?? 0, y: n.position?.y ?? 0, w: n.data?.size?.w ?? 180, h: s.h + (showNotes && getNoteHeight(n.id) ? getNoteHeight(n.id) - NOTE_CLEAR : 0), color: n.data?.sunset ? null : findService(n.data || { id: n.id })?.color } })
   // The owner drags a band (#468): its title moves it with its cards, an edge
@@ -2088,7 +2121,7 @@ export default function App() {
   }
   // Swimlanes already say where a flow begins (the top lane), so a diagram
   // with lanes draws no Start here pill. Same rule in render-svg.js.
-  const markers = lanes.length ? { nodes: [], edges: [] } : buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)
+  const markers = lanes.length || drill ? { nodes: [], edges: [] } : buildMarkers(nodes, edges, startDrag || activeDiagram?.view_state?.start, canAI)
   const displayNodes = [...lanes, ...sectionEnds, ...nodes, ...markers.nodes, ...laneGrips]
   const displayEdges = [...edges, ...markers.edges]
   return (
@@ -2103,6 +2136,7 @@ export default function App() {
       showNotes={showNotes} setShowNotes={setShowNotes}
       showArrows={showArrows} setShowArrows={setShowArrows} showBadgeX={showBadgeX} tagsAbove={tagsAbove}
       level={level} setLevel={setLevel}
+      drill={drill} onDrill={openDrill} onDrillBack={closeDrill}
       showLegend={showLegend} setShowLegend={setShowLegend}
       isLocked={!!activeDiagram?.locked} isEditLocked={!!activeDiagram?.editLocked} onSetLocks={canAI ? setLocks : undefined}
       badgeMode={badgeMode} setBadgeMode={setBadgeMode}

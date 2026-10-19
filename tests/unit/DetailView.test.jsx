@@ -204,27 +204,25 @@ describe("read-only demo view", () => {
 describe("info card", () => {
   const withInfo = { ...sampleDiagram, pattern: "Fan-out on write", description: "A URL shortener." };
 
-  it("starts folded on every screen, opens on click and folds back", async () => {
+  it("starts open on a tablet or desktop, folds on click and opens back", async () => {
     setup({ activeDiagram: withInfo });
-    expect(screen.queryByText("Fan-out on write")).toBeNull();
-    const badge = screen.getByRole("button", { name: /show the diagram summary/i });
-    expect(badge).toHaveAttribute("aria-expanded", "false");
-
-    await userEvent.click(badge);
     expect(screen.getByText("Fan-out on write")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /hide the diagram summary/i }));
     expect(screen.queryByText("Fan-out on write")).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: /show the diagram summary/i }));
+    expect(screen.getByText("Fan-out on write")).toBeInTheDocument();
   });
 
-  it("starts folded on a desktop-width window too", () => {
-    const w = window.innerWidth;
+  it("starts folded on a phone", () => {
+    const prev = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query) => ({ matches: query === "(max-width: 640px)", media: query, addEventListener: () => {}, removeEventListener: () => {} }));
     try {
-      window.innerWidth = 1280;
       setup({ activeDiagram: withInfo });
-      expect(screen.getByRole("button", { name: /show the diagram summary/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /show the diagram summary/i })).toHaveAttribute("aria-expanded", "false");
     } finally {
-      window.innerWidth = w;
+      window.matchMedia = prev;
     }
   });
 
@@ -322,11 +320,17 @@ describe("card panel", () => {
 
   it("never opens on a phone", () => {
     const restore = mockMatchMedia({ "(max-width: 880px)": true, "(pointer: coarse)": true });
+    // A phone is a touch screen whose short side is under 600 px (DetailView `phone`).
+    const scr = Object.getOwnPropertyDescriptors(window.screen);
+    Object.defineProperty(window.screen, "width", { value: 390, configurable: true });
+    Object.defineProperty(window.screen, "height", { value: 844, configurable: true });
     try {
       setup({ nodes: cardNodes, edges: cardEdges });
       fireEvent.click(document.querySelector('.react-flow__node[data-id="api"]'));
       expect(screen.queryByTestId("card-panel")).toBeNull();
     } finally {
+      delete window.screen.width; delete window.screen.height;
+      for (const k of ["width", "height"]) if (scr[k]) Object.defineProperty(window.screen, k, scr[k]);
       restore();
     }
   });
@@ -395,6 +399,8 @@ describe("current panel", () => {
   it("carries the diagram summary the badge used to show", () => {
     const activeDiagram = { ...sampleDiagram, pattern: "Fan-out on write", description: "A URL shortener." };
     setup({ activeDiagram, nodes: [nodes[0]], current: { speed: 1, amount: 10 }, onCurrentChange: vi.fn() });
+    // The goal card starts open on a tablet or desktop; folded, it is the badge again.
+    fireEvent.click(screen.getByRole("button", { name: /hide the diagram summary/i }));
     fireEvent.click(screen.getByRole("button", { name: /control the current/i }));
     const panel = within(screen.getByTestId("current-panel"));
     expect(panel.getByText("Fan-out on write")).toBeInTheDocument();
@@ -437,8 +443,9 @@ describe("current panel", () => {
   it("leaves the visitor's i badge showing the summary", () => {
     const activeDiagram = { ...sampleDiagram, pattern: "Fan-out on write" };
     setup({ activeDiagram, nodes: [nodes[0]] });
-    fireEvent.click(screen.getByRole("button", { name: /show the diagram summary/i }));
     expect(screen.getByText("Fan-out on write")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /hide the diagram summary/i }));
+    expect(screen.queryByText("Fan-out on write")).toBeNull();
     expect(screen.queryByTestId("current-panel")).toBeNull();
   });
 
