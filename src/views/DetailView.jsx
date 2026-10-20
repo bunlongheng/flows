@@ -8,6 +8,7 @@ import { nodeTypes } from '../components/AwsNode'
 import { NoteEditContext, NodeResizeContext, IconResizeContext, ShowNotesContext, ShowArrowsContext, ShowBadgeXContext, TagsAboveContext, FontsContext } from '../components/noteEditContext'
 import { fontsOf, levelsOf, atLevel, levelScale, LEVEL_NAMES, levelIconK } from '../view-state.js'
 import { layoutFit } from '../layout'
+import { packLevel, cleanLanes, laneAxis, LANE_MIN, LANE_TITLE } from '../lanes.js'
 import { Legend } from '../components/Legend'
 import { legendRows } from '../legend.js'
 import { edgeTypes } from '../components/GradientEdge'
@@ -368,7 +369,9 @@ export function DetailView({
   // A level below the top is auto-laid out and scaled up; swimlanes only filter.
   const hasLanes = (activeDiagram?.view_state?.lanes || []).length > 0 || nodes.some(n => n.type === 'lane' || n.type === 'laneGrips' || n.type === 'laneEnd')
   const scale = hasLanes ? 1 : levelScale(levels, shown)
-  const levelView = shown != null && scale !== 1
+  // A lane diagram below its top level packs its cards instead (packLevel, shared with the export).
+  const packed = hasLanes && shown != null && shown < levels[levels.length - 1]
+  const levelView = shown != null && (scale !== 1 || packed)
   const iconK = levelIconK(levels, shown)
   // A card's scaled `data` is cached by its source data and the scale, so a
   // card whose data did not change keeps the SAME object: AwsNode is memoised
@@ -379,6 +382,28 @@ export function DetailView({
   const scaledData = useRef(new Map())
   const viewNodes = useMemo(() => {
     const cache = scaledData.current
+    if (packed) {
+      const laneCfg = cleanLanes(activeDiagram?.view_state?.lanes || [])
+      const axis = laneAxis(laneCfg)
+      const box = n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.data?.size?.w ?? 180, h: n.data?.size?.h ?? 180 })
+      const cards = atShown.nodes.filter(n => n.type === 'awsNode')
+      const { pos, lanes } = packLevel(laneCfg, nodes.filter(n => n.type === 'awsNode').map(box), new Set(cards.map(n => n.id)))
+      if (!pos.size) return atShown.nodes
+      const [at, size, cross, csize] = axis === 'col' ? ['x', 'width', 'y', 'height'] : ['y', 'height', 'x', 'width']
+      const tall = n => (cross === 'y' ? n.measured?.height ?? n.data?.size?.h : n.measured?.width ?? n.data?.size?.w) ?? 180
+      const far = (list, p) => Math.max(...list.map(n => p(n)[cross] + tall(n)))
+      const shrink = far(nodes.filter(n => n.type === 'awsNode'), n => n.position) - far(cards, n => pos.get(n.id))
+      const byId = new Map(lanes.map(l => [l.id, l])), titleK = levelScale(levels, shown)
+      return atShown.nodes.flatMap(n => {
+        if (n.type === 'awsNode') return [{ ...n, position: pos.get(n.id) || n.position }]
+        if (n.type !== 'lane') return n.type === 'laneGrips' || n.type === 'laneEnd' ? [] : [n]
+        const l = byId.get(n.data?.laneId)
+        if (!l) return []
+        const lw = axis === 'col' ? l.w : l.h, lc = Math.max(LANE_MIN, (n[csize] ?? 0) - shrink)
+        // The band titles grow with the level, as a level view's text does.
+        return [{ ...n, position: { ...n.position, [at]: l[axis === 'col' ? 'x' : 'y'] }, [size]: lw, [csize]: lc, measured: { ...n.measured, [size]: lw, [csize]: lc }, data: { ...n.data, size: (n.data?.size || LANE_TITLE) * titleK } }]
+      })
+    }
     if (!levelView) {
       if (iconK === 1) return atShown.nodes
       // The stored layout at a lower level: same cards, smaller icon, the data object cached like below.
@@ -407,7 +432,7 @@ export function DetailView({
       const p = laid.get(n.id)
       return { ...n, position: { x: p.x * scale, y: p.y * scale }, ...(n.width ? { width: n.width * scale, height: n.height * scale } : {}), data }
     }), ...kept.filter(n => n.type !== 'awsNode')]
-  }, [atShown, levelView, scale, iconK])
+  }, [atShown, levelView, scale, iconK, packed, nodes, levels, shown, activeDiagram?.view_state?.lanes])
   const canvasEdges = useMemo(() => {
     // A level view is laid out fresh, so a tag, bend or end dragged on the stored layout does not apply.
     const edges = levelView

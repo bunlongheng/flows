@@ -335,3 +335,39 @@ export function moveLane(lanes, id, delta) {
   if (want > got) packed = pack(moved.map(l => (l.id === id ? { ...l, gap: Math.round(want - got) } : l)))
   return { lanes: packed, shift: Object.fromEntries(packed.map(l => [l.id, l[at] - was[l.id]])) }
 }
+
+// A level view below the top of a lane diagram (owner 2026-10-20, "fix this"):
+// the hidden cards leave empty columns, rows and whole lanes behind, so the
+// cards left are packed instead. Order and alignment stay: each lane keeps its
+// own slot pitch and lead, rows keep the diagram's pitch, lanes keep their gap.
+// `all` is every card {id, x, y, w, h} (it sets the pitch), `kept` the ids
+// shown. Returns the packed positions and the lanes moved and sized to them.
+// Free panels are not packed. Canvas, SVG and check:overlaps share this.
+export function packLevel(lanes, all, kept) {
+  const axis = laneAxis(lanes)
+  if (axis === 'free' || !lanes.length) return { pos: new Map(), lanes }
+  const [at, size, cross] = axis === 'col' ? ['x', 'w', 'y'] : ['y', 'h', 'x']
+  const pitch = vs => { const d = [...new Set(vs)].sort((a, b) => a - b).map((v, i, a) => a[i + 1] - v).filter(v => v > 0); return d.length ? Math.min(...d) : null }
+  const sorted = [...lanes].sort((a, b) => a[at] - b[at])
+  const laneOf = c => sorted.find(l => c[at] >= l[at] && c[at] < l[at] + l[size])
+  const shown = all.filter(c => kept.has(c.id))
+  const rows = [...new Set(shown.map(c => c[cross]))].sort((a, b) => a - b)
+  const rowPitch = pitch(all.map(c => c[cross])) || 300, row0 = Math.min(...all.map(c => c[cross]))
+  const pos = new Map(shown.map(c => [c.id, { [at]: c[at], [cross]: row0 + rows.indexOf(c[cross]) * rowPitch }]))
+  let cursor = null
+  const out = []
+  sorted.forEach((l, i) => {
+    const mine = all.filter(c => laneOf(c) === l), here = shown.filter(c => laneOf(c) === l)
+    if (!here.length) return
+    if (cursor == null) cursor = l[at]
+    const lead = Math.min(...mine.map(c => c[at] - l[at])), slot = pitch(mine.map(c => c[at])) || 400
+    const slots = [...new Set(here.map(c => c[at]))].sort((a, b) => a - b)
+    for (const c of here) pos.get(c.id)[at] = cursor + lead + slots.indexOf(c[at]) * slot
+    const end = Math.max(...here.map(c => pos.get(c.id)[at] + c[size])) + LANE_FIT
+    const next = sorted[i + 1], gap = next ? Math.max(LANE_GAP, next[at] - (l[at] + l[size])) : LANE_GAP
+    const { depth: _, ...rest } = l
+    out.push({ ...rest, [at]: cursor, [size]: end - cursor })
+    cursor = end + gap
+  })
+  return { pos, lanes: out }
+}
