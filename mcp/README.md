@@ -26,7 +26,7 @@ immediately. Speaks MCP over stdio; logs go to stderr only.
 | `get_version` | `id`, `version_id` | the summary fields plus `nodes`, `edges`, `pattern`, `description`, `view_state` |
 | `restore_version` | `id`, `version_id` | `{ id, url, restored, saved_at, title }` |
 
-`url` is `<APP_URL>/?id=<uuid>`. `share_url` is `<APP_URL>/demo?name=<slug>`,
+`url` is `<APP_URL>/?id=<uuid>`. `share_url` is `<APP_URL>/?id=<uuid>`,
 the link to hand to people. `gif_url` is the animated diagram as an image,
 `<APP_URL>/api/flows/<slug>?format=gif&w=1800&frames=20`, and `readme` is that URL
 wrapped as a Markdown image, ready to paste into a README. Both need the
