@@ -60,7 +60,7 @@ const APP_URL = process.env.FLOWS_APP_URL || 'https://flows-bheng.vercel.app'
 const urlFor = id => `${APP_URL}/?id=${id}`
 // The link to hand to people. It opens for anyone and unfurls with the diagram
 // itself (Slack, iMessage) - as long as the design is public.
-const shareUrlFor = slug => `${APP_URL}/demo?name=${encodeURIComponent(slug)}`
+const shareUrlFor = urlFor
 // The animated embed for a README. w=3200 is the widest render, so it stays
 // sharp on a retina screen at any zoom. Public diagrams only.
 const gifUrlFor = slug => `${APP_URL}/api/flows/${encodeURIComponent(slug)}?format=gif&w=1800&frames=20`
@@ -290,7 +290,7 @@ server.registerTool(
     try {
       const { rows } = await db.query('SELECT id, title, slug, nodes, edges, locked, edit_locked, created_at FROM flows WHERE id = $1 AND deleted_at IS NULL', [id])
       if (!rows.length) return fail(`No diagram with id ${id}`)
-      return ok({ ...rows[0], url: urlFor(id), share_url: shareUrlFor(rows[0].slug), gif_url: gifUrlFor(rows[0].slug), readme: readmeFor(rows[0].title, rows[0].slug) })
+      return ok({ ...rows[0], url: urlFor(id), share_url: shareUrlFor(id), gif_url: gifUrlFor(rows[0].slug), readme: readmeFor(rows[0].title, rows[0].slug) })
     } catch (e) { return fail(`get failed: ${e.message}`) }
   },
 )
@@ -375,7 +375,7 @@ server.registerTool(
       return ok({
         id,
         url: urlFor(id),
-        share_url: shareUrlFor(slug),
+        share_url: shareUrlFor(id),
         gif_url: gifUrlFor(slug),
         readme: readmeFor(title.trim(), slug),
         visibility: isPublic ? 'public' : 'private',
@@ -501,7 +501,7 @@ server.registerTool(
       return ok({
         id,
         url: urlFor(id),
-        share_url: shareUrlFor(rows[0].slug),
+        share_url: shareUrlFor(id),
         gif_url: gifUrlFor(rows[0].slug),
         readme: readmeFor(rows[0].title, rows[0].slug),
         visibility: rows[0].is_public ? 'public' : 'private',

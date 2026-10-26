@@ -1536,12 +1536,10 @@ export default function App() {
   // origin. A diagram with no slug (unsaved, AI-generated, pasted) has no public
   // URL, so it falls back to whatever is in the address bar.
   const shareSlug = (activeDiagram?.id && activeDiagram?.slug) || ''
-  // Always /demo, never "/". Vercel applies rewrites AFTER the filesystem check,
-  // and "/" resolves to the static index.html - so the share function never runs
-  // there and a link off the home route previews as the generic site card. /demo
-  // is not a file, so it reaches the function and gets this design's own card.
+  // Plain /?id=<uuid>, no /demo: "/" runs generateMetadata too, so the link still
+  // unfurls with this design's own card, and the passcode gate returns here.
   const shareUrl = shareSlug
-    ? `${publicOrigin()}/demo?id=${encodeURIComponent(activeDiagram.id)}`
+    ? `${publicOrigin()}/?id=${encodeURIComponent(activeDiagram.id)}`
     : (typeof window !== 'undefined' ? window.location.href : PROD_ORIGIN)
 
   function exportFilename(ext) {
