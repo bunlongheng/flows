@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { laneAxis, cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, sectionRef, laneNodeId, cardsColor, SECTION_PAD, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT, resortSections, moveLane } from "../../src/lanes.js";
+import { packLevel, laneAxis, cleanLanes, laneSpan, laneNodes, laneRects, laneGaps, packLanes, fitLanes, sectionRects, laneRef, sectionRef, laneNodeId, cardsColor, SECTION_PAD, LANE_PAD, LANE_MIN, LANE_GAP, LANE_FIT, resortSections, moveLane } from "../../src/lanes.js";
 
 describe("cleanLanes", () => {
   it("keeps typed, bounded lanes and drops the rest", () => {
@@ -270,3 +270,23 @@ describe("free panels", () => {
     expect(laneGaps(laneRects(cleanLanes(free), cards))).toBeNull();
   });
 });
+
+describe('packLevel', () => {
+  const lanes = [{ id: 'a', x: 0, w: 360 }, { id: 'b', x: 400, w: 760 }, { id: 'c', x: 1200, w: 360 }]
+  const all = [
+    { id: '1', x: 40, y: 0, w: 180, h: 180 }, { id: '2', x: 440, y: 0, w: 180, h: 180 },
+    { id: '3', x: 840, y: 300, w: 180, h: 180 }, { id: '4', x: 1240, y: 600, w: 180, h: 180 },
+    { id: '5', x: 840, y: 900, w: 180, h: 180 },
+  ]
+  it('drops empty lanes, closes empty slots and rows, and keeps the lane gap', () => {
+    const { pos, lanes: out } = packLevel(lanes, all, new Set(['1', '3', '5']))
+    expect(out.map(l => l.id)).toEqual(['a', 'b'])
+    expect(pos.get('3')).toEqual({ x: 336, y: 300 })
+    expect(pos.get('5')).toEqual({ x: 336, y: 600 })
+    expect(out[1].x - (out[0].x + out[0].w)).toBe(40)
+  })
+  it('leaves free panels alone', () => {
+    const free = [{ id: 'p', x: 0, y: 0, w: 400, h: 400 }]
+    expect(packLevel(free, all, new Set(['1'])).pos.size).toBe(0)
+  })
+})
