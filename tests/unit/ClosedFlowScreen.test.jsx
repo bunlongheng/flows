@@ -9,10 +9,11 @@ const ID = "77f0c76c-1111-2222-3333-444444444444";
 afterEach(cleanup);
 
 describe("ClosedFlowScreen", () => {
-  it("tells a signed-out visitor the flow is private and offers sign-in that returns here", () => {
+  it("tells a signed-out visitor the flow is private without a sign-in pitch", () => {
     render(<ClosedFlowScreen status={404} signedIn={false} flowId={ID} onBack={vi.fn()} />);
     expect(screen.getByRole("heading")).toHaveTextContent("This flow is private");
-    expect(screen.getByRole("link", { name: /Sign in and open it/ })).toHaveAttribute("href", "/api/auth/login");
+    expect(screen.queryByRole("link", { name: /Sign in/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Back to gallery" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /View live demo/ })).toHaveAttribute("href", "/demo");
   });
 

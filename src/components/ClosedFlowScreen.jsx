@@ -6,7 +6,8 @@
 //
 // status: the HTTP status the flow fetch returned, or 'network' when nothing
 // answered. 404 is also what a private flow returns to anyone but its owner,
-// so a signed-out visitor is told to sign in; a signed-in owner is told it is
+// so a signed-out visitor is told it is private (no sign-in pitch: only the
+// owner has an account); a signed-in owner is told it is
 // gone, since a private flow of theirs would have opened.
 
 const MONO = "ui-monospace, 'SF Mono', Menlo, monospace"
@@ -15,7 +16,7 @@ function copyFor(status, signedIn) {
   if (status === 404 && !signedIn) return {
     kind: 'private',
     title: 'This flow is private',
-    body: 'Or it was deleted. If it is yours, sign in and this link opens.',
+    body: 'Or it was deleted. Ask the person who shared it for a new link.',
     node: 'Private',
   }
   if (status === 404) return {
@@ -30,17 +31,6 @@ function copyFor(status, signedIn) {
     body: 'The API did not answer, so the flow could not load. Reload to try again.',
     node: 'API',
   }
-}
-
-function GoogleG() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
-      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.71-1.57 2.68-3.89 2.68-6.62z" />
-      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z" />
-      <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z" />
-      <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.47.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" />
-    </svg>
-  )
 }
 
 // The 3 node flow. Nodes are the app's card idiom (white, rounded, brand dot,
@@ -101,7 +91,7 @@ const ReloadIcon = () => (
 )
 
 const BTN = {
-  flex: '1 1 220px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+  flex: '1 1 220px', maxWidth: 340, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 12,
   height: 56, padding: '0 22px', borderRadius: 12, fontSize: 16, fontWeight: 700, fontFamily: 'inherit',
   cursor: 'pointer', textDecoration: 'none', boxSizing: 'border-box',
 }
@@ -138,19 +128,16 @@ export default function ClosedFlowScreen({ status, signedIn, onBack, onOpenTrash
         {c.kind === 'down'
           ? <div style={{ padding: '40px 0 8px' }}><BrokenFlow node={c.node} kind={c.kind} /></div>
           : <img className="cf-art" src="/img/flow-not-found.webp" alt="" width="800" height="370"
-              style={{ display: 'block', width: '100%', maxWidth: 800, height: 'auto', margin: '0 auto', WebkitMaskImage: 'radial-gradient(75% 85% at 50% 50%, #000 70%, transparent 100%)', maskImage: 'radial-gradient(75% 85% at 50% 50%, #000 70%, transparent 100%)' }} />}
+              style={{ display: 'block', width: '100%', maxWidth: 400, height: 'auto', margin: '0 auto', WebkitMaskImage: 'radial-gradient(75% 85% at 50% 50%, #000 70%, transparent 100%)', maskImage: 'radial-gradient(75% 85% at 50% 50%, #000 70%, transparent 100%)' }} />}
 
         <h1 className="cf-title" style={{ fontSize: 52, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.1, color: '#0b0f1a', margin: '28px 0 0' }}>{c.title}</h1>
         {c.body && <p style={{ fontSize: 15, color: '#6b7280', margin: '12px auto 0', maxWidth: 520, lineHeight: 1.55 }}>{c.body}</p>}
 
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 20, maxWidth: 680, margin: '36px auto 0' }}>
-          {c.kind === 'private' && (
-            <a href="/api/auth/login" className="cf-btn" style={DARK}><GoogleG /> Sign in and open it</a>
-          )}
           {c.kind === 'down' && (
             <button type="button" className="cf-btn" onClick={() => window.location.reload()} style={DARK}><ReloadIcon /> Reload</button>
           )}
-          <button type="button" className="cf-btn" onClick={onBack} style={c.kind === 'gone' ? DARK : LIGHT}><GridIcon /> Back to gallery</button>
+          <button type="button" className="cf-btn" onClick={onBack} style={c.kind === 'down' ? LIGHT : DARK}><GridIcon /> Back to gallery</button>
           {c.kind === 'gone' && onOpenTrash && (
             <button type="button" className="cf-btn" onClick={onOpenTrash} style={LIGHT}><TrashIcon /> Open trash</button>
           )}
