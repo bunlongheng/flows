@@ -121,7 +121,7 @@ export const SERVICES = {
   gcpgateway:   { label: 'API Gateway',    sub: 'GCP API Gateway',        icon: '/icons/gcp-api-gateway.svg',    color: '#3480ee' },
 
   // ─── SaaS / tools / integration platforms (non-cloud brands) ────────────────
-  python:       { label: 'Python',         sub: 'Runtime',                icon: '/brand/python.svg',        color: '#3776AB' },
+  python:       { label: 'Python',         sub: 'Runtime',                icon: '/brand/python.png',        color: '#3776AB' },
   fastapi:      { label: 'FastAPI',        sub: 'API Framework',          icon: '/brand/fastapi.svg',       color: '#05998B' },
   hubspot:      { label: 'HubSpot',        sub: 'CRM',                    icon: '/brand/hubspot.svg',       color: '#FF7A59' },
   recurly:      { label: 'Recurly',        sub: 'Subscription Billing',   icon: '/brand/recurly.svg',       color: '#FFC10B' },
