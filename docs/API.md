@@ -95,7 +95,7 @@ Response `201`:
 {
   "id": "<uuid>",
   "url": "https://flows-bheng.vercel.app/?id=<uuid>",
-  "share_url": "https://flows-bheng.vercel.app/demo?name=<slug>",
+  "share_url": "https://flows-bheng.vercel.app/?id=<uuid>",
   "visibility": "public",
   "svg_url": "https://flows-bheng.vercel.app/api/flows/<uuid>?format=svg",
   "gif_url": "https://flows-bheng.vercel.app/api/flows/<slug>?format=gif&w=1800&frames=20",
@@ -189,7 +189,7 @@ All 3 routes `404` on an id that is not the owner's, is in trash, or (for the la
 
 ## Sharing
 
-- `share_url` is `/demo?name=<slug>`. Both `/` and `/demo` run `generateMetadata` (`app/share-metadata.js`): given `?name=<slug>` or `?id=<uuid>` it looks up a public, non-deleted row and emits that design's title, description (pattern or description column) and an `og:image` of `/api/og?name=<slug>`. Slack, iMessage and similar unfurl with the diagram itself.
+- `share_url` is `/?id=<uuid>` (old `/demo?name=` and `/demo?id=` links still open). Both `/` and `/demo` run `generateMetadata` (`app/share-metadata.js`): given `?name=<slug>` or `?id=<uuid>` it looks up a public, non-deleted row and emits that design's title, description (pattern or description column) and an `og:image` of `/api/og?name=<slug>`. Slack, iMessage and similar unfurl with the diagram itself.
 - `/api/og` renders the card server-side: `lib/render-og.js` builds an SVG (brand mark, title, pattern line, chips, diagram preview with notes), and `@resvg/resvg-js` rasterises it with the bundled Roboto fonts. Cached 1 hour.
 - A private design gets no card and no title: `generateMetadata` returns the generic site tags and `/api/og` redirects to the static `/og.png` with `no-store`, so the instant it is published the next crawl gets the real card.
 - Opening a private design's link as a visitor is a `404` from the API, and the page shows its not-found state.
@@ -220,7 +220,7 @@ Playwright builds and starts a production `next start` on port 4399 (strict CSP,
 - **Panel memory** - which panels (Steps, Share, Code) and badge style were open is stored per diagram in `view_state` and restored on reopen. Visitors on a shared link never get panels.
 - **The current** - clicking the "Start here" pill opens the Current panel: speed 0.5x, 1x, 1.5x or 2x and the TOTAL number of small dots (20, 50, 100, 200, 500, 1000, 2000, 5000) spread over the diagram's lines, under the 1 big dot that says which step is live. Both live in `view_state.current`, 1 column on that 1 row, so the setting is per diagram - a busy map can run 5000 dots while a 6 line flow runs 20 - and they travel into the SVG and GIF exports, so a picture plays the current that diagram was left running at.
 - **Summary card** - the "what it tests" and goal lines sit over the canvas. Tap to fold them into a badge; on a phone it starts folded so the diagram gets the screen. Set the text with `pattern` and `description` on create.
-- **Sharing + cards** - the Share panel previews the real 1200x630 card, copies the `/demo?name=<slug>` link, and offers PNG (html-to-image), JSON, and code exports plus the Web Share API. Opening Share publishes the diagram.
+- **Sharing + cards** - the Share panel previews the real 1200x630 card, copies the `/?id=<uuid>` link, and offers PNG (html-to-image), JSON, and code exports plus the Web Share API. Opening Share publishes the diagram.
 - **Public / Private** - a pill on every owned diagram toggles `is_public`. Private diagrams 404 for anyone else and preview as the generic site card.
 - **Gallery** - My Diagrams / Demos tabs, title search, and an All / Work / Personal scope over your own diagrams (matches a `work` or `personal` entry in the row's `tags[]` - nothing in the app writes those tags, they are set on the row). Private cards carry a badge. `/demo` is a curated 12-slug public roster ordered by difficulty.
 - **Trash** - Delete in the app or `DELETE /api/flows/:id` is a soft delete (`deleted_at`). Restore and list-trash exist only through MCP; permanent purge is `?purge=1` or the MCP `purge_flow` tool, and only for a row already in trash.

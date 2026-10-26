@@ -210,7 +210,7 @@ describe("POST /api/ai/flows - visibility and share link", () => {
     expect(query.mock.calls[1][1][7]).toBe(false);
     expect(res.body.visibility).toBe("private");
     expect(res.body.share_note).toMatch(/404/);
-    expect(res.body.share_url).toMatch(/\/demo\?name=netflix-video-streaming$/);
+    expect(res.body.share_url).toBe(res.body.url);
     // The README embed is ready to paste, by slug, HD and smooth.
     expect(res.body.gif_url).toMatch(/\/api\/flows\/netflix-video-streaming\?format=gif&w=1800&frames=20$/);
     expect(res.body.readme).toBe(`![${VALID_BODY.title}](${res.body.gif_url})`);

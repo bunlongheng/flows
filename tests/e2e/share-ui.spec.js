@@ -80,7 +80,7 @@ test("Share on a private diagram publishes it, previews the card, and hands out 
     // It MUST be the /demo route. Vercel resolves "/" from the filesystem before
     // rewrites run, so a link off "/" never reaches the share function and
     // previews as the generic site card.
-    expect(copied).toContain(`/demo?id=${id}`);
+    expect(copied).toContain(`/?id=${id}`);
 
     // And that exact copied URL is the one that serves this design's own tags.
     // Asserted on the tags themselves - the x-sd-share header existed only to
