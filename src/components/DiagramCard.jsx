@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { relativeTime } from '../timeAgo'
 import { flowMark } from '../brands'
+import { HashPill } from './HashPill.jsx'
 import { tierFor } from '../difficulty.js'
 import { levelsOf } from '../view-state.js'
 
@@ -11,7 +12,7 @@ import { levelsOf } from '../view-state.js'
 // shareable is obvious before its link goes anywhere.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export function DiagramCard({ id, diagram, title, icon, updatedAt, showBrand, difficulty, onOpen, onViewCode, onDelete, isPrivate, isLocked, thumbnailAt, changedAt }) {
+export function DiagramCard({ id, diagram, title, icon, hashtags = [], updatedAt, showBrand, difficulty, onOpen, onViewCode, onDelete, isPrivate, isLocked, thumbnailAt, changedAt }) {
   const brand = showBrand ? flowMark({ icon, title, nodes: diagram?.nodes }) : null
   // The tile is the flow itself: a fit-view capture of the real canvas, or the
   // SVG render until the owner first opens it. Bundled samples have no row.
@@ -86,12 +87,9 @@ export function DiagramCard({ id, diagram, title, icon, updatedAt, showBrand, di
       />
 
       {/* Header */}
-      <div className="dc-head" style={{ padding: '13px 14px 8px', display: 'flex', alignItems: 'flex-start', gap: 11 }}>
-        {brand && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 42, height: 42, borderRadius: 10, background: '#ffffff', border: '1px solid #e7e9ee', flexShrink: 0 }}>
-            <img src={brand.icon} alt="" width={28} height={28} style={{ objectFit: 'contain', display: 'block' }} />
-          </span>
-        )}
+      <div className="dc-head" style={{ padding: '13px 14px 8px', display: 'flex', alignItems: 'center', gap: 7 }}>
+        {/* The flow's icon, bare and small beside the title (owner 2026-10-28). */}
+        {brand && <img src={brand.icon} alt="" width={18} height={18} style={{ objectFit: 'contain', display: 'block', flexShrink: 0 }} />}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: brand ? 13 : 12, fontWeight: 700, color: '#1c1e21', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
             {isPrivate && (
@@ -103,7 +101,7 @@ export function DiagramCard({ id, diagram, title, icon, updatedAt, showBrand, di
           </div>
           {brand?.sub && <div style={{ fontSize: 11, color: '#65676b', marginTop: 2 }}>{brand.sub}</div>}
         </div>
-        <span style={{ fontSize: 10, color: '#65676b', flexShrink: 0, alignSelf: 'flex-start', marginTop: 1 }}>{relativeTime(updatedAt)}</span>
+        <span style={{ fontSize: 10, color: '#65676b', flexShrink: 0, }}>{relativeTime(updatedAt)}</span>
       </div>
 
       {/* Node / edge counts */}
@@ -124,6 +122,7 @@ export function DiagramCard({ id, diagram, title, icon, updatedAt, showBrand, di
             C{levels[0]}-C{levels[levels.length - 1]}
           </span>
         )}
+        {hashtags.map(h => <HashPill key={h} tag={h} small />)}
       </div>
 
       {/* The flow, whole, fit to a 2:1 frame */}

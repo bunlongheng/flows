@@ -16,6 +16,8 @@ import { Toast } from '../components/Toast'
 import { SnapGuides } from '../components/SnapGuides'
 import { Footer } from '../components/Footer'
 import { flowMark } from '../brands'
+import { cleanHashtags } from '../hashtags.js'
+import { HashPill } from '../components/HashPill.jsx'
 import { BandPanel } from '../components/BandPanel.jsx'
 import { CardPanel, StepPanel } from '../components/CardPanel.jsx'
 import { CurrentPanel } from '../components/CurrentPanel.jsx'
@@ -181,6 +183,7 @@ export function DetailView({
   showDocs, setShowDocs, copiedLabel, onCopyFormat,
   bandPick, onBandColor,
   onRename,
+  onHashtags,
   isPublic,
   saveState = 'idle',
   onArrange,
@@ -497,6 +500,14 @@ export function DetailView({
     setTitleDraft(null)
     if (next && next !== titleText) onRename(next)
   }
+  // Hashtags edit the same way: click the pills (or "+ #"), type "c4 thryv".
+  const hashtags = activeDiagram?.hashtags || []
+  const [tagDraft, setTagDraft] = useState(null)
+  const saveTags = () => {
+    const next = cleanHashtags(tagDraft || '')
+    setTagDraft(null)
+    if (next.join(' ') !== hashtags.join(' ')) onHashtags(next)
+  }
   useLayoutEffect(() => {
     const header = headerRef.current
     if (!header || typeof ResizeObserver === 'undefined') return
@@ -639,6 +650,7 @@ export function DetailView({
           <span style={{ fontSize: 15, fontWeight: 700, color: '#1c1e21', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
             {activeDiagram?.title || 'Untitled diagram'}
           </span>
+          {(activeDiagram?.hashtags || []).map(h => <HashPill key={h} tag={h} />)}
         </div>
 
         <LevelPill levels={levels} active={active} onPick={l => setLevel && setLevel(l)} />
@@ -720,6 +732,18 @@ export function DetailView({
             onClick={onRename ? () => setTitleDraft(titleText) : undefined}
             style={{ fontSize: 15, fontWeight: 700, color: '#1c1e21', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, cursor: onRename ? 'text' : undefined }}>
             {activeDiagram?.title || 'Untitled diagram'}
+          </span>
+        )}
+        {tagDraft != null ? (
+          <input autoFocus value={tagDraft} maxLength={200} aria-label="Hashtags" placeholder="#c4 #thryv"
+            onChange={e => setTagDraft(e.target.value)} onBlur={saveTags}
+            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') setTagDraft(null) }}
+            style={{ fontSize: 12, fontWeight: 600, color: '#4338ca', width: 160, padding: '3px 8px', border: '1px solid #3b82f6', borderRadius: 8, outline: 'none', fontFamily: 'inherit', flexShrink: 0 }} />
+        ) : (hashtags.length > 0 || onHashtags) && (
+          <span className="sd-hashtags" title={onHashtags ? 'Click to edit hashtags' : undefined}
+            onClick={onHashtags ? () => setTagDraft(hashtags.map(h => `#${h}`).join(' ')) : undefined}
+            style={{ display: 'inline-flex', gap: 4, flexShrink: 0, cursor: onHashtags ? 'text' : undefined }}>
+            {hashtags.length ? hashtags.map(h => <HashPill key={h} tag={h} />) : <HashPill tag="" />}
           </span>
         )}
 

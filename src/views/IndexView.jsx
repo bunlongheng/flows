@@ -248,6 +248,7 @@ export function IndexView({
                 diagram={d.data}
                 title={d.title}
                 icon={d.icon}
+                hashtags={d.hashtags}
                 updatedAt={d.updatedAt}
                 tags={d.tags}
                 showBrand
