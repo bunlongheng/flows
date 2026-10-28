@@ -17,6 +17,7 @@ export function rowToDiagram(r) {
     passcode: r.passcode || '',
     title: r.title,
     icon: r.icon || '',
+    hashtags: r.hashtags || [],
     description: r.description || '',
     pattern: r.pattern || '',
     difficulty: r.difficulty ?? null,
