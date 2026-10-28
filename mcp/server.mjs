@@ -28,7 +28,7 @@ import { PANELS, BADGES, SPEEDS, AMOUNTS, CURRENT_DEFAULT } from '../src/view-st
 import { SIZINGS } from '../src/card-size.js'
 import { storeView, viewPatch } from '../lib/view-state.js'
 import { NODE_KEEP, EDGE_KEEP, okBox, roundBox, edgeKey, keepOwnerWork } from '../lib/owner-work.js'
-import { validateDesign } from '../lib/validate-design.js'
+import { validateDesign, cleanFlowIcon, FLOW_ICON_ERROR } from '../lib/validate-design.js'
 import { cleanNode } from '../lib/clean-node.js'
 
 // Picture-node loaders available only here: a file path or an AirClips ref can
@@ -288,7 +288,7 @@ server.registerTool(
   },
   async ({ id }) => {
     try {
-      const { rows } = await db.query('SELECT id, title, description, slug, nodes, edges, locked, edit_locked, created_at FROM flows WHERE id = $1 AND deleted_at IS NULL', [id])
+      const { rows } = await db.query('SELECT id, title, icon, description, slug, nodes, edges, locked, edit_locked, created_at FROM flows WHERE id = $1 AND deleted_at IS NULL', [id])
       if (!rows.length) return fail(`No diagram with id ${id}`)
       return ok({ ...rows[0], url: urlFor(id), share_url: shareUrlFor(id), gif_url: gifUrlFor(rows[0].slug), readme: readmeFor(rows[0].title, rows[0].slug) })
     } catch (e) { return fail(`get failed: ${e.message}`) }
@@ -325,6 +325,7 @@ server.registerTool(
         description: z.string().max(300).optional().describe('Longer text for this line, max 300. The tag on the line reads the label, or this cut short when there is no label; hovering the tag shows the whole of it. Not in the SVG.'),
         ...zEdgeFields,
       })).default([]).describe('Directed connections between node ids, IN FLOW ORDER. This order is the diagram: it numbers the Steps badges 1..N and it is the path the single current walks, 1 line at a time. Order the array the way a reader should read the diagram.'),
+      icon: z.string().max(24000).optional().describe('ALWAYS SEND IT: the 1 icon that best describes the whole diagram, shown next to its title in the gallery and the detail view. A catalog service id (e.g. "lambda", see list_services) or a /brand or /icons path, https URL or data:image URI (max ~24KB). Omitted = the first card\'s logo stands in.'),
       pattern: z.string().max(200).optional().describe('The one-line "what it tests" shown above the diagram and on the share card, e.g. "Read-heavy KV lookup: cache-first redirects"'),
       description: z.string().max(600).optional().describe('The goal paragraph shown under the pattern, 1-3 sentences on what the design is for.'),
       public: z.boolean().optional().describe('Default true: anyone with the link can open it and the link unfurls with the diagram. false keeps it private (owner only; recipients get a 404 and a generic preview card).'),
@@ -337,8 +338,10 @@ server.registerTool(
       linked: z.boolean().optional().describe('true lists the diagram under the gallery\'s Linked tab (README, PR, repo audit) instead of My Diagrams, so the owner\'s daily list stays their own work. A title that starts with owner/repo is Linked on its own; false keeps it out.'),
     },
   },
-  async ({ title, nodes, edges, pattern, description, public: pub, is_public, linked, source, store, lanes, view, view_state }) => {
+  async ({ title, icon, nodes, edges, pattern, description, public: pub, is_public, linked, source, store, lanes, view, view_state }) => {
     try {
+      const flowIcon = cleanFlowIcon(icon)
+      if (flowIcon === undefined) return fail(FLOW_ICON_ERROR)
       const isPublic = pub ?? is_public ?? true
       const gate = logoGate(nodes, edges, lanes)
       if (gate) return gate
@@ -362,8 +365,8 @@ server.registerTool(
         return ok({ stored: false, source: source || 'render-only', svg, note: 'Nothing was stored. Embed the svg where the report lives; there is no id, url or gif.' })
       }
       const { rows } = await db.query(
-        'INSERT INTO flows (user_id, title, slug, nodes, edges, type, tags, is_public, pattern, description, view_state) VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6,$7::text[],$8,$9,$10,$11::jsonb) RETURNING id',
-        [o, title.trim(), slug, JSON.stringify(storedNodes), JSON.stringify(storedEdges), 'flow', creationTags('MCP', title, linked), isPublic, pattern?.trim() || null, description?.trim() || null, Object.keys(vs).length ? JSON.stringify(vs) : null],
+        'INSERT INTO flows (user_id, title, slug, nodes, edges, type, tags, is_public, pattern, description, view_state, icon) VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6,$7::text[],$8,$9,$10,$11::jsonb,$12) RETURNING id',
+        [o, title.trim(), slug, JSON.stringify(storedNodes), JSON.stringify(storedEdges), 'flow', creationTags('MCP', title, linked), isPublic, pattern?.trim() || null, description?.trim() || null, Object.keys(vs).length ? JSON.stringify(vs) : null, flowIcon],
       )
       const id = rows[0].id
 
@@ -409,6 +412,7 @@ server.registerTool(
       id: z.string().describe('The diagram id to update'),
       reason: z.string().optional().describe('Optional note on why, e.g. "backfill: correct the Integry decommission date". Recorded on the row as a trail; never required.'),
       title: z.string().optional(),
+      icon: z.string().max(24000).optional().describe('The 1 icon that best describes the whole diagram, next to its title: a catalog service id or a /brand or /icons path, https URL or data:image URI. Omit to leave it; "" clears it (the first card\'s logo stands in).'),
       description: z.string().max(600).optional().describe('The goal paragraph shown at the top left of the diagram, max 600 chars. Omit to leave it; "" clears it.'),
       nodes: z.array(z.object({
         id: z.string(), x: z.number().optional(), y: z.number().optional(),
@@ -433,8 +437,10 @@ server.registerTool(
       lanes: z.array(zLane).max(12).optional().describe('Swimlanes: bands under the cards, 1 per layer. Rows { id, title, y, h, color? } for a top-down layout, columns { id, title, x, w, color? } for a left-to-right one; 1 kind per diagram, in canvas units (a card is 180 x 180, a picture card 240 x 225, plus its note below). A lane may carry sections to split its band into 2 to 8 titled bands across its other axis, 40 px apart. Replaces the whole list; [] removes every lane; omit to leave lanes alone. Lanes pack from the first one with equal 40 px gaps. With lanes on, the Start pill is not drawn.'),
     },
   },
-  async ({ id, reason, title, description, nodes, edges, public: pub, is_public, lanes, view, view_state }) => {
+  async ({ id, reason, title, icon, description, nodes, edges, public: pub, is_public, lanes, view, view_state }) => {
     try {
+      const flowIcon = icon === undefined ? null : cleanFlowIcon(icon)
+      if (flowIcon === undefined) return fail(FLOW_ICON_ERROR)
       const isPublic = pub ?? is_public
       // A flow is open to agents unless the owner has edit-locked it, in the app.
       const { rows: gate } = await db.query('SELECT edit_locked FROM flows WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL', [id, owner()])
@@ -481,10 +487,11 @@ server.registerTool(
            update_reason = COALESCE($5, update_reason),
            is_public = COALESCE($7, is_public),
            description = CASE WHEN $8::text IS NULL THEN description ELSE NULLIF($8, '') END,
+           icon = CASE WHEN $9::boolean THEN $10::text ELSE icon END,
            thumbnail = CASE WHEN $3::jsonb IS NULL AND $4::jsonb IS NULL THEN thumbnail END,
            updated_at = now()
          WHERE id = $1 AND user_id = $6 AND deleted_at IS NULL RETURNING id, slug, title, is_public`,
-        [id, title?.trim() ?? null, nextNodes, nextEdges, reason?.trim() ?? null, owner(), isPublic ?? null, description?.trim() ?? null],
+        [id, title?.trim() ?? null, nextNodes, nextEdges, reason?.trim() ?? null, owner(), isPublic ?? null, description?.trim() ?? null, icon !== undefined, flowIcon],
       )
       if (!rows.length) return fail(`No owned diagram with id ${id} (it may be in trash - call list_trash)`)
       // lanes and view both live in view_state, so they merge key by key: what
@@ -507,7 +514,7 @@ server.registerTool(
         gif_url: gifUrlFor(rows[0].slug),
         readme: readmeFor(rows[0].title, rows[0].slug),
         visibility: rows[0].is_public ? 'public' : 'private',
-        updated: { title: title != null, description: description != null, nodes: nodes != null, edges: edges != null, public: isPublic != null, lanes: lanes != null, view: (view ?? view_state) != null },
+        updated: { title: title != null, icon: icon !== undefined, description: description != null, nodes: nodes != null, edges: edges != null, public: isPublic != null, lanes: lanes != null, view: (view ?? view_state) != null },
         ...(layoutWarning ? { layout: layoutWarning } : {}),
         ...(reason?.trim() ? { reason: reason.trim() } : {}),
       })
