@@ -31,6 +31,17 @@ to drift:
 | What does the MCP take? | `mcp/README.md`, and each tool's own parameter descriptions. |
 | What colour is this card? | `src/iconColor.js` `isNeutralColor`. The colour comes off the icon; do not pick one. |
 
+## Every flow gets 1 icon (owner rule 2026-10-28)
+
+ALWAYS send `icon` on create (`create_flow` / `POST /api/ai/flows`): the 1 icon
+that best describes the whole diagram, drawn next to its title in the gallery
+and the detail bar at all times. A catalog service id (`"lambda"`, see
+`list_services`, stored as its logo path) or a `/brand` / `/icons` path, https
+URL or `data:image` URI under ~24KB. Change it with `update_flow { id, icon }` or
+`PATCH /api/flows/:id { icon }`; `""` clears it. With none set, the demo brand or
+the first card's logo stands in, so pick one that names the subject, not the
+first box. Validator: `lib/validate-design.js` `cleanFlowIcon`.
+
 ## The 7 things that bite
 
 1. **An update replaces the whole array.** `update_flow` / the API with `nodes`

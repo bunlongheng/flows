@@ -16,6 +16,7 @@ export function rowToDiagram(r) {
     // The owner's own reads carry it in plain, for the Passcode box.
     passcode: r.passcode || '',
     title: r.title,
+    icon: r.icon || '',
     description: r.description || '',
     pattern: r.pattern || '',
     difficulty: r.difficulty ?? null,

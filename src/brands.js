@@ -1,3 +1,5 @@
+import { SERVICES } from './services.js'
+
 // Real-world brand per demo (logo + one-line subtitle). Keyed by the clean title.
 // Lives in its own module so both DiagramCard and DetailView can import brandFor
 // without tripping React Fast Refresh (a component file must export only components).
@@ -24,3 +26,13 @@ export const BRANDS = {
 }
 
 export const brandFor = title => BRANDS[String(title || '').trim().toLowerCase()] || null
+
+// The 1 icon next to a diagram's title, always: the icon set on the flow, else
+// the demo brand, else the first card's logo.
+export const flowMark = ({ icon, title, nodes } = {}) => {
+  if (icon) return { icon }
+  const b = brandFor(title)
+  if (b) return b
+  const n = (nodes || []).find(c => SERVICES[c?.id]?.icon || typeof c?.icon === 'string')
+  return n ? { icon: SERVICES[n.id]?.icon || n.icon } : null
+}

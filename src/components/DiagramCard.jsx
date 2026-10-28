@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { relativeTime } from '../timeAgo'
-import { brandFor } from '../brands'
+import { flowMark } from '../brands'
 import { tierFor } from '../difficulty.js'
 import { levelsOf } from '../view-state.js'
 
@@ -11,8 +11,8 @@ import { levelsOf } from '../view-state.js'
 // shareable is obvious before its link goes anywhere.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficulty, onOpen, onViewCode, onDelete, isPrivate, isLocked, thumbnailAt, changedAt }) {
-  const brand = showBrand ? brandFor(title) : null
+export function DiagramCard({ id, diagram, title, icon, updatedAt, showBrand, difficulty, onOpen, onViewCode, onDelete, isPrivate, isLocked, thumbnailAt, changedAt }) {
+  const brand = showBrand ? flowMark({ icon, title, nodes: diagram?.nodes }) : null
   // The tile is the flow itself: a fit-view capture of the real canvas, or the
   // SVG render until the owner first opens it. Bundled samples have no row.
   const thumbSrc = UUID_RE.test(id || '') ? `/api/flows/${id}?format=thumb&v=${Date.parse(thumbnailAt) || 0}-${Date.parse(changedAt) || 0}` : null
@@ -101,7 +101,7 @@ export function DiagramCard({ id, diagram, title, updatedAt, showBrand, difficul
             )}
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
           </div>
-          {brand && <div style={{ fontSize: 11, color: '#65676b', marginTop: 2 }}>{brand.sub}</div>}
+          {brand?.sub && <div style={{ fontSize: 11, color: '#65676b', marginTop: 2 }}>{brand.sub}</div>}
         </div>
         <span style={{ fontSize: 10, color: '#65676b', flexShrink: 0, alignSelf: 'flex-start', marginTop: 1 }}>{relativeTime(updatedAt)}</span>
       </div>

@@ -15,7 +15,7 @@ import { edgeTypes } from '../components/GradientEdge'
 import { Toast } from '../components/Toast'
 import { SnapGuides } from '../components/SnapGuides'
 import { Footer } from '../components/Footer'
-import { brandFor } from '../brands'
+import { flowMark } from '../brands'
 import { BandPanel } from '../components/BandPanel.jsx'
 import { CardPanel, StepPanel } from '../components/CardPanel.jsx'
 import { CurrentPanel } from '../components/CurrentPanel.jsx'
@@ -221,7 +221,7 @@ export function DetailView({
   sizing, onSizingChange,
   onFontsChange, layout, onLayoutChange,
 }) {
-  const brand = brandFor(activeDiagram?.title)
+  const brand = flowMark({ icon: activeDiagram?.icon, title: activeDiagram?.title, nodes: activeDiagram?.data?.nodes })
   const [confirmDelete, setConfirmDelete] = useState(false)
   // The Arrange button opens a small style menu instead of arranging directly.
   // Open menu holds the screen spot under the button. It is fixed, not absolute:
