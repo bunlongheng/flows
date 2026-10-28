@@ -18,7 +18,7 @@ import { cleanDesc } from './tag'
 import { cleanEdgeLabel } from './note.js'
 import { fireflies } from './fireflies'
 import { makeThumbnail } from './thumbnail'
-import { currentOf, cleanCurrent, cleanFonts, layoutOf, cleanLayout, laidOut, LAYOUT_DEFAULT, levelOf } from './view-state.js'
+import { currentOf, cleanCurrent, cleanFonts, layoutOf, cleanLayout, laidOut, LAYOUT_DEFAULT, levelOf, urlLevel } from './view-state.js'
 import { sizingOf, lineCounts, cardSize } from './card-size.js'
 
 // A card's drawn size for the diagram's sizing mode; a picture card scales
@@ -767,7 +767,11 @@ export default function App() {
     if (['dark', 'silver', 'color', 'plain'].includes(v.badge)) setBadgeMode(v.badge)
     setCurrentState(currentOf(v))
     setSizingState(sizingOf(v, d.data.nodes))
-    setLevel(levelOf(v, d.data.nodes))
+    // Only the flow the URL already names takes its ?level=; one opened from the list keeps its own.
+    const q = new URLSearchParams(window.location.search)
+    const linked = d.id && (q.get('id') === d.id || (d.slug && q.get('name') === d.slug))
+    const want = linked ? urlLevel(window.location.search) : null
+    setLevel(levelOf(want ? { ...v, level: want } : v, d.data.nodes))
     const { nodes: n, edges: e } = buildDiagramNodesEdges(d)
     setNodes(n)
     setEdges(e)
@@ -779,6 +783,7 @@ export default function App() {
     if (d.slug && d.id) {
       const url = new URL(window.location.href)
       url.searchParams.delete('name')
+      if (url.searchParams.get('id') !== d.id) url.searchParams.delete('level')
       url.searchParams.set('id', d.id)
       // Pushed when this is somewhere new, replaced when the URL already says
       // it. Replacing unconditionally destroyed the list's history entry, so
@@ -1399,6 +1404,16 @@ export default function App() {
     return () => clearTimeout(viewSaveTimer.current)
   }, [view, canAI, activeDiagram, panelKey, badgeMode, level])
 
+  // The level shown rides in the URL (?level=c2), so a copied link lands on it.
+  useEffect(() => {
+    if (view !== 'detail') return
+    const url = new URL(window.location.href)
+    if (!url.searchParams.get('id') && !url.searchParams.get('name')) return
+    if (level == null) url.searchParams.delete('level')
+    else url.searchParams.set('level', `c${level}`)
+    if (url.href !== window.location.href) window.history.replaceState({}, '', url)
+  }, [view, level])
+
   // The flow fetches reject with Error('HTTP <status>'); anything else is the
   // network, and the closed-flow page tells the 2 apart.
   function failedLoad(err) {
@@ -1431,6 +1446,7 @@ export default function App() {
     const url = new URL(window.location.href)
     url.searchParams.delete('id')
     url.searchParams.delete('name')
+    url.searchParams.delete('level')
     window.history.replaceState({}, '', url)
     setView('index')
   }

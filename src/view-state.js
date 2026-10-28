@@ -95,6 +95,8 @@ export const LEVELS = [1, 2, 3, 4];
 export const LEVEL_NAMES = { 1: 'Context', 2: 'Container', 3: 'Component', 4: 'Code' };
 export const cleanLevel = (v) => LEVELS.includes(v) ? { level: v } : {};
 export const levelsOf = (nodes) => LEVELS.filter((l) => (nodes || []).some((n) => n?.level === l));
+// A link may pick the level: ?level=c2 (or 2) opens on C2 when the diagram has it.
+export const urlLevel = (search) => { const m = /^c?([1-4])$/i.exec(new URLSearchParams(search).get('level') || ''); return m ? Number(m[1]) : null; };
 export const levelOf = (v, nodes) => { const ls = levelsOf(nodes); if (ls.length < 2) return null; return ls.includes(v?.level) ? v.level : ls[0]; };
 // A level view shows fewer cards, so everything draws bigger: 1 step below the
 // top is 1.3x, then 1.6x, 1.9x (owner 2026-10-14).
