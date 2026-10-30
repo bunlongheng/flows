@@ -98,3 +98,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .react-flow__handle.sd-port.connectable:hover { scale: 1.4; }
 .react-flow:not(.sd-reading) .sd-band.is-picked > .sd-band-port.connectable { opacity: 1; pointer-events: auto; }
 .react-flow__handle.sd-band-port { width: max(12px, calc(12px * var(--gz))); height: max(12px, calc(12px * var(--gz))); }
+
+/* The "Loading diagram" screen grows a plain Reload link after 12 s. It is CSS
+   only on purpose: when a chunk fails, no app JavaScript runs at all (#614). */
+@keyframes sd-slow-hint { to { opacity: 1; } }
+.sd-slow-hint { opacity: 0; animation: sd-slow-hint 0.3s ease 12s forwards; }
