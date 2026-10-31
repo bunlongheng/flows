@@ -890,6 +890,19 @@ export default function App() {
       .catch(() => showToastMsg('Rename failed'))
   }, [activeDiagram, showToastMsg])
 
+  // Hashtags ride their own PATCH, the same way a rename does.
+  const onHashtags = useCallback(hashtags => {
+    if (!activeDiagram?.id) return
+    const savingId = activeDiagram.id
+    fetch(`/api/flows/${savingId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hashtags }) })
+      .then(r => (r.ok ? r.json() : Promise.reject(r)))
+      .then(row => {
+        setActiveDiagram(a => (a?.id === savingId ? { ...a, hashtags: row.hashtags } : a))
+        setDiagrams(ds => ds.map(d => (d.id === savingId ? { ...d, hashtags: row.hashtags } : d)))
+      })
+      .catch(() => showToastMsg('Hashtags failed to save'))
+  }, [activeDiagram, showToastMsg])
+
   const patchViewState = useCallback(view_state => {
     if (!activeDiagram?.id) return
     const savingId = activeDiagram.id
@@ -1481,7 +1494,9 @@ export default function App() {
   // the daily list is the owner's own work. The demo roster is neither.
   const showcase = isDemo || galleryTab === 'demos'
   const own = diagrams.filter(d => showcase || galleryTab === 'trash' || (d.tags || []).includes('linked') === (galleryTab === 'linked'))
-  const filtered = own.filter(d => !search.trim() || d.title.toLowerCase().includes(search.toLowerCase()))
+  // Search matches the title or a hashtag ("#c4" and "c4" both find #c4).
+  const needle = search.trim().toLowerCase().replace(/^#/, '')
+  const filtered = own.filter(d => !needle || d.title.toLowerCase().includes(needle) || (d.hashtags || []).some(h => h.toLowerCase().includes(needle)))
 
   // ── ?id LOADING / ERROR STATES ──────────────────────────────────────────────
   if (loadingId) {
@@ -2170,7 +2185,7 @@ export default function App() {
       saveState={saveState}
       onArrange={autoArrange}
       onNoteChange={canAI ? onNoteChange : undefined}
-      bandPick={bandPick} onBandColor={canAI ? onBandColor : undefined} onRename={canAI ? onRename : undefined}
+      bandPick={bandPick} onBandColor={canAI ? onBandColor : undefined} onRename={canAI ? onRename : undefined} onHashtags={canAI ? onHashtags : undefined}
       onNodeResize={canAI ? onNodeResize : undefined}
       onConnect={canAI && activeDiagram?.id && !activeDiagram.editLocked ? onConnect : undefined}
       onIconResize={canAI ? onIconResize : undefined}

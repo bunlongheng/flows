@@ -42,6 +42,12 @@ URL or `data:image` URI under ~24KB. Change it with `update_flow { id, icon }` o
 the first card's logo stands in, so pick one that names the subject, not the
 first box. Validator: `lib/validate-design.js` `cleanFlowIcon`.
 
+Send `hashtags` too: usually 1, up to 5, e.g. `["thryv"]`. The owner's set is
+`thryv`, `sahil`, `rebytes`, `demo`, `linked`, `personal`, `test`, `private`;
+pick the 1 that says whose or what the diagram is. Shown as #pills beside the
+title, matched by the gallery search. `update_flow { id, hashtags }` or
+`PATCH { hashtags }` replaces the list, `[]` clears it. Rules: `src/hashtags.js`.
+
 ## The 7 things that bite
 
 1. **An update replaces the whole array.** `update_flow` / the API with `nodes`
