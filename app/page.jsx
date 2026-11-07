@@ -1,12 +1,8 @@
 import AppClient from './AppClient.jsx'
-import { designMetadata } from './share-metadata.js'
 
-export const dynamic = 'force-dynamic'
-
-export async function generateMetadata({ searchParams }) {
-  return designMetadata(searchParams, '/')
-}
-
+// Static: prerendered at build time and served from the CDN, so a bot or an
+// uptime probe hitting / costs no function. A shared link (/?id= or /?name=)
+// is rewritten to /share, which renders the per-design card.
 export default function Page() {
   return <AppClient />
 }

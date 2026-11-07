@@ -1,6 +1,7 @@
 // Ported from vercel.json. Next serves the UI and the API from ONE process, so
 // the Express server (serve.mjs) and the two-process dev wrapper are gone.
-// The CSP lives in middleware.js - it needs a per-request nonce.
+// The CSP is a static header below: no per-request nonce, so pages can be
+// prerendered and served from the CDN instead of a function on every hit.
 /** @type {import('next').NextConfig} */
 import { readFileSync } from "node:fs";
 // Fail-fast prod env check. It self-runs on import; this used to hang off
@@ -23,10 +24,35 @@ export default {
       { source: "/api/system-designs/:path*", destination: "/api/flows/:path*", permanent: true },
     ];
   },
+  // Shared links keep their /?id= and /?name= URLs; the rewrite sends them to
+  // the dynamic /share route so the bare / stays static. beforeFiles, because
+  // Vercel otherwise resolves / from the filesystem before rewrites run.
+  async rewrites() {
+    return {
+      beforeFiles: [
+        { source: "/", has: [{ type: "query", key: "id" }], destination: "/share" },
+        { source: "/", has: [{ type: "query", key: "name" }], destination: "/share" },
+      ],
+    };
+  },
   async headers() {
+    const dev = process.env.NODE_ENV === "development";
+    const csp = [
+      "default-src 'self'",
+      "img-src 'self' data: https://avatars.githubusercontent.com",
+      "style-src 'self' 'unsafe-inline'",
+      // 'unsafe-inline' is the price of a static page: Next's bootstrap is an
+      // inline script and only a per-request nonce could whitelist it.
+      `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}`,
+      "font-src 'self' data:",
+      `connect-src 'self'${dev ? " ws: http://localhost:*" : ""}`,
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+    ].join("; ");
     return [{
       source: "/:path*",
       headers: [
+        { key: "Content-Security-Policy", value: csp },
         { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
         { key: "X-Frame-Options", value: "DENY" },
         { key: "X-Content-Type-Options", value: "nosniff" },

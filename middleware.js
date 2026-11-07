@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 
-// Next bootstraps with inline <script> tags, which the app's CSP forbids
-// (script-src 'self' - deliberately no 'unsafe-inline', no 'unsafe-eval').
-// Rather than weaken that to get the port working, each response gets a fresh
-// nonce: Next stamps it onto its own scripts, and nothing else can execute.
+// The CSP is a static header in next.config.mjs. A per-request nonce would
+// force every page to render in a function (Next docs: nonces need dynamic
+// rendering), and on the free plan that is the whole bill; the home page is
+// prerendered instead. This middleware only runs on a shared link.
 // The owner opening their own shared link in a browser signed into Google but
 // not into Flows should land in the editor. So a shared link asks Google once
 // per browser session, silently (see auth-login ?silent). Asked HERE, before
@@ -26,32 +26,14 @@ function silentSignIn(request) {
 }
 
 export function middleware(request) {
-  const silent = silentSignIn(request);
-  if (silent) return silent;
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const dev = process.env.NODE_ENV === "development";
-
-  const csp = [
-    "default-src 'self'",
-    "img-src 'self' data: https://avatars.githubusercontent.com",
-    "style-src 'self' 'unsafe-inline'",
-    // strict-dynamic lets the nonced bootstrap load the chunks it needs without
-    // whitelisting anything by URL. Dev additionally needs eval for HMR.
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
-    "font-src 'self' data:",
-    `connect-src 'self'${dev ? " ws: http://localhost:*" : ""}`,
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-  ].join("; ");
-
-  const headers = new Headers(request.headers);
-  headers.set("x-nonce", nonce);
-  const res = NextResponse.next({ request: { headers } });
-  res.headers.set("Content-Security-Policy", csp);
-  return res;
+  return silentSignIn(request) || NextResponse.next();
 }
 
 export const config = {
-  // Static assets need no nonce and would only pay the cost.
-  matcher: [{ source: "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|svg|ico|json|webmanifest)$).*)" }],
+  // Only a shared link (/?id= or /?name=) is asked to sign in silently. The
+  // bare home page and every asset skip middleware, so a probe costs 0 functions.
+  matcher: [
+    { source: "/", has: [{ type: "query", key: "id" }] },
+    { source: "/", has: [{ type: "query", key: "name" }] },
+  ],
 };
