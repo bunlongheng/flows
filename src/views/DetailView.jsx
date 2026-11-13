@@ -611,7 +611,10 @@ export function DetailView({
       .finally(() => setRestoringId(null))
   }
   return (
-    <div style={{ width: '100vw', height: '100dvh', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+    // Pinned to the viewport edges, not sized in vw/dvh: in an iOS Home Screen
+    // app held sideways, 100vw can come up short of the screen and the body shows
+    // as a pale strip beside the status icons. inset 0 always reaches the edges.
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
       <Toast message={toast.message} visible={toast.visible} />
 
       {/* Header - diagrams-style floating pill toolbar. Scrolls horizontally on
