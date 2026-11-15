@@ -28,3 +28,24 @@ export function legendRows(nodes = [], edges = []) {
 }
 
 export const LEGEND_INK = { line: '#374151', dash: '#9ca3af', removed: SUNSET.line, x: SUNSET.x, xTint: SUNSET.tint, xBorder: SUNSET.border, new: NEW.border, callout: CALLOUT.fill }
+
+// Custom rows (owner 2026-11-15): view_state.legend, sent with a create, the
+// MCP update_flow view or PATCH { legend }. Each is { label, color?, kind? },
+// drawn after the automatic rows; any custom row shows the legend on its own.
+export const LEGEND_KINDS = ['box', 'line', 'dash', 'dot']
+export const LEGEND_MAX = 12
+export const LEGEND_LABEL_MAX = 60
+const HEX = /^#[0-9a-fA-F]{6}$/
+
+/** The custom rows of `v`, cleaned: a label is required, the rest falls back. Always an array. */
+export const cleanLegend = (v) => (Array.isArray(v) ? v : [])
+  .map((r) => ({ label: String(r?.label ?? '').replace(/\s+/g, ' ').trim().slice(0, LEGEND_LABEL_MAX), color: r?.color, kind: r?.kind }))
+  .filter((r) => r.label)
+  .slice(0, LEGEND_MAX)
+  .map(({ label, color, kind }) => ({ label, ...(HEX.test(color) ? { color } : {}), ...(LEGEND_KINDS.includes(kind) && kind !== 'box' ? { kind } : {}) }))
+
+/** Every row the legend draws, as { label, kind, color? }: the automatic keys, then the custom rows. */
+export const legendList = (keys = [], custom = []) => [
+  ...keys.map((k) => ({ label: LEGEND_ROWS[k].label, kind: LEGEND_ROWS[k].kind })),
+  ...cleanLegend(custom).map((r) => ({ label: r.label, kind: `custom-${r.kind || 'box'}`, color: r.color || LEGEND_INK.line })),
+]

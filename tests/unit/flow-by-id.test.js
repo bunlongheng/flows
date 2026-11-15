@@ -304,6 +304,18 @@ describe("/api/flows/:id", () => {
     expect(res.body.view_state).toEqual({ panels: ["steps"], badge: null });
   });
 
+  it("PATCH { legend } replaces only the custom legend rows", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: ID, view_state: {} }] });
+    const res = mockRes();
+    const r = req("PATCH", ID, undefined, `sd_session=${signSession({ email: process.env.OWNER_EMAIL })}`);
+    r.body = { legend: [{ label: "Owned by us", color: "#2563EB" }, { label: "" }] };
+    await flowById(r, res);
+    const [sql, params] = query.mock.calls.at(-1);
+    expect(sql).toContain("- 'legend'");
+    expect(params[0]).toBe(JSON.stringify({ legend: [{ label: "Owned by us", color: "#2563EB" }] }));
+    expect(res.body).toEqual({ id: ID, legend: [{ label: "Owned by us", color: "#2563EB" }] });
+  });
+
   it("PATCH view_state writes clean swimlanes when a lanes array comes, and keeps the stored ones when none does", async () => {
     const lanes = [{ id: "apps", title: "Apps on Vercel", y: 100, h: 320 }];
     query.mockResolvedValueOnce({ rows: [{ id: ID, view_state: { panels: [], badge: "dark", lanes } }] });
@@ -314,7 +326,7 @@ describe("/api/flows/:id", () => {
     await flowById(r, res);
     let [sql, params] = query.mock.calls.at(-1);
     expect(sql).toContain("view_state->'lanes'");
-    expect(params.slice(3)).toEqual([true, JSON.stringify({ lanes })]);
+    expect(params.slice(3, 5)).toEqual([true, JSON.stringify({ lanes })]);
     expect(res.body.view_state).toEqual({ panels: [], badge: "dark", lanes });
 
     query.mockResolvedValueOnce({ rows: [{ id: ID, view_state: { panels: ["steps"], badge: null, lanes } }] });
@@ -322,7 +334,8 @@ describe("/api/flows/:id", () => {
     r2.body = { view_state: { panels: ["steps"] } };
     await flowById(r2, mockRes());
     [sql, params] = query.mock.calls.at(-1);
-    expect(params.slice(3)).toEqual([false, "{}"]);
+    expect(params.slice(3)).toEqual([false, "{}", false, "{}"]);
+    expect(sql).toContain("view_state->'legend'");
   });
 
   it("PATCH view_state keeps a placed start and drops a missing one", async () => {

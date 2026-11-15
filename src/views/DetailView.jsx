@@ -10,7 +10,7 @@ import { fontsOf, levelsOf, atLevel, levelScale, LEVEL_NAMES, levelIconK } from 
 import { layoutFit } from '../layout'
 import { packLevel, cleanLanes, laneAxis, LANE_MIN, LANE_TITLE } from '../lanes.js'
 import { Legend } from '../components/Legend'
-import { legendRows } from '../legend.js'
+import { legendRows, legendList } from '../legend.js'
 import { edgeTypes } from '../components/GradientEdge'
 import { Toast } from '../components/Toast'
 import { SnapGuides } from '../components/SnapGuides'
@@ -459,10 +459,10 @@ export function DetailView({
   // The diagram's text sizes (view_state.fonts) for every card and tag.
   const fonts = useMemo(() => fontsOf(activeDiagram?.view_state), [activeDiagram])
   const drawFonts = useMemo(() => scale === 1 ? fonts : { title: fonts.title * scale, sub: fonts.sub * scale, tag: fonts.tag * scale, note: 10 * scale }, [fonts, scale])
-  const legend = useMemo(() => legendRows(
+  const legend = useMemo(() => legendList(legendRows(
     viewNodes.filter(n => n.type === 'awsNode').map(n => n.data || {}),
     atShown.edges.filter(e => e.type === 'gradient').map(e => ({ style: e.data?.style, sunset: !!e.data?.sunsetLine })),
-  ), [atShown, viewNodes])
+  ), activeDiagram?.view_state?.legend), [atShown, viewNodes, activeDiagram])
   // Fit is an ACTION, but it reads as a state on touch (the inline hover
   // background never clears without a mouseleave). So make the state real:
   // lit only while the canvas actually IS the fitted view, cleared the moment
