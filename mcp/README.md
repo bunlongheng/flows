@@ -109,7 +109,7 @@ Edges are directed `{ source, target, label?, description?, id?, style? }` using
 
 ### How a diagram opens
 
-`update_flow { id, view: { panels, badge, start, current, sizing, fonts, layout, level } }` saves how the diagram opens, and
+`update_flow { id, view: { panels, badge, start, current, sizing, fonts, layout, level, legend } }` saves how the diagram opens, and
 `create_flow` takes the same thing as `view` (alias `view_state`).
 
 - `panels` - any of `steps` (a numbered chip on every line), `share` (opens that panel), `notes-off`, `arrows-off`,
@@ -118,6 +118,9 @@ Edges are directed `{ source, target, label?, description?, id?, style? }` using
   anything a reader has to follow in order** instead of leaving them to find the
   button. `notes-off` is inverted on purpose: notes show by default, so the
   flag's job is to hide them.
+- `legend` - up to 12 custom rows for the bottom-left legend, `[{ label, color?, kind? }]`: `color` `#rrggbb`,
+  `kind` `box` (default), `line`, `dash` or `dot`. Drawn after the automatic rows on the canvas and in every export;
+  any row shows the legend by itself. Replaces the list; `[]` clears it.
 - Edge `style` - a line uses only `stroke`, `bw`, `bs`, `arrow` (`step`, `curved`, `straight`, `brace`), `head` and `opacity`. `head` is `end` (default), `start`, `both` or `none`, the arrowhead
   direction; `bs: "dashed"` is an interim or optional path. Lines are solid.
 - `start` - `{ x, y }`, where the Start pill sits. `layout` - `{ box, gap, vgap }`: `box` scales every card (0.6-2), `gap` and `vgap` spread the cards across and down (0.6-3); default 1.
